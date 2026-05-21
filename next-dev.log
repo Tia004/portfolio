@@ -1,0 +1,137 @@
+
+> portfolio@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.51:3000
+- Environments: .env
+✓ Ready in 402ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/tia/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/tia/Downloads/Siti/portfolio/package-lock.json
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+[browser] ./Downloads/Siti/portfolio/src/lib/prisma.ts:2:1
+Export PrismaLibSQL doesn't exist in target module
+  1 | import { PrismaClient } from '@prisma/client';
+> 2 | import { PrismaLibSQL } from '@prisma/adapter-libsql';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  3 | import { createClient } from '@libsql/client';
+  4 |
+  5 | const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+The export PrismaLibSQL was not found in module [project]/Downloads/Siti/portfolio/node_modules/@prisma/adapter-libsql/dist/index-node.mjs [app-route] (ecmascript).
+Did you mean to import PrismaLibSql?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  App Route:
+    ./Downloads/Siti/portfolio/src/lib/prisma.ts
+    ./Downloads/Siti/portfolio/src/app/api/auth/status/route.ts 
+    at handleErrors (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
+    at processMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2835:28)
+    at <unknown> (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2680:13)
+    at WebSocket.handleMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2325:17) (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
+[browser] ./Downloads/Siti/portfolio/src/lib/prisma.ts:2:1
+Export PrismaLibSQL doesn't exist in target module
+  1 | import { PrismaClient } from '@prisma/client';
+> 2 | import { PrismaLibSQL } from '@prisma/adapter-libsql';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  3 | import { createClient } from '@libsql/client';
+  4 |
+  5 | const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+The export PrismaLibSQL was not found in module [project]/Downloads/Siti/portfolio/node_modules/@prisma/adapter-libsql/dist/index-node.mjs [app-route] (ecmascript).
+Did you mean to import PrismaLibSql?
+All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
+
+Import trace:
+  App Route:
+    ./Downloads/Siti/portfolio/src/lib/prisma.ts
+    ./Downloads/Siti/portfolio/src/app/api/auth/status/route.ts 
+    at handleErrors (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
+    at processMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2835:28)
+    at <unknown> (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2680:13)
+    at WebSocket.handleMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2325:17) (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
+○ Compiling /loginmaster ...
+Error checking auth status: Error [PrismaClientKnownRequestError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
+/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
+
+   97 ;
+   98 async function GET() {
+   99     try {
+→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
+URL_INVALID: The URL 'undefined' is not in a valid format
+    at <unknown> (src/app/api/auth/status/route.ts:6:41)
+    at async GET (src/app/api/auth/status/route.ts:6:23)
+  4 | export async function GET() {
+  5 |   try {
+> 6 |     const userCount = await prisma.user.count();
+    |                                         ^
+  7 |     return NextResponse.json({ initialized: userCount > 0 });
+  8 |   } catch (error: any) {
+  9 |     console.error('Error checking auth status:', error); {
+  code: 'URL_INVALID',
+  meta: { modelName: 'User' },
+  clientVersion: '7.8.0'
+}
+ GET /api/auth/status 500 in 615ms (next.js: 428ms, application-code: 187ms)
+ GET /loginmaster 200 in 7.3s (next.js: 7.1s, proxy.ts: 44ms, application-code: 193ms)
+Error checking auth status: Error [PrismaClientKnownRequestError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
+/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
+
+   97 ;
+   98 async function GET() {
+   99     try {
+→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
+URL_INVALID: The URL 'undefined' is not in a valid format
+    at <unknown> (src/app/api/auth/status/route.ts:6:41)
+    at async GET (src/app/api/auth/status/route.ts:6:23)
+  4 | export async function GET() {
+  5 |   try {
+> 6 |     const userCount = await prisma.user.count();
+    |                                         ^
+  7 |     return NextResponse.json({ initialized: userCount > 0 });
+  8 |   } catch (error: any) {
+  9 |     console.error('Error checking auth status:', error); {
+  code: 'URL_INVALID',
+  meta: { modelName: 'User' },
+  clientVersion: '7.8.0'
+}
+ GET /api/auth/status 500 in 114ms (next.js: 12ms, application-code: 102ms)
+Error checking auth status: Error [PrismaClientKnownRequestError]: 
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
+/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
+
+   97 ;
+   98 async function GET() {
+   99     try {
+→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
+URL_INVALID: The URL 'undefined' is not in a valid format
+    at <unknown> (src/app/api/auth/status/route.ts:6:41)
+    at async GET (src/app/api/auth/status/route.ts:6:23)
+  4 | export async function GET() {
+  5 |   try {
+> 6 |     const userCount = await prisma.user.count();
+    |                                         ^
+  7 |     return NextResponse.json({ initialized: userCount > 0 });
+  8 |   } catch (error: any) {
+  9 |     console.error('Error checking auth status:', error); {
+  code: 'URL_INVALID',
+  meta: { modelName: 'User' },
+  clientVersion: '7.8.0'
+}
+ GET /api/auth/status 500 in 143ms (next.js: 11ms, application-code: 132ms)
+ GET /loginmaster 200 in 294ms (next.js: 83ms, proxy.ts: 80ms, application-code: 131ms)
+ GET /loginmaster 200 in 51ms (next.js: 5ms, proxy.ts: 3ms, application-code: 43ms)
+ GET /loginmaster 200 in 23ms (next.js: 3ms, proxy.ts: 2ms, application-code: 17ms)
+ GET /loginmaster 200 in 159ms (next.js: 78ms, proxy.ts: 23ms, application-code: 58ms)
+ GET /loginmaster 200 in 133ms (next.js: 51ms, proxy.ts: 20ms, application-code: 61ms)
+[?25h
