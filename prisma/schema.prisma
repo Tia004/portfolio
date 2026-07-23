@@ -31,6 +31,16 @@ model Authenticator {
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  sessionId String
+  text      String
+  sender    String   // 'client' | 'tia'
+  timestamp BigInt   // Unix ms
+
+  @@index([sessionId, timestamp])
+}
+
 model Project {
   id              String   @id @default(uuid())
   title           String

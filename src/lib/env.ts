@@ -9,6 +9,38 @@ try {
   // Silent fallback
 }
 
+// Override global dns.lookup to bypass local macOS DNS failure resolving Turso DB hosts
+const originalLookup = dns.lookup;
+dns.lookup = function (hostname: string, options: any, callback?: any) {
+  const cb = typeof options === 'function' ? options : callback;
+  const opts = typeof options === 'object' ? options : {};
+  if (hostname === 'portfoliodb-tia004.aws-eu-west-1.turso.io') {
+    if (cb) {
+      if (opts.all) {
+        cb(null, [{ address: '34.255.61.174', family: 4 }]);
+      } else {
+        cb(null, '34.255.61.174', 4);
+      }
+      return;
+    }
+  }
+  return originalLookup(hostname, options, callback);
+} as any;
+
+const originalPromisesLookup = dns.promises.lookup;
+dns.promises.lookup = async function (hostname: string, options?: any) {
+  const opts = typeof options === 'object' ? options : {};
+  if (hostname === 'portfoliodb-tia004.aws-eu-west-1.turso.io') {
+    if (opts.all) {
+      return [{ address: '34.255.61.174', family: 4 }] as any;
+    } else {
+      return { address: '34.255.61.174', family: 4 } as any;
+    }
+  }
+  return originalPromisesLookup(hostname, options);
+} as any;
+
+
 
 // Locate and parse .env manually to bypass any workspace root issues
 try {
@@ -46,4 +78,19 @@ if (!process.env.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL === "undef
 }
 if (!process.env.TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN === "undefined") {
   process.env.TURSO_AUTH_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzkzMzU2MzgsImlkIjoiMDE5ZTQ4YWEtZjMwMS03YmExLTg5NmUtNGIwNzkwYjFhMGM0IiwicmlkIjoiZTY2MDc2MzktOTllNS00NzE5LTgwOTUtM2FiNDRiMTg3M2NlIn0.EHhH5KQQqjEWg-sqN230LSjcAT5gJyBLeFBAnvVKthMvy28I5GMeo7idq2se_agilOQj2FLJ2qg62PzIqMCLCg";
+}
+
+// Warn at startup if AI keys are missing
+if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+  console.warn("\n⚠️  GROQ_API_KEY e GEMINI_API_KEY non configurate — il chatbot AI restituirà messaggio di fallback.");
+  console.warn("   Ottieni GROQ_API_KEY: https://console.groq.com/keys");
+  console.warn("   Ottieni GEMINI_API_KEY: https://aistudio.google.com/app/apikey");
+  console.warn("   Impostane almeno una in .env per attivare il chatbot AI.\n");
+}
+
+// Warn at startup if email is not configured
+if (!process.env.EMAIL_PASS || process.env.EMAIL_PASS === "") {
+  console.warn("\n⚠️  EMAIL_PASS non configurata — il form contatti restituirà errore 500.");
+  console.warn("   Genera una App Password: https://myaccount.google.com/apppasswords");
+  console.warn("   Poi impostala in .env: EMAIL_PASS=\"la-tua-app-password\"\n");
 }

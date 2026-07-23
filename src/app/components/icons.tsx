@@ -1,0 +1,97 @@
+/**
+ * Centralized icon exports — organized by category.
+ *
+ * Import from this file instead of @hugeicons/core-free-icons directly:
+ *   import { Mail01Icon, CallIcon } from './icons';
+ *
+ * To switch icon packs in the future, update the re-exports here.
+ */
+
+/** @category Design @since 2026-07-23 */
+export {
+  FigmaIcon,
+  AdobePhotoshopIcon,
+  AdobeIllustratorIcon,
+  WebDesign01Icon,
+  LayersIcon,
+  LayoutGridIcon,
+  PaintBoardIcon,
+  ColorsIcon,
+} from '@hugeicons/core-free-icons';
+
+/** @category Sviluppo Web @since 2026-07-23 */
+export {
+  ReactIcon,
+  CodeFolderIcon,
+  Typescript01Icon,
+  JavaScriptIcon,
+  ThreeDViewIcon,
+  TailwindcssIcon,
+  CodeIcon,
+} from '@hugeicons/core-free-icons';
+
+/** @category Software & Backend @since 2026-07-23 */
+export {
+  PythonIcon,
+  CProgrammingIcon,
+  JavaIcon,
+  PhpIcon,
+  DiamondIcon,
+  MobileProgramming01Icon,
+  ServerStack01Icon,
+  Database01Icon,
+  ContainerIcon,
+  TerminalIcon,
+} from '@hugeicons/core-free-icons';
+
+/** @category AI & Automazione @since 2026-07-23 */
+export {
+  ArtificialIntelligence01Icon,
+  ChatGptIcon,
+  WorkflowCircle01Icon,
+  ClaudeIcon,
+  WorkflowSquare01Icon,
+  Robot01Icon,
+} from '@hugeicons/core-free-icons';
+
+/** @category Video Making @since 2026-07-23 */
+export {
+  AdobePremierIcon,
+  AdobeAfterEffectIcon,
+  FilmRoll01Icon,
+  Scissor01Icon,
+  Motion01Icon,
+  Video01Icon,
+  PlayIcon,
+} from '@hugeicons/core-free-icons';
+
+/** @category Hardware & IT @since 2026-07-23 */
+export {
+  CpuIcon,
+  RepairIcon,
+  Github01Icon,
+  BlenderIcon,
+} from '@hugeicons/core-free-icons';
+
+/** @category Comunicazione & Contatti @since 2026-07-23 */
+export {
+  Mail01Icon,
+  CallIcon,
+  WhatsappIcon,
+  BubbleChatIcon,
+  UserIcon,
+  Location01Icon,
+  Clock01Icon,
+} from '@hugeicons/core-free-icons';
+
+/** @category UI / Azioni @since 2026-07-23 */
+export {
+  CheckmarkCircle01Icon,
+  AlertCircleIcon,
+  LoaderPinwheelIcon,
+  FilePenIcon,
+  DollarSignIcon,
+  ArrowRight01Icon,
+  Cancel01Icon,
+  ExternalLinkIcon,
+} from '@hugeicons/core-free-icons';

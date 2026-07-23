@@ -314,7 +314,7 @@ export default function DashboardPage() {
                     {thumbnail && (
                       <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-white/10 bg-black/40">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={thumbnail} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={thumbnail} alt="Anteprima progetto" loading="lazy" className="w-full h-full object-cover select-none" draggable="false" />
                         <button
                           type="button"
                           onClick={() => setThumbnail('')}
@@ -464,7 +464,7 @@ export default function DashboardPage() {
                       <div className="flex gap-4 items-center">
                         <div className="relative w-20 aspect-video rounded-lg overflow-hidden border border-white/10 bg-black/40 flex-shrink-0">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={project.thumbnail} alt={project.title} className="w-full h-full object-cover" />
+                          <img src={project.thumbnail} alt={project.title} loading="lazy" className="w-full h-full object-cover select-none" draggable="false" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">

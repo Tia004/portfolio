@@ -43,7 +43,15 @@ const statements = [
     "updatedAt" DATETIME NOT NULL
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username")`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS "Authenticator_credentialID_key" ON "Authenticator"("credentialID")`
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Authenticator_credentialID_key" ON "Authenticator"("credentialID")`,
+  `CREATE TABLE IF NOT EXISTS "ChatMessage" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "sessionId" TEXT NOT NULL,
+    "text" TEXT NOT NULL,
+    "sender" TEXT NOT NULL,
+    "timestamp" BIGINT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS "ChatMessage_sessionId_timestamp_idx" ON "ChatMessage"("sessionId", "timestamp")`
 ];
 
 async function run() {

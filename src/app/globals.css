@@ -1,26 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #010101;
+  --foreground: #f5f5f5;
+  --font-sans: 'Outfit', 'Space Grotesk', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --teal-primary: rgba(45, 212, 191, 1);
+  --teal-glow: rgba(45, 212, 191, 0.15);
+  --teal-border: rgba(45, 212, 191, 0.4);
+  --border-color: rgba(255,255,255,0.08);
+  --background-dark: #010101;
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Hide native cursor on desktop (PixelTrail cursor handles it) */
+@media (hover: hover) and (pointer: fine) {
+  :root, html, body, *, iframe, embed, object {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect fill='transparent'/%3E%3C/svg%3E"), none !important;
+  }
+}
+
+/* Show native cursor when the Next.js error overlay is visible (dev/debug mode) */
+body:has(nextjs-portal),
+body:has(nextjs-portal) *,
+body:has(nextjs-portal) iframe,
+body:has(nextjs-portal) embed {
+  cursor: auto !important;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+.global-spotlight { mix-blend-mode: screen; will-change: transform, opacity; z-index: 200 !important; pointer-events: none; }
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bento-section { position: relative; user-select: none; }
+
+/* ==================== FaqScroller ==================== */
+@keyframes scroll-horizontal {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+@keyframes scroll-horizontal-reverse {
+  from { transform: translate3d(-50%, 0, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+.animate-scroll-horizontal {
+  animation: scroll-horizontal var(--scroll-duration, 60s) linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.animate-scroll-horizontal-reverse {
+  animation: scroll-horizontal-reverse var(--scroll-duration, 60s) linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@keyframes scroll-vertical {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+@keyframes scroll-vertical-reverse {
+  from { transform: translate3d(0, -50%, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+.animate-scroll-vertical {
+  animation: scroll-vertical var(--scroll-duration, 40s) linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+.animate-scroll-vertical-reverse {
+  animation: scroll-vertical-reverse var(--scroll-duration, 40s) linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* ==================== Shake Error Animation ==================== */
+@keyframes shake-error {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-5px); }
+  30%, 70% { transform: translateX(5px); }
+}
+.animate-shake-error {
+  animation: shake-error 0.6s ease-in-out 5;
+}
+

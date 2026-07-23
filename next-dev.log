@@ -1,12 +1,8 @@
-
-> portfolio@0.1.0 dev
-> next dev
-
 ▲ Next.js 16.2.6 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://192.168.1.51:3000
+- Local:         http://localhost:3017
+- Network:       http://192.168.1.33:3017
 - Environments: .env
-✓ Ready in 402ms
+✓ Ready in 287ms
 ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
  We detected multiple lockfiles and selected the directory of /Users/tia/package-lock.json as the root directory.
  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
@@ -16,122 +12,858 @@
 
 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
 
-[browser] ./Downloads/Siti/portfolio/src/lib/prisma.ts:2:1
-Export PrismaLibSQL doesn't exist in target module
-  1 | import { PrismaClient } from '@prisma/client';
-> 2 | import { PrismaLibSQL } from '@prisma/adapter-libsql';
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  3 | import { createClient } from '@libsql/client';
-  4 |
-  5 | const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-The export PrismaLibSQL was not found in module [project]/Downloads/Siti/portfolio/node_modules/@prisma/adapter-libsql/dist/index-node.mjs [app-route] (ecmascript).
-Did you mean to import PrismaLibSql?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import trace:
-  App Route:
-    ./Downloads/Siti/portfolio/src/lib/prisma.ts
-    ./Downloads/Siti/portfolio/src/app/api/auth/status/route.ts 
-    at handleErrors (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
-    at processMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2835:28)
-    at <unknown> (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2680:13)
-    at WebSocket.handleMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2325:17) (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
-[browser] ./Downloads/Siti/portfolio/src/lib/prisma.ts:2:1
-Export PrismaLibSQL doesn't exist in target module
-  1 | import { PrismaClient } from '@prisma/client';
-> 2 | import { PrismaLibSQL } from '@prisma/adapter-libsql';
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  3 | import { createClient } from '@libsql/client';
-  4 |
-  5 | const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-The export PrismaLibSQL was not found in module [project]/Downloads/Siti/portfolio/node_modules/@prisma/adapter-libsql/dist/index-node.mjs [app-route] (ecmascript).
-Did you mean to import PrismaLibSql?
-All exports of the module are statically known (It doesn't have dynamic exports). So it's known statically that the requested export doesn't exist.
-
-Import trace:
-  App Route:
-    ./Downloads/Siti/portfolio/src/lib/prisma.ts
-    ./Downloads/Siti/portfolio/src/app/api/auth/status/route.ts 
-    at handleErrors (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
-    at processMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2835:28)
-    at <unknown> (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2680:13)
-    at WebSocket.handleMessage (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2325:17) (file:///Users/tia/Downloads/Siti/portfolio/.next/dev/static/chunks/0ao3_next_dist_client_0.kl_q8._.js:2774:21)
-○ Compiling /loginmaster ...
-Error checking auth status: Error [PrismaClientKnownRequestError]: 
-Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
-/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
-
-   97 ;
-   98 async function GET() {
-   99     try {
-→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
-URL_INVALID: The URL 'undefined' is not in a valid format
-    at <unknown> (src/app/api/auth/status/route.ts:6:41)
-    at async GET (src/app/api/auth/status/route.ts:6:23)
-  4 | export async function GET() {
-  5 |   try {
-> 6 |     const userCount = await prisma.user.count();
-    |                                         ^
-  7 |     return NextResponse.json({ initialized: userCount > 0 });
-  8 |   } catch (error: any) {
-  9 |     console.error('Error checking auth status:', error); {
-  code: 'URL_INVALID',
-  meta: { modelName: 'User' },
-  clientVersion: '7.8.0'
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51225,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
 }
- GET /api/auth/status 500 in 615ms (next.js: 428ms, application-code: 187ms)
- GET /loginmaster 200 in 7.3s (next.js: 7.1s, proxy.ts: 44ms, application-code: 193ms)
-Error checking auth status: Error [PrismaClientKnownRequestError]: 
-Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
-/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
-
-   97 ;
-   98 async function GET() {
-   99     try {
-→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
-URL_INVALID: The URL 'undefined' is not in a valid format
-    at <unknown> (src/app/api/auth/status/route.ts:6:41)
-    at async GET (src/app/api/auth/status/route.ts:6:23)
-  4 | export async function GET() {
-  5 |   try {
-> 6 |     const userCount = await prisma.user.count();
-    |                                         ^
-  7 |     return NextResponse.json({ initialized: userCount > 0 });
-  8 |   } catch (error: any) {
-  9 |     console.error('Error checking auth status:', error); {
-  code: 'URL_INVALID',
-  meta: { modelName: 'User' },
-  clientVersion: '7.8.0'
+ GET / 200 in 5.6s (next.js: 87ms, application-code: 5.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51233,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
 }
- GET /api/auth/status 500 in 114ms (next.js: 12ms, application-code: 102ms)
-Error checking auth status: Error [PrismaClientKnownRequestError]: 
-Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count()` invocation in
-/Users/tia/Downloads/Siti/portfolio/.next/dev/server/chunks/[root-of-the-server]__0_9hhn9._.js:100:201
-
-   97 ;
-   98 async function GET() {
-   99     try {
-→ 100         const userCount = await __TURBOPACK__imported__module__$5b$project$5d2f$Downloads$2f$Siti$2f$portfolio$2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.count(
-URL_INVALID: The URL 'undefined' is not in a valid format
-    at <unknown> (src/app/api/auth/status/route.ts:6:41)
-    at async GET (src/app/api/auth/status/route.ts:6:23)
-  4 | export async function GET() {
-  5 |   try {
-> 6 |     const userCount = await prisma.user.count();
-    |                                         ^
-  7 |     return NextResponse.json({ initialized: userCount > 0 });
-  8 |   } catch (error: any) {
-  9 |     console.error('Error checking auth status:', error); {
-  code: 'URL_INVALID',
-  meta: { modelName: 'User' },
-  clientVersion: '7.8.0'
+ GET / 200 in 5.2s (next.js: 2ms, application-code: 5.2s)
+ GET / 200 in 2.5s (next.js: 7ms, application-code: 2.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51289,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
 }
- GET /api/auth/status 500 in 143ms (next.js: 11ms, application-code: 132ms)
- GET /loginmaster 200 in 294ms (next.js: 83ms, proxy.ts: 80ms, application-code: 131ms)
- GET /loginmaster 200 in 51ms (next.js: 5ms, proxy.ts: 3ms, application-code: 43ms)
- GET /loginmaster 200 in 23ms (next.js: 3ms, proxy.ts: 2ms, application-code: 17ms)
- GET /loginmaster 200 in 159ms (next.js: 78ms, proxy.ts: 23ms, application-code: 58ms)
- GET /loginmaster 200 in 133ms (next.js: 51ms, proxy.ts: 20ms, application-code: 61ms)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51297,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 4ms, application-code: 5.2s)
+ GET / 200 in 2.5s (next.js: 2ms, application-code: 2.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51322,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+✓ Compiled in 448ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51970,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 35ms, application-code: 5.2s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51976,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 10.3s (next.js: 1803µs, application-code: 10.3s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51982,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 15.4s (next.js: 1137µs, application-code: 15.4s)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 52ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 51993,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.3s (next.js: 3ms, application-code: 5.3s)
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+✓ Compiled in 174ms
+✓ Compiled in 0ms
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 52052,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.3s (next.js: 34ms, application-code: 5.3s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 52060,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 10.3s (next.js: 16ms, application-code: 10.3s)
+✓ Compiled in 75ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 52065,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 15.5s (next.js: 1182µs, application-code: 15.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 52071,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 20.6s (next.js: 955µs, application-code: 20.6s)
+[browser] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [25, ★*RECENSIONI*★*CLIENTI*★*, [object Object], [object Object]]
+Incoming: [25, ★*RECENSIONI*★*CLIENTI*★*, [object Object]] 
+    at CircularText (src/app/components/CircularText.tsx:22:12)
+    at Set.forEach (<anonymous>)
+  20 |   const radius = 80;
+  21 |
+> 22 |   useEffect(() => {
+     |            ^
+  23 |     controls.start({
+  24 |       rotate: 360,
+  25 |       scale: 1, (src/app/components/CircularText.tsx:22:12)
+✓ Compiled in 60ms
+✓ Compiled in 33ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 52217,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 4ms, application-code: 5.2s)
+✓ Compiled in 29ms
+✓ Compiled in 79ms
+✓ Compiled in 49ms
+✓ Compiled in 58ms
+✓ Compiled in 40ms
+✓ Compiled in 36ms
+[browser] The final argument passed to useEffect changed size between renders. The order and size of this array must remain constant.
+
+Previous: [25, ★*RECENSIONI*★*CLIENTI*★*, [object Object]]
+Incoming: [25, [object Object]] 
+    at CircularText (src/app/components/CircularText.tsx:22:12)
+    at Set.forEach (<anonymous>)
+  20 |   const radius = 80;
+  21 |
+> 22 |   useEffect(() => {
+     |            ^
+  23 |     controls.start({
+  24 |       rotate: 360,
+  25 |       scale: 1, (src/app/components/CircularText.tsx:22:12)
+✓ Compiled in 28ms
+✓ Compiled in 30ms
+✓ Compiled in 32ms
+✓ Compiled in 141ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54064,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.3s (next.js: 36ms, application-code: 5.2s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54077,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 10.3s (next.js: 1123µs, application-code: 10.3s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54089,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 15.4s (next.js: 1052µs, application-code: 15.4s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54095,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 20.6s (next.js: 1059µs, application-code: 20.6s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54100,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 25.7s (next.js: 1175µs, application-code: 25.7s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54111,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 30.9s (next.js: 971µs, application-code: 30.9s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54114,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 30.9s (next.js: 3ms, application-code: 30.9s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54117,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 30.9s (next.js: 1239µs, application-code: 30.9s)
+✓ Compiled in 0ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54222,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 35ms, application-code: 5.2s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54229,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 10.3s (next.js: 1327µs, application-code: 10.3s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54236,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 15.5s (next.js: 1261µs, application-code: 15.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54243,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 20.7s (next.js: 3ms, application-code: 20.7s)
+✓ Compiled in 166ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54921,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 27ms, application-code: 5.2s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54928,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 10.3s (next.js: 1188µs, application-code: 10.3s)
+✓ Compiled in 46ms
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54934,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 15.5s (next.js: 1262µs, application-code: 15.5s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54938,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 20.6s (next.js: 1047µs, application-code: 20.6s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54941,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 25.8s (next.js: 1020µs, application-code: 25.8s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54944,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 30.9s (next.js: 921µs, application-code: 30.9s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54953,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 31.0s (next.js: 1004µs, application-code: 31.0s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54958,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 31.0s (next.js: 1878µs, application-code: 31.0s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54961,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 31.0s (next.js: 2ms, application-code: 31.0s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54967,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 31.1s (next.js: 2ms, application-code: 31.1s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 54971,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 31.1s (next.js: 1452µs, application-code: 31.1s)
+✓ Compiled in 21ms
+✓ Compiled in 55ms
+✓ Compiled in 25ms
+ GET / 200 in 11ms (next.js: 7ms, application-code: 4ms)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 55636,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 5.2s (next.js: 5ms, application-code: 5.2s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 55645,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 8.7s (next.js: 3ms, application-code: 8.7s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 55650,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 13.7s (next.js: 3ms, application-code: 13.7s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 55655,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 18.8s (next.js: 3ms, application-code: 18.8s)
+Error loading projects on Home: TypeError: fetch failed
+    at ignore-listed frames {
+  clientVersion: '7.8.0',
+  [cause]: Error [SocketError]: other side closed
+      at ignore-listed frames {
+    code: 'UND_ERR_SOCKET',
+    socket: {
+      localAddress: '192.168.1.33',
+      localPort: 55660,
+      remoteAddress: '34.255.61.174',
+      remotePort: 443,
+      remoteFamily: 'IPv4',
+      timeout: undefined,
+      bytesWritten: 1212,
+      bytesRead: 0
+    }
+  }
+}
+ GET / 200 in 23.7s (next.js: 2ms, application-code: 23.7s)
 [?25h
