@@ -1293,7 +1293,7 @@ export default function HomeShell() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => reviseQuote(messageId, storedPrefill)}
+                  onClick={() => reviseQuote(messageId)}
                   className="flex-1 rounded-lg border border-white/10 px-3 py-2.5 text-xs font-medium text-neutral-300 transition-colors hover:border-teal-400/30 hover:bg-white/[0.05] hover:text-white"
                 >
                   {t('bot.revise_quote', lang)}
@@ -1655,12 +1655,16 @@ export default function HomeShell() {
     }
   };
 
-  const reviseQuote = (messageId: number, prefill: Record<string, string>) => {
+  const reviseQuote = (messageId: number) => {
     setBotMessages(prev => prev.map(message => message.id === messageId ? { ...message, approvalState: 'revising' } : message));
-    sendBotMessage(t('bot.revise_prompt', lang), {
-      quoteDraft: prefill,
-      displayUserMessage: true,
-    });
+    // Local, instant bot reply — no fake user bubble, no AI round-trip. The
+    // AI picks up the revision when the visitor writes the actual change
+    // (quoteDraftRef still holds the collected details for that call).
+    setBotMessages(prev => [...prev, {
+      id: botNextIdRef.current++,
+      text: t('bot.revision_waiting', lang),
+      sender: 'bot' as const,
+    }]);
     requestAnimationFrame(() => botInputRef.current?.focus());
   };
 
