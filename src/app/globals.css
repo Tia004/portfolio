@@ -402,9 +402,6 @@ img {
     @apply font-sans;
     overflow-x: hidden;
     max-width: 100vw;
-    /* Reserve scrollbar space permanently — prevents layout shift when
-       Lenis briefly exposes the native scrollbar during height recalculation. */
-    scrollbar-gutter: stable;
   }
   /* Instant tap response on mobile — disables double-tap zoom and 300ms delay */
   a, button, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
