@@ -3139,13 +3139,6 @@ export default function HomeShell() {
                    has no overflow (empty chat or at boundary), the wheel naturally
                    passes through to the page. */}
                 <div ref={chatMessagesRef} data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch onWheel={handleChatWheel} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3">
-                  {messages.length === 0 && !isTyping && (
-                    <div className="flex-1 flex items-center justify-center">
-                      <div className="text-center select-none">
-                        <p className="text-neutral-600/30 text-sm max-w-[200px] mx-auto leading-relaxed">{t('chat.empty_intro', lang)}</p>
-                      </div>
-                    </div>
-                  )}
 
                   {messages.map((msg) => (
                     <div
