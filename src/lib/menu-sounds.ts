@@ -105,3 +105,32 @@ export function playMenuCloseSound(): void {
   noise.start(now);
   noise.stop(now + duration + 0.05);
 }
+
+/**
+ * Subtle pop/ding for chat open — a short sine wave "pop" that feels
+ * tactile and friendly, like a message notification. Very low volume.
+ */
+export function playChatOpenSound(): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+
+  const duration = 0.15;
+  const now = ctx.currentTime;
+
+  // ── Tone: 1200Hz → 800Hz falling pitch for a soft "pop" ──
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1200, now);
+  osc.frequency.exponentialRampToValueAtTime(800, now + duration);
+
+  // ── Volume envelope: quick attack, fast decay — crisp pop ──
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.04, now + 0.008);   // -28dB peak
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + duration + 0.05);
+}

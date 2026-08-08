@@ -124,6 +124,7 @@ import { getTooltip } from '@/lib/tooltips';
 import { HERO, STAGGER_BY_SECTION, HERO_COUNTUP_DELAYS, SKILL_TITLE_OFFSET } from '@/lib/animation-theme';
 import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 import { isValidContactEmail, isValidContactMessage, isValidContactName } from '@/lib/input-validation';
+import { playChatOpenSound } from '@/lib/menu-sounds';
 
 // ── Custom ServiceSelect (grouped by macro-area) ─────────────
 
@@ -3223,6 +3224,7 @@ export default function HomeShell() {
                 setChatClosing(true);
                 setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300);
               } else {
+                playChatOpenSound();
                 setChatOpen(true);
                 logAnalytics('chat_open');
               }
