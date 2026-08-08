@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import ClickSpark from "./components/ClickSpark";
 import PointerCursor from "./components/PointerCursor";
@@ -127,6 +128,7 @@ export default async function RootLayout({
             <FpsOverlayWrapper />
             <ScrollbarReveal />
             <Analytics />
+            <SpeedInsights />
           </SplashScreen>
         </LanguageProvider>
       </body>
