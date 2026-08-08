@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage, closeSession } from '@/lib/chatStore';
+import { addMessage, closeSession, getRecentMessages } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { sanitizeChatText } from '@/lib/chat-security';
 import { getAvailability, setAvailability } from '@/lib/availability';
@@ -42,6 +42,55 @@ export async function POST(req: NextRequest) {
     // ── Handle inline keyboard callback ("Chiudi conversazione") ──
     const callback = update?.callback_query;
     if (callback && typeof callback.data === 'string') {
+      // ── "📜 Mostra tutto" — send full conversation history as a separate message ──
+      const historyMatch = callback.data.match(/^show_history:(.+)$/);
+      if (historyMatch) {
+        const sessionId = historyMatch[1];
+        if (/^[0-9a-f-]{36}$/i.test(sessionId)) {
+          const msgs = await getRecentMessages(sessionId, 50);
+          const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+          if (telegramToken) {
+            const chatId = callback.message?.chat?.id;
+
+            // Answer the callback
+            await fetch(`https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callback.id,
+                text: msgs.length > 0 ? `📜 ${msgs.length} messaggi caricati` : '📭 Nessun messaggio',
+                show_alert: false,
+              }),
+              signal: AbortSignal.timeout(5_000),
+            });
+
+            // Send full history
+            const historyText = msgs.length > 0
+              ? msgs.map((m, i) => {
+                  const prefix = m.sender === 'client' ? '👤 Cliente' : '💬 Tia';
+                  const time = new Date(m.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                  return `${i + 1}. [${time}] ${prefix}: ${m.text}`;
+                }).join('\n\n')
+              : '📭 Nessun messaggio in questa conversazione.';
+
+            if (chatId) {
+              await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  text: `📜 Storico completo — 🆔 ${sessionId}\n\n${historyText}`,
+                }),
+                signal: AbortSignal.timeout(8_000),
+              });
+            }
+          }
+          console.log(`[chat/webhook] History sent for session ${sessionId}: ${msgs.length} messages`);
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // ── "🔒 Chiudi conversazione" ──
       const match = callback.data.match(/^close_session:(.+)$/);
       if (match) {
         const sessionId = match[1];

@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
           text: `🔒 Al termine, clicca qui sotto per chiudere la conversazione con 🆔 ${sessionId}`,
           reply_markup: {
             inline_keyboard: [
+              [{ text: '📜 Mostra tutto', callback_data: `show_history:${sessionId}` }],
               [{ text: '🔒 Chiudi conversazione', callback_data: `close_session:${sessionId}` }],
             ],
           },
