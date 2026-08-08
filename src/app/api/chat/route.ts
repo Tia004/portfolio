@@ -85,7 +85,12 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text: `💬 Nuovo messaggio dalla chat\n📍 ${location}\n🆔 ${sessionId}\n📝 ${text}`,
+          text: `💬 Nuovo messaggio dalla chat\n📍 ${location}\n🆔 ${sessionId}\n📝 ${text}\n\n↩️ Usa "Rispondi" per scrivere a questo utente`,
+          reply_markup: {
+            force_reply: true,
+            input_field_placeholder: 'Scrivi la risposta per questo utente…',
+            selective: true,
+          },
         }),
         signal: AbortSignal.timeout(8_000),
       });
