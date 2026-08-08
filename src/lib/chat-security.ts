@@ -25,13 +25,22 @@ interface RateBucket {
 const rateBuckets = new Map<string, RateBucket>();
 const streamConnections = new Map<string, number>();
 
+let _fallbackSecret: string | null = null;
+
 function getSessionSecret(): string {
   const secret = process.env.CHAT_SESSION_SECRET || process.env.SESSION_SECRET;
   if (secret && secret.length >= 32) return secret;
   if (process.env.NODE_ENV !== 'production') {
     return 'local-development-chat-secret-change-before-production-please';
   }
-  throw new Error('CHAT_SESSION_SECRET or SESSION_SECRET must contain at least 32 characters');
+  // Production without CHAT_SESSION_SECRET: generate a random secret that
+  // persists for the lifetime of this serverless instance. Sessions will
+  // be invalidated on cold start, but the site remains functional.
+  if (!_fallbackSecret) {
+    _fallbackSecret = randomBytes(32).toString('base64url');
+    console.warn('[chat-security] CHAT_SESSION_SECRET not set — using ephemeral fallback. Sessions will not survive cold starts.');
+  }
+  return _fallbackSecret;
 }
 
 function encode(value: string): string {
