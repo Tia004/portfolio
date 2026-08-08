@@ -3238,7 +3238,7 @@ export default function HomeShell() {
             )}
             {/* Online dot */}
             <span
-              className={`absolute bottom-1 left-1 w-3.5 h-3.5 rounded-full border-2 border-[#010101] transition-all duration-500 ${chatOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'} ${isOnline ? 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)]'}`}
+              className={`absolute bottom-1 left-1 w-3.5 h-3.5 rounded-full border-2 border-[#010101] transition-all duration-500 ${chatOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'} ${isOnline ? 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)] animate-pulse-slow'}`}
               aria-label={isOnline ? 'Disponibile' : 'Non disponibile'}
               title={isOnline ? 'Disponibile' : 'Non disponibile'}
             />

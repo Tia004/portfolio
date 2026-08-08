@@ -291,6 +291,15 @@ img {
   100% { outline-width: 0px; outline-color: rgba(45, 212, 191, 0); outline-offset: 12px; }
 }
 
+/* Slow pulse — ~2s cycle for offline indicator (vs 1s default animate-pulse for online) */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Touch devices: thicker ring, longer duration — compensates for finger
    occlusion and slower scroll settling on mobile. */
 @media (pointer: coarse) {
