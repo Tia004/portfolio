@@ -3125,7 +3125,11 @@ export default function HomeShell() {
               backgroundColor="#0f0f0f"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw-2rem),340px)] h-[min(70vh,560px)] transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
             >
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#0f0f0f] rounded-2xl flex flex-col">
+              {/* overflow-hidden here (NOT on .border-glow-card): clips the
+                  title-bar background to the rounded-2xl corners. The BorderGlow
+                  lives on the parent card's pseudo-elements + .edge-light, which
+                  are siblings — clipping this child never touches the glow. */}
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#0f0f0f] rounded-2xl overflow-hidden flex flex-col">
                 {/* Title bar */}
                 <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
                   {/* Centered title */}
