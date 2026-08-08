@@ -125,6 +125,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── /reply <sessionId> <message> — fallback when force_reply doesn't work ──
+    const replyMatch = msg.text.match(/^\/reply\s+([0-9a-f-]{36})\s+(.+)$/is);
+    if (replyMatch) {
+      const sessionId = replyMatch[1];
+      const replyText = sanitizeChatText(replyMatch[2], 8_000);
+      if (replyText && !isInappropriateChatMessage(replyText)) {
+        await addMessage(sessionId, {
+          text: replyText,
+          sender: 'tia',
+          timestamp: Date.now(),
+        });
+        console.log(`[chat/webhook] Reply via /reply command for session ${sessionId}: "${replyText}"`);
+
+        const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+        if (telegramToken) {
+          await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: senderChatId,
+              text: `✅ Risposta inviata a 🆔 ${sessionId}`,
+              reply_to_message_id: msg.message_id,
+            }),
+            signal: AbortSignal.timeout(5_000),
+          });
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // We only care about messages that are replies to bot messages
     if (!msg.reply_to_message?.text) {
       return NextResponse.json({ ok: true });
