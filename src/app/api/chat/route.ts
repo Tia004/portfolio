@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage } from '@/lib/chatStore';
+import { addMessage, getRecentMessages } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { getAvailability } from '@/lib/availability';
 import {
@@ -80,13 +80,21 @@ export async function POST(req: NextRequest) {
 
     if (TELEGRAM_TOKEN && TELEGRAM_CHAT_ID) {
       const location = await getLocation(ip);
+
+      // ── Fetch conversation context (last 3 messages) for Telegram preview ──
+      const history = await getRecentMessages(sessionId, 3);
+      const historyText = history.length > 0
+        ? history.map((m) => `${m.sender === 'client' ? '👤' : '💬'} ${m.text.slice(0, 120)}`).join('\n')
+        : '';
+      const contextBlock = historyText ? `\n\n📜 Storico:\n${historyText}` : '';
+
       // Main message with force_reply for easy responding
       await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text: `💬 Nuovo messaggio dalla chat\n📍 ${location}\n🆔 ${sessionId}\n📝 ${text}\n\n↩️ Usa "Rispondi" per scrivere a questo utente`,
+          text: `💬 Nuovo messaggio dalla chat\n📍 ${location}\n🆔 ${sessionId}\n📝 ${text}${contextBlock}\n\n↩️ Usa "Rispondi" per scrivere a questo utente`,
           reply_markup: {
             force_reply: true,
             input_field_placeholder: 'Scrivi la risposta per questo utente…',

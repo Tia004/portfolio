@@ -185,3 +185,34 @@ export async function closeSession(sessionId: string): Promise<boolean> {
   memoryStore.get(sessionId)!.push(entry);
   return true;
 }
+
+/**
+ * Get recent messages for a session (up to `limit`, newest first).
+ * Used to show conversation context in Telegram notifications.
+ */
+export async function getRecentMessages(sessionId: string, limit = 3): Promise<ChatMessage[]> {
+  if (dbAvailable !== false || shouldRetryDb()) {
+    try {
+      const rows = await prisma.chatMessage.findMany({
+        where: { sessionId },
+        orderBy: { timestamp: 'desc' },
+        take: limit,
+      });
+      markDbUp();
+      return rows.reverse().map((r) => ({
+        id: r.id,
+        text: r.text,
+        sender: r.sender as 'client' | 'tia',
+        timestamp: Number(r.timestamp),
+      }));
+    } catch (err) {
+      markDbDown();
+      console.warn('[chatStore] DB non raggiungibile in getRecentMessages, uso fallback in-memory:',
+        err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Fallback in-memory
+  const msgs = memoryStore.get(sessionId) || [];
+  return msgs.slice(-limit);
+}
