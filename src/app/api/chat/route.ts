@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
 
     if (TELEGRAM_TOKEN && TELEGRAM_CHAT_ID) {
       const location = await getLocation(ip);
+      // Main message with force_reply for easy responding
       await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,6 +91,22 @@ export async function POST(req: NextRequest) {
             force_reply: true,
             input_field_placeholder: 'Scrivi la risposta per questo utente…',
             selective: true,
+          },
+        }),
+        signal: AbortSignal.timeout(8_000),
+      });
+
+      // Follow-up message with inline "Close" button
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: `🔒 Al termine, clicca qui sotto per chiudere la conversazione con 🆔 ${sessionId}`,
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🔒 Chiudi conversazione', callback_data: `close_session:${sessionId}` }],
+            ],
           },
         }),
         signal: AbortSignal.timeout(8_000),

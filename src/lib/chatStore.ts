@@ -144,3 +144,44 @@ export async function getTiaMessagesSince(sessionId: string, since: number): Pro
   const msgs = memoryStore.get(sessionId) || [];
   return msgs.filter((m) => m.sender === 'tia' && m.timestamp > since);
 }
+
+/**
+ * Close a conversation — adds a system-level message that Tia has closed
+ * the chat. The frontend detects this message and shows a "conversazione
+ * chiusa" state to the user.
+ */
+export async function closeSession(sessionId: string): Promise<boolean> {
+  const closedText = '🔒 Conversazione chiusa da Tia. Grazie per averci contattato! Se hai bisogno di altro, apri una nuova chat.';
+
+  if (dbAvailable !== false || shouldRetryDb()) {
+    try {
+      await prisma.chatMessage.create({
+        data: {
+          sessionId,
+          text: closedText,
+          sender: 'tia',
+          timestamp: BigInt(Date.now()),
+        },
+      });
+      markDbUp();
+      return true;
+    } catch (err) {
+      markDbDown();
+      console.warn('[chatStore] DB non raggiungibile in closeSession, uso fallback in-memory:',
+        err instanceof Error ? err.message : err);
+    }
+  }
+
+  // Fallback in-memory
+  const entry: ChatMessage = {
+    id: memoryNextId++,
+    text: closedText,
+    sender: 'tia',
+    timestamp: Date.now(),
+  };
+  if (!memoryStore.has(sessionId)) {
+    memoryStore.set(sessionId, []);
+  }
+  memoryStore.get(sessionId)!.push(entry);
+  return true;
+}

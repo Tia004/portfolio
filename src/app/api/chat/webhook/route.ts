@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage } from '@/lib/chatStore';
+import { addMessage, closeSession } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { sanitizeChatText } from '@/lib/chat-security';
 import { getAvailability, setAvailability } from '@/lib/availability';
@@ -38,6 +38,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false }, { status: 413 });
     }
     const update = await req.json();
+
+    // ── Handle inline keyboard callback ("Chiudi conversazione") ──
+    const callback = update?.callback_query;
+    if (callback && typeof callback.data === 'string') {
+      const match = callback.data.match(/^close_session:(.+)$/);
+      if (match) {
+        const sessionId = match[1];
+        if (/^[0-9a-f-]{36}$/i.test(sessionId)) {
+          const success = await closeSession(sessionId);
+          const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+          if (telegramToken) {
+            // Answer the callback query so the button stops spinning
+            await fetch(`https://api.telegram.org/bot${telegramToken}/answerCallbackQuery`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                callback_query_id: callback.id,
+                text: success ? '✅ Conversazione chiusa' : '⚠️ Errore — riprova',
+                show_alert: false,
+              }),
+              signal: AbortSignal.timeout(5_000),
+            });
+
+            // Edit the inline keyboard message to show closure
+            if (callback.message?.chat?.id && callback.message?.message_id) {
+              await fetch(`https://api.telegram.org/bot${telegramToken}/editMessageText`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: callback.message.chat.id,
+                  message_id: callback.message.message_id,
+                  text: `✅ Conversazione chiusa — 🆔 ${sessionId}`,
+                }),
+                signal: AbortSignal.timeout(5_000),
+              });
+            }
+          }
+          console.log(`[chat/webhook] Session closed: ${sessionId}`);
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
 
     const msg = update?.message;
     if (!msg || typeof msg.text !== 'string') {
