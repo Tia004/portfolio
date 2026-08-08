@@ -741,6 +741,13 @@ function sanitizeBotText(text: string): string {
     .replace(/Ho completato i dati per il preventivo[^.]*\.?/gi, '')
     .replace(/I have completed the quote details[^.]*\.?/gi, '')
     .replace(/He completado los datos del presupuesto[^.]*\.?/gi, '')
+    // Defensive: strip residual UI meta-instructions the model sometimes emits
+    // as visible text instead of the raw markers (it, en, es). Parenthetical
+    // notes about "insert a link / a window will appear / pick one" are never
+    // meant for the visitor — the UI renders chips/sliders/fields itself.
+    .replace(/\(\s*(?:inserisci|clicca|apparir[àa]|seleziona|scegli|apri|vedi|nota|linker?|finestr[ae]|opzioni|bott[oe]n[ei]?|qui|sotto|accanto|compare|appare|trovi|cliccabili?)\b[^)]*\)/gi, '')
+    .replace(/\(\s*(?:(?:an?|the)\s+)?(?:insert|click|clickable|choose|select|open|see|note|link|window|popup|options|buttons?|here|below|appears?|appear)\b[^)]*\)/gi, '')
+    .replace(/\(\s*(?:inserta|haz clic|clic|elige|selecciona|abre|ver|nota|enlace|ventana|emergente|opciones|botones?|aquí|abajo|aparece|aparecer[áa]|clicables?)\b[^)]*\)/gi, '')
     .trim();
 }
 
