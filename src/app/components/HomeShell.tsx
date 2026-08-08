@@ -3120,7 +3120,7 @@ export default function HomeShell() {
               backgroundColor="#0f0f0f"
               className="[&_.border-glow-inner]:!overflow-visible"
             >
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className={`absolute bottom-20 right-0 w-[calc(100vw-2rem)] max-w-[380px] max-h-[50vh] bg-[#0f0f0f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className={`absolute bottom-0 right-0 w-[min(calc(100vw-2rem),340px)] h-[min(70vh,560px)] bg-[#0f0f0f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 {/* Title bar */}
                 <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
                   {/* Centered title */}

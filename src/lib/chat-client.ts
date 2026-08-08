@@ -121,7 +121,9 @@ export async function mountTurnstile(container: HTMLElement, siteKey: string): P
 export async function getTurnstileToken(): Promise<string> {
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   if (!siteKey) {
-    if (process.env.NODE_ENV === 'production') throw new Error('turnstile-not-configured');
+    // Turnstile not configured — return empty token. The server-side
+    // verifyTurnstile will handle the missing token gracefully instead
+    // of crashing the frontend fetch chain.
     return '';
   }
   if (!window.turnstile || turnstileWidget === null) {
