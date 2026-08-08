@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import ClickSpark from "./components/ClickSpark";
 import PointerCursor from "./components/PointerCursor";
@@ -125,6 +126,7 @@ export default async function RootLayout({
             <DeviceClassInjector />
             <FpsOverlayWrapper />
             <ScrollbarReveal />
+            <Analytics />
           </SplashScreen>
         </LanguageProvider>
       </body>
