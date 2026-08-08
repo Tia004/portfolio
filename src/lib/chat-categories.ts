@@ -1,4 +1,5 @@
 export const CHAT_CATEGORIES = [
+  'general',
   'software-web',
   'design',
   'video',

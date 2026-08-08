@@ -19,6 +19,11 @@ interface BorderGlowProps {
   fillOpacity?: number;
   /** Continuously rotate the glow around the border while hovering */
   continuousHover?: boolean;
+  /** Use a SINGLE traveling arc instead of the default dual-arc mask.
+   *  The default conic mask lights TWO arcs 180° apart, so while the glow
+   *  passes a corner the OPPOSITE corner also lights up ("arrives first",
+   *  "on other borders"). Single-beam keeps exactly one arc on the border. */
+  singleBeam?: boolean;
 }
 
 function parseHSL(hslStr: string): { h: number; s: number; l: number } {
@@ -87,6 +92,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   colors = ['#2dd4bf', '#14b8a6', '#5eead4'],
   fillOpacity = 0.5,
   continuousHover = false,
+  singleBeam = false,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const angleRef = useRef(0);
@@ -243,7 +249,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
       onPointerMove={handlePointerMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`border-glow-card ${continuousHover ? 'border-glow-continuous' : ''} ${className}`}
+      className={`border-glow-card ${continuousHover ? 'border-glow-continuous' : ''} ${singleBeam ? 'border-glow-single' : ''} ${className}`}
       style={{
         '--card-bg': backgroundColor,
         '--edge-sensitivity': edgeSensitivity,

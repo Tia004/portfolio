@@ -196,6 +196,7 @@ function normalizeContactService(value?: string): string | undefined {
 }
 
 const CHAT_CATEGORY_OPTIONS: { value: ChatCategory; labelKey: string; exampleKey: string; placeholderKey: string }[] = [
+  { value: 'general', labelKey: 'chat.category_general', exampleKey: 'chat.example_general', placeholderKey: 'chat.placeholder_general' },
   { value: 'software-web', labelKey: 'chat.category_software_web', exampleKey: 'chat.example_software_web', placeholderKey: 'chat.placeholder_software_web' },
   { value: 'design', labelKey: 'chat.category_design', exampleKey: 'chat.example_design', placeholderKey: 'chat.placeholder_design' },
   { value: 'video', labelKey: 'chat.category_video', exampleKey: 'chat.example_video', placeholderKey: 'chat.placeholder_video' },
@@ -807,6 +808,63 @@ function renderInline(text: string): React.ReactNode {
   });
 }
 
+// ── Linkify direct-chat text ──────────────────────────────────────────────
+// Tia's contact info — used to turn phone numbers and the word "whatsapp"
+// into real links (tel: / wa.me) inside chat bubbles.
+const TIA_PHONE_DIGITS = '393318821334'; // +39 331 882 1334
+const TIA_WHATSAPP_URL = `https://wa.me/${TIA_PHONE_DIGITS}`;
+
+/**
+ * Turn URLs, emails, Italian phone numbers and the word "whatsapp" into
+ * clickable teal links. Used for the direct chat with Tia (not the AI bot,
+ * which has its own markdown renderer). `isClientBubble` switches the link
+ * color so it stays readable on the teal client bubble.
+ */
+function linkifyChatText(text: string, isClientBubble: boolean): React.ReactNode {
+  if (!text) return null;
+  const linkCls = isClientBubble
+    ? 'text-teal-50 underline underline-offset-2 decoration-teal-100/70 hover:text-white break-all'
+    : 'text-teal-300 underline underline-offset-2 decoration-teal-400/60 hover:text-teal-200 break-all';
+
+  // Order matters: URL first (contains www), then email, then Italian phone
+  // (10-digit mobile starting with 3, or +39-prefixed), then "whatsapp".
+  const combined = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|((?:\+39[\s.-]?)?(?:3\d{2}[\s.-]?\d{3}[\s.-]?\d{3,4}))|\bwhatsapp\b/gi;
+
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = combined.exec(text)) !== null) {
+    const idx = m.index;
+    if (idx > last) nodes.push(text.slice(last, idx));
+    const [full, url, email, phone] = m;
+    let href = '';
+    let label = full;
+    if (url) {
+      // Strip trailing punctuation so "vai su www.tia.it." doesn't link the dot.
+      const clean = full.replace(/[.,;:!?)]+$/, '');
+      href = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`;
+      label = clean;
+    } else if (email) {
+      href = `mailto:${email}`;
+    } else if (phone) {
+      const digits = phone.replace(/\D/g, '');
+      const intl = digits.startsWith('39') && digits.length >= 11 ? digits : `${TIA_PHONE_DIGITS.slice(0, 2)}${digits}`;
+      href = `tel:+${intl}`;
+    } else {
+      href = TIA_WHATSAPP_URL;
+    }
+    nodes.push(
+      <a key={key++} href={href} target={/^https?:/.test(href) ? '_blank' : undefined} rel="noopener noreferrer" className={linkCls} onClick={(e) => e.stopPropagation()}>
+        {label}
+      </a>
+    );
+    last = idx + full.length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes.length ? <>{nodes}</> : text;
+}
+
 export default function HomeShell() {
   const { lenis } = useLenis();
   const [formName, setFormName] = useState('');
@@ -1245,7 +1303,7 @@ export default function HomeShell() {
 
   // ── Standalone chatbot state (for the #chatbot section) ──
   const [botInput, setBotInput] = useState('');
-  const [chatCategory, setChatCategory] = useState<ChatCategory>('software-web');
+  const [chatCategory, setChatCategory] = useState<ChatCategory>('general');
   // Details collected by the small in-chat form stay in the conversation until
   // the AI finishes the quote. They must not trigger a page jump on their own.
   const quoteDraftRef = useRef<Record<string, string>>({});
@@ -1265,8 +1323,9 @@ export default function HomeShell() {
   const botMessagesRef = useRef<HTMLDivElement>(null);
   const botInputRef = useRef<HTMLTextAreaElement>(null);
   const lastTouchYRef = useRef(0);
-  // Track the latest bot message that has suggestion chips — older chips become stale (unclickable)
-  const latestSuggestionMsgIdRef = useRef(0);
+  // Track the id of the most recent message of ANY kind: chips deactivate as
+  // soon as ANY newer message exists (user text, a chip pick, or a bot reply).
+  const latestMessageIdRef = useRef(0);
 
   // ── Chat persistence: save/restore via sessionStorage with 30-min TTL ──
   const CHAT_STORAGE_KEY = 'tia_bot_chat';
@@ -1327,7 +1386,7 @@ export default function HomeShell() {
     quoteDraftRef.current = {};
     quoteEmailSentRef.current = null;
     botNextIdRef.current = 1;
-    latestSuggestionMsgIdRef.current = 0;
+    latestMessageIdRef.current = 0;
     try { sessionStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
 
     // Show reset confirmation toast
@@ -1343,6 +1402,21 @@ export default function HomeShell() {
       }, 300);
     }, 1800);
   }, []);
+
+  // Choose a specialization. Changing it starts a NEW chat: the old one is
+  // deleted (the AI welcome tells users this). Clicking the active category
+  // again is a no-op.
+  const selectChatCategory = useCallback((value: ChatCategory) => {
+    if (value === chatCategory) return;
+    setChatCategory(value);
+    if (botMessages.length > 0) {
+      // New specialization => fresh conversation, old one wiped.
+      resetChat();
+    } else {
+      setBotInput('');
+      setTimeout(() => botInputRef.current?.focus(), 80);
+    }
+  }, [chatCategory, botMessages.length, resetChat]);
 
   // Chat wheel scroll: data-lenis-prevent tells Lenis to skip this
   // element. We drive scrollTop manually in the React onWheel handler
@@ -2597,9 +2671,9 @@ export default function HomeShell() {
                 <div
                   className="p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl"
                   style={{
-                    // Keep the desktop proportion, but never exceed the usable
-                    // dynamic viewport on short mobile screens (e.g. iPhone SE).
-                    maxHeight: 'min(70vh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem))',
+                    // Fixed height — the window NEVER grows with content; messages
+                    // scroll inside instead. Capped to the usable dynamic viewport.
+                    height: 'min(70dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem))',
                   }}
                 >
                   {/* macOS-style title bar */}
@@ -2654,28 +2728,49 @@ export default function HomeShell() {
                         );
                       }
                     }}
-                    className="flex flex-col gap-4 overflow-y-auto p-4 sm:p-5 md:p-6 mb-4 h-[50vh] min-h-[320px] scroll-smooth"
+                    className="flex flex-col gap-4 overflow-y-auto p-4 sm:p-5 md:p-6 mb-4 flex-1 min-h-[120px] scroll-smooth"
                   >
                     {botMessages.length === 0 && !botTyping && (
-                      <div className="flex-1 flex items-center justify-center min-h-[280px]">
-                        <div className="text-center select-none">
-                          <p className="text-neutral-500 text-sm max-w-sm mx-auto leading-relaxed">
-                            {t('chat.bot_empty', lang)}
-                          </p>
+                      <div className="animate-bot-msg-in motion-safe:animate-bot-msg-in">
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0 mt-1">
+                            <TiaIcon icon={BubbleChatIcon} size={16} className="text-teal-400" />
+                          </div>
+                          <div className="max-w-[80%] px-4 py-3 text-sm leading-relaxed bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm">
+                            {renderBotMessage(t('bot.welcome_category', lang))}
+                          </div>
+                        </div>
+                        {/* Category bubbles — picking one starts (or restarts) the
+                            chat in that specialization, as the welcome explains. */}
+                        <div className="flex gap-2 flex-wrap mt-3 ml-12">
+                          {CHAT_CATEGORY_OPTIONS.map((option, idx) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => selectChatCategory(option.value)}
+                              className={`animate-pop-in shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation ${chatCategory === option.value
+                                ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
+                                : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
+                                }`}
+                              style={{ animationDelay: `${120 + idx * 45}ms` }}
+                            >
+                              {t(option.labelKey, lang)}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Compute the latest message ID with suggestion chips once (O(n)),
-                        then the map uses the ref to determine staleness per-message (O(1)). */}
+                    {/* Compute the latest message ID of ANY kind (user text, a chip
+                        pick, or a bot reply) once (O(n)); the map uses the ref to
+                        determine staleness per-message (O(1)). Chips deactivate as
+                        soon as anything newer exists, exactly as required. */}
                     {(() => {
-                      let latestSuggId = 0;
+                      let latestId = 0;
                       for (const m of botMessages) {
-                        if (m.sender === 'bot' && m.text && /\[SUGGESTIONS:([^\]]+)\]/i.test(m.text)) {
-                          latestSuggId = Math.max(latestSuggId, m.id);
-                        }
+                        if (m.id > latestId) latestId = m.id;
                       }
-                      latestSuggestionMsgIdRef.current = latestSuggId;
+                      latestMessageIdRef.current = latestId;
                       return null; // Side-effect only, renders nothing
                     })()}
                     {botMessages.map((msg) => {
@@ -2698,7 +2793,13 @@ export default function HomeShell() {
                             }`}
                         >
                           {msg.sender === 'bot' && msg.text
-                            ? renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState)
+                            ? (<React.Fragment>
+                                {renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState)}
+                                {/* Blinking writing caret while the reply is still streaming in */}
+                                {botTyping && msg.id === latestMessageIdRef.current && (
+                                  <span className="bot-typing-caret" aria-hidden="true" />
+                                )}
+                              </React.Fragment>)
                             : (msg.text || (
                               <span className="flex gap-1.5 py-1">
                                 <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -2713,11 +2814,11 @@ export default function HomeShell() {
                           </div>
                         )}
                       </div>
-                      {/* Suggestion chips — only the latest bot message's chips are clickable;
-                           older ones become stale (gray, non-interactive). */}
+                      {/* Suggestion chips — only the latest message's chips are clickable;
+                           they deactivate as soon as ANY newer message exists. */}
                       {suggestions.length > 0 && (() => {
-                        // Latest sugg ID is computed once above the map for O(n) perf
-                        const isStale = msg.id !== latestSuggestionMsgIdRef.current;
+                        // Latest ID is computed once above the map for O(n) perf
+                        const isStale = msg.id !== latestMessageIdRef.current;
                         return (
                           <div className="flex gap-2 flex-wrap mt-2 ml-12">
                             {suggestions.map((sugg, idx) => (
@@ -2736,7 +2837,8 @@ export default function HomeShell() {
                                     setBotInput(sugg);
                                     setTimeout(() => sendBotMessage(sugg), 50);
                                   }}
-                                  className="shrink-0 rounded-full border border-teal-400/30 bg-teal-400/[0.08] px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-400/20 hover:border-teal-400/50 hover:text-teal-200 transition-all"
+                                  className="animate-pop-in shrink-0 rounded-full border border-teal-400/30 bg-teal-400/[0.08] px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-400/20 hover:border-teal-400/50 hover:text-teal-200 transition-all"
+                                  style={{ animationDelay: `${idx * 45}ms` }}
                                 >
                                   {sugg}
                                 </button>
@@ -2765,7 +2867,7 @@ export default function HomeShell() {
                           type="button"
                           role="radio"
                           aria-checked={chatCategory === option.value}
-                          onClick={() => setChatCategory(option.value)}
+                          onClick={() => selectChatCategory(option.value)}
                           className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation ${chatCategory === option.value
                             ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
                             : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
@@ -3118,12 +3220,13 @@ export default function HomeShell() {
           {(chatOpen || chatClosing) && (
             <BorderGlow
               continuousHover
+              singleBeam
               borderRadius={16}
               glowRadius={28}
               glowIntensity={1.4}
               edgeSensitivity={0}
               backgroundColor="#0f0f0f"
-              className={`absolute bottom-0 right-0 w-[min(calc(100vw-2rem),340px)] h-[min(70vh,560px)] transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
+              className={`absolute bottom-0 right-0 w-[min(calc(100vw-2rem),340px)] chat-window-h transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
                   title-bar background to the rounded-2xl corners. The BorderGlow
@@ -3170,7 +3273,7 @@ export default function HomeShell() {
                           : 'bg-white/[0.04] text-white rounded-2xl rounded-bl-sm'
                           }`}
                       >
-                        {msg.text}
+                        {linkifyChatText(msg.text, msg.sender === 'client')}
                       </div>
                       {msg.sender === 'client' && (
                         <div className="w-7 h-7 rounded-full bg-teal-600/30 flex items-center justify-center shrink-0">

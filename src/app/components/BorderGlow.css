@@ -158,6 +158,44 @@
   transition: opacity 0.15s ease-out;
 }
 
+/* Single-beam mode: exactly ONE traveling arc on the border. The default
+   conic mask lights TWO arcs 180° apart (the second `black` stop), so while
+   the glow passes a corner the OPPOSITE corner lights up at the same time —
+   the "arrives first / on other borders" artifact on the chat window.
+   Removing the trailing black stop keeps a single arc that follows the
+   cursor angle around the border only. */
+.border-glow-single::before {
+  mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center,
+      black calc(var(--cone-spread) * 1%),
+      transparent calc((var(--cone-spread) + 15) * 1%),
+      transparent 100%
+    );
+}
+/* Align the inner soft fill with the single beam too — the default fill had
+   two dark wedges 180° apart matching the old dual-arc mask. */
+.border-glow-single::after {
+  mask-image:
+    linear-gradient(to bottom, black, black),
+    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+    radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
+    radial-gradient(ellipse at 33% 66%, black 5%, transparent 40%),
+    conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 100%);
+  mask-composite: subtract, add, add, add, add, add;
+}
+.border-glow-single > .edge-light {
+  mask-image:
+    conic-gradient(
+      from var(--cursor-angle) at center,
+      black 2.5%,
+      transparent 10%,
+      transparent 100%
+    );
+}
+
 
 /* Scroll-activated glow for touch devices (no hover) */
 .border-glow-card.scroll-glow-active::before,

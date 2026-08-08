@@ -111,6 +111,15 @@ body {
 }
 
 
+/* Chat window height — dvh (dynamic viewport) with vh fallback so the
+   window never exceeds the visible viewport on mobile (vh measures the
+   layout viewport, which is taller than the visible one while browser
+   chrome is shown, pushing the chat past the bottom edge). */
+.chat-window-h {
+  height: min(70vh, 560px);
+  height: min(70dvh, 560px);
+}
+
 /* Toast notification entrance/exit */
 @keyframes toast-slide-up {
   from { opacity: 0; transform: translateY(12px); }
@@ -491,6 +500,33 @@ img {
 }
 .animate-bot-msg-in {
   animation: bot-msg-in 0.35s ease-out both;
+}
+
+/* Chips / bubbles pop-in — springs from small scale (used for suggestion
+   chips and the welcome category bubbles, staggered via animation-delay) */
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.6) translateY(4px); }
+  60%  { opacity: 1; transform: scale(1.06) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-pop-in {
+  animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Blinking writing caret appended to the streaming bot reply */
+@keyframes caret-blink {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.bot-typing-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  border-radius: 1px;
+  background: #2dd4bf;
+  animation: caret-blink 0.85s step-end infinite;
 }
 
 @keyframes chat-icon-idle {
