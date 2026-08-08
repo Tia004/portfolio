@@ -895,6 +895,7 @@ export default function HomeShell() {
   const ctaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatClosing, setChatClosing] = useState(false);
   const [ctaVisible, setCtaVisible] = useState(true);
   const [ctaHiding, setCtaHiding] = useState(false);
   const [ctaDocked, setCtaDocked] = useState(false); // true = docked at top with inverted curve
@@ -1592,7 +1593,8 @@ export default function HomeShell() {
     if (!chatOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (chatWidgetRef.current && !chatWidgetRef.current.contains(e.target as Node)) {
-        setChatOpen(false);
+        setChatClosing(true);
+        setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -3107,7 +3109,7 @@ export default function HomeShell() {
         {/* ── Floating Chat Widget ── */}
         <div ref={chatWidgetRef} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 pointer-events-auto">
           {/* Chat popup */}
-          {chatOpen && (
+          {(chatOpen || chatClosing) && (
             <BorderGlow
               continuousHover
               borderRadius={16}
@@ -3117,14 +3119,14 @@ export default function HomeShell() {
               backgroundColor="#0f0f0f"
               className="[&_.border-glow-inner]:!overflow-visible"
             >
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className={`absolute bottom-20 right-0 w-[calc(100vw-2rem)] max-w-[380px] max-h-[50vh] bg-[#0f0f0f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col transition-all duration-300 ${chatOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'}`}>
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className={`absolute bottom-20 right-0 w-[calc(100vw-2rem)] max-w-[380px] max-h-[50vh] bg-[#0f0f0f] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 {/* Title bar */}
                 <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
                   {/* Centered title */}
                   <span className="flex-1 text-center text-xs font-medium text-neutral-300 tracking-wide">{t('chat.title', lang)}</span>
                   {/* Close button */}
                   <button
-                    onClick={() => setChatOpen(false)}
+                    onClick={() => { setChatClosing(true); setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300); }}
                     className="w-6 h-6 rounded-md hover:bg-white/[0.06] flex items-center justify-center transition-colors text-neutral-500 hover:text-white shrink-0"
                     aria-label="Chiudi chat"
                   >
@@ -3224,11 +3226,15 @@ export default function HomeShell() {
           {/* Floating button with online dot */}
           <button
             onClick={() => {
-              const next = !chatOpen;
-              setChatOpen(next);
-              if (next) logAnalytics('chat_open');
+              if (chatOpen) {
+                setChatClosing(true);
+                setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300);
+              } else {
+                setChatOpen(true);
+                logAnalytics('chat_open');
+              }
             }}
-            className={`relative p-4 text-white rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#0f0f0f] scale-90' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-500/15'
+            className={`relative p-4 text-white rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#0f0f0f] scale-0 opacity-0 pointer-events-none' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-500/15'
               }`}
             aria-label={chatOpen ? 'Chiudi chat' : 'Apri chat'}
           >
