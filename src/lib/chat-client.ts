@@ -89,7 +89,7 @@ export async function mountTurnstile(container: HTMLElement, siteKey: string): P
     turnstileWidget = window.turnstile.render(container, {
       sitekey: siteKey,
     size: 'invisible',
-    action: process.env.NEXT_PUBLIC_TURNSTILE_ACTION || 'chat',
+    action: 'turnstile-spin-v2',
     callback: (token: unknown) => {
         turnstileToken = typeof token === 'string' ? token : '';
         resolveWidgetReady?.();

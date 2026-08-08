@@ -274,7 +274,7 @@ export function closeChatStream(sessionId: string): void {
 }
 
 export async function verifyTurnstile(token: unknown, ip: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const secret = process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY;
   // Local development stays usable before a site key is configured. Production
   // is fail-closed: every chat/contact write needs a real Turnstile secret.
   if (!secret) return process.env.NODE_ENV !== 'production';
