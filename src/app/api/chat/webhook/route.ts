@@ -225,18 +225,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Store the reply as a Tia message in the session
-    await addMessage(sessionId, {
-      text: replyText,
-      sender: 'tia',
-      timestamp: Date.now(),
-    });
-
-    console.log(`[chat/webhook] Reply stored for session ${sessionId}: "${replyText}"`);
+    // Store the reply as a Tia message in the session.
+    // If all backends (DB, Redis, memory) fail, return 500 so Telegram
+    // will retry the update instead of silently dropping the message.
+    try {
+      await addMessage(sessionId, {
+        text: replyText,
+        sender: 'tia',
+        timestamp: Date.now(),
+      });
+      console.log(`[chat/webhook] Reply stored for session ${sessionId}: "${replyText}"`);
+    } catch (err) {
+      console.error('[chat/webhook] addMessage failed — all backends exhausted:', err);
+      return NextResponse.json({ ok: false, error: 'storage-unavailable' }, { status: 500 });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[chat/webhook] Error:', err);
-    return NextResponse.json({ ok: true }); // Always return 200 for Telegram
+    // Non-critical errors (parse failures, missing session, etc.) are OK.
+    // Storage errors are already handled above with a 500 for Telegram retry.
+    return NextResponse.json({ ok: true });
   }
 }

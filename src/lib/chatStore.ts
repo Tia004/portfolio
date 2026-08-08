@@ -124,23 +124,43 @@ function shouldRetryDb(): boolean {
 
 // ── Public API ──────────────────────────────────────────────────
 
+// ── Public API ──────────────────────────────────────────────────
+
+/** Retry wrapper: attempts an async operation up to `maxRetries` times
+ *  with exponential backoff (500ms → 1s → 2s).  Used so a single
+ *  transient Turso hiccup does not lose a message. */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>) {
-  // 1. Try Turso DB
+  // 1. Try Turso DB (with retries for transient hiccups)
   if (dbAvailable !== false || shouldRetryDb()) {
     try {
-      await prisma.chatMessage.create({
+      await withRetry(() => prisma.chatMessage.create({
         data: {
           sessionId,
           text: msg.text,
           sender: msg.sender,
           timestamp: BigInt(msg.timestamp),
         },
-      });
+      }));
       markDbUp();
       return;
     } catch (err) {
       markDbDown();
-      console.warn('[chatStore] DB unreachable, trying Redis:', (err as Error).message);
+      console.warn('[chatStore] DB unreachable after retries, trying Redis:', (err as Error).message);
     }
   }
 
@@ -177,13 +197,13 @@ export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>
 }
 
 export async function getTiaMessagesSince(sessionId: string, since: number): Promise<ChatMessage[]> {
-  // 1. Try Turso DB
+  // 1. Try Turso DB (with retries for transient hiccups)
   if (dbAvailable !== false || shouldRetryDb()) {
     try {
-      const rows = await prisma.chatMessage.findMany({
+      const rows = await withRetry(() => prisma.chatMessage.findMany({
         where: { sessionId, sender: 'tia', timestamp: { gt: BigInt(since) } },
         orderBy: { timestamp: 'asc' },
-      });
+      }));
       markDbUp();
       return rows.map(r => ({ id: r.id, text: r.text, sender: 'tia' as const, timestamp: Number(r.timestamp) }));
     } catch (err) {
