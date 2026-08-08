@@ -177,16 +177,22 @@ export async function POST(req: NextRequest) {
           ? `• Sessione più recente: 🆔 ${diag.latestSessionId.slice(0, 8)}…\n• Messaggi in Redis: ${diag.redisCountLatestSession ?? 'n/d'}\n• ${diag.lastRedisMessage ? `Ultimo: [${fmtTime(diag.lastRedisMessage.timestamp)}] ${senderLabel(diag.lastRedisMessage.sender)}: ${t(diag.lastRedisMessage.text)}` : 'Ultimo: —'}`
           : '• (nessuna sessione)';
 
-        // Redis is a pure fallback (Turso-first): in healthy operation it is
-        // normally empty for the latest session — that is EXPECTED, not an
-        // alignment failure. Only label problems when a store is unreachable.
+        // Mirror double-write: both stores must hold the same latest message.
+        // A missing/stale Redis copy while Turso is fine is a real warning now
+        // (Redis is a live mirror, not a standby fallback).
+        const mirrorAligned = diag.tursoOk && diag.redisOk
+          && diag.lastTursoMessage !== null
+          && diag.lastRedisMessage !== null
+          && Math.abs(diag.lastTursoMessage.timestamp - diag.lastRedisMessage.timestamp) < 60_000;
         const doubleWriteLabel = !diag.tursoOk && !diag.redisOk
           ? '❌ ENTRAMBI GIÙ — messaggi solo in memoria locale'
           : !diag.tursoOk
             ? '⚠️ solo Redis attivo (Turso non raggiungibile)'
             : !diag.redisOk
               ? '⚠️ solo Turso (Redis non raggiungibile)'
-              : '✅ Turso primario attivo (Redis in standby, normale)';
+              : mirrorAligned
+                ? '✅ speculare allineata (Turso + Redis)'
+                : '⚠️ Turso ok ma mirror Redis non allineato';
 
         statusText = [
           '📊 DIAGNOSTICA SISTEMA — tiadesigns.it',

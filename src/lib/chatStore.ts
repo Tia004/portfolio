@@ -2,12 +2,14 @@
  * Hybrid chat message store.
  *
  * Primary backend:   Prisma / Turso (cloud-persistent).
- * Secondary backend: Upstash Redis (shared across Vercel serverless instances).
+ * Mirror backend:    Upstash Redis (shared across Vercel serverless instances).
  * Fallback:          In-memory Map (last resort, per-instance, lost on restart).
  *
- * When Turso is unreachable, messages are stored in Redis so the webhook
- * (Telegram → save msg) and SSE stream (poll for new msgs) — which may run
- * on different Vercel serverless instances — can share the same data.
+ * Every message is written to BOTH Turso and Redis (mirror double-write) —
+ * even in healthy operation, not only when Turso is down. When Turso assigns
+ * the id, Redis mirrors that same id, so either store is a full copy and the
+ * frontend (which deduplicates by message id) never shows duplicates when the
+ * read source switches between stores.
  */
 
 import { prisma } from '@/lib/prisma';
@@ -22,7 +24,7 @@ export interface ChatMessage {
 // ── Redis/Upstash (shared across serverless instances) ──────────
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, '');
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
-const REDIS_MSG_TTL = 1800; // 30 min — same as session cookie default
+const REDIS_MSG_TTL = 86_400; // 24h — the mirror must outlive short outages (session TTL is 24h)
 
 // ── In-memory fallback (per-instance, last resort) ──────────────
 const memoryStore = new Map<string, ChatMessage[]>();
@@ -144,12 +146,84 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   throw lastError;
 }
 
-export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>) {
-  // 1. Try Turso DB (with retries for transient hiccups)
+/**
+ * Shared, monotonic id source for the mirror double-write.
+ *
+ * Returns a globally-unique id (Redis INCR) whenever Redis is reachable so
+ * BOTH stores agree on the same id and the frontend's id-based dedup never
+ * collides after an outage (e.g. Turso recovers and would otherwise re-issue
+ * a low id that Redis already used during the outage). The counter is seeded
+ * above Turso's current max id so a Redis flush can never collide with
+ * already-persisted Turso ids.
+ *
+ * Returns null when Redis is unavailable — callers then fall back to Turso's
+ * own autoincrement, and in that state the client only ever reads Turso, so
+ * cross-store id collisions cannot occur.
+ */
+// Set when the last INCR failed (Redis blip) — the next successful call then
+// reconciles the counter against Turso's max before incrementing, so the
+// counter can never re-issue an id Turso already auto-incremented past.
+let sharedIdNeedsReconcile = false;
+
+async function nextSharedId(): Promise<number | null> {
+  if (!REDIS_URL || !REDIS_TOKEN) return null;
+  try {
+    const existing = await redisFetch('/get/chat:id:global');
+    const mustReconcile = sharedIdNeedsReconcile;
+    if (existing?.ok) {
+      const data = await existing.json() as { result?: string | null };
+      const counterVal = data.result ? Number(data.result) : null;
+      if (!data.result || mustReconcile) {
+        // Seed above Turso's max — either the key is missing (first use or
+        // Redis flush) or the counter fell behind Turso's autoincrement while
+        // Redis was down. Closing the gap prevents PK collisions on recovery.
+        let tursoMax = 0;
+        try {
+          const agg = await prisma.chatMessage.aggregate({ _max: { id: true } });
+          tursoMax = Number(agg._max.id ?? 0);
+        } catch { /* keep 0 */ }
+        if (!data.result) {
+          await redisFetch(`/setnx/chat:id:global/${tursoMax}`);
+        } else if (counterVal !== null && counterVal < tursoMax) {
+          await redisFetch(`/incrby/chat:id:global/${tursoMax - counterVal}`);
+        }
+      }
+    }
+    sharedIdNeedsReconcile = false;
+    const res = await redisFetch('/incr/chat:id:global');
+    if (!res?.ok) {
+      // INCR failed — remember to reconcile against Turso on the next call so
+      // the counter stays ahead of Turso's autoincrement (no id re-issue).
+      sharedIdNeedsReconcile = true;
+      return null;
+    }
+    const json = await res.json() as { result?: number };
+    return typeof json.result === 'number' ? json.result : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Shared persist chain used by addMessage() and closeSession(): write the
+ * message to Turso (primary), mirror it on Redis with the same id, and keep
+ * the in-memory fallback coherent. Guarantees both durable stores always hold
+ * a full, dedup-aligned copy of the conversation.
+ */
+async function persistToStores(
+  sessionId: string,
+  msg: Omit<ChatMessage, 'id'>,
+  sharedId: number | null,
+): Promise<void> {
+  // 1. Turso write — primary. Prefers the shared id; falls back to Turso's
+  //    autoincrement when Redis is down (client then reads Turso only).
+  let tursoId: number | null = null;
+  let tursoOk = false;
   if (dbAvailable !== false || shouldRetryDb()) {
     try {
-      await withRetry(() => prisma.chatMessage.create({
+      const created = await withRetry(() => prisma.chatMessage.create({
         data: {
+          ...(sharedId !== null ? { id: sharedId } : {}),
           sessionId,
           text: msg.text,
           sender: msg.sender,
@@ -157,35 +231,45 @@ export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>
         },
       }));
       markDbUp();
-      return;
+      tursoOk = true;
+      tursoId = created.id;
     } catch (err) {
       markDbDown();
       console.warn('[chatStore] DB unreachable after retries, trying Redis:', (err as Error).message);
     }
   }
 
-  // 2. Try Redis (shared across Vercel serverless instances)
+  // 2. Redis mirror — ALWAYS attempted (not only when Turso is down), sharing
+  //    the same id so both stores stay dedup-aligned.
   // NOTE: read-modify-write has a theoretical race if two instances write
   // concurrently to the same session. In practice, messages within a single
   // chat session are sequential — the client waits for the AI response before
   // sending another message, and Telegram webhooks are serial per-chat.
   const redisMsgs = await redisLoadMsgs(sessionId);
   if (redisMsgs !== null) {
-    // Redis is reachable — null would mean it's down
+    const redisMaxId = redisMsgs.length > 0 ? Math.max(...redisMsgs.map(m => m.id)) : 0;
     const newMsg: ChatMessage = {
-      id: redisMsgs.length > 0 ? Math.max(...redisMsgs.map(m => m.id)) + 1 : 1,
+      id: sharedId !== null ? sharedId : tursoId !== null ? tursoId : redisMaxId + 1,
       text: msg.text,
       sender: msg.sender,
       timestamp: msg.timestamp,
     };
     redisMsgs.push(newMsg);
-    // Save to Redis and mirror in local memory (best-effort on save failure)
     await redisSaveMsgs(sessionId, redisMsgs);
     memoryStore.set(sessionId, [...redisMsgs]);
     return;
   }
 
-  // 3. Last resort: in-memory (per-instance, not shared)
+  // 3. Redis unreachable but Turso OK: keep the local memory mirror coherent
+  //    with the durable store so this instance's reads stay consistent.
+  if (tursoOk && tursoId !== null) {
+    const entry: ChatMessage = { id: tursoId, text: msg.text, sender: msg.sender, timestamp: msg.timestamp };
+    if (!memoryStore.has(sessionId)) memoryStore.set(sessionId, []);
+    memoryStore.get(sessionId)!.push(entry);
+    return;
+  }
+
+  // 4. Both backends unreachable — last resort: in-memory (per-instance).
   const entry: ChatMessage = {
     id: memoryNextId++,
     text: msg.text,
@@ -194,6 +278,13 @@ export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>
   };
   if (!memoryStore.has(sessionId)) memoryStore.set(sessionId, []);
   memoryStore.get(sessionId)!.push(entry);
+}
+
+export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>) {
+  // Shared id from Redis (when reachable): both stores use the SAME id, so
+  // the frontend's id-based dedup stays correct even after store switches.
+  const sharedId = await nextSharedId();
+  await persistToStores(sessionId, msg, sharedId);
 }
 
 export async function getTiaMessagesSince(sessionId: string, since: number): Promise<ChatMessage[]> {
@@ -225,33 +316,8 @@ export async function getTiaMessagesSince(sessionId: string, since: number): Pro
 
 export async function closeSession(sessionId: string): Promise<boolean> {
   const closedText = '🔒 Conversazione chiusa da Tia. Grazie per averci contattato! Se hai bisogno di altro, apri una nuova chat.';
-
-  if (dbAvailable !== false || shouldRetryDb()) {
-    try {
-      await prisma.chatMessage.create({
-        data: { sessionId, text: closedText, sender: 'tia', timestamp: BigInt(Date.now()) },
-      });
-      markDbUp();
-      return true;
-    } catch (err) {
-      markDbDown();
-      console.warn('[chatStore] DB unreachable in closeSession:', (err as Error).message);
-    }
-  }
-
-  // Redis + memory fallback
-  const newMsg: ChatMessage = { id: memoryNextId++, text: closedText, sender: 'tia', timestamp: Date.now() };
-
-  const redisMsgs = await redisLoadMsgs(sessionId);
-  if (redisMsgs !== null) {
-    redisMsgs.push(newMsg);
-    await redisSaveMsgs(sessionId, redisMsgs);
-    memoryStore.set(sessionId, [...redisMsgs]);
-    return true;
-  }
-
-  if (!memoryStore.has(sessionId)) memoryStore.set(sessionId, []);
-  memoryStore.get(sessionId)!.push(newMsg);
+  const sharedId = await nextSharedId();
+  await persistToStores(sessionId, { text: closedText, sender: 'tia', timestamp: Date.now() }, sharedId);
   return true;
 }
 

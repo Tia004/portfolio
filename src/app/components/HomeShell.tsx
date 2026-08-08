@@ -1628,8 +1628,11 @@ export default function HomeShell() {
           if (!Array.isArray(incoming) || incoming.length === 0) return;
           lastPollRef.current = Date.now();
           setMessages(prev => {
-            const existingIds = new Set(prev.map(m => m.id));
-            const newMsgs = incoming.filter((m: any) => !existingIds.has(m.id));
+            // Dedup on (id|text): the id alone is not a reliable key when the
+            // read source switches between stores after an outage (ids may
+            // briefly differ on the same message). Text + id is unique enough.
+            const existingKeys = new Set(prev.map(m => `${m.id}|${m.text}`));
+            const newMsgs = incoming.filter((m: any) => !existingKeys.has(`${m.id}|${m.text}`));
             if (newMsgs.length === 0) return prev;
             return [...prev, ...newMsgs.map((m: any) => ({ id: m.id, text: m.text, sender: 'tia' as const }))];
           });
