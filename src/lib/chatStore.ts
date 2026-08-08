@@ -98,7 +98,7 @@ function markDbDown(): void {
   dbAvailable = false;
   const now = Date.now();
   if (!dbDownSince) dbDownSince = now;
-  dbRetryAt = now + 30_000;
+  dbRetryAt = now + 5_000; // quick retry — 5s instead of 30s minimizes message loss window
   if (!alertSent && now - dbDownSince > 60_000) {
     alertSent = true;
     const downSec = Math.round((now - dbDownSince) / 1000);
