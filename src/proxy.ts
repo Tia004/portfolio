@@ -4,7 +4,7 @@ import { decrypt } from './lib/session';
 
 const VALID_LANGS = new Set(['it', 'en', 'es']);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const token = request.cookies.get('master_session')?.value;
   const { pathname } = request.nextUrl;
 
