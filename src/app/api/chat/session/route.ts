@@ -17,16 +17,23 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
-  // Keep the bootstrap bucket scoped to this IP; a shared literal session ID
-  // would otherwise block every visitor after one noisy client.
   const limit = await takeChatRateLimit(ip, `${ip}:bootstrap`, 'session');
   if (!limit.ok) return rateLimitResponse(limit.retryAfter);
 
   const sessionId = randomUUID();
+
+  let token: string;
+  try {
+    token = createChatSessionToken(sessionId);
+  } catch (err) {
+    console.error('[session] Failed to create session token:', err instanceof Error ? err.message : err);
+    return Response.json({ error: 'Configurazione server incompleta' }, { status: 500 });
+  }
+
   const response = Response.json({ sessionId }, { headers: { 'Cache-Control': 'no-store' } });
   response.headers.append(
     'Set-Cookie',
-    `${getChatCookieName()}=${createChatSessionToken(sessionId)}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
+    `${getChatCookieName()}=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
   );
   return response;
 }
