@@ -142,6 +142,41 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send(mailOptions);
 
+    // ── Send a copy to the client when it's an AI quote ──
+    if (source === 'ai-quote') {
+      const clientHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: #0a0a0a; color: #e5e7eb; border-radius: 12px; border: 1px solid #1e293b;">
+          <h1 style="color: #2dd4bf; margin-bottom: 8px; font-size: 24px;">Tia Designs</h1>
+          <p style="color: #9ca3af; font-size: 14px; margin-bottom: 24px;">Design • Sviluppo Web • Video</p>
+          <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #2dd4bf;">
+            <p style="margin: 0 0 12px 0; font-size: 16px;">Ciao <strong>${safeName}</strong>,</p>
+            <p style="margin: 0; line-height: 1.7; font-size: 14px;">
+              Grazie per avermi contattato! Ho ricevuto la tua richiesta e sto già preparando un <strong>preventivo personalizzato</strong> per il tuo progetto.
+            </p>
+          </div>
+          <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">Riepilogo della tua richiesta</p>
+            <div style="line-height: 1.7; font-size: 14px;">${safeMessage}</div>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
+            Riceverai il preventivo dettagliato <strong>entro 24 ore</strong> all'indirizzo <strong>${safeEmail}</strong>. Se hai domande urgenti, puoi rispondere direttamente a questa email.
+          </p>
+          <div style="border-top: 1px solid #1e293b; padding-top: 16px;">
+            <p style="color: #6b7280; font-size: 12px; margin: 0;">
+              Tia Chinaglia • <a href="https://tiadesigns.it" style="color: #2dd4bf;">tiadesigns.it</a> • <a href="mailto:info@tiadesigns.it" style="color: #2dd4bf;">info@tiadesigns.it</a>
+            </p>
+          </div>
+        </div>
+      `;
+
+      await resend.emails.send({
+        from: `Tia Designs <${senderEmail}>`,
+        to: email,
+        subject: `Abbiamo ricevuto la tua richiesta, ${name}! 🎨`,
+        html: clientHtml,
+      });
+    }
+
     return NextResponse.json({ success: true, message: 'Email inviata con successo' });
   } catch (error) {
     console.error('Error sending email:', error);
