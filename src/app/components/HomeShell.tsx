@@ -1490,7 +1490,9 @@ export default function HomeShell() {
             if (!isDetailedQuote(finalQuote)) {
               // Do not email or navigate on a premature/empty marker. Keep the
               // visitor in the conversation and ask the AI to finish properly.
-              displayText = `${finalQuote}\n\n${t('bot.quote_not_ready', lang)}`.trim();
+              // Never expose raw internal text (third-person message for Tia)
+              // to the client — show only the friendly error.
+              displayText = t('bot.quote_not_ready', lang);
             } else {
               // Keep the generated quote in the conversation as a draft. Nothing
               // is sent and the page does not navigate until the visitor explicitly
