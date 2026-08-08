@@ -3139,7 +3139,11 @@ export default function HomeShell() {
                    the chat without Lenis intercepting wheel events. When the container
                    has no overflow (empty chat or at boundary), the wheel naturally
                    passes through to the page. */}
-                <div ref={chatMessagesRef} data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch onWheel={handleChatWheel} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3">
+                <div ref={chatMessagesRef} data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch onWheel={handleChatWheel} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative">
+                  {/* Subtle DotGrid background — always mounted, static for perf */}
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
+                    <DotGrid dotSize={2} gap={18} baseColor="#0a0a0a" activeColor="#2dd4bf" proximity={0} shockRadius={0} shockStrength={0} resistance={0} returnDuration={0} />
+                  </div>
 
                   {messages.map((msg) => (
                     <div
