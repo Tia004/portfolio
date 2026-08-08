@@ -19,7 +19,8 @@
     "check-translations": "node scripts/translation-audit.mjs",
     "check:shaders": "node scripts/check-shaders.mjs",
     "check:jsx": "node scripts/check-jsx.mjs",
-    "health": "node scripts/health-check.mjs"
+    "health": "node scripts/health-check.mjs",
+    "test:chat": "node --import ./scripts/alias-hooks.mjs scripts/test-chat.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
