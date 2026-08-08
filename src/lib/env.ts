@@ -56,9 +56,9 @@ if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
   console.warn("   Impostane almeno una in .env per attivare il chatbot AI.\n");
 }
 
-// Warn at startup if email is not configured
-if (!process.env.EMAIL_PASS || process.env.EMAIL_PASS === "") {
-  console.warn("\n⚠️  EMAIL_PASS non configurata — il form contatti restituirà errore 500.");
-  console.warn("   Genera una App Password: https://myaccount.google.com/apppasswords");
-  console.warn("   Poi impostala in .env: EMAIL_PASS=\"la-tua-app-password\"\n");
+// Warn at startup if email (Resend) is not configured
+if (!process.env.RESEND_API_KEY) {
+  console.warn("\n⚠️  RESEND_API_KEY non configurata — il form contatti restituirà errore 500.");
+  console.warn("   Crea un account su https://resend.com e ottieni la API key.");
+  console.warn("   Poi impostala in .env: RESEND_API_KEY=\"re_xxxxx\"\n");
 }
