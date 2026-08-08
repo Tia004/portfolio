@@ -281,3 +281,88 @@ export async function getRecentMessages(sessionId: string, limit = 3): Promise<C
   const msgs = memoryStore.get(sessionId) || [];
   return msgs.slice(-limit);
 }
+
+// ── Diagnostics (Telegram /status) ─────────────────────────────
+
+export type SystemDiagnostics = {
+  tursoOk: boolean;
+  tables: string[];
+  lastTursoMessage: ChatMessage | null;
+  redisOk: boolean;
+  latestSessionId: string | null;
+  redisCountLatestSession: number | null;
+  lastRedisMessage: ChatMessage | null;
+};
+
+/**
+ * Snapshot of the chat storage health for the Telegram /status report:
+ * - Turso tables present + last persisted message
+ * - Redis reachability + message count for the most recent session
+ * Together these reveal double-write alignment (no more blind diagnostics).
+ */
+export async function getSystemDiagnostics(): Promise<SystemDiagnostics> {
+  let tursoOk = false;
+  let tables: string[] = [];
+  let lastTursoMessage: ChatMessage | null = null;
+
+  try {
+    const tableRows = await prisma.$queryRaw<{ name: string }[]>`SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`;
+    // sqlite_sequence is an internal table — keep only app tables.
+    tables = tableRows.map(r => r.name).filter(n => !n.startsWith('sqlite_'));
+    const last = await prisma.chatMessage.findFirst({ orderBy: { timestamp: 'desc' } });
+    if (last) {
+      lastTursoMessage = { id: last.id, text: last.text, sender: last.sender as 'client' | 'tia', timestamp: Number(last.timestamp) };
+    }
+    tursoOk = true;
+    // Deliberately NOT calling markDbUp()/markDbDown(): a diagnostic must be
+    // read-only. markDbUp() could suppress a real "DB offline" alert and
+    // markDbDown() would degrade the write path for a benign read hiccup.
+  } catch (err) {
+    console.warn('[chatStore] Diagnostics: Turso read failed:', (err as Error).message);
+  }
+
+  // Most recent session (Turso is authoritative; memory store as fallback)
+  let latestSessionId: string | null = null;
+  try {
+    const sessRes = await prisma.$queryRaw<{ sessionId: string }[]>`SELECT sessionId FROM ChatMessage ORDER BY timestamp DESC LIMIT 1`;
+    latestSessionId = sessRes[0]?.sessionId ?? null;
+  } catch { /* non-critical — will fall back below */ }
+  if (!latestSessionId) {
+    let bestTs = -1;
+    for (const [sid, msgs] of memoryStore.entries()) {
+      const lastTs = msgs.length ? msgs[msgs.length - 1].timestamp : -1;
+      if (lastTs > bestTs) {
+        bestTs = lastTs;
+        latestSessionId = sid;
+      }
+    }
+  }
+
+  // Redis reachability + alignment for the most recent session
+  let redisOk = false;
+  let redisCountLatestSession: number | null = null;
+  let lastRedisMessage: ChatMessage | null = null;
+
+  if (latestSessionId) {
+    try {
+      const redisMsgs = await redisLoadMsgs(latestSessionId);
+      if (redisMsgs !== null) {
+        redisOk = true;
+        redisCountLatestSession = redisMsgs.length;
+        lastRedisMessage = redisMsgs.length ? redisMsgs[redisMsgs.length - 1] : null;
+      } else {
+        const ping = await redisFetch('/ping');
+        redisOk = ping?.ok === true;
+        if (redisOk) redisCountLatestSession = 0;
+      }
+    } catch {
+      const ping = await redisFetch('/ping');
+      redisOk = ping?.ok === true;
+    }
+  } else {
+    const ping = await redisFetch('/ping');
+    redisOk = ping?.ok === true;
+  }
+
+  return { tursoOk, tables, lastTursoMessage, redisOk, latestSessionId, redisCountLatestSession, lastRedisMessage };
+}

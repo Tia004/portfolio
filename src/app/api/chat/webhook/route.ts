@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage, closeSession, getRecentMessages } from '@/lib/chatStore';
+import { addMessage, closeSession, getRecentMessages, getSystemDiagnostics } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { sanitizeChatText } from '@/lib/chat-security';
 import { getAvailability, setAvailability } from '@/lib/availability';
@@ -156,13 +156,59 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
-      const availability = command === '/status'
-        ? await getAvailability()
-        : await setAvailability(command === '/online');
-      const statusText = availability.isOnline
-        ? '🟢 Disponibilità attiva: i nuovi messaggi verranno inoltrati.'
-        : '🔴 Non disponibile: i nuovi messaggi resteranno salvati ma non verranno inoltrati.';
       const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+      let statusText: string;
+
+      if (command === '/status') {
+        // Full diagnostic report: Turso tables + last persisted message,
+        // Redis state and double-write alignment — no more blind diagnosis.
+        const availability = await getAvailability();
+        const diag = await getSystemDiagnostics();
+
+        const t = (v: string) => v.slice(0, 140);
+        const fmtTime = (ts: number) => new Date(ts).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const senderLabel = (s: string) => (s === 'tia' ? '💬 Tia' : '👤 Cliente');
+
+        const tableLine = diag.tables.length > 0 ? diag.tables.join(', ') : '—';
+        const lastTursoLine = diag.lastTursoMessage
+          ? `• [${fmtTime(diag.lastTursoMessage.timestamp)}] ${senderLabel(diag.lastTursoMessage.sender)}: ${t(diag.lastTursoMessage.text)}`
+          : '• (nessun messaggio persistito)';
+        const redisLine = diag.latestSessionId
+          ? `• Sessione più recente: 🆔 ${diag.latestSessionId.slice(0, 8)}…\n• Messaggi in Redis: ${diag.redisCountLatestSession ?? 'n/d'}\n• ${diag.lastRedisMessage ? `Ultimo: [${fmtTime(diag.lastRedisMessage.timestamp)}] ${senderLabel(diag.lastRedisMessage.sender)}: ${t(diag.lastRedisMessage.text)}` : 'Ultimo: —'}`
+          : '• (nessuna sessione)';
+
+        // Redis is a pure fallback (Turso-first): in healthy operation it is
+        // normally empty for the latest session — that is EXPECTED, not an
+        // alignment failure. Only label problems when a store is unreachable.
+        const doubleWriteLabel = !diag.tursoOk && !diag.redisOk
+          ? '❌ ENTRAMBI GIÙ — messaggi solo in memoria locale'
+          : !diag.tursoOk
+            ? '⚠️ solo Redis attivo (Turso non raggiungibile)'
+            : !diag.redisOk
+              ? '⚠️ solo Turso (Redis non raggiungibile)'
+              : '✅ Turso primario attivo (Redis in standby, normale)';
+
+        statusText = [
+          '📊 DIAGNOSTICA SISTEMA — tiadesigns.it',
+          '',
+          `🗄️ Turso DB: ${diag.tursoOk ? '✅ OK' : '❌ NON RAGGIUNGIBILE'}`,
+          `• Tabelle (${diag.tables.length}): ${tableLine}`,
+          '• Ultimo messaggio salvato:',
+          lastTursoLine,
+          '',
+          `🟠 Redis: ${diag.redisOk ? '✅ OK' : '❌ NON RAGGIUNGIBILE'}`, redisLine,
+          '',
+          `🔁 Doppia scrittura: ${doubleWriteLabel}`,
+          '',
+          `🟢 Disponibilità: ${availability.isOnline ? 'ATTIVA' : 'NON attiva'}`,
+        ].join('\n');
+      } else {
+        const availability = await setAvailability(command === '/online');
+        statusText = availability.isOnline
+          ? '🟢 Disponibilità attiva: i nuovi messaggi verranno inoltrati.'
+          : '🔴 Non disponibile: i nuovi messaggi resteranno salvati ma non verranno inoltrati.';
+      }
+
       if (telegramToken) {
         await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
           method: 'POST',
