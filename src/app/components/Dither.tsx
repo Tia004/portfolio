@@ -318,6 +318,9 @@ export default function Dither({
         zIndex: 0,
         overflow: 'hidden',
         background: 'transparent',
+        // Never hijack touch/scroll gestures: vertical page scroll keeps
+        // working on mobile even though the WebGL canvas covers the hero.
+        touchAction: 'pan-y',
       }}
     >
     <Canvas
@@ -329,6 +332,8 @@ export default function Dither({
         width: '100%',
         height: '100%',
         position: 'relative',
+        // Pass vertical scroll to the page instead of trapping it.
+        touchAction: 'pan-y',
       }}
     >
       <DitheredWaves

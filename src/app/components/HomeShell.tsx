@@ -2049,7 +2049,7 @@ export default function HomeShell() {
         <div className="bg-[#010101] text-neutral-200 font-sans">
 
           {/* ============ HERO ============ */}
-          <section ref={heroRef} className="relative h-screen w-full overflow-y-auto sm:overflow-hidden flex items-center bg-[#010101]">
+          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-center bg-[#010101]">
             <div suppressHydrationWarning>
               <Dither
                 waveColor={[0.298, 0.608, 0.510]}
@@ -2992,6 +2992,7 @@ export default function HomeShell() {
 
           {/* ============ FAQ ============ */}
           <LazySection rootMargin={400} placeholderHeight={900}>
+            <div id="faq" className="scroll-mt-[9rem]">
             <FaqScroller
               mainTitle={t('faq.title', lang)}
               mainSubtitle="Hai dei dubbi? Qui trovi le risposte alle domande più comuni. Se non trovi ciò che cerchi, scrivimi."
@@ -3016,6 +3017,7 @@ export default function HomeShell() {
                 },
               ]}
             />
+            </div>
           </LazySection>
 
           {/* ============ CONTATTI ============ */}

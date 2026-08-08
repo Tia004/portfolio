@@ -233,15 +233,16 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const handleNavClick = (href: string) => {
+    // Mount lazy sections NOW so their anchors exist before we scroll.
+    window.dispatchEvent(new Event('tia:force-mount'));
     setMenuOpen(false);
-    // Wait for the menu close animation (~350 ms) + a layout frame,
-    // then scroll.  Scrolling while the fullscreen overlay is still
-    // closing causes Lenis to lose its target.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollTo(href);
-      });
-    });
+    // Wait for the menu to FULLY close (300 ms close animation + unmount
+    // cleanup that restores body scroll and restarts Lenis). Scrolling any
+    // earlier is silently cancelled by that cleanup — the classic "click
+    // does nothing" bug. After the overlay is gone, scroll normally.
+    window.setTimeout(() => {
+      scrollTo(href);
+    }, 650);
   };
 
   return (

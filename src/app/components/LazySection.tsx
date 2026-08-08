@@ -42,7 +42,22 @@ export default function LazySection({
       { rootMargin: `${rootMargin}px` },
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    // Force-mount on demand: navigation (burger menu, footer links, CTA) may
+    // target a section that is still inside this lazy wrapper. The global
+    // 'tia:force-mount' event mounts every lazy section so the anchor exists
+    // in the DOM before the smooth scroll runs.
+    const forceMount = () => {
+      if (!renderedRef.current) {
+        renderedRef.current = true;
+        setIsVisible(true);
+        observer.disconnect();
+      }
+    };
+    window.addEventListener('tia:force-mount', forceMount);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('tia:force-mount', forceMount);
+    };
   }, [rootMargin]);
 
   // Measure height once before rendering to use as placeholder

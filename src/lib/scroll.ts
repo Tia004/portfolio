@@ -50,6 +50,11 @@ export function scrollToElement(
   const targetScroll = Math.min(Math.max(0, documentTop - totalOffset), maxScroll);
 
   if (activeController) {
+    // Lenis caches the document height internally. After LazySection
+    // force-mounts the page grew taller, so refresh its scroll limits
+    // before asking it to move — otherwise scrollTo silently clamps to
+    // the stale, smaller max ("click does nothing" after menu nav).
+    (activeController as { resize?: () => void }).resize?.();
     activeController.scrollTo(targetScroll, {
       duration: options.duration ?? 1.2,
       lock: true,
@@ -81,7 +86,17 @@ export function scrollToElementAfterLayout(
 ): void {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      scrollToElement(target, controller, options);
+      // Some sections (progetti, prezzi, chisono, …) are wrapped in LazySection
+      // and are NOT in the DOM until scrolled near. Mount them all first so
+      // the anchor exists, then retry briefly while React commits.
+      window.dispatchEvent(new Event('tia:force-mount'));
+      const attempt = (n: number) => {
+        if (n <= 0) return;
+        if (scrollToElement(target, controller, options)) return;
+        // Element not mounted yet — wait a frame for React to commit.
+        requestAnimationFrame(() => attempt(n - 1));
+      };
+      attempt(8);
     });
   });
 }
