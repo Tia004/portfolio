@@ -1030,6 +1030,7 @@ export default function HomeShell() {
   const chatWidgetRef = useRef<HTMLDivElement>(null);
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
   const nextIdRef = useRef(1);
+  const welcomeSentRef = useRef(false);
   // This ID is issued by the server and is paired with the HttpOnly chat cookie.
   // Never generate a client-controlled session ID for chat requests.
   const sessionIdRef = useRef<string | null>(null);
@@ -1742,6 +1743,18 @@ export default function HomeShell() {
       });
     }).catch(() => { });
   };
+
+  // Auto-insert welcome message when chat opens for the first time
+  useEffect(() => {
+    if (chatOpen && messages.length === 0 && !welcomeSentRef.current) {
+      welcomeSentRef.current = true;
+      const welcomeId = nextIdRef.current++;
+      setMessages([{ id: welcomeId, text: t('chat.welcome', lang), sender: 'tia' }]);
+    }
+    if (!chatOpen) {
+      welcomeSentRef.current = false;
+    }
+  }, [chatOpen, messages.length, lang]);
 
   const sendMessage = async () => {
     const text = chatMessage.trim();
@@ -3127,11 +3140,7 @@ export default function HomeShell() {
                   {messages.length === 0 && !isTyping && (
                     <div className="flex-1 flex items-center justify-center">
                       <div className="text-center select-none">
-                        <div className="text-neutral-600/40 text-6xl font-bold leading-none tracking-tight mb-2">
-                          Ciao!
-                        </div>
-                        <p className="text-neutral-600/30 text-sm max-w-[200px] mx-auto leading-relaxed">                          {t('chat.empty_intro', lang)}
-                        </p>
+                        <p className="text-neutral-600/30 text-sm max-w-[200px] mx-auto leading-relaxed">{t('chat.empty_intro', lang)}</p>
                       </div>
                     </div>
                   )}
