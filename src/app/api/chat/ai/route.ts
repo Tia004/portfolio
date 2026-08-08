@@ -287,10 +287,13 @@ function localizedStreamResponse(message: string): Response {
   });
 }
 /**
- * Stream from Groq (Mixtral 8x7b) via SSE.
- * Yields tokens parsed from Groq's streaming response.
+ * Stream from Groq via SSE.
+ * `model` is parameterized so the cascade can fall back to a model with a
+ * SEPARATE daily quota when the primary one is rate-limited (TPD is per-model:
+ * llama-3.3-70b-versatile can be exhausted while llama-3.1-8b-instant still
+ * answers). Yields tokens parsed from Groq's streaming response.
  */
-async function* streamGroq(messages: ChatMessage[]): AsyncGenerator<string> {
+async function* streamGroq(messages: ChatMessage[], model = 'llama-3.3-70b-versatile', timeoutMs = 45_000): AsyncGenerator<string> {
   if (!GROQ_API_KEY) return;
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -299,9 +302,9 @@ async function* streamGroq(messages: ChatMessage[]): AsyncGenerator<string> {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    signal: AbortSignal.timeout(45000),
+    signal: AbortSignal.timeout(timeoutMs),
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model,
       messages,
       temperature: 0.7,
       max_tokens: 512,
@@ -309,7 +312,15 @@ async function* streamGroq(messages: ChatMessage[]): AsyncGenerator<string> {
     }),
   });
 
-  if (!res.ok || !res.body) return;
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    console.error(`[chat/ai] Groq HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+    return;
+  }
+  if (!res.body) {
+    console.error('[chat/ai] Groq response has no body');
+    return;
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -341,10 +352,12 @@ async function* streamGroq(messages: ChatMessage[]): AsyncGenerator<string> {
 }
 
 /**
- * Stream from Gemini (gemini-2.0-flash) via SSE.
- * Yields tokens parsed from Gemini's streaming response.
+ * Stream from Gemini (gemini-2.5-flash) via SSE.
+ * Uses the CORRECT streaming endpoint `:streamGenerateContent?alt=sse` — the
+ * previously used `:streamContent` path returns HTTP 404. Yields tokens parsed
+ * from Gemini's SSE response.
  */
-async function* streamGemini(messages: ChatMessage[]): AsyncGenerator<string> {
+async function* streamGemini(messages: ChatMessage[], timeoutMs = 45_000): AsyncGenerator<string> {
   if (!GEMINI_API_KEY) return;
 
   const systemMsg = messages.find(m => m.role === 'system');
@@ -360,16 +373,24 @@ async function* streamGemini(messages: ChatMessage[]): AsyncGenerator<string> {
   }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamContent?key=${GEMINI_API_KEY}&alt=sse`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(45000),
-      body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512 } }),
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } } }),
     }
   );
 
-  if (!res.ok || !res.body) return;
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => '');
+    console.error(`[chat/ai] Gemini HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+    return;
+  }
+  if (!res.body) {
+    console.error('[chat/ai] Gemini response has no body');
+    return;
+  }
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -417,6 +438,60 @@ async function* fallbackStream(lang: Lang): AsyncGenerator<string> {
     yield w + ' ';
     await new Promise(r => setTimeout(r, 20));
   }
+}
+
+/**
+ * Provider cascade: try Groq, then Gemini, then the static fallback.
+ * Each configured provider is attempted in order; the first one that yields
+ * ANY token wins. Failures are logged with their HTTP status so a broken key
+ * on production is visible instead of silently serving the fallback.
+ */
+async function* streamWithFallback(messages: ChatMessage[], lang: Lang): AsyncGenerator<string> {
+  const providers: { name: string; run: (timeoutMs: number) => AsyncGenerator<string> }[] = [];
+  if (GROQ_API_KEY) {
+    // Primary: best quality. On a 429 (per-model daily quota exhausted) the
+    // cascade falls through to llama-3.1-8b-instant, which has its own quota.
+    providers.push({ name: 'groq-llama-70b', run: (t) => streamGroq(messages, 'llama-3.3-70b-versatile', t) });
+    providers.push({ name: 'groq-llama-8b', run: (t) => streamGroq(messages, 'llama-3.1-8b-instant', t) });
+  }
+  if (GEMINI_API_KEY) {
+    providers.push({ name: 'gemini-2.5-flash', run: (t) => streamGemini(messages, t) });
+  }
+
+  if (providers.length === 0) {
+    console.error('[chat/ai] No AI provider keys configured (GROQ_API_KEY / GEMINI_API_KEY missing)');
+    yield* fallbackStream(lang);
+    return;
+  }
+
+  // Total cascade budget must stay under the 60s platform maxDuration — 3
+  // providers × 45s would otherwise exceed it and get the function killed
+  // mid-cascade (Gemini would never run). Each provider gets the remaining
+  // budget as its timeout.
+  const CASCADE_START = Date.now();
+  const CASCADE_BUDGET_MS = 50_000;
+
+  for (const provider of providers) {
+    const remaining = CASCADE_BUDGET_MS - (Date.now() - CASCADE_START);
+    if (remaining <= 0) {
+      console.warn(`[chat/ai] Cascade budget exhausted, skipping ${provider.name}`);
+      break;
+    }
+    let yielded = false;
+    try {
+      for await (const token of provider.run(remaining)) {
+        yielded = true;
+        yield token;
+      }
+    } catch (err) {
+      console.error(`[chat/ai] Provider ${provider.name} errored, trying next:`, (err as Error).message);
+    }
+    if (yielded) return; // got a real answer — don't append fallback text
+    console.warn(`[chat/ai] Provider ${provider.name} yielded no content, trying next`);
+  }
+
+  console.error('[chat/ai] All AI providers failed — serving static fallback');
+  yield* fallbackStream(lang);
 }
 
 export async function POST(req: NextRequest) {
@@ -502,39 +577,29 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
-    // Choose stream source
-    let streamGen: AsyncGenerator<string>;
-
     const activeLang: Lang = safeLang;
 
-    if (GROQ_API_KEY) {
-      streamGen = streamGroq(fullMessages);
-    } else if (GEMINI_API_KEY) {
-      streamGen = streamGemini(fullMessages);
-    } else {
-      streamGen = fallbackStream(activeLang);
-    }
+    // Provider cascade: try Groq first, then Gemini, then the static fallback.
+    // Previously ONLY the first configured provider was attempted — if its key
+    // was invalid/expired the user got the static fallback even though the
+    // second provider would have answered. Each provider now logs its HTTP
+    // status so production failures are visible instead of silent.
+    const streamGen = streamWithFallback(fullMessages, activeLang);
 
     // Create the streaming response
     const encoder = new TextEncoder();
-    let hasContent = false;
 
     const readable = new ReadableStream({
       async start(controller) {
         try {
+          // streamWithFallback always yields at least the static fallback text,
+          // so no outer fallback is needed here (it was dead code).
           for await (const token of streamGen) {
-            hasContent = true;
             controller.enqueue(encoder.encode(sseToken(token)));
           }
         } catch (err) {
           console.error('Stream error:', err);
         } finally {
-          // If no content was streamed (both APIs failed), use fallback
-          if (!hasContent) {
-            for await (const token of fallbackStream(activeLang)) {
-              controller.enqueue(encoder.encode(sseToken(token)));
-            }
-          }
           controller.enqueue(encoder.encode(DONE_MARKER));
           controller.close();
         }

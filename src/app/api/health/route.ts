@@ -13,8 +13,9 @@ interface HealthStatus {
       error?: string;
     };
     ai: {
-      status: 'ok' | 'missing';
+      status: 'ok' | 'error' | 'missing';
       providers: string[];
+      liveProviders: string[];
     };
     availability: {
       isOnline: boolean;
@@ -27,7 +28,7 @@ export async function GET() {
   try {
   const checks: HealthStatus['services'] = {
     database: { status: 'error', latency_ms: 0 },
-    ai: { status: 'missing', providers: [] },
+    ai: { status: 'missing', providers: [], liveProviders: [] },
     availability: { isOnline: false, updatedAt: new Date().toISOString() },
   };
 
@@ -41,13 +42,67 @@ export async function GET() {
   }
   checks.database.latency_ms = Math.round(performance.now() - dbStart);
 
-  // ── AI API keys check ───────────────────────────────────────
+  // ── AI providers check ──────────────────────────────────────
+  // Presence of a key is NOT proof it works (the production key may be
+  // expired/revoked while the site still reports "ok"). Fire a real,
+  // minimal call to every configured provider in parallel and report which
+  // ones actually answer — that is what the chatbot depends on.
   const aiProviders: string[] = [];
+  const liveProviders: string[] = [];
   if (process.env.GROQ_API_KEY) aiProviders.push('groq');
   if (process.env.GEMINI_API_KEY) aiProviders.push('gemini');
+
+  // Ping order mirrors the chat route's cascade: Groq 70b → Groq 8b (own
+  // quota) → Gemini 2.5 (correct endpoint; 2.0-flash is quota-0 and
+  // :streamContent returns 404).
+  const pingGroq = async (model: string): Promise<boolean> => {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(6_000),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+        stream: false,
+      }),
+    });
+    return res.ok;
+  };
+
+  const pingProvider = async (name: string): Promise<boolean> => {
+    try {
+      if (name === 'groq') {
+        return await pingGroq('llama-3.3-70b-versatile') || await pingGroq('llama-3.1-8b-instant');
+      }
+      if (name === 'gemini') {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(6_000),
+            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'ping' }] }], generationConfig: { maxOutputTokens: 1 } }),
+          },
+        );
+        return res.ok;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const liveResults = await Promise.all(aiProviders.map(async (p) => ({ p, ok: await pingProvider(p) })));
+  for (const { p, ok } of liveResults) if (ok) liveProviders.push(p);
+
   checks.ai = {
-    status: aiProviders.length > 0 ? 'ok' : 'missing',
+    status: liveProviders.length > 0 ? 'ok' : aiProviders.length > 0 ? 'error' : 'missing',
     providers: aiProviders,
+    liveProviders,
   };
 
   // ── Availability check ──────────────────────────────────────
