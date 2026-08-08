@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { isValidContactEmail, isValidContactMessage, isValidContactName } from '@/lib/input-validation';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
 import {
@@ -98,23 +98,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Scrivi una richiesta appropriata con qualche dettaglio sul progetto.' }, { status: 400 });
     }
 
-    const emailUser = process.env.EMAIL_USER || 'info@tiadesigns.it';
-    const emailPass = process.env.EMAIL_PASS;
-
-    if (!emailPass) {
-      console.error('EMAIL_PASS non configurato — serve una App Password Gmail');
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.error('RESEND_API_KEY non configurato');
       return NextResponse.json({ error: 'Configurazione email incompleta. Contatta direttamente info@tiadesigns.it' }, { status: 500 });
     }
 
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-    });
+    const resend = new Resend(resendApiKey);
+
+    // Recipient: where Tia receives the contact emails
+    const recipientEmail = process.env.EMAIL_TO || 'info@tiadesigns.it';
+
+    // Sender: onboarding@resend.dev works immediately without domain verification.
+    // Once tiadesigns.it is verified in Resend, change to info@tiadesigns.it.
+    const senderEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
 
     const safeName = escapeHtml(name);
     const safeEmail = escapeHtml(email);
@@ -122,8 +119,8 @@ export async function POST(req: NextRequest) {
     const safeService = typeof service === 'string' ? escapeHtml(service.slice(0, 120)) : '';
 
     const mailOptions = {
-      from: `"Portfolio Tia Designs" <${process.env.EMAIL_USER || 'info@tiadesigns.it'}>`,
-      to: 'info@tiadesigns.it',
+      from: `Portfolio Tia Designs <${senderEmail}>`,
+      to: recipientEmail,
       replyTo: email,
       subject: `${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} da ${name} - Portfolio`,
       html: `
@@ -143,7 +140,7 @@ export async function POST(req: NextRequest) {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await resend.emails.send(mailOptions);
 
     return NextResponse.json({ success: true, message: 'Email inviata con successo' });
   } catch (error) {
