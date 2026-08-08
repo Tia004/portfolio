@@ -1,10 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #010101;
-  --foreground: #f5f5f5;
   --font-sans: 'Outfit', 'Space Grotesk', sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
   --teal-primary: rgba(45, 212, 191, 1);
@@ -13,22 +15,175 @@
   --border-color: rgba(255,255,255,0.08);
   --background-dark: #010101;
   color-scheme: dark;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
+  overflow-y: scroll; /* fallback: reserve scrollbar space on browsers without scrollbar-gutter */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide native cursor on desktop (PixelTrail cursor handles it) */
-@media (hover: hover) and (pointer: fine) {
-  :root, html, body, *, iframe, embed, object {
-    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect fill='transparent'/%3E%3C/svg%3E"), none !important;
-  }
+/* Marquee edge curtains — explicit CSS keeps the side fade reliable across
+   Tailwind builds and browsers. The viewport container breaks out of any
+   parent width constraint so the curtains always start from the viewport
+   edges and cover duplicate cards with a smooth gradient ramp. */
+.marquee-edge-curtain {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+  width: clamp(6rem, 20vw, 20rem);
+  pointer-events: none;
+  background-color: transparent;
+}
+
+.marquee-edge-curtain--left {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--marquee-edge-bg, #010101) 0%,
+    var(--marquee-edge-bg, #010101) 32%,
+    var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
+    transparent 100%
+  );
+}
+
+.marquee-edge-curtain--right {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--marquee-edge-bg, #010101) 0%,
+    var(--marquee-edge-bg, #010101) 32%,
+    var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
+    transparent 100%
+  );
+}
+
+/* Curtains and tracks share a predictable local stacking context. This keeps
+   the fade above moving cards without allowing it to escape as a page-wide
+   black layer. The viewport breaks out of any parent max-width so the
+   curtains always anchor to the true viewport edges. */
+.faq-marquee-viewport,
+.marquee-edge-viewport {
+  position: relative;
+  isolation: isolate;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+}
+
+.faq-marquee-viewport > .marquee-edge-curtain,
+.marquee-edge-viewport > .marquee-edge-curtain {
+  z-index: 10;
+}
+
+
+/* Toast notification entrance/exit */
+@keyframes toast-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.toast-enter {
+  animation: toast-slide-up 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.toast-exit {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease-in, transform 0.25s ease-in;
+}
+
+/* ClickSpark fade-in on first mount — CSS-only, no hydration risk */
+@keyframes clickspark-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.click-spark-wrapper {
+  animation: clickspark-fade-in 300ms ease-out;
+}
+
+/* Skill title vertical line — draws from top when ScrollReveal fires */
+.skill-line {
+  position: relative;
+}
+.skill-line::before {
+  content: '';
+  position: absolute;
+  /* anchor the bar to the title, respecting the dynamic left-padding */
+  left: var(--skill-line-offset, 0);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(45, 212, 191, 0.3);
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform 400ms ease-out;
+}
+/* Class added by ScrollReveal's GSAP onStart callback */
+.skill-line.revealed::before {
+  transform: scaleY(1);
+}
+
+/* Dot pulse — single bounce when typewriter completes */
+@keyframes dot-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.6); }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.animate-dot-pulse {
+  animation: dot-pulse 350ms ease-out;
+}
+
+/* Form auto-fill highlight animation — brief teal glow ring */
+@keyframes form-highlight-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.5); border-color: rgba(45, 212, 191, 0.6); }
+  50%  { box-shadow: 0 0 0 6px rgba(45, 212, 191, 0.15); border-color: rgba(45, 212, 191, 0.8); }
+  100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); border-color: transparent; }
+}
+.form-highlight {
+  animation: form-highlight-pulse 1.5s ease-out forwards;
+  border-radius: 8px;
+}
+
+/* Hide native cursor everywhere when custom cursor is active */
+html.custom-cursor-active,
+html.custom-cursor-active *,
+html.custom-cursor-active *::before,
+html.custom-cursor-active *::after {
+  cursor: none !important;
 }
 
 /* Show native cursor when the Next.js error overlay is visible (dev/debug mode) */
@@ -39,12 +194,80 @@ body:has(nextjs-portal) embed {
   cursor: auto !important;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+/* ── Scrollbar — bright teal, always visible ──────────────────
+   Full-opacity thumb so it's unmistakably teal on every browser. */
 
-.global-spotlight { mix-blend-mode: screen; will-change: transform, opacity; z-index: 200 !important; pointer-events: none; }
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2dd4bf transparent;
+}
+
+/* WebKit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2dd4bf;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5eead4;
+}
+
+/* The fullscreen menu still scrolls when its content needs it, but never
+   exposes a scrollbar over the glass panel. */
+.menu-scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.menu-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* ── Hero backdrop-blur pre-warming ──────────────────────────
+   Elements with backdrop-filter inside .hero-anim are hidden
+   (opacity:0) during the splash screen.  The browser may skip
+   compositing the filter until the element becomes visible,
+   causing a flash where the hero badge/buttons/stats appear
+   without blur for a frame or two after the splash fades.
+
+   isolation:isolate forces a dedicated stacking context at
+   first paint — the backdrop-filter is composited before the
+   element ever becomes visible.  Zero-frame blur gap. */
+/* Hide hero elements from first paint to prevent a hydration flash.
+   opacity:0 is set via CSS but GSAP's inline opacity:1 overrides it
+   during the entrance animation. clearProps only removes transform
+   and filter — opacity:1 stays inline permanently. */
+.hero-anim {
+  opacity: 0;
+}
+
+.hero-anim [class*="backdrop-blur"] {
+  isolation: isolate;
+}
+
+/* Backdrop-filter layers can otherwise become opaque compositor surfaces in
+   Safari/Chromium while a fixed layer is repainted. Keep every blur layer
+   explicitly transparent and clipped to its own strip. */
+.gradient-blur {
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent !important;
+  pointer-events: none;
+}
+.gradient-blur > div {
+  background: transparent !important;
+}
 img {
   -webkit-user-drag: none;
   user-select: none;
@@ -53,46 +276,35 @@ img {
 
 .bento-section { position: relative; user-select: none; }
 
-/* ==================== FaqScroller ==================== */
-@keyframes scroll-horizontal {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-50%, 0, 0); }
-}
-@keyframes scroll-horizontal-reverse {
-  from { transform: translate3d(-50%, 0, 0); }
-  to   { transform: translate3d(0, 0, 0); }
-}
-.animate-scroll-horizontal {
-  animation: scroll-horizontal var(--scroll-duration, 60s) linear infinite;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-.animate-scroll-horizontal-reverse {
-  animation: scroll-horizontal-reverse var(--scroll-duration, 60s) linear infinite;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
-@keyframes scroll-vertical {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(0, -50%, 0); }
-}
-@keyframes scroll-vertical-reverse {
-  from { transform: translate3d(0, -50%, 0); }
-  to   { transform: translate3d(0, 0, 0); }
-}
-.animate-scroll-vertical {
-  animation: scroll-vertical var(--scroll-duration, 40s) linear infinite;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-.animate-scroll-vertical-reverse {
-  animation: scroll-vertical-reverse var(--scroll-duration, 40s) linear infinite;
-  will-change: transform;
-  backface-visibility: hidden;
-}
-
 /* ==================== Shake Error Animation ==================== */
+/* Section arrival glow — brief teal ring when landing via Navbar scroll.
+   Uses outline (no layout impact, works inside overflow:hidden containers). */
+.section-arrival-glow {
+  outline: 0 solid rgba(45, 212, 191, 0);
+  outline-offset: 0px;
+  animation: arrival-glow 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes arrival-glow {
+  0%   { outline-width: 0px; outline-color: rgba(45, 212, 191, 0.5); outline-offset: 0px; }
+  30%  { outline-width: 3px; outline-color: rgba(45, 212, 191, 0.35); outline-offset: 4px; }
+  100% { outline-width: 0px; outline-color: rgba(45, 212, 191, 0); outline-offset: 12px; }
+}
+
+/* Touch devices: thicker ring, longer duration — compensates for finger
+   occlusion and slower scroll settling on mobile. */
+@media (pointer: coarse) {
+  .section-arrival-glow {
+    animation-duration: 800ms;
+  }
+
+  @keyframes arrival-glow {
+    0%   { outline-width: 0px; outline-color: rgba(45, 212, 191, 0.5); outline-offset: 0px; }
+    30%  { outline-width: 5px; outline-color: rgba(45, 212, 191, 0.4); outline-offset: 6px; }
+    100% { outline-width: 0px; outline-color: rgba(45, 212, 191, 0); outline-offset: 18px; }
+  }
+}
+
 @keyframes shake-error {
   0%, 100% { transform: translateX(0); }
   10%, 50%, 90% { transform: translateX(-5px); }
@@ -102,3 +314,227 @@ img {
   animation: shake-error 0.6s ease-in-out 5;
 }
 
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    overflow-x: hidden;
+    max-width: 100vw;
+    /* Reserve scrollbar space permanently — prevents layout shift when
+       Lenis briefly exposes the native scrollbar during height recalculation. */
+    scrollbar-gutter: stable;
+  }
+  /* Instant tap response on mobile — disables double-tap zoom and 300ms delay */
+  a, button, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {
+    touch-action: manipulation;
+  }
+}
+
+/* ==================== Low-End Device Optimizations ==================== */
+
+/* Replace GPU-expensive backdrop-blur with solid dark backgrounds */
+.is-low-end .backdrop-blur-sm,
+.is-low-end .backdrop-blur,
+.is-low-end .backdrop-blur-md,
+.is-low-end .backdrop-blur-lg,
+.is-low-end .backdrop-blur-xl,
+.is-low-end .backdrop-blur-2xl,
+.is-low-end .backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(10, 10, 10, 0.92) !important;
+}
+
+/* Disable canvas-based cursor effect on low-end devices */
+.is-low-end .pixel-trail-canvas {
+  display: none !important;
+}
+
+/* Reduce animation complexity on low-end devices */
+.is-low-end .animate-scroll-horizontal,
+.is-low-end .animate-scroll-horizontal-reverse,
+.is-low-end .animate-scroll-vertical,
+.is-low-end .animate-scroll-vertical-reverse {
+  animation-duration: calc(var(--scroll-duration, 60s) * 2) !important;
+}
+
+/* Disable decorative WebGL/canvas backgrounds on low-end devices */
+.is-low-end [data-performance="heavy"],
+.is-low-end [data-performance="heavy"] canvas {
+  display: none !important;
+}
+
+/* Reduce shadow/glow complexity */
+.is-low-end .shadow-teal-400\/40,
+.is-low-end .shadow-teal-500\/25,
+.is-low-end .drop-shadow-\[0_0_4px_rgba\(45\,212\,191\,0\.5\)\] {
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+/* Use simpler transforms — avoid 3D perspective on low-end */
+.is-low-end [style*="perspective"] {
+  transform: none !important;
+  transition: none !important;
+}
+
+/* FAQ card lift — only on devices with actual hover (mouse, not touch).
+   On touch devices :hover is emulated on tap, causing unwanted micro-jumps. */
+@media (hover: hover) {
+  .faq-card-lift:hover {
+    transform: translateY(-0.125rem); /* Tailwind -translate-y-0.5 */
+    box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.5), 0 2px 8px -2px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Chat widget icon pop — two stacked animations:
+   1. chat-icon-pop:   fires once on mount (key change = open/close)
+   2. chat-icon-idle:  infinite loop, quick pulse every 5s so the
+      floating widget always looks alive. */
+@keyframes chat-icon-pop {
+  0%   { transform: scale(0.6); opacity: 0.4; }
+  60%  { transform: scale(1.18); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes chat-icon-idle {
+  0%, 95%  { transform: scale(1); opacity: 1; }
+  96%     { transform: scale(0.7); opacity: 0.4; }
+  98%     { transform: scale(1.18); }
+  100%    { transform: scale(1); opacity: 1; }
+}
+.chat-icon-pop {
+  animation-name: chat-icon-pop, chat-icon-idle;
+  animation-duration: 350ms, 5s;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), ease-in-out;
+  animation-fill-mode: both, none;
+  animation-iteration-count: 1, infinite;
+}
+
+/* Throttle animations by reducing their frequency */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Footer wordmark — CSS fallback always keeps chars visible ── */
+/* If GSAP never runs (ad-blocker, JS error, HMR glitch), the text
+   remains legible.  GSAP controls opacity/transform via inline styles
+   (higher specificity), so the entrance animation works normally.
+   Only the .gsap-revealed class (added on complete) uses !important
+   to lock the final state. */
+.footer-char {
+  /* Base: visible by default (JS-fail-safe).  GSAP's inline styles
+     override these for the hidden→visible animation. */
+  opacity: 1;
+  transform: none;
+}
+.footer-char.gsap-revealed {
+  /* Post-animation: lock the final state so HMR / re-renders can't
+     accidentally re-hide the wordmark. */
+  opacity: 1 !important;
+  transform: none !important;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+/* ── Native scroll-margin-top for section anchors ────────────── */
+/* Works with scrollIntoView({ behavior: 'smooth', block: 'start' })
+   like a plain <a href="#id"> in HTML.  The browser pushes the target
+   this many pixels below the viewport top, clearing the fixed navbar +
+   progressive blur automatically. */
+#chatbot-anchor,
+#chatbot-heading,
+#chatbot,
+#servizi,
+#prezzi,
+#progetti,
+#chisono,
+#recensioni,
+#faq,
+#contatti {
+  scroll-margin-top: 120px;
+}

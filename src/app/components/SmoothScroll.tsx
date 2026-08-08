@@ -11,7 +11,11 @@ type LenisContextValue = {
   lenis: RefObject<Lenis | null>;
 };
 
-const LenisContext = createContext<LenisContextValue>({ lenis: { current: null } });
+// HomeShell creates the provider around its own render tree, so its hooks run
+// one level before the provider exists. Sharing this ref keeps CTA handlers and
+// descendants connected to the same Lenis instance.
+const sharedLenisRef: { current: Lenis | null } = { current: null };
+const LenisContext = createContext<LenisContextValue>({ lenis: sharedLenisRef });
 
 export function useLenis() {
   return useContext(LenisContext);
@@ -20,16 +24,20 @@ export function useLenis() {
 type Props = { children: ReactNode };
 
 export default function SmoothScrollProvider({ children }: Props) {
-  const lenisRef = useRef<Lenis | null>(null);
+  const lenisRef = sharedLenisRef;
 
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.6,
+      duration: 1.0,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       wheelMultiplier: 1,
       touchMultiplier: 2,
       infinite: false,
+      // Respect data-lenis-prevent: any element (or ancestor) with this
+      // attribute gets native scroll — used by ServiceSelect dropdown,
+      // chatbot message area, and any other overflow-y-auto container.
+      prevent: (node) => node.closest('[data-lenis-prevent]') !== null,
     });
 
     lenisRef.current = lenis;

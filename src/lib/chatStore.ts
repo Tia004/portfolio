@@ -24,6 +24,56 @@ let memoryNextId = 1;
 let dbAvailable: boolean | null = null; // null = non testato, true/false = dopo primo tentativo
 let dbRetryAt = 0; // timestamp Unix ms per riprovare il DB
 
+// ── Telegram admin alert for prolonged DB outages ──────────────
+let dbDownSince = 0;   // timestamp Unix ms of first failure (0 = healthy)
+let alertSent = false;  // prevent duplicate alerts
+
+const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+async function sendTelegramAlert(text: string): Promise<void> {
+  if (!TELEGRAM_TOKEN || !TELEGRAM_CHAT_ID) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text,
+        parse_mode: 'HTML',
+      }),
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch {
+    // Telegram unreachable — nothing we can do
+  }
+}
+
+function markDbDown(): void {
+  dbAvailable = false;
+  const now = Date.now();
+  if (!dbDownSince) dbDownSince = now;
+  dbRetryAt = now + 30_000;
+  if (!alertSent && now - dbDownSince > 60_000) {
+    alertSent = true;
+    const downSec = Math.round((now - dbDownSince) / 1000);
+    void sendTelegramAlert(
+      `🔴 <b>Turso DB offline</b> da ${downSec}s\n` +
+      `Il portfolio sta operando in modalità degradata (chat in-memory, disponibilità da cache).`
+    );
+  }
+}
+
+function markDbUp(): void {
+  const wasDown = dbDownSince > 0;
+  dbAvailable = true;
+  dbDownSince = 0;
+  alertSent = false;
+  if (wasDown) {
+    void sendTelegramAlert('🟢 <b>Turso DB di nuovo online</b>\nTutti i servizi del portfolio sono tornati operativi.');
+  }
+}
+
 /** Se il DB è marcato come non disponibile da più di 30s, lo riprova. */
 function shouldRetryDb(): boolean {
   return dbAvailable === false && Date.now() > dbRetryAt;
@@ -41,11 +91,10 @@ export async function addMessage(sessionId: string, msg: Omit<ChatMessage, 'id'>
           timestamp: BigInt(msg.timestamp),
         },
       });
-      dbAvailable = true;
+      markDbUp();
       return; // ✅ Salvato su DB
     } catch (err) {
-      dbAvailable = false;
-      dbRetryAt = Date.now() + 30_000; // riprova tra 30s
+      markDbDown();
       console.warn('[chatStore] DB non raggiungibile, passo a fallback in-memory:',
         err instanceof Error ? err.message : err);
     }
@@ -77,7 +126,7 @@ export async function getTiaMessagesSince(sessionId: string, since: number): Pro
         },
         orderBy: { timestamp: 'asc' },
       });
-      dbAvailable = true;
+      markDbUp();
       return rows.map((r) => ({
         id: r.id,
         text: r.text,
@@ -85,8 +134,7 @@ export async function getTiaMessagesSince(sessionId: string, since: number): Pro
         timestamp: Number(r.timestamp),
       }));
     } catch (err) {
-      dbAvailable = false;
-      dbRetryAt = Date.now() + 30_000;
+      markDbDown();
       console.warn('[chatStore] DB non raggiungibile in getTiaMessagesSince, uso fallback in-memory:',
         err instanceof Error ? err.message : err);
     }

@@ -44,3 +44,6 @@ next-env.d.ts
 reference/
 .freebuff
 prisma
+!prisma/
+!prisma/migrations/
+!prisma/migrations/**

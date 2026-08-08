@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addMessage } from '@/lib/chatStore';
+import { isInappropriateChatMessage } from '@/lib/chat-moderation';
+import { getAvailability } from '@/lib/availability';
+import {
+  getClientIp,
+  isSameOriginRequest,
+  rateLimitResponse,
+  sanitizeChatText,
+  takeChatRateLimit,
+  validateChatSession,
+  verifyTurnstile,
+} from '@/lib/chat-security';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -10,7 +21,7 @@ async function getLocation(ip: string): Promise<string> {
     return 'localhost';
   }
   try {
-    const res = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,country,isp,query`, {
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=city,regionName,country,isp,query`, {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return 'sconosciuta';
@@ -27,30 +38,46 @@ async function getLocation(ip: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, sessionId } = await req.json();
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    }
 
-    if (!text || !text.trim()) {
+    const body = await req.json() as { text?: unknown; sessionId?: unknown; captchaToken?: unknown };
+    const sessionId = validateChatSession(req, body.sessionId);
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Sessione chat non valida' }, { status: 401 });
+    }
+
+    const ip = getClientIp(req);
+    const limit = await takeChatRateLimit(ip, sessionId, 'telegram');
+    if (!limit.ok) return rateLimitResponse(limit.retryAfter);
+
+    if (!await verifyTurnstile(body.captchaToken, ip)) {
+      return NextResponse.json({ error: 'Verifica anti-bot non riuscita' }, { status: 403 });
+    }
+
+    const text = sanitizeChatText(body.text);
+    if (!text) {
       return NextResponse.json({ error: 'Messaggio vuoto' }, { status: 400 });
     }
-
-    if (!sessionId) {
-      return NextResponse.json({ error: 'sessionId richiesto' }, { status: 400 });
+    if (isInappropriateChatMessage(text)) {
+      return NextResponse.json({ error: 'Messaggio non consentito' }, { status: 422 });
     }
 
-    // Get client IP
-    const forwarded = req.headers.get('x-forwarded-for');
-    const ip = forwarded
-      ? forwarded.split(',')[0].trim()
-      : req.headers.get('x-real-ip') || '127.0.0.1';
-
-    // Store the client message
     await addMessage(sessionId, {
-      text: text.trim(),
+      text,
       sender: 'client',
       timestamp: Date.now(),
     });
 
-    // Forward to Telegram with location info
+    const availability = await getAvailability();
+    if (!availability.isOnline) {
+      return NextResponse.json(
+        { ok: true, available: false },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+
     if (TELEGRAM_TOKEN && TELEGRAM_CHAT_ID) {
       const location = await getLocation(ip);
       await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
@@ -58,16 +85,13 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: TELEGRAM_CHAT_ID,
-          text:
-            `💬 Nuovo messaggio dalla chat\n` +
-            `📍 ${location}\n` +
-            `🆔 ${sessionId}\n` +
-            `📝 ${text.trim()}`,
+          text: `💬 Nuovo messaggio dalla chat\n📍 ${location}\n🆔 ${sessionId}\n📝 ${text}`,
         }),
+        signal: AbortSignal.timeout(8_000),
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, available: true }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 });
   }

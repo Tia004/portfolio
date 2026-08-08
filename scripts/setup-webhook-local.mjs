@@ -9,7 +9,7 @@
  *   npm run webhook-local
  *
  * Requires:
- *   - An .env file with TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID
+ *   - An .env file with TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, and TELEGRAM_WEBHOOK_SECRET
  *   - The Next.js dev server running on PORT (default 3000)
  *
  * When done, press Ctrl+C to stop ngrok AND remove the webhook
@@ -97,7 +97,17 @@ function setWebhook(url) {
     process.exit(1);
   }
   const webhookUrl = `${url}${WEBHOOK_PATH}`;
-  const cmd = `curl -s -X POST "https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}"`;
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret || secret.length < 32) {
+    console.error('❌ TELEGRAM_WEBHOOK_SECRET mancante o troppo corta (minimo 32 caratteri).');
+    process.exit(1);
+  }
+  const secretParam = `&secret_token=${encodeURIComponent(secret)}`;
+  if (!secret) {
+    console.error('❌ TELEGRAM_WEBHOOK_SECRET non trovato: il webhook production deve essere autenticato.');
+    process.exit(1);
+  }
+  const cmd = `curl -s -X POST "https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}${secretParam}"`;
   console.log(`\n🔗 Setting webhook to: ${webhookUrl}`);
   try {
     const out = execSync(cmd, { encoding: 'utf8' });

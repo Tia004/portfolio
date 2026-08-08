@@ -29,7 +29,23 @@ Su Vercel, vai in **Settings → Environment Variables** e aggiungi:
 | `GROQ_API_KEY` | `gsk_...` | 🤖 AI Chatbot |
 | `TELEGRAM_BOT_TOKEN` | ve lo dice @BotFather | 💬 Telegram Chat |
 | `TELEGRAM_CHAT_ID` | `123456789` (il tuo ID) | 💬 Telegram Chat |
+| `TELEGRAM_ADMIN_USER_ID` | ID numerico del tuo account Telegram | Comandi `/online`, `/offline`, `/status` in gruppi Telegram |
+| `TELEGRAM_WEBHOOK_SECRET` | stringa casuale di almeno 32 caratteri | Autenticazione webhook Telegram |
+| `CHAT_SESSION_SECRET` | stringa casuale di almeno 32 caratteri | Sessioni chat firmate |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | site key Cloudflare Turnstile | CAPTCHA invisibile client |
+| `TURNSTILE_SECRET_KEY` | secret key Cloudflare Turnstile | Verifica CAPTCHA server |
+| `UPSTASH_REDIS_REST_URL` | URL REST Upstash (raccomandato su Vercel) | Rate limit distribuito |
+| `UPSTASH_REDIS_REST_TOKEN` | token REST Upstash | Rate limit distribuito |
+| `CHAT_EDGE_PROVIDER` | `vercel` oppure `cloudflare` (se non viene rilevato automaticamente) | IP per rate limiting |
+| `TURNSTILE_EXPECTED_HOSTNAME` | hostname del sito, opzionale ma raccomandato | Verifica CAPTCHA |
+| `TURNSTILE_EXPECTED_ACTION` | `chat`, opzionale | Verifica CAPTCHA |
 
+> In produzione configura sempre `TELEGRAM_WEBHOOK_SECRET`, `CHAT_SESSION_SECRET`, entrambe le chiavi Turnstile e, su Vercel/serverless, le variabili Upstash. Imposta `CHAT_EDGE_PROVIDER=vercel` o `cloudflare` quando il provider non viene rilevato automaticamente. Senza Turnstile le API chat e contatti rifiutano le richieste in produzione. In sviluppo il CAPTCHA può restare non configurato.
+>
+> `TELEGRAM_ADMIN_USER_ID` è obbligatoria quando `TELEGRAM_CHAT_ID` è un gruppo: solo quell'account può usare `/online`, `/offline` e `/status`. In una chat privata il `TELEGRAM_CHAT_ID` identifica già il destinatario autorizzato.
+>
+> La disponibilità usa la tabella Prisma `AvailabilitySetting`. Dopo il deploy applica la migration `prisma/migrations/20260801090000_add_availability/migration.sql` al database runtime tramite la pipeline di deploy (non basta eseguire `prisma generate`).
+>
 > **Come ottenere i token:**
 > - **Groq**: [console.groq.com/keys](https://console.groq.com/keys)
 > - **Telegram Bot Token**: parla con [@BotFather](https://t.me/BotFather) su Telegram, crea un bot e ottieni il token
@@ -57,6 +73,7 @@ Il webhook permette a Telegram di inoltrare le tue risposte al sito quando rispo
 ```bash
 VERCEL_URL="https://tua-app.vercel.app" \
 TELEGRAM_BOT_TOKEN="<il_tuo_token_da_BotFather>" \
+TELEGRAM_WEBHOOK_SECRET="<la_stessa_stringa configurata su Vercel>" \
 npm run deploy:setup-webhook
 ```
 
@@ -111,10 +128,10 @@ Risposta attesa:
 ### 🤖 AI Chatbot (sezione #chatbot)
 
 ```
-Visitatore scrive → POST /api/chat/ai → Groq → streaming token
+Visitatore scrive → POST /api/chat/ai → verifica disponibilità → Groq → streaming token
 ```
 
-Il chatbot AI è indipendente — funziona senza Telegram e non richiede configurazioni extra oltre alla `GROQ_API_KEY`.
+Il chatbot AI è indipendente da Telegram, ma in produzione richiede anche sessioni firmate, Turnstile e rate limiting distribuito come indicato nelle variabili d'ambiente sopra. Quando lo stato è offline, l'endpoint non chiama alcun provider AI e restituisce solo un messaggio locale; il canale Telegram conserva invece i messaggi senza inoltrarli.
 
 
 ## Troubleshooting
@@ -139,9 +156,11 @@ Il chatbot AI è indipendente — funziona senza Telegram e non richiede configu
 2. La chiave deve iniziare con `gsk_`
 3. Prova l'endpoint direttamente:
    ```bash
+   # In produzione usa una sessione/captcha emessi dal browser; questo è solo uno schema.
    curl -X POST "https://tua-app.vercel.app/api/chat/ai" \
      -H "Content-Type: application/json" \
-     -d '{"messages":[{"role":"user","content":"Ciao"}]}'
+     -H "Origin: https://tua-app.vercel.app" \
+     -d '{"messages":[{"role":"user","content":"Ciao"}],"sessionId":"<sessione emessa dal browser>","captchaToken":"<token Turnstile>"}'
    ```
 
 ---

@@ -1,0 +1,81 @@
+.curved-btn {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.curved-btn:hover {
+  transform: scale(1.03);
+}
+
+.curved-btn:active {
+  transform: scale(0.98);
+}
+
+.curved-btn:focus-visible {
+  outline: 2px solid rgba(45, 212, 191, 0.4);
+  outline-offset: 4px;
+  border-radius: 24px;
+}
+
+.curved-btn__svg {
+  display: block;
+  overflow: visible;
+  width: 100%;
+  height: auto;
+}
+
+.curved-btn__svg text {
+  font-family: inherit;
+  pointer-events: none;
+}
+
+/* Rotate only the square arrow glyph, never the curved button or its path. */
+.curved-btn__arrow {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(0deg);
+  transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.curved-btn__arrow--up {
+  transform: rotate(180deg);
+}
+
+/* Sparkle — real SparklesIcon from hugeicons, positioned on the
+   same curve as the text via geom.point().  Animated via opacity
+   only (the parent <g> already has a positioning transform).
+   Same two-layer pattern: mount pulse + idle loop every 5s. */
+.curved-btn__sparkle {
+  animation-name: sparkle-pulse, sparkle-idle;
+  animation-duration: 350ms, 5s;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), ease-in-out;
+  animation-fill-mode: both, none;
+  animation-iteration-count: 1, infinite;
+}
+
+@keyframes sparkle-pulse {
+  0%   { opacity: 0; }
+  60%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes sparkle-idle {
+  0%, 94%  { opacity: 1; }
+  97%     { opacity: 0.15; }
+  100%    { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curved-btn__arrow {
+    transition-duration: 0.01ms;
+  }
+  .curved-btn__sparkle {
+    animation-duration: 0.01ms;
+  }
+}

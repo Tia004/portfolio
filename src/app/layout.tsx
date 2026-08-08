@@ -1,54 +1,132 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
-import PixelTrail from "./components/PixelTrail";
 import ClickSpark from "./components/ClickSpark";
+import PointerCursor from "./components/PointerCursor";
+import LanguageProvider from "./components/LanguageProvider";
+import CookieBanner from "./components/CookieBanner";
+import DeviceClassInjector from "./components/DeviceClassInjector";
+import SplashScreen from "./components/SplashScreen";
+import FpsOverlayWrapper from "./components/FpsOverlayWrapper";
+import ScrollbarReveal from "./components/ScrollbarReveal";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+import type { Lang } from "@/lib/translations";
+import { LANGS } from "@/lib/translations";
 
-export const metadata: Metadata = {
-  title: "Tia Designs | Designer, Sviluppatore App & Software, Videomaker",
-  description: "Portfolio di Tia Designs — Designer, sviluppatore di app e software, videomaker. Progetto e realizzo prodotti digitali completi.",
-};
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
-export default function RootLayout({
+// Localized metadata — Google sees the right title/description per language
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const xLang = headersList.get('x-lang') as Lang | null;
+  const lang: Lang = (xLang && LANGS.some(l => l.code === xLang)) ? xLang : 'it';
+
+  const titles: Record<Lang, string> = {
+    it: "Tia Designs | Designer, Sviluppatore App & Software, Videomaker",
+    en: "Tia Designs | Designer, App & Software Developer, Videomaker",
+    es: "Tia Designs | Diseñador, Desarrollador de Apps & Software, Videomaker",
+  };
+
+  const descriptions: Record<Lang, string> = {
+    it: "Portfolio di Tia Designs — Designer, sviluppatore di app e software, videomaker. Progetto e realizzo prodotti digitali completi.",
+    en: "Tia Designs Portfolio — Designer, app & software developer, videomaker. I design and build complete digital products.",
+    es: "Portfolio de Tia Designs — Diseñador, desarrollador de apps y software, videomaker. Diseño y realizo productos digitales completos.",
+  };
+
+  return {
+    metadataBase: new URL("https://tiadesigns.it"),
+    title: titles[lang],
+    description: descriptions[lang],
+    openGraph: {
+      title: titles[lang],
+      description: descriptions[lang],
+      siteName: "Tia Designs",
+      url: `https://tiadesigns.it${lang === 'it' ? '' : `/${lang}`}`,
+      locale: lang === 'en' ? 'en_US' : lang === 'es' ? 'es_ES' : 'it_IT',
+      type: "website",
+      images: [
+        {
+          url: "/TiaDesignsLogo.png",
+          width: 512,
+          height: 512,
+          alt: "Tia Designs",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: titles[lang],
+      description: descriptions[lang],
+      images: ["/TiaDesignsLogo.png"],
+    },
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "48x48" },
+        { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+        { url: "/favicon.svg", type: "image/svg+xml" },
+      ],
+      apple: [
+        { url: "/apple-touch-icon.png", sizes: "180x180" },
+      ],
+    },
+    manifest: "/site.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Tia Designs",
+    },
+    themeColor: "#02040a",
+    other: {
+      "msapplication-TileColor": "#02040a",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read language from cookie via middleware header — no flash of default content
+  const headersList = await headers();
+  const xLang = headersList.get('x-lang') as Lang | null;
+  const initialLang: Lang = (xLang && LANGS.some(l => l.code === xLang)) ? xLang : 'it';
+
   return (
     <html
-      lang="it"
-      className="h-full antialiased"
+      lang={initialLang}
+      className={cn("h-full antialiased bg-[#010101]", "font-sans", geist.variable)}
     >
+      <head>
+        {/* Dynamic hreflang — tells Google this page exists in 3 languages */}
+        <link rel="alternate" hrefLang="it" href="https://tiadesigns.it/" />
+        <link rel="alternate" hrefLang="en" href="https://tiadesigns.it/en" />
+        <link rel="alternate" hrefLang="es" href="https://tiadesigns.it/es" />
+        <link rel="alternate" hrefLang="x-default" href="https://tiadesigns.it/" />
+        {/* Canonical — current language version; matches sitemap hreflang assignments */}
+        <link rel="canonical" href={`https://tiadesigns.it${initialLang === 'it' ? '' : `/${initialLang}`}`} />
+      </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
-        <ClickSpark
-          sparkColor="#2dd4bf"
-          sparkSize={14}
-          sparkRadius={40}
-          sparkCount={8}
-          duration={500}
-          extraScale={0.9}
-        >
-          {children}
-        </ClickSpark>
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            pointerEvents: 'none',
-            zIndex: 99999,
-          }}
-        >
-          <PixelTrail
-            gridSize={84}
-            trailSize={0.08}
-            maxAge={350}
-            interpolate={1.8}
-            color="#8cffd9"
-            gooeyFilter={{ id: "pixel-trail-goo", strength: 1.0 }}
-          />
-        </div>
+        <LanguageProvider initialLang={initialLang}>
+          <SplashScreen>
+            <ClickSpark
+              sparkColor="#2dd4bf"
+              sparkSize={14}
+              sparkRadius={40}
+              sparkCount={8}
+              duration={500}
+              extraScale={0.9}
+            >
+              {children}
+            </ClickSpark>
+            <PointerCursor />
+            <CookieBanner />
+            <DeviceClassInjector />
+            <FpsOverlayWrapper />
+            <ScrollbarReveal />
+          </SplashScreen>
+        </LanguageProvider>
       </body>
     </html>
   );

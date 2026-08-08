@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Project {
   id: string;
@@ -24,6 +25,9 @@ export default function DashboardPage() {
   const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,10 +43,50 @@ export default function DashboardPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch projects on mount
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const fetchAvailability = async () => {
+    // Manual AbortController instead of AbortSignal.timeout(): when a browser
+    // extension hijacks fetch, the timeout signal can fire with no listeners
+    // and Chrome reports an uncaught "signal timed out". controller.abort()
+    // fails the request silently and keeps the dashboard responsive.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch('/api/availability', {
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('Impossibile leggere la disponibilità.');
+      const data = await res.json() as { isOnline?: unknown };
+      if (typeof data.isOnline === 'boolean') setIsOnline(data.isOnline);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      clearTimeout(timer);
+      setAvailabilityLoading(false);
+    }
+  };
+
+  const toggleAvailability = async () => {
+    setAvailabilitySaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isOnline: !isOnline }),
+      });
+      if (!res.ok) throw new Error('Impossibile aggiornare la disponibilità.');
+      const data = await res.json() as { isOnline?: unknown };
+      if (typeof data.isOnline === 'boolean') {
+        setIsOnline(data.isOnline);
+        showTemporarySuccess(data.isOnline ? 'Ora sei disponibile.' : 'Ora risulti non disponibile.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossibile aggiornare la disponibilità.');
+    } finally {
+      setAvailabilitySaving(false);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -50,8 +94,8 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error('Impossibile caricare i progetti.');
       const data = await res.json();
       setProjects(data);
-    } catch (err: any) {
-      setError(err.message || 'Errore nel recupero dei progetti.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore nel recupero dei progetti.');
     } finally {
       setLoading(false);
     }
@@ -80,9 +124,9 @@ export default function DashboardPage() {
       const data = await res.json();
       setThumbnail(data.url);
       showTemporarySuccess('Immagine caricata con successo!');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || 'Errore durante l&apos;upload dell&apos;immagine.');
+      setError(err instanceof Error ? err.message : 'Errore durante l&apos;upload dell&apos;immagine.');
     } finally {
       setUploadLoading(false);
     }
@@ -137,8 +181,8 @@ export default function DashboardPage() {
       showTemporarySuccess(editingId ? 'Progetto modificato con successo!' : 'Nuovo progetto caricato con successo!');
       resetForm();
       fetchProjects();
-    } catch (err: any) {
-      setError(err.message || 'Errore nel salvataggio del progetto.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore nel salvataggio del progetto.');
     } finally {
       setSubmitLoading(false);
     }
@@ -175,8 +219,8 @@ export default function DashboardPage() {
       showTemporarySuccess('Progetto eliminato.');
       fetchProjects();
       if (editingId === id) resetForm();
-    } catch (err: any) {
-      setError(err.message || 'Errore nell&apos;eliminazione del progetto.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore nell&apos;eliminazione del progetto.');
     }
   };
 
@@ -193,6 +237,17 @@ export default function DashboardPage() {
     setOrder(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  // Fetch projects and availability after the initial commit. Deferring one
+  // tick avoids competing with the dashboard's first paint and keeps the
+  // availability control independent from the project form.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchProjects();
+      void fetchAvailability();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -234,15 +289,39 @@ export default function DashboardPage() {
             </h1>
             <p className="text-gray-400 text-sm mt-1">Gestisci i tuoi progetti in tempo reale con autenticazione Passkey sicura.</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-white/5 hover:bg-red-950/30 border border-white/10 hover:border-red-500/20 text-gray-400 hover:text-red-400 font-medium py-2 px-5 rounded-lg transition duration-200 cursor-pointer flex items-center gap-2 text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Disconnetti
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={toggleAvailability}
+              disabled={availabilityLoading || availabilitySaving}
+              aria-pressed={isOnline}
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition duration-200 disabled:cursor-wait disabled:opacity-60 ${isOnline
+                ? 'border-teal-500/25 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20'
+                : 'border-red-500/25 bg-red-500/10 text-red-300 hover:bg-red-500/20'
+                }`}
+            >
+              <span className={`h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.7)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.55)]'}`} />
+              {availabilityLoading ? 'Disponibilità…' : isOnline ? 'Disponibile' : 'Non disponibile'}
+            </button>
+            <Link
+              href="/loginmaster/analytics"
+              className="bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 hover:border-teal-500/30 text-teal-400 hover:text-teal-300 font-medium py-2 px-4 rounded-lg transition duration-200 cursor-pointer flex items-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+              Analytics
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="bg-white/5 hover:bg-red-950/30 border border-white/10 hover:border-red-500/20 text-gray-400 hover:text-red-400 font-medium py-2 px-5 rounded-lg transition duration-200 cursor-pointer flex items-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Disconnetti
+            </button>
+          </div>
         </header>
 
         {/* Action Feedbacks */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 interface TooltipContentProps {
   text: string;
@@ -16,9 +16,20 @@ export default function TooltipContent({ text, el, hiding }: TooltipContentProps
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [visible, setVisible] = useState(false);
 
+  const posRef = useRef({ x: 0, y: 0 });
+
+  // Coalesced scroll update: instead of reading the rect and calling setState
+  // on every scroll event (a forced layout + re-render per frame), the work is
+  // batched into one rAF, and setState is skipped when the position is
+  // unchanged. Keeps tooltips anchored without contributing scroll jank.
   const update = useCallback(() => {
     const rect = el.getBoundingClientRect();
-    setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
+    if (posRef.current.x !== x || posRef.current.y !== y) {
+      posRef.current = { x, y };
+      setPos({ x, y });
+    }
   }, [el]);
 
   // Fade in on mount / fade out when hiding
@@ -33,12 +44,21 @@ export default function TooltipContent({ text, el, hiding }: TooltipContentProps
 
   // Track scroll and resize to keep anchored to the trigger element
   useEffect(() => {
+    let rafId = 0;
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        update();
+      });
+    };
     update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
     return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [update]);
 

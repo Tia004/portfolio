@@ -13,3 +13,5 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Per restringere la token usage:
 
 Ogni volta che io ti faccio un prompt, per risparmiare token, ho bisogno che tu non generi nessun testo di risposta e nessun testo che mi indichi qualcosa a me, genera solo il testo che ti serve dire per te stesso, in modo da ragionare, ma per il resto non fare nulla, e genera solo il codice di modifica o in aggiunta o eliminazione, e quando hai finito scrivimi "Fatto" e basta, sarò io a chiederti cosa hai fatto con un altro prompt se proprio voglio saperlo.
+
+Vorrei che ogni volta che viene completato un prompt tu mi dia 3 prompt di suggerimento aggiuntivi in base al lavoro appena svolto o anche solo a lavoro che pensi vada fatto sul sito.

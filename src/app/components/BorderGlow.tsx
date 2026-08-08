@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useRef, useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
+import { scheduleTick, unscheduleTick } from '@/lib/useSharedTicker';
 import './BorderGlow.css';
 
 interface BorderGlowProps {
@@ -88,8 +89,50 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   continuousHover = false,
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
+  const angleRef = useRef(0);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Force-exit hover when the card leaves the viewport so the shared ticker
+  // callback is unscheduled immediately (no stale glow). Hover itself implies
+  // the pointer is over the card, so no visibility gate is needed on the
+  // handlers — this observer only handles the "card scrolls away mid-hover"
+  // case, saving CPU on the ~300 marquee cards without any state re-renders.
+  //
+  // Also pre-warms --edge-proximity to 100 as soon as the card mounts or
+  // enters the viewport.  The :not(:hover) CSS rule keeps the pseudo-elements
+  // at opacity:0 until actual hover, so the glow is invisible.  When the user
+  // does hover, --edge-proximity is already 100 — the calc() opacity snaps to
+  // 1 instantly (transition:none on :hover).  Zero-frame delay, even when the
+  // card was just mounted by LazySection.
+  // useLayoutEffect fires synchronously after DOM mutations but before
+  // paint — no frame delay. The IO + :hover gate runs instantly.
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) {
+          setIsHovered(false);
+        } else {
+          // Pre-warm: glow is ready before the first hover touches this card.
+          card.style.setProperty('--edge-proximity', '100');
+        }
+      },
+      { rootMargin: '150px 0px' }
+    );
+    io.observe(card);
+    // Pre-warm on mount — the card may already be in the viewport when
+    // LazySection renders it (rootMargin may have triggered before mount).
+    card.style.setProperty('--edge-proximity', '100');
+    // LazySection mounts cards while the user's mouse may already be over
+    // them. The :hover CSS pseudo-class fires, but mouseenter does not
+    // (the element appeared under the pointer — it didn't "enter" it).
+    // Check synchronously and fire handleMouseEnter if already hovered.
+    if (card.matches(':hover')) {
+      handleMouseEnter();
+    }
+    return () => io.disconnect();
+  }, []);
 
   const getCenterOfElement = useCallback((el: HTMLElement) => {
     const { width, height } = el.getBoundingClientRect();
@@ -107,29 +150,33 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
     return degrees;
   }, [getCenterOfElement]);
 
-  // Continuous rotation while hovering
-  useEffect(() => {
-    if (!continuousHover || !isHovered) return;
+  // Continuous rotation while hovering — registers a single tick callback
+  // with the shared rAF scheduler. Only ONE card can be hovered at a time,
+  // so painting every frame is cheap and keeps the glow buttery-smooth.
+  // No lenis-scrolling gate: the rotation must keep advancing even during
+  // scroll momentum so the glow is never "frozen" mid-animation.
+  const continuousTick = useCallback(() => {
     const card = cardRef.current;
     if (!card) return;
+    angleRef.current = (angleRef.current + 1.2) % 360;
+    card.style.setProperty('--cursor-angle', `${angleRef.current}deg`);
+  }, []);
 
-    let angle = 0;
-    const speed = 0.8; // degrees per frame
+  // Ref-cache continuousTick so the cleanup effect can use empty deps [].
+  // This eliminates the HMR "dependency array size changed" warning
+  // that occurs when old component instances (2 deps) are compared to
+  // new instances (1 dep) during hot reload.
+  const continuousTickRef = useRef(continuousTick);
+  continuousTickRef.current = continuousTick;
 
-    const loop = () => {
-      angle = (angle + speed) % 360;
-      card.style.setProperty('--cursor-angle', `${angle}deg`);
-      card.style.setProperty('--edge-proximity', '100');
-      rafRef.current = requestAnimationFrame(loop);
-    };
-    rafRef.current = requestAnimationFrame(loop);
-
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [continuousHover, isHovered]);
+  useEffect(() => {
+    return () => unscheduleTick(continuousTickRef.current);
+  }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Note: no isVisibleRef gate here — if the pointer is over the card the
+    // card is visible by definition, and the IO below force-exits hover when
+    // the card scrolls off-screen (which unschedules the shared ticker).
     if (continuousHover && isHovered) return; // continuous mode ignores pointer position
     const card = cardRef.current;
     if (!card) return;
@@ -146,20 +193,26 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   const handleMouseEnter = useCallback(() => {
     const card = cardRef.current;
     if (!card) return;
+    // Restart the continuous glow from 0° on every hover.
+    angleRef.current = 0;
+    card.style.setProperty('--cursor-angle', '0deg');
     card.style.setProperty('--edge-proximity', '100');
+    void card.offsetHeight;
+    // Schedule rotation IMMEDIATELY — synchronous, no useEffect delay.
+    // The CSS fade-in takes 150ms; by the time the glow is visible,
+    // the angle has already advanced ~1°, so it never looks static.
+    scheduleTick(continuousTick, 'BorderGlow');
     setIsHovered(true);
-  }, []);
+  }, [continuousTick]);
 
   const handleMouseLeave = useCallback(() => {
     const card = cardRef.current;
     if (!card) return;
     card.style.setProperty('--edge-proximity', '0');
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
+    // Stop rotation immediately — don't wait for useEffect cleanup
+    unscheduleTick(continuousTick);
     setIsHovered(false);
-  }, []);
+  }, [continuousTick]);
 
   useEffect(() => {
     if (!animated || !cardRef.current) return;

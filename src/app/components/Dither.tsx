@@ -1,8 +1,8 @@
 'use client';
 /* eslint-disable react/no-unknown-property */
 
-import { useRef, useEffect, forwardRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useRef, useEffect, useState, forwardRef } from 'react';
+import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { EffectComposer, wrapEffect } from '@react-three/postprocessing';
 import { Effect } from 'postprocessing';
 import * as THREE from 'three';
@@ -139,33 +139,36 @@ void mainImage(in vec4 inputColor, in vec2 uv, out vec4 outputColor) {
 // ── RetroEffect ──────────────────────────────────────────────
 
 class RetroEffectImpl extends Effect {
-  // @ts-ignore — uniforms is readonly in TS but writable at runtime
+  public uniforms: Map<string, THREE.Uniform<any>>;
   constructor() {
-    const uniforms = new Map([
+    const uniforms = new Map<string, THREE.Uniform<any>>([
       ['colorNum', new THREE.Uniform(4.0)],
       ['pixelSize', new THREE.Uniform(2.0)],
     ]);
     super('RetroEffect', ditherFragmentShader, { uniforms });
-    // @ts-ignore
     this.uniforms = uniforms;
   }
-  // @ts-ignore
-  set colorNum(v: number) { this.uniforms.get('colorNum').value = v; }
-  // @ts-ignore
-  get colorNum() { return this.uniforms.get('colorNum').value; }
-  // @ts-ignore
-  set pixelSize(v: number) { this.uniforms.get('pixelSize').value = v; }
-  // @ts-ignore
-  get pixelSize() { return this.uniforms.get('pixelSize').value; }
+  set colorNum(value: number) {
+    this.uniforms.get('colorNum')!.value = value;
+  }
+  get colorNum(): number {
+    return this.uniforms.get('colorNum')!.value;
+  }
+  set pixelSize(value: number) {
+    this.uniforms.get('pixelSize')!.value = value;
+  }
+  get pixelSize(): number {
+    return this.uniforms.get('pixelSize')!.value;
+  }
 }
 
-const WrappedRetro = wrapEffect(RetroEffectImpl);
+const RetroEffect = forwardRef<RetroEffectImpl, { colorNum: number; pixelSize: number }>((props, ref) => {
+  const { colorNum, pixelSize } = props;
+  const WrappedRetroEffect = wrapEffect(RetroEffectImpl);
+  return <WrappedRetroEffect ref={ref} colorNum={colorNum} pixelSize={pixelSize} />;
+});
 
-const RetroEffect = forwardRef<RetroEffectImpl, { colorNum: number; pixelSize: number }>(
-  function RetroEffect({ colorNum, pixelSize }, ref) {
-    return <WrappedRetro ref={ref} colorNum={colorNum} pixelSize={pixelSize} />;
-  },
-);
+RetroEffect.displayName = 'RetroEffect';
 
 // ── DitheredWaves ────────────────────────────────────────────
 
@@ -235,11 +238,10 @@ function DitheredWaves({
     if (enableMouseInteraction) (mat.uniforms.mousePos.value as THREE.Vector2).copy(mouseRef.current);
   });
 
-  const handlePointerMove = (e: THREE.Event) => {
+  const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
     if (!enableMouseInteraction) return;
     const rect = gl.domElement.getBoundingClientRect();
     const dpr = gl.getPixelRatio();
-    // @ts-ignore
     mouseRef.current.set((e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr);
   };
 
@@ -292,19 +294,41 @@ export default function Dither({
   enableMouseInteraction?: boolean;
   mouseRadius?: number;
 }) {
+  const [paused, setPaused] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Pause WebGL rendering when canvas is scrolled out of viewport
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      setPaused(!entry.isIntersecting);
+    }, { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <Canvas
-      camera={{ position: [0, 0, 6] }}
-      dpr={1}
-      frameloop="always"
-      gl={{ antialias: false, preserveDrawingBuffer: false }}
+    <div
+      ref={wrapperRef}
+      data-performance="heavy"
       style={{
         position: 'absolute',
         inset: 0,
+        zIndex: 0,
+        overflow: 'hidden',
+        background: 'transparent',
+      }}
+    >
+    <Canvas
+      camera={{ position: [0, 0, 6] }}
+      dpr={0.75}
+      frameloop="always"
+      gl={{ antialias: true, preserveDrawingBuffer: true }}
+      style={{
         width: '100%',
         height: '100%',
-        zIndex: 15,
-        background: '#010101',
+        position: 'relative',
       }}
     >
       <DitheredWaves
@@ -319,5 +343,6 @@ export default function Dither({
         mouseRadius={mouseRadius}
       />
     </Canvas>
+    </div>
   );
 }

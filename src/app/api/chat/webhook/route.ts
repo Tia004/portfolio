@@ -1,5 +1,18 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { addMessage } from '@/lib/chatStore';
+import { isInappropriateChatMessage } from '@/lib/chat-moderation';
+import { sanitizeChatText } from '@/lib/chat-security';
+import { getAvailability, setAvailability } from '@/lib/availability';
+
+function isValidWebhookSecret(req: NextRequest): boolean {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!expected) return process.env.NODE_ENV !== 'production';
+  const received = req.headers.get('x-telegram-bot-api-secret-token') || '';
+  const left = Buffer.from(received);
+  const right = Buffer.from(expected);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
 
 /**
  * Telegram Bot webhook.
@@ -10,19 +23,69 @@ import { addMessage } from '@/lib/chatStore';
  * from the replied-to message text.
  *
  * Setup (run once, after deploy):
- *   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://yourdomain.com/api/chat/webhook"
+ *   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://yourdomain.com/api/chat/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>"
  *
  * To check current webhook:
  *   curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
  */
 export async function POST(req: NextRequest) {
   try {
+    if (!isValidWebhookSecret(req)) {
+      return NextResponse.json({ ok: false }, { status: 401 });
+    }
+    const contentLength = Number(req.headers.get('content-length') || 0);
+    if (contentLength > 128_000) {
+      return NextResponse.json({ ok: false }, { status: 413 });
+    }
     const update = await req.json();
 
-    // We only care about messages that are replies to bot messages
     const msg = update?.message;
-    if (!msg || !msg.text || !msg.reply_to_message?.text) {
-      return NextResponse.json({ ok: true }); // Ignore non-replies
+    if (!msg || typeof msg.text !== 'string') {
+      return NextResponse.json({ ok: true });
+    }
+
+    // Availability commands are accepted only from the configured Telegram
+    // chat. A private chat is already bound to one account; group chats must
+    // additionally configure TELEGRAM_ADMIN_USER_ID so any other member is
+    // unable to toggle the public status.
+    const configuredChatId = process.env.TELEGRAM_CHAT_ID;
+    const configuredAdminUserId = process.env.TELEGRAM_ADMIN_USER_ID;
+    const senderChatId = String(msg.chat?.id ?? '');
+    const senderUserId = String(msg.from?.id ?? '');
+    const chatType = String(msg.chat?.type ?? '');
+    const command = msg.text.trim().split(/\s+/, 1)[0].toLowerCase().split('@', 1)[0];
+    const availabilityCommand = command === '/online' || command === '/offline' || command === '/status';
+    if (availabilityCommand) {
+      const authorizedChat = Boolean(configuredChatId && senderChatId === configuredChatId);
+      const adminRequired = chatType !== 'private';
+      const authorizedUser = adminRequired
+        ? Boolean(configuredAdminUserId && senderUserId === configuredAdminUserId)
+        : (!configuredAdminUserId || senderUserId === configuredAdminUserId);
+      if (!authorizedChat || !authorizedUser) {
+        return NextResponse.json({ ok: true });
+      }
+
+      const availability = command === '/status'
+        ? await getAvailability()
+        : await setAvailability(command === '/online');
+      const statusText = availability.isOnline
+        ? '🟢 Disponibilità attiva: i nuovi messaggi verranno inoltrati.'
+        : '🔴 Non disponibile: i nuovi messaggi resteranno salvati ma non verranno inoltrati.';
+      const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (telegramToken) {
+        await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: configuredChatId, text: statusText }),
+          signal: AbortSignal.timeout(8_000),
+        });
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    // We only care about messages that are replies to bot messages
+    if (!msg.reply_to_message?.text) {
+      return NextResponse.json({ ok: true });
     }
 
     // Extract sessionId from the replied-to message
@@ -33,7 +96,13 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionId = sessionMatch[1].trim();
-    const replyText = msg.text.trim();
+    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) {
+      return NextResponse.json({ ok: true });
+    }
+    const replyText = sanitizeChatText(msg.text, 8_000);
+    if (!replyText || isInappropriateChatMessage(replyText)) {
+      return NextResponse.json({ ok: true });
+    }
 
     // Store the reply as a Tia message in the session
     await addMessage(sessionId, {

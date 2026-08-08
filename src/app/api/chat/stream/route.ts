@@ -15,18 +15,36 @@
 
 import { NextRequest } from 'next/server';
 import { getTiaMessagesSince } from '@/lib/chatStore';
+import {
+  closeChatStream,
+  getClientIp,
+  isSameOriginRequest,
+  openChatStream,
+  rateLimitResponse,
+  takeChatRateLimit,
+  validateChatSession,
+} from '@/lib/chat-security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
+  if (!isSameOriginRequest(req)) return new Response('Origin not allowed', { status: 403 });
+
   const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get('sessionId');
-  const since = parseInt(searchParams.get('since') || '0', 10);
+  const requestedSessionId = searchParams.get('sessionId');
+  const sessionId = validateChatSession(req, requestedSessionId);
+  const sinceValue = Number(searchParams.get('since') || '0');
+  const since = Number.isFinite(sinceValue) ? Math.max(0, Math.min(sinceValue, Date.now())) : 0;
 
   if (!sessionId) {
-    return new Response('sessionId required', { status: 400 });
+    return new Response('Invalid chat session', { status: 401 });
   }
+
+  const ip = getClientIp(req);
+  const limit = await takeChatRateLimit(ip, sessionId, 'stream');
+  if (!limit.ok) return rateLimitResponse(limit.retryAfter);
+  if (!openChatStream(sessionId)) return new Response('Too many open streams', { status: 429, headers: { 'Retry-After': '30', 'Cache-Control': 'no-store' } });
 
   let lastCheck = since || Date.now();
 
@@ -50,6 +68,7 @@ export async function GET(req: NextRequest) {
       // Clean up when the client disconnects
       req.signal.addEventListener('abort', () => {
         clearInterval(interval);
+        closeChatStream(sessionId);
         controller.close();
       });
     },

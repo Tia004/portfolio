@@ -1,0 +1,5 @@
+.faulty-terminal-dots,
+.faulty-terminal-noise {
+  pointer-events: none;
+  user-select: none;
+}

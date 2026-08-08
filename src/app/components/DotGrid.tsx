@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, memo } from 'react';
 import { gsap } from 'gsap';
 
 import './DotGrid.css';
@@ -49,7 +49,7 @@ function hexToRgb(hex: string) {
   };
 }
 
-const DotGrid: React.FC<DotGridProps> = ({
+const DotGrid: React.FC<DotGridProps> = memo(({
   dotSize = 16,
   gap = 32,
   baseColor = '#1a1a1a',
@@ -67,6 +67,12 @@ const DotGrid: React.FC<DotGridProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dotsRef = useRef<Dot[]>([]);
+  // Idle-redraw gate: the grid must only repaint while the pointer is inside
+  // the card OR while dots are still animating back (elastic return). Without
+  // it, every card's rAF loop re-painted the whole grid each frame even when
+  // nothing was moving — a major CPU/scroll hog on pages with many cards.
+  const pointerInsideRef = useRef(false);
+  const lastActivityRef = useRef(0);
   const pointerRef = useRef({
     x: 0,
     y: 0,
@@ -128,16 +134,39 @@ const DotGrid: React.FC<DotGridProps> = ({
   }, [dotSize, gap]);
 
   useEffect(() => {
-    if (!circlePath) return;
+    if (!circlePath || !wrapperRef.current) return;
 
     let rafId: number;
+    // DotGridCard (HomeShell) only mounts us on hover, so we're always
+    // visible when alive. Starting isVisible=true skips the IntersectionObserver
+    // async round-trip and paints the first frame immediately.
+    let isVisible = true;
     const proxSq = proximity * proximity;
+    // Covers the push tween (0.6s) + elastic return (up to ~1.5s) + margin.
+    const RETURN_WINDOW_MS = (returnDuration + 1) * 1000;
+
+    // Clear the idle-gate flag when the cursor leaves the wrapper. Without
+    // this, a stationary cursor that leaves the card (or a card that slides
+    // out from under a still mouse) would keep the flag true forever and the
+    // expensive full-grid repaint would never gate itself off.
+    const clearPointer = () => { pointerInsideRef.current = false; };
+    const wrap = wrapperRef.current;
+    wrap.addEventListener('mouseleave', clearPointer);
 
     const draw = () => {
+      if (!isVisible) { rafId = 0; return; }
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
+
+      // Idle redraw gate — keep the loop alive (cheap) but skip the expensive
+      // full-grid repaint while the pointer is outside and no tween is running.
+      if (!pointerInsideRef.current && performance.now() - lastActivityRef.current > RETURN_WINDOW_MS) {
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const { x: px, y: py } = pointerRef.current;
@@ -169,11 +198,24 @@ const DotGrid: React.FC<DotGridProps> = ({
       rafId = requestAnimationFrame(draw);
     };
 
-    draw();
-    return () => cancelAnimationFrame(rafId);
-  }, [proximity, baseColor, activeRgb, baseRgb, circlePath]);
+    // Only run rAF when the element is visible
+    const io = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      if (isVisible && !rafId) {
+        rafId = requestAnimationFrame(draw);
+      }
+    }, { threshold: 0 });
+    io.observe(wrapperRef.current);
 
-  useEffect(() => {
+    rafId = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(rafId);
+      io.disconnect();
+      wrap.removeEventListener('mouseleave', clearPointer);
+    };
+  }, [proximity, baseColor, activeRgb, baseRgb, circlePath, returnDuration]);
+
+  useLayoutEffect(() => {
     buildGrid();
     let ro: ResizeObserver | null = null;
     if ('ResizeObserver' in window) {
@@ -191,7 +233,10 @@ const DotGrid: React.FC<DotGridProps> = ({
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const r = wrapperRef.current?.getBoundingClientRect();
-      if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      const inside = !!r && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      pointerInsideRef.current = inside;
+      if (!inside) return;
+      lastActivityRef.current = performance.now();
       const now = performance.now();
       const pr = pointerRef.current;
       const dt = pr.lastTime ? now - pr.lastTime : 16;
@@ -246,6 +291,7 @@ const DotGrid: React.FC<DotGridProps> = ({
     const onClick = (e: MouseEvent) => {
       const r = wrapperRef.current?.getBoundingClientRect();
       if (!r || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+      lastActivityRef.current = performance.now();
       const rect = canvasRef.current!.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
@@ -293,6 +339,8 @@ const DotGrid: React.FC<DotGridProps> = ({
       </div>
     </section>
   );
-};
+});
+
+DotGrid.displayName = 'DotGrid';
 
 export default DotGrid;

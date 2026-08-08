@@ -9,38 +9,6 @@ try {
   // Silent fallback
 }
 
-// Override global dns.lookup to bypass local macOS DNS failure resolving Turso DB hosts
-const originalLookup = dns.lookup;
-dns.lookup = function (hostname: string, options: any, callback?: any) {
-  const cb = typeof options === 'function' ? options : callback;
-  const opts = typeof options === 'object' ? options : {};
-  if (hostname === 'portfoliodb-tia004.aws-eu-west-1.turso.io') {
-    if (cb) {
-      if (opts.all) {
-        cb(null, [{ address: '34.255.61.174', family: 4 }]);
-      } else {
-        cb(null, '34.255.61.174', 4);
-      }
-      return;
-    }
-  }
-  return originalLookup(hostname, options, callback);
-} as any;
-
-const originalPromisesLookup = dns.promises.lookup;
-dns.promises.lookup = async function (hostname: string, options?: any) {
-  const opts = typeof options === 'object' ? options : {};
-  if (hostname === 'portfoliodb-tia004.aws-eu-west-1.turso.io') {
-    if (opts.all) {
-      return [{ address: '34.255.61.174', family: 4 }] as any;
-    } else {
-      return { address: '34.255.61.174', family: 4 } as any;
-    }
-  }
-  return originalPromisesLookup(hostname, options);
-} as any;
-
-
 
 // Locate and parse .env manually to bypass any workspace root issues
 try {
