@@ -15,6 +15,14 @@ import { isChatCategory, type ChatCategory } from '@/lib/chat-categories';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { getAvailability } from '@/lib/availability';
 
+// ⚠️ Vercel Hobby kills serverless functions at 10s by default. The AI
+// round-trip (cold start + availability check + Groq prompt processing)
+// easily exceeds that on production, which made the chat stream die with
+// "risposta interrotta" while localhost worked fine. Raise the platform
+// budget to the maximum allowed and pin the Node runtime.
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 /**
  * System prompts per lingua — Tia Designs AI assistant.
  */
@@ -291,7 +299,7 @@ async function* streamGroq(messages: ChatMessage[]): AsyncGenerator<string> {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    signal: AbortSignal.timeout(20000),
+    signal: AbortSignal.timeout(45000),
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages,
@@ -356,7 +364,7 @@ async function* streamGemini(messages: ChatMessage[]): AsyncGenerator<string> {
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000),
       body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512 } }),
     }
   );
