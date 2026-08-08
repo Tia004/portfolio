@@ -136,17 +136,21 @@ export async function getTurnstileToken(): Promise<string> {
     }
     if (turnstileMountPromise) await turnstileMountPromise;
     if (turnstileWidgetReady) await turnstileWidgetReady;
-    if (!window.turnstile || turnstileWidget === null) throw new Error('turnstile-not-ready');
+    // Never throw — a missing widget is not the user's fault (adblockers,
+    // slow networks, script failures). Return empty so the server can
+    // respond with a proper HTTP error instead of a broken fetch chain.
+    if (!window.turnstile || turnstileWidget === null) return '';
   }
   turnstileToken = '';
   // Turnstile tokens are single-use; reset before every protected request.
-  window.turnstile.reset(turnstileWidget);
-  window.turnstile.execute(turnstileWidget);
+  window.turnstile.reset(turnstileWidget!);
+  window.turnstile.execute(turnstileWidget!);
   const started = Date.now();
   while (!turnstileToken && Date.now() - started < 8_000) {
     await new Promise((resolve) => window.setTimeout(resolve, 100));
   }
-  if (!turnstileToken) throw new Error('turnstile-failed');
+  // Never throw — timeout returns empty so the server handles it gracefully.
+  if (!turnstileToken) return '';
   return turnstileToken;
 }
 
