@@ -282,31 +282,144 @@ export function closeChatStream(sessionId: string): void {
   else streamConnections.set(sessionId, count - 1);
 }
 
+// ── Turnstile health metrics (Telegram /status) ───────────────
+const TURNSTILE_FAIL_KEY = 'chat:turnstile:fails24h';
+
+function getRedisConfig(): { url: string; token: string } | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, '');
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  return url && token ? { url, token } : null;
+}
+
+/**
+ * Best-effort 24h rolling counter of failed Turnstile verifications
+ * (production only). A spike — e.g. every chat request failing — is the
+ * early-warning signal that the widget/API broke (like the size:'invisible'
+ * removal that took down chat + telegram silently).
+ */
+function recordTurnstileFail(): void {
+  if (process.env.NODE_ENV !== 'production') return;
+  const cfg = getRedisConfig();
+  if (!cfg) return;
+  void (async () => {
+    try {
+      const key = encodeURIComponent(TURNSTILE_FAIL_KEY);
+      await fetch(`${cfg.url}/incr/${key}`, {
+        headers: { Authorization: `Bearer ${cfg.token}` },
+        signal: AbortSignal.timeout(2_000),
+      });
+      await fetch(`${cfg.url}/expire/${key}/86400`, {
+        headers: { Authorization: `Bearer ${cfg.token}` },
+        signal: AbortSignal.timeout(2_000),
+      });
+    } catch { /* metrics are best-effort — never block the request */ }
+  })();
+}
+
 export async function verifyTurnstile(token: unknown, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY;
-  // Local development stays usable before a site key is configured. Production
-  // is fail-closed: every chat/contact write needs a real Turnstile secret.
-  if (!secret) return process.env.NODE_ENV !== 'production';
-  if (typeof token !== 'string' || token.length < 10 || token.length > 2_048) return false;
-
-  try {
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token, remoteip: ip }),
-      signal: AbortSignal.timeout(4_000),
-    });
-    if (!response.ok) return false;
-    const result = await response.json() as { success?: boolean; hostname?: string; action?: string };
-    if (result.success !== true) return false;
-    const expectedHostname = process.env.TURNSTILE_EXPECTED_HOSTNAME;
-    const expectedAction = process.env.TURNSTILE_EXPECTED_ACTION;
-    if (expectedHostname && result.hostname !== expectedHostname) return false;
-    if (expectedAction && result.action !== expectedAction) return false;
-    return true;
-  } catch {
-    return false;
+  let ok = false;
+  if (!secret) {
+    // Local development stays usable before a site key is configured.
+    // Production is fail-closed: every chat/contact write needs a real secret.
+    ok = process.env.NODE_ENV !== 'production';
+  } else if (typeof token !== 'string' || token.length < 10 || token.length > 2_048) {
+    ok = false;
+  } else {
+    try {
+      const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret, response: token, remoteip: ip }),
+        signal: AbortSignal.timeout(4_000),
+      });
+      if (response.ok) {
+        const result = await response.json() as { success?: boolean; hostname?: string; action?: string };
+        const expectedHostname = process.env.TURNSTILE_EXPECTED_HOSTNAME;
+        const expectedAction = process.env.TURNSTILE_EXPECTED_ACTION;
+        const hostnameOk = !expectedHostname || result.hostname === expectedHostname;
+        const actionOk = !expectedAction || result.action === expectedAction;
+        ok = result.success === true && hostnameOk && actionOk;
+      }
+    } catch {
+      ok = false;
+    }
   }
+  if (!ok) recordTurnstileFail();
+  return ok;
+}
+
+export type TurnstileDiagnostics = {
+  secretConfigured: boolean;
+  siteverifyOk: boolean;
+  siteverifyLatencyMs: number;
+  siteverifyError: string | null;
+  fails24h: number;
+  expectedHostname: string | null;
+};
+
+/**
+ * Server-side Turnstile health for the Telegram /status report.
+ *
+ * A round-trip with a deliberately invalid token proves the API contract is
+ * intact (HTTP 200 + success:false with invalid-input-response) and that the
+ * secret is valid — catching endpoint changes and broken keys. The 24h
+ * failure counter (incremented by verifyTurnstile) reveals client-side
+ * breakage: when the widget stops issuing tokens, EVERY request fails and
+ * the counter spikes.
+ */
+export async function runTurnstileDiagnostics(): Promise<TurnstileDiagnostics> {
+  const secret = process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY;
+  const diag: TurnstileDiagnostics = {
+    secretConfigured: Boolean(secret),
+    siteverifyOk: false,
+    siteverifyLatencyMs: -1,
+    siteverifyError: null,
+    fails24h: -1,
+    expectedHostname: process.env.TURNSTILE_EXPECTED_HOSTNAME ?? null,
+  };
+
+  if (secret) {
+    const started = Date.now();
+    try {
+      const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret, response: 'diagnostic-invalid-token' }),
+        signal: AbortSignal.timeout(4_000),
+      });
+      diag.siteverifyLatencyMs = Date.now() - started;
+      if (res.ok) {
+        const data = await res.json() as { success?: boolean; 'error-codes'?: string[] };
+        // Healthy contract: the invalid token is rejected with the expected code.
+        diag.siteverifyOk = data.success === false
+          && Array.isArray(data['error-codes'])
+          && data['error-codes']!.includes('invalid-input-response');
+        if (!diag.siteverifyOk) diag.siteverifyError = `risposta inattesa: ${JSON.stringify(data).slice(0, 140)}`;
+      } else {
+        diag.siteverifyError = `HTTP ${res.status}`;
+      }
+    } catch (err) {
+      diag.siteverifyError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  const cfg = getRedisConfig();
+  if (cfg) {
+    try {
+      const res = await fetch(`${cfg.url}/get/${encodeURIComponent(TURNSTILE_FAIL_KEY)}`, {
+        headers: { Authorization: `Bearer ${cfg.token}` },
+        signal: AbortSignal.timeout(2_000),
+      });
+      if (res.ok) {
+        const data = await res.json() as { result?: string | null };
+        const n = Number(data.result);
+        if (Number.isFinite(n)) diag.fails24h = n;
+      }
+    } catch { /* keep -1 (n/d) */ }
+  }
+
+  return diag;
 }
 
 export function rateLimitResponse(retryAfter: number): Response {

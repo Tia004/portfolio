@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { addMessage, closeSession, getRecentMessages, getSystemDiagnostics } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
-import { sanitizeChatText } from '@/lib/chat-security';
+import { runTurnstileDiagnostics, sanitizeChatText } from '@/lib/chat-security';
 import { getAvailability, setAvailability } from '@/lib/availability';
 
 function isValidWebhookSecret(req: NextRequest): boolean {
@@ -177,6 +177,18 @@ export async function POST(req: NextRequest) {
           ? `• Sessione più recente: 🆔 ${diag.latestSessionId.slice(0, 8)}…\n• Messaggi in Redis: ${diag.redisCountLatestSession ?? 'n/d'}\n• ${diag.lastRedisMessage ? `Ultimo: [${fmtTime(diag.lastRedisMessage.timestamp)}] ${senderLabel(diag.lastRedisMessage.sender)}: ${t(diag.lastRedisMessage.text)}` : 'Ultimo: —'}`
           : '• (nessuna sessione)';
 
+        // Turnstile health: secret + siteverify API contract + 24h fail counter.
+        const turnstile = await runTurnstileDiagnostics();
+        const turnstileLabel = !turnstile.secretConfigured
+          ? '❌ TURNSTILE_SECRET mancante — chat fail-closed (403)!'
+          : turnstile.siteverifyOk
+            ? `✅ OK (siteverify ${turnstile.siteverifyLatencyMs}ms)`
+            : `❌ siteverify: ${turnstile.siteverifyError ?? 'errore sconosciuto'}`;
+        const fails24h = turnstile.fails24h < 0 ? 'n/d' : String(turnstile.fails24h);
+        const failsWarn = turnstile.fails24h > 20
+          ? ' ⚠️ picco anomalo — widget/API Turnstile probabilmente rotti!'
+          : '';
+
         // Mirror double-write: both stores must hold the same latest message.
         // A missing/stale Redis copy while Turso is fine is a real warning now
         // (Redis is a live mirror, not a standby fallback).
@@ -205,6 +217,9 @@ export async function POST(req: NextRequest) {
           `🟠 Redis: ${diag.redisOk ? '✅ OK' : '❌ NON RAGGIUNGIBILE'}`, redisLine,
           '',
           `🔁 Doppia scrittura: ${doubleWriteLabel}`,
+          '',
+          `🛡️ Turnstile: ${turnstileLabel}`,
+          `• Fail verifiche (24h): ${fails24h}${failsWarn}`,
           '',
           `🟢 Disponibilità: ${availability.isOnline ? 'ATTIVA' : 'NON attiva'}`,
         ].join('\n');
