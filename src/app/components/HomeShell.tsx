@@ -90,7 +90,7 @@ import {
 
 /** @category Componenti */
 import SmoothScrollProvider, { useLenis } from './SmoothScroll';
-import Dither from './Dither';
+import HeroDither from './HeroDither';
 import Navbar from './Navbar';
 import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
@@ -2136,69 +2136,70 @@ export default function HomeShell() {
         <div className="bg-[#010101] text-neutral-200 font-sans">
 
           {/* ============ HERO ============ */}
-          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-center bg-[#010101]">
-            <div suppressHydrationWarning>
-              <Dither
-                waveColor={[0.298, 0.608, 0.510]}
-                waveSpeed={0.06}
-                waveFrequency={8.4}
-                waveAmplitude={0.3}
-                colorNum={6}
-                pixelSize={1}
-                enableMouseInteraction={true}
-                mouseRadius={0.1}
-              />
-            </div>
+          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-center bg-[#010101] pt-24 pb-16 sm:pt-0 sm:pb-0">
+            <HeroDither
+              waveColor={[0.298, 0.608, 0.510]}
+              waveSpeed={0.06}
+              waveFrequency={8.4}
+              waveAmplitude={0.3}
+              colorNum={6}
+              pixelSize={1}
+              enableMouseInteraction={true}
+              mouseRadius={0.1}
+            />
 
+            {/* Mobile-first sizing: the hero must read as a confident
+                statement, not a wall of text. Base sizes are tuned for a
+                375px viewport and scale up at sm/md/lg. */}
             <div className="relative z-20 text-left px-5 sm:px-12 md:px-20 lg:px-28 max-w-full sm:max-w-3xl md:max-w-5xl lg:max-w-[90rem] pointer-events-none">
               <p className="hero-anim mb-2 sm:mb-6">
-                <span className="inline-block bg-white/[0.06] backdrop-blur-xl border border-white/[0.10] rounded-2xl px-3 sm:px-5 py-1.5 sm:py-2 text-teal-400/90 text-[11px] sm:text-xs md:text-sm tracking-[0.2em] uppercase font-semibold whitespace-nowrap">
+                <span className="inline-block bg-white/[0.06] backdrop-blur-xl border border-white/[0.10] rounded-2xl px-3 sm:px-5 py-1.5 sm:py-2 text-teal-400/90 text-[10px] sm:text-xs md:text-sm tracking-[0.18em] sm:tracking-[0.2em] uppercase font-semibold">
                   {t('hero.tag', lang)}
                 </span>
               </p>
-              <h1 className="hero-anim max-[374px]:text-3xl text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.05]">
+              <h1 className="hero-anim max-[374px]:text-[30px] text-[34px] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] sm:leading-[1.05]">
                 {t('hero.line1', lang)}<br />
                 <span className="font-bold text-teal-400"><span className="font-black text-white">{t('hero.line2a', lang)}</span> {t('hero.line2b', lang)} <span className="font-black text-white">{t('hero.line2c', lang)}</span> {t('hero.line2d', lang)}<span className="font-black text-white">{t('hero.line2e', lang)}</span></span>
               </h1>
-              <p className="hero-anim mt-3 sm:mt-8 text-white text-sm sm:text-base md:text-lg max-w-md sm:max-w-xl font-medium leading-relaxed relative">
+              <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative">
                 <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none" />                {t('hero.subtitle', lang)}
               </p>
-              <div className="hero-anim mt-5 sm:mt-12 flex flex-col sm:flex-row gap-3 sm:gap-5 justify-start items-stretch sm:items-center">
+              <div className="hero-anim mt-5 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center">
                 <button
                   onClick={() => { scrollToContatti(); trackClick('hero_cta_quote'); }}
-                  className="w-full sm:w-auto px-6 sm:px-9 py-3 sm:py-4 bg-teal-500 text-white rounded-full text-[14px] sm:text-[15px] font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
+                  className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-500 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
                 >
-                  <TiaIcon icon={FilePenIcon} size={18} strokeWidth={2} />
+                  <TiaIcon icon={FilePenIcon} size={17} strokeWidth={2} />
                   {t('hero.cta_quote', lang)}
                 </button>
                 <button
                   onClick={() => { scrollToElementAfterLayout('prezzi', () => lenis.current); trackClick('hero_cta_prices'); }}
-                  className="w-full sm:w-auto px-6 sm:px-9 py-3 sm:py-4 bg-white/[0.06] backdrop-blur-lg border border-white/15 text-white rounded-full text-[14px] sm:text-[15px] font-semibold hover:bg-white/15 hover:border-white/30 transition-all shadow-lg shadow-black/20 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
+                  className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-white/[0.06] backdrop-blur-lg border border-white/15 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-white/15 hover:border-white/30 transition-all shadow-lg shadow-black/20 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
                 >
-                  <TiaIcon icon={DollarSignIcon} size={18} strokeWidth={2} />
+                  <TiaIcon icon={DollarSignIcon} size={17} strokeWidth={2} />
                   {t('hero.cta_prices', lang)}
                 </button>
                 <button
                   onClick={() => { scrollToElementAfterLayout('progetti', () => lenis.current); trackClick('hero_cta_work'); }}
-                  className="w-full sm:w-auto px-2 sm:px-3 py-2.5 sm:py-4 text-white/80 hover:text-white rounded-full text-[14px] sm:text-[15px] font-medium transition-all inline-flex items-center justify-center gap-2 group pointer-events-auto tracking-wide"
+                  className="w-full sm:w-auto px-2 sm:px-3 py-2.5 sm:py-4 text-white/80 hover:text-white rounded-full text-[13px] sm:text-[15px] font-medium transition-all inline-flex items-center justify-center gap-2 group pointer-events-auto tracking-wide"
                 >
                   {t('hero.cta_work', lang)}
-                  <TiaIcon icon={ArrowRight01Icon} size={20} className="transition-transform group-hover:translate-x-1" strokeWidth={2} />
+                  <TiaIcon icon={ArrowRight01Icon} size={19} className="transition-transform group-hover:translate-x-1" strokeWidth={2} />
                 </button>
               </div>
 
               {/* ── Inline Stats Row — clienti, risposta, pagamento ── */}
-              <div className="hero-anim mt-4 sm:mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-5 text-xs sm:text-sm">
-                <div className="flex items-center gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-3 py-2">
-                  <HeroGlow stagger={0}><span className="text-teal-400 text-base sm:text-lg font-bold"><CountUp target={15} delay={HERO_COUNTUP_DELAYS[0]} ready={splashDone} className="" />+</span></HeroGlow>
+              <div className="hero-anim mt-5 sm:mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-5 text-[11px] sm:text-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2">
+                  <HeroGlow stagger={0}><span className="text-teal-400 text-sm sm:text-lg font-bold"><CountUp target={15} delay={HERO_COUNTUP_DELAYS[0]} ready={splashDone} className="" />+</span></HeroGlow>
                   <span className="text-white/80">{t('hero.stat_clients', lang)}</span>
                 </div>
-                <div className="flex items-center gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-3 py-2">
-                  <HeroGlow stagger={1}><span className="text-teal-400 text-base sm:text-lg font-bold">&lt;<CountUp target={1} delay={HERO_COUNTUP_DELAYS[1]} ready={splashDone} className="" />h</span></HeroGlow>
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2">
+                  <HeroGlow stagger={1}><span className="text-teal-400 text-sm sm:text-lg font-bold">&lt;<CountUp target={1} delay={HERO_COUNTUP_DELAYS[1]} ready={splashDone} className="" />h</span></HeroGlow>
                   <span className="text-white/80">{t('hero.stat_response', lang)}</span>
                 </div>
-                <div className="flex items-center gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-3 py-2">
-                  <HeroGlow stagger={2}><span className="text-teal-400 text-base sm:text-lg font-bold"><CountUp target={30} delay={HERO_COUNTUP_DELAYS[2]} ready={splashDone} className="" />/<CountUp target={30} delay={HERO_COUNTUP_DELAYS[3]} ready={splashDone} className="" />/<CountUp target={40} delay={HERO_COUNTUP_DELAYS[4]} ready={splashDone} className="" /></span></HeroGlow>
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2">
+                  <HeroGlow stagger={2}><span className="text-teal-400 text-sm sm:text-lg font-bold"><CountUp target={30} delay={HERO_COUNTUP_DELAYS[2]} ready={splashDone} className="" />/<CountUp target={30} delay={HERO_COUNTUP_DELAYS[3]} ready={splashDone} className="" />/<CountUp target={40} delay={HERO_COUNTUP_DELAYS[4]} ready={splashDone} className="" /></span></HeroGlow>
                   <span className="text-white/80">{t('hero.stat_payment', lang)}</span>
                 </div>
               </div>
@@ -3294,8 +3295,19 @@ export default function HomeShell() {
           )}
 
         </div>
-        {/* ── Floating Chat Widget ── */}
-        <div ref={chatWidgetRef} className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 pointer-events-auto">
+        {/* ── Floating Chat Widget ──
+             Apple-style snap: when the CTA sits at the bottom (zone 1) the
+             bubble floats just ABOVE it (right-aligned), and it drops to the
+             default bottom-right corner when the CTA docks at the top, hides
+             inside the chatbot section, or the chat is open. The bottom
+             transition is timed to match the CTA's own movement so the two
+             never feel desynced. */}
+        <div
+          ref={chatWidgetRef}
+          className={`fixed right-4 sm:right-6 z-50 pointer-events-auto transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            ctaVisible && !ctaHiding && !ctaDocked ? 'bottom-[84px]' : 'bottom-4 sm:bottom-6'
+          }`}
+        >
           {/* Chat popup */}
           {(chatOpen || chatClosing) && (
             <BorderGlow
@@ -3446,7 +3458,7 @@ export default function HomeShell() {
         {/* Floating Curved CTA — docks at the top with inverted curve when
              the chatbot enters the viewport, returns to the bottom otherwise. */}
         <div
-          className="fixed left-0 right-0 z-[50] flex justify-center pl-4 pr-[76px] sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms]"
+          className="fixed left-0 right-0 z-[50] flex justify-center px-4 sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms]"
           style={ctaDocked
             ? { bottom: 'calc(100vh - 88px)' }
             : { bottom: '24px' }

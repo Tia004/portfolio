@@ -105,6 +105,8 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* ── Table of Contents sidebar ── */}
           <nav
+            data-lenis-prevent
+            data-lenis-prevent-touch
             className="hidden sm:flex flex-col shrink-0 w-48 lg:w-56 border-r border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-3 gap-1 overflow-y-auto"
             aria-label={t('legal.toc', lang)}
           >
@@ -134,8 +136,10 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
             ))}
           </nav>
 
-          {/* Content — scrollable (data-lenis-prevent tells Lenis to skip preventDefault on wheel events) */}
-          <div data-lenis-prevent className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8 scroll-smooth min-h-0">
+          {/* Content — scrollable (data-lenis-prevent + -touch tell Lenis to
+             skip both wheel AND touch interception, so the modal scrolls
+             natively on desktop and mobile) */}
+          <div data-lenis-prevent data-lenis-prevent-touch className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8 scroll-smooth min-h-0 overscroll-contain">
             {doc.sections.map((s, i) => (
               <section
                 key={i}

@@ -358,7 +358,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Side Panel: Project info (bento card) — data-lenis-prevent so Lenis skips preventDefault on wheel events ── */}
         <div className="flex flex-col lg:w-[320px] xl:w-[380px] shrink-0">
           {/* Scrollable content */}
-          <div ref={sideContentRef} data-lenis-prevent className="bg-white/[0.03] backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative">
+          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.03] backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
             {/* Content */}
             <div>
             {/* ── Section 0: Title & Tags ── */}

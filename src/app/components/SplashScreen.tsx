@@ -125,8 +125,14 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
     };
   }, []);
 
-  // ── Lock scroll while splash is active (body + html, touch + wheel) ──
+  // ── Lock scroll ONLY while the splash is visible ──────────
+  // Tied to `visible` (not a one-time mount effect): SplashScreen never
+  // unmounts, so a mount-only effect left the touchmove/wheel preventDefault
+  // listeners attached forever — killing touch scroll on mobile for the whole
+  // session after the splash faded. Now the lock + listeners are removed the
+  // moment the splash hides.
   useEffect(() => {
+    if (!visible) return;
     const prevBody = document.body.style.overflow;
     const prevHtml = document.documentElement.style.overflow;
     const prevTouchAction = document.body.style.touchAction;
@@ -145,15 +151,6 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
       document.removeEventListener('touchmove', preventTouch);
       document.removeEventListener('wheel', preventWheel);
     };
-  }, []);
-
-  // ── Unlock scroll when splash hides ──────────────────────
-  useEffect(() => {
-    if (!visible) {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-      document.documentElement.style.overflow = '';
-    }
   }, [visible]);
 
   return (
