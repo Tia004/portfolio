@@ -250,13 +250,26 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                           <PdfCarousel url={image} title={project.title} />
                         ) : (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={image}
-                            alt={`${project.title}, ${slideLabel} ${index + 1}`}
-                            className="max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
-                            draggable="false"
-                            loading={index === 0 ? 'eager' : 'lazy'}
-                          />
+                          <picture>
+                            {image.startsWith('/uploads/') && (
+                              <>
+                                <source srcSet={image.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
+                                <source srcSet={image.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
+                              </>
+                            )}
+                            <img
+                              src={image}
+                              alt={`${project.title}, ${slideLabel} ${index + 1}`}
+                              className="max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
+                              draggable="false"
+                              // Only ±1 slides are ever mounted, so eager loading
+                              // here == preloading the neighbours: the browser
+                              // starts fetching/decoding the next slide as soon
+                              // as it becomes adjacent, no pop-in on navigate.
+                              loading="eager"
+                              decoding="async"
+                            />
+                          </picture>
                         ))}
                       </div>
                     );
@@ -302,7 +315,15 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
               {!iframeLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={project.thumbnail} alt={project.title} className="absolute inset-0 h-full w-full object-cover opacity-30" draggable="false" />
+                  <picture>
+                    {project.thumbnail.startsWith('/uploads/') && (
+                      <>
+                        <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
+                        <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
+                      </>
+                    )}
+                    <img src={project.thumbnail} alt={project.title} className="absolute inset-0 h-full w-full object-cover opacity-30" draggable="false" />
+                  </picture>
                   <button
                     onClick={() => {
                       setIframeLoaded(true);
