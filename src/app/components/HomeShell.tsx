@@ -1872,6 +1872,26 @@ export default function HomeShell() {
     }
   }, [chatOpen, messages.length, lang]);
 
+  // Global haptic feedback: every button/link tap gets a short vibration on
+  // devices that support it (navigator.vibrate exists only on mobile —
+  // Android Chrome etc.), so CTAs, slider arrows, chips, and nav items all
+  // give a tactile response. Capture-phase pointerdown for the fastest feel;
+  // debounced so a pointerdown + click pair never double-fires.
+  useEffect(() => {
+    let last = 0;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (!target.closest('button, a[href], [role="button"], [role="menuitem"], [role="link"]')) return;
+      const now = Date.now();
+      if (now - last < 120) return;
+      last = now;
+      navigator.vibrate?.(10);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, []);
+
   const sendMessage = async () => {
     const text = chatMessage.trim();
     if (!text) return;
@@ -2022,7 +2042,11 @@ export default function HomeShell() {
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={project.thumbnail}
+                // The .png originals were removed from the repo/R2 — the
+                // picture <source> list already serves avif/webp, and this
+                // fallback also points at webp so a missing png can never
+                // render the broken-image placeholder.
+                src={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')}
                 alt={project.title}
                 loading="lazy"
                 decoding="async"
@@ -2143,7 +2167,12 @@ export default function HomeShell() {
         <div className="bg-[#010101] text-neutral-200 font-sans">
 
           {/* ============ HERO ============ */}
-          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-center bg-[#010101] pt-24 pb-16 sm:pt-0 sm:pb-0">
+          {/* Mobile: content starts near the top (items-start + pt-28) with a
+              generous bottom clearance (pb-44) so the stats row (clienti,
+              risposta, pagamento) sits ABOVE the floating CTA + chat bubble
+              instead of being covered by them. Desktop keeps the original
+              vertical centering (sm:items-center, no paddings). */}
+          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center bg-[#010101] pt-28 pb-44 sm:pt-0 sm:pb-0">
             {/* The SAME dither as the desktop hero — WebGL waves, no static
                 fallback. The Dither component pauses rendering when scrolled
                 out of view, so it costs nothing off-screen. */}
@@ -2230,7 +2259,7 @@ export default function HomeShell() {
               </ScrollReveal>
               <MobileSnapSlider
                 ariaLabel={t('servizi.slider_label', lang)}
-                trackClassName="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:after:hidden md:grid md:grid-cols-3 lg:grid-cols-4 md:overflow-visible md:snap-none max-w-[54em] mx-auto relative lg:auto-rows-[minmax(180px,auto)]"
+                trackClassName="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-3 lg:grid-cols-4 md:overflow-visible md:snap-none max-w-[54em] mx-auto relative lg:auto-rows-[minmax(180px,auto)]"
               >
                 {/* ═══ DESIGN CARDS ═══ */}
                 {/* Card 1 — Brand Identity & Logo */}
@@ -2427,7 +2456,7 @@ export default function HomeShell() {
                   <ScrollReveal>
                     <MobileSnapSlider
                       ariaLabel={`${cat.label} — ${t('prezzi.slider_label', lang)}`}
-                      trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:after:hidden md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:snap-none"
+                      trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:snap-none"
                     >
                     {cat.tiers.map((tier, ti) => (
                       // No h-full here: in an auto-height flex row a percentage
@@ -2502,7 +2531,7 @@ export default function HomeShell() {
               <MobileSnapSlider
                 key={activeFilter}
                 ariaLabel={t('progetti.slider_label', lang)}
-                trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:hidden"
+                trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:hidden"
               >
                 {filteredProjects.map((project) => (
                   <div key={project.id} className="shrink-0 snap-start w-[85%] sm:w-[60%] cursor-pointer" onClick={() => setSelectedProject(project)}>
@@ -2733,7 +2762,12 @@ export default function HomeShell() {
           </section>
 
           {/* ============ CHATBOT ============ */}
-          <section id="chatbot" className="py-10 sm:py-24 px-4 bg-[#010101]">
+          {/* overflow-x-clip + extra mobile padding: the BorderGlow halo extends
+              28px beyond the window, which on px-4 would poke past the viewport
+              edge on phones — the window then looks like it "exceeds to the
+              right". px-6 keeps the halo inside; overflow-x-clip guarantees no
+              horizontal scroll from any residual glow. */}
+          <section id="chatbot" className="py-10 sm:py-24 px-6 sm:px-4 bg-[#010101] overflow-x-clip">
             <div className="max-w-3xl mx-auto">
               <div
                 id="chatbot-heading"
@@ -2758,7 +2792,7 @@ export default function HomeShell() {
                 className="[&_.border-glow-inner]:!overflow-visible"
               >
                 <div
-                  className="chatbot-window-h p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl"
+                  className="chatbot-window-h p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl w-full min-w-0 max-w-full"
                 >
                   {/* macOS-style title bar */}
                   <div className="flex items-center px-5 py-3 border-b border-white/[0.06] shrink-0">
@@ -3310,7 +3344,7 @@ export default function HomeShell() {
         <div
           ref={chatWidgetRef}
           className={`fixed right-4 sm:right-6 z-50 pointer-events-auto transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            ctaVisible && !ctaHiding && !ctaDocked ? 'bottom-[84px]' : 'bottom-4 sm:bottom-6'
+            ctaVisible && !ctaHiding && !ctaDocked ? 'bottom-[124px] sm:bottom-[84px]' : 'bottom-4 sm:bottom-6'
           }`}
         >
           {/* Chat popup */}

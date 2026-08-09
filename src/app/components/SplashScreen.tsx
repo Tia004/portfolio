@@ -8,8 +8,8 @@ const LETTERS = 'Tia Designs'.split('');
 const LETTER_STAGGER = 0.08;
 const LETTER_DROP_Y = -120;
 const LETTER_DURATION = 0.8;
-const MIN_SPLASH_MS = 2500;  // minimum display time for the letter animation
-const MAX_SPLASH_MS = 8000;  // safety net — never block the site forever
+const MIN_SPLASH_MS = 1800;  // minimum display time for the letter animation
+const MAX_SPLASH_MS = 6000;  // safety net — never block the site forever
 
 function whenPageReady(): Promise<void> {
   return new Promise((resolve) => {
@@ -23,7 +23,12 @@ function whenPageReady(): Promise<void> {
 }
 
 function whenImagesLoaded(): Promise<void> {
-  const imgs = Array.from(document.images);
+  // Only wait for EAGER images (hero + critical content). Every project-card
+  // and gallery image is loading="lazy", so they're far below the fold and
+  // start downloading only when scrolled near — waiting for them here would
+  // pin the splash open for seconds and tank LCP. Lazy images are the
+  // browser's own responsibility once the page is visible.
+  const imgs = Array.from(document.images).filter((img) => img.loading !== 'lazy');
   if (imgs.length === 0) return Promise.resolve();
   let pending = imgs.length;
   return new Promise<void>((resolve) => {
@@ -33,8 +38,8 @@ function whenImagesLoaded(): Promise<void> {
       img.addEventListener('load', onDone, { once: true });
       img.addEventListener('error', onDone, { once: true });
     });
-    // Safety: resolve after 6s even if images hang
-    setTimeout(resolve, 6000);
+    // Safety: resolve after 4s even if images hang
+    setTimeout(resolve, 4000);
   });
 }
 

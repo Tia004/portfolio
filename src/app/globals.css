@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@500;600&display=swap');
-
+/* Google Fonts moved to a <link> in layout.tsx <head> (with preconnect) so the
+   fetch starts immediately instead of after this stylesheet parses. With the
+   splash covering the first ~2s, the fonts are ready before the page becomes
+   visible — no visible font swap, no CLS from text reflow. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -52,9 +54,17 @@
 body {
   font-family: var(--font-sans);
   overflow-x: hidden;
-  overflow-y: auto;
+  /* Always reserve the vertical scrollbar track (old-browser fallback) so a
+     scrollbar appearing/disappearing can never shift the layout (CLS). */
+  overflow-y: scroll;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  /* Modern equivalent of the body overflow-y:scroll fallback — reserves the
+     gutter so content never jumps when the scrollbar toggles. */
+  scrollbar-gutter: stable;
 }
 
 /* Marquee edge curtains — explicit CSS keeps the side fade reliable across
@@ -110,6 +120,26 @@ body {
   z-index: 10;
 }
 
+
+/* Mobile snap tracks (services / prices / projects): the last card aligns
+   to the RIGHT edge with the same 12px gutter as the first card, so the end
+   of the strip is flush instead of leaving a big empty band after the final
+   card. scroll-padding gives every snap-start — and the last snap-end — the
+   same breathing room. Desktop (md:snap-none) is untouched. */
+@media (max-width: 767px) {
+  .snap-x {
+    scroll-padding-inline: 12px;
+  }
+  .snap-x > *:last-child {
+    scroll-snap-align: end;
+  }
+  /* Skills/FAQ marquee curtains: 20vw per side hides important card content
+     on phones — shrink to a barely-there 2vw edge fade so the cards read
+     fully across the viewport. */
+  .marquee-edge-curtain {
+    width: clamp(0.4rem, 2vw, 2rem);
+  }
+}
 
 /* Chat window height — dvh (dynamic viewport) with vh fallback so the
    window never exceeds the visible viewport on mobile (vh measures the
@@ -446,6 +476,9 @@ img {
     @apply font-sans;
     overflow-x: hidden;
     max-width: 100vw;
+    /* Kept out of @apply: the Tailwind preflight can reset it, so it's also
+       declared at the top level (see html { scrollbar-gutter: stable }). */
+    scrollbar-gutter: stable;
   }
   /* Instant tap response on mobile — disables double-tap zoom and 300ms delay */
   a, button, input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"]) {

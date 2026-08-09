@@ -50,10 +50,12 @@ export const HERO = {
   yOffset: -60,        // negative = starts above viewport, descends into place
   scale: 1.04,         // slight zoom-in as it settles
   blur: 6,             // noticeable entrance blur, clears on arrival (px)
-  duration: 1.2,
-  stagger: 0.12,
+  // Slightly faster than before (1.2s → 0.9s) so the hero — the LCP element —
+  // becomes visible sooner after the splash without losing the cinematic feel.
+  duration: 0.9,
+  stagger: 0.08,
   ease: 'power4.out',
-  delay: 0.2,
+  delay: 0.1,
 } as const;
 
 // ── CountUp (pricing / hero numbers) ──

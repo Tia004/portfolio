@@ -271,6 +271,15 @@ function DitheredWaves({
   );
 }
 
+// ── Static fallback for touch devices ────────────────────────
+// Real phones often fail to create a WebGL context (driver blocklists, no
+// WebGL2, highp shader limits) — the canvas silently renders nothing and the
+// hero looks like a flat black void. Touch devices get this layered static
+// texture instead: the same teal palette as the WebGL waves, a faint dot
+// grid, and grain noise. Guaranteed render, zero GPU, instant paint.
+// Desktop keeps the animated WebGL dither exactly as before.
+const NOISE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")`;
+
 // ── Public component ─────────────────────────────────────────
 
 export default function Dither({
@@ -295,10 +304,23 @@ export default function Dither({
   mouseRadius?: number;
 }) {
   const [paused, setPaused] = useState(false);
+  const [staticMode, setStaticMode] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Touch devices (no hover / coarse pointer) get the static texture. The
+  // matchMedia gate mirrors real device capabilities — a desktop window
+  // squeezed to phone width still reports hover: hover and keeps WebGL.
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none), (pointer: coarse)');
+    setStaticMode(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setStaticMode(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // Pause WebGL rendering when canvas is scrolled out of viewport
   useEffect(() => {
+    if (staticMode) return;
     const el = wrapperRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
@@ -306,7 +328,10 @@ export default function Dither({
     }, { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [staticMode]);
+
+  // Teal in CSS form (waveColor is normalized RGB ≈ 0.298, 0.608, 0.510).
+  const tealRgba = (a: number) => `rgba(45, 212, 191, ${a})`;
 
   return (
     <div
@@ -319,35 +344,63 @@ export default function Dither({
         overflow: 'hidden',
         background: 'transparent',
         // Never hijack touch/scroll gestures: vertical page scroll keeps
-        // working on mobile even though the WebGL canvas covers the hero.
+        // working on mobile even though the dither covers the hero.
         touchAction: 'pan-y',
       }}
     >
-    <Canvas
-      camera={{ position: [0, 0, 6] }}
-      dpr={0.75}
-      frameloop="always"
-      gl={{ antialias: true, preserveDrawingBuffer: true }}
-      style={{
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        // Pass vertical scroll to the page instead of trapping it.
-        touchAction: 'pan-y',
-      }}
-    >
-      <DitheredWaves
-        waveSpeed={waveSpeed}
-        waveFrequency={waveFrequency}
-        waveAmplitude={waveAmplitude}
-        waveColor={waveColor}
-        colorNum={colorNum}
-        pixelSize={pixelSize}
-        disableAnimation={disableAnimation}
-        enableMouseInteraction={enableMouseInteraction}
-        mouseRadius={mouseRadius}
-      />
-    </Canvas>
+      {staticMode ? (
+        <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none" style={{ background: '#010101', touchAction: 'pan-y' }}>
+          {/* Teal glow — same soft radial wash as the WebGL waves */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                `radial-gradient(ellipse 85% 65% at 50% 35%, ${tealRgba(0.26)}, transparent 72%),` +
+                `radial-gradient(ellipse 45% 35% at 72% 72%, ${tealRgba(0.14)}, transparent 70%)`,
+            }}
+          />
+          {/* Faint dot grid — the dither's pixelated character */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle, ${tealRgba(0.3)} 1px, transparent 1.5px)`,
+              backgroundSize: '16px 16px',
+              opacity: 0.45,
+            }}
+          />
+          {/* Grain noise in screen blend — lightens the texture like the shader */}
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: NOISE_URI, opacity: 0.5, mixBlendMode: 'screen' }}
+          />
+        </div>
+      ) : (
+        <Canvas
+          camera={{ position: [0, 0, 6] }}
+          dpr={0.75}
+          frameloop="always"
+          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+            // Pass vertical scroll to the page instead of trapping it.
+            touchAction: 'pan-y',
+          }}
+        >
+          <DitheredWaves
+            waveSpeed={waveSpeed}
+            waveFrequency={waveFrequency}
+            waveAmplitude={waveAmplitude}
+            waveColor={waveColor}
+            colorNum={colorNum}
+            pixelSize={pixelSize}
+            disableAnimation={disableAnimation}
+            enableMouseInteraction={enableMouseInteraction}
+            mouseRadius={mouseRadius}
+          />
+        </Canvas>
+      )}
     </div>
   );
 }

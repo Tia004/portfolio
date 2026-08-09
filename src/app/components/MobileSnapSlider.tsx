@@ -300,6 +300,9 @@ export default function MobileSnapSlider({
   }, [children]);
 
   const scrollDir = useCallback((dir: 1 | -1) => {
+    // Haptic tick on the arrow buttons (mobile-only — the arrow row is
+    // md:hidden, and navigator.vibrate only exists on mobile browsers).
+    navigator.vibrate?.(12);
     const el = trackRef.current;
     if (!el) return;
     const first = el.firstElementChild as HTMLElement | null;

@@ -15,7 +15,7 @@
  *
  * Idempotent: skips a variant when it exists and is newer than the source.
  */
-import { stat, access } from 'node:fs/promises';
+import { stat, access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
 
@@ -34,14 +34,27 @@ async function newerOrMissing(variantPath, srcMtime) {
   }
 }
 
-/** Pull the thumbnails straight from the data file so the list never drifts. */
+/** Pull the thumbnails straight from the data files so the list never drifts. */
 async function getThumbnails() {
-  const mod = await import('../src/lib/design-works.ts');
-  return mod
+  // design-works.ts only has a type-only import of translations (erased at
+  // runtime), so it can be imported directly in plain Node.
+  const design = await import('../src/lib/design-works.ts');
+  const thumbs = design
     .getDesignWorks('it')
     .map((p) => p.thumbnail)
-    .filter((t) => t.startsWith('/uploads/'))
-    .map((t) => UPLOADS_ROOT + decodeURIComponent(t).replace(/^\/uploads/, '')); // public/uploads/…
+    .filter((t) => t.startsWith('/uploads/'));
+
+  // Web projects (translations.ts PROJECTS_BY_LANG) can't be imported in Node
+  // ESM — translations.ts imports './design-works' without the .ts extension,
+  // which only Next.js resolves. Their thumbnails are the ONLY literal
+  // `thumbnail: '/uploads/…'` strings in the file, so a source regex stays in
+  // sync without the import chain.
+  const translationsSource = await readFile(new URL('../src/lib/translations.ts', import.meta.url), 'utf8');
+  for (const m of translationsSource.matchAll(/thumbnail:\s*'\/uploads\/([^']+)'/g)) {
+    thumbs.push(`/uploads/${m[1]}`);
+  }
+
+  return [...new Set(thumbs.map((t) => UPLOADS_ROOT + decodeURIComponent(t).replace(/^\/uploads/, '')))];
 }
 
 async function gen(relPath) {

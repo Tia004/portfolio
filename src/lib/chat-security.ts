@@ -319,13 +319,22 @@ function recordTurnstileFail(): void {
 export async function verifyTurnstile(token: unknown, ip: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET || process.env.TURNSTILE_SECRET_KEY;
   let ok = false;
+  let strictFailure = false; // a REAL anti-bot rejection (not the open path)
   if (!secret) {
     // Local development stays usable before a site key is configured.
     // Production is fail-closed: every chat/contact write needs a real secret.
     ok = process.env.NODE_ENV !== 'production';
   } else if (typeof token !== 'string' || token.length < 10 || token.length > 2_048) {
-    ok = false;
+    // No usable token → the widget could not run on the visitor's browser
+    // (adblockers block challenges.cloudflare.com, no-JS clients, script
+    // timeouts, privacy browsers). Fail OPEN so the chat and the chatbot
+    // never break for real visitors — the HMAC session + Redis rate limits
+    // (5/min per IP, 15-min block) still protect the endpoint from abuse.
+    // Set TURNSTILE_STRICT=true in production to require a valid token on
+    // every request again.
+    ok = process.env.TURNSTILE_STRICT !== 'true';
   } else {
+    strictFailure = true;
     try {
       const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
         method: 'POST',
@@ -345,7 +354,9 @@ export async function verifyTurnstile(token: unknown, ip: string): Promise<boole
       ok = false;
     }
   }
-  if (!ok) recordTurnstileFail();
+  // Only count REAL rejections (token present but invalid) in the 24h spike
+  // counter — tokenless requests are the deliberate open path, not breakage.
+  if (!ok && strictFailure) recordTurnstileFail();
   return ok;
 }
 

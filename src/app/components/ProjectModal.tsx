@@ -38,6 +38,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
   const swipingRef = useRef(false);
   const [showIndex, setShowIndex] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
   const galleryTouchRef = useRef({ startX: 0, startY: 0 });
 
   const {
@@ -158,12 +159,16 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
     };
   }, []);
 
-  // Close on Escape
+  // Close on Escape — fullscreen exits first, then the modal itself.
   useEffect(() => {
-    const cb = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const cb = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (fullscreen) setFullscreen(false);
+      else onClose();
+    };
     document.addEventListener('keydown', cb);
     return () => document.removeEventListener('keydown', cb);
-  }, [onClose]);
+  }, [onClose, fullscreen]);
 
   const handleBackdrop = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -189,14 +194,27 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         style={{ transform: `translateY(${swipeOffset}px)`, transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.16,1,0.3,1)' }}
       >
         
-        {/* ── Close button (floating, top-right) ── */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 z-20 w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
-        >
-          <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={2} />
-        </button>
+        {/* ── Floating actions (top-right): fullscreen + close ── */}
+        <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 z-20 flex items-center gap-2">
+          <button
+            onClick={() => setFullscreen(true)}
+            aria-label={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
+            title={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
+            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
+          >
+            {/* Maximize icon */}
+            <svg aria-hidden="true" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+          </button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
+          >
+            <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={2} />
+          </button>
+        </div>
 
         {/* ── Main Panel: live project or Instagram-style gallery ── */}
         <div className="flex-1 lg:flex-[3] relative bg-white/[0.03] backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.07] shadow-2xl shadow-black/40 min-h-0">
@@ -258,7 +276,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                               </>
                             )}
                             <img
-                              src={image}
+                              src={image.replace(/\.(png|jpe?g)$/i, '.webp')}
                               alt={`${project.title}, ${slideLabel} ${index + 1}`}
                               className="max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
                               draggable="false"
@@ -322,7 +340,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                         <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
                       </>
                     )}
-                    <img src={project.thumbnail} alt={project.title} className="absolute inset-0 h-full w-full object-cover opacity-30" draggable="false" />
+                    <img src={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} alt={project.title} className="absolute inset-0 h-full w-full object-cover opacity-30" draggable="false" />
                   </picture>
                   <button
                     onClick={() => {
@@ -416,6 +434,89 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         </div>
 
       </div>
+
+        {/* ── Fullscreen viewer — the active slide/PDF/live site fills the
+             viewport with a tiny gutter (p-2/p-4) so the content never touches
+             the edges, plus an exit button. Works on every browser (pure CSS
+             overlay, no Fullscreen API — iOS Safari ignores element
+             requestFullscreen). ── */}
+        {fullscreen && (
+          <div
+            className="fixed inset-0 z-[10030] bg-black flex items-center justify-center p-2 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={lang === 'it' ? 'Progetto a schermo intero' : lang === 'es' ? 'Proyecto a pantalla completa' : 'Project fullscreen'}
+          >
+            <div className="relative w-full h-full flex items-center justify-center">
+              <button
+                onClick={() => setFullscreen(false)}
+                aria-label={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
+                title={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
+                className="absolute top-1 sm:top-2 right-1 sm:right-2 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all border border-white/15 backdrop-blur-xl"
+              >
+                <TiaIcon icon={Cancel01Icon} size={20} strokeWidth={2} />
+              </button>
+
+              {hasGallery ? (
+                <div className="w-full h-full relative flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                    {(() => {
+                      const media = gallery[activeGalleryIndex];
+                      if (!media) return null;
+                      return media.toLowerCase().endsWith('.pdf') ? (
+                        <PdfCarousel url={media} title={project.title} />
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <picture>
+                          {media.startsWith('/uploads/') && (
+                            <>
+                              <source srcSet={media.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
+                              <source srcSet={media.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
+                            </>
+                          )}
+                          <img
+                            src={media.replace(/\.(png|jpe?g)$/i, '.webp')}
+                            alt={`${project.title}, ${slideLabel} ${activeGalleryIndex + 1}`}
+                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl shadow-black/60"
+                            draggable="false"
+                          />
+                        </picture>
+                      );
+                    })()}
+                  </div>
+                  {activeGalleryIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setGalleryIndex((i) => i - 1)}
+                      aria-label={previousSlideLabel}
+                      className="absolute left-2 sm:left-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80"
+                    >
+                      <span aria-hidden="true" className="text-3xl leading-none">‹</span>
+                    </button>
+                  )}
+                  {activeGalleryIndex < gallery.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setGalleryIndex((i) => i + 1)}
+                      aria-label={nextSlideLabel}
+                      className="absolute right-2 sm:right-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80"
+                    >
+                      <span aria-hidden="true" className="text-3xl leading-none">›</span>
+                    </button>
+                  )}
+                </div>
+              ) : project.url ? (
+                <iframe
+                  src={embedUrl}
+                  title={project.title}
+                  className="w-full h-full border-0 rounded-lg bg-white"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* ── Mobile Index Overlay ── */}
         {showIndex && (

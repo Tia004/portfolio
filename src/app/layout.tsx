@@ -108,6 +108,13 @@ export default async function RootLayout({
         <link rel="alternate" hrefLang="x-default" href="https://tiadesigns.it/" />
         {/* Canonical — current language version; matches sitemap hreflang assignments */}
         <link rel="canonical" href={`https://tiadesigns.it${initialLang === 'it' ? '' : `/${initialLang}`}`} />
+        {/* Google Fonts — preconnected and fetched in parallel with the HTML
+            (previously a CSS @import, discovered only after globals.css parsed).
+            The splash covers the first seconds, so the fonts are swapped in
+            before the page becomes visible → no CLS from text reflow. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@500;600&display=swap" />
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         <LanguageProvider initialLang={initialLang}>
