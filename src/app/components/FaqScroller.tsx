@@ -53,7 +53,7 @@ function FaqCard({
         glowRadius={30}
         glowIntensity={2}
         backgroundColor="#050505"
-        className="h-fit w-[min(360px,calc(100vw-2rem))] self-start"
+        className="h-fit w-[min(360px,calc(100vw_-_2rem))] self-start"
         edgeSensitivity={0}
       >
         <div
@@ -106,21 +106,11 @@ function FaqScrollerMarquee({
       {/* The track remains vertically visible so the inline accordion can expand
        * without being cropped by a scroll container or compositor layer. */}
       <div className="faq-marquee-viewport relative overflow-visible py-[1vh]">
-        {/* Keep the glow paintable: CSS masks clip BorderGlow's halo even
-            when every overflow property is visible. These overlays preserve
-            the horizontal fade without clipping the card compositor layer. */}
-        {/* Wide opaque side curtains: hide the duplicated cards at the edges
-            while leaving a centered, fully readable window. */}
-        <div
-          aria-hidden="true"
-          className="marquee-edge-curtain marquee-edge-curtain--left"
-          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.86)' } as React.CSSProperties}
-        />
-        <div
-          aria-hidden="true"
-          className="marquee-edge-curtain marquee-edge-curtain--right"
-          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.86)' } as React.CSSProperties}
-        />
+        {/* Per-row curtains removed: the BorderGlow halo (30px around each card)
+            leaked past their short top/bottom edges. The two big section-level
+            curtains in FaqScroller now span the full section height and cover
+            both the duplicate cards AND their glow — with 3 rows instead of 6
+            gradient layers, so less GPU compositing. */}
         <InfiniteSlider
           className="faq-slider"
           gap={16}
@@ -147,7 +137,27 @@ function FaqScrollerMarquee({
 
 export default function FaqScroller({ mainTitle, mainSubtitle, rows }: FaqScrollerProps) {
   return (
-    <section id="faq" className="bg-[#050505] px-4 py-16 sm:py-24">
+    <section id="faq" className="relative bg-[#050505] px-4 py-16 sm:py-24">
+      {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
+         They hide the duplicated cards at the marquee edges with a smooth
+         fade, and because they're as tall as the section they also cover the
+         BorderGlow halo (30px around every card) that used to leak above and
+         below the old short per-row curtains — on mobile and desktop alike.
+         Two layers instead of two-per-row: less GPU compositing work. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 z-10"
+        style={{ left: 'calc(-50vw + 50%)', width: '100vw' }}
+      >
+        <div
+          className="marquee-edge-curtain marquee-edge-curtain--left"
+          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.92)' } as React.CSSProperties}
+        />
+        <div
+          className="marquee-edge-curtain marquee-edge-curtain--right"
+          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.92)' } as React.CSSProperties}
+        />
+      </div>
       <div className="mx-auto max-w-6xl">
         <div className="mb-16 text-center">
           <p className="mb-4 text-xs font-medium uppercase tracking-[0.2em] text-teal-400">Dubbi?</p>

@@ -96,6 +96,7 @@ import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
 import StaggerReveal from './StaggerReveal';
 import CurvedInput from './CurvedInput';
+import MobileSnapSlider from './MobileSnapSlider';
 const FooterAnimation = dynamic(() => import('./FooterAnimation'), {
   ssr: false,
   loading: () => <div className="h-[400px] bg-[#050505]" aria-hidden="true" />,
@@ -325,6 +326,9 @@ function DotGridCard({ children, className = '' }: { children: (mounted: boolean
   const mounted = viewportMounted || hovered;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Touch devices have no hover: the DotGrid is revealed by the viewport IO
+  // instead, so it lights up while the user slides the services carousel.
+  const touchRef = useRef(false);
 
   const enter = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -333,6 +337,7 @@ function DotGridCard({ children, className = '' }: { children: (mounted: boolean
   }, [fadeIn]);
 
   const leave = useCallback(() => {
+    if (touchRef.current) return; // touch: grid stays once revealed
     setHovered(false);
     setFadeIn(false);
     // Only schedule unmount if the card was never primed by the viewport IO.
@@ -353,11 +358,14 @@ function DotGridCard({ children, className = '' }: { children: (mounted: boolean
 
   // ── IntersectionObserver: pre-mount canvas when card is near viewport ──
   useLayoutEffect(() => {
+    if (window.matchMedia('(hover: none)').matches) touchRef.current = true;
     const el = wrapperRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         setViewportMounted(true);
+        // Touch: reveal the grid immediately (no hover to trigger it).
+        if (touchRef.current) setFadeIn(true);
         io.disconnect(); // fire once — canvas stays alive
       }
     }, { rootMargin: '400px' });
@@ -1567,7 +1575,14 @@ export default function HomeShell() {
             // The AI has finished the quote: write the actual answer (not just
             // the marker metadata) into the contact message, then scroll only
             // after React commits every prefilled field.
-            const finalQuote = sanitizeBotText(displayText || completePrefill.message || '');
+            const visibleText = sanitizeBotText(displayText || '');
+            // The internal 'message' field is the third-person summary for Tia
+            // (with sector, need and — after a revision — the requested changes).
+            // It is what gets emailed/prefilled, so it takes priority over the
+            // visible text; the visible summary is only a fallback if the AI
+            // omitted the field.
+            const internalMsg = sanitizeBotText(completePrefill.message || '');
+            const finalQuote = internalMsg || visibleText;
             if (!isDetailedQuote(finalQuote)) {
               // Do not email or navigate on a premature/empty marker. Keep the
               // visitor in the conversation and ask the AI to finish properly.
@@ -1582,7 +1597,9 @@ export default function HomeShell() {
               quoteDraftRef.current = quotePrefill;
               parsedPrefill = quotePrefill;
               requiresApproval = true;
-              displayText = finalQuote;
+              // The chat shows the client-facing summary; the internal message
+              // stays private in the draft and is what Tia receives on approval.
+              displayText = visibleText;
             }
           }
         } catch { /* invalid JSON, ignore */ }
@@ -1605,7 +1622,9 @@ export default function HomeShell() {
     const name = prefill.name?.trim() ?? '';
     const email = prefill.email?.trim() ?? '';
     const service = normalizeContactService(prefill.service);
-    const finalQuote = sanitizeBotText(quote).trim();
+    // Send the internal third-person message for Tia (which the AI updates on
+    // revision with the requested changes), falling back to the visible text.
+    const finalQuote = sanitizeBotText(prefill.message || quote).trim();
 
     // Validate again at the final boundary. This protects both the UI action
     // and the server endpoint if the AI returned malformed or inappropriate data.
@@ -1980,6 +1999,74 @@ export default function HomeShell() {
     'Sviluppo': 'Sviluppo full-stack con architetture moderne e scalabili.',
   };
 
+  // ── Project card renderer — shared by the mobile snap slider (all
+  //    filtered projects in a row) and the desktop paginated grid. ──
+  const renderProjectCard = (project: ProjectData) => (
+    <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group h-full">
+      <div className="bg-[#0a0a0a] rounded-[20px] h-full flex flex-col">
+        <div className="relative aspect-video w-full bg-[#0a0a0a] p-3">
+          <div className="w-full h-full overflow-hidden rounded-xl">
+            <picture>
+              {project.thumbnail.startsWith('/uploads/') && (
+                <>
+                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
+                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
+                </>
+              )}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={project.thumbnail}
+                alt={project.title}
+                loading="lazy"
+                decoding="async"
+                draggable="false"
+                onError={(e) => {
+                  if (project.isVideo) {
+                    (e.target as HTMLImageElement).src = 'https://img.youtube.com/vi/rc6GzCBa2LY/hqdefault.jpg';
+                  }
+                }}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
+              />
+            </picture>
+          </div>
+        </div>
+        <div className="p-6 flex-1 flex flex-col">
+          <h3 className="text-lg font-medium text-white group-hover:text-teal-400 transition-colors">{project.title}</h3>
+          <p className="text-neutral-400 text-sm mt-2 line-clamp-2 leading-relaxed">{project.description}</p>
+          {project.tags && (
+            <div className="flex gap-2 flex-wrap mt-4">
+              {project.tags.map((t) => (
+                <span
+                  key={t}
+                  {...(tagTooltips[t] ? getSectionHandlers(tagTooltips[t]) : {})}
+                  className={`bg-white/5 text-neutral-400 text-xs px-2.5 py-1 rounded-lg ${tagTooltips[t] ? 'cursor-help' : ''}`}
+                >{t}</span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-3 mt-5">
+            {project.url && <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all border border-white/10 text-white hover:bg-white/5 inline-flex items-center justify-center gap-2"
+            >
+              {project.isVideo ? t('progetti.watch', lang) : t('progetti.visit', lang)}
+              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={16} strokeWidth={2} />
+            </a>}
+            <button
+              onClick={(e) => { e.stopPropagation(); scrollToContatti({ service: project.title, message: `Interesse per il progetto: ${project.title}` }); }}
+              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500"
+            >
+              {t('progetti.quote', lang)}
+            </button>
+          </div>
+        </div>
+      </div>
+    </BorderGlow>
+  );
+
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const invalid = new Set<'name' | 'email' | 'message'>();
@@ -2130,12 +2217,15 @@ export default function HomeShell() {
                   {t('servizi.subtitle', lang)}
                 </p>
               </ScrollReveal>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[54em] mx-auto px-3 relative lg:auto-rows-[minmax(180px,auto)]">
+              <MobileSnapSlider
+                ariaLabel={t('servizi.slider_label', lang)}
+                trackClassName="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:after:hidden md:grid md:grid-cols-3 lg:grid-cols-4 md:overflow-visible md:snap-none max-w-[54em] mx-auto relative lg:auto-rows-[minmax(180px,auto)]"
+              >
                 {/* ═══ DESIGN CARDS ═══ */}
                 {/* Card 1 — Brand Identity & Logo */}
-                <ScrollReveal delay={0.12} xOffset={-60} className="md:[grid-column:1] md:[grid-row:1] lg:[grid-column:1] lg:[grid-row:1]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.12} xOffset={-60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:1] lg:[grid-column:1] lg:[grid-row:1]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2149,9 +2239,9 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 2 — Graphic Design */}
-                <ScrollReveal delay={0.15} xOffset={-40} className="md:[grid-column:2] md:[grid-row:1] lg:[grid-column:2] lg:[grid-row:1]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.15} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:1] lg:[grid-column:2] lg:[grid-row:1]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2165,9 +2255,9 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 3 — Sviluppo Web (hero 2×2) */}
-                <ScrollReveal delay={0} xOffset={60} className="md:[grid-column:3] md:[grid-row:1_/_span_2] lg:[grid-column:3_/_span_2] lg:[grid-row:1_/_span_2]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0} xOffset={60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:1_/_span_2] lg:[grid-column:3_/_span_2] lg:[grid-row:1_/_span_2]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[420px] relative z-10">
@@ -2182,9 +2272,9 @@ export default function HomeShell() {
 
                 {/* ═══ WEB DEV CARD ═══ */}
                 {/* Card 4 — UI/UX Design (wide 2×1) */}
-                <ScrollReveal delay={0.05} className="md:[grid-column:1_/_span_2] md:[grid-row:2] lg:[grid-column:1_/_span_2] lg:[grid-row:2]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.05} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1_/_span_2] md:[grid-row:2] lg:[grid-column:1_/_span_2] lg:[grid-row:2]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2199,9 +2289,9 @@ export default function HomeShell() {
 
                 {/* ═══ SOFTWARE CARD ═══ */}
                 {/* Card 5 — Software & App (large) */}
-                <ScrollReveal delay={0.18} xOffset={-50} className="md:[grid-column:1] md:[grid-row:3] lg:[grid-column:1] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.18} xOffset={-50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:3] lg:[grid-column:1] lg:[grid-row:3]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[200px] relative z-10">
@@ -2216,9 +2306,9 @@ export default function HomeShell() {
 
                 {/* ═══ VIDEO CARDS ═══ */}
                 {/* Card 6 — Video Content */}
-                <ScrollReveal delay={0.1} className="md:[grid-column:2] md:[grid-row:3] lg:[grid-column:2_/_span_2] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.1} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:3] lg:[grid-column:2_/_span_2] lg:[grid-row:3]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2232,9 +2322,9 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 7 — Post-Production */}
-                <ScrollReveal delay={0.22} xOffset={50} className="md:[grid-column:3] md:[grid-row:3] lg:[grid-column:4] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.22} xOffset={50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:3] lg:[grid-column:4] lg:[grid-row:3]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2248,9 +2338,9 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 8 — Hardware & IT (custom service, no pricing tier) */}
-                <ScrollReveal delay={0.12} xOffset={-40} className="md:[grid-column:1] md:[grid-row:4] lg:[grid-column:1_/_span_2] lg:[grid-row:4]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.12} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:4] lg:[grid-column:1_/_span_2] lg:[grid-row:4]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2264,9 +2354,9 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 9 — Social Media (custom service, no pricing tier) */}
-                <ScrollReveal delay={0.16} xOffset={40} className="md:[grid-column:2] md:[grid-row:4] lg:[grid-column:3_/_span_2] lg:[grid-row:4]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] group">
-                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] ${fadeIn ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                <ScrollReveal delay={0.16} xOffset={40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:4] lg:[grid-column:3_/_span_2] lg:[grid-row:4]">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                    <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
                     <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
@@ -2278,7 +2368,7 @@ export default function HomeShell() {
                     </div>
                   </BorderGlow></TiltCard>)}</DotGridCard>
                 </ScrollReveal>
-              </div>
+              </MobileSnapSlider>
             </div>
           </section>
           </LazySection>
@@ -2323,10 +2413,20 @@ export default function HomeShell() {
                     {cat.label}
                   </h3>
                   <p className="text-neutral-500 text-sm mb-8 ml-5">{cat.subtitle}</p>
-                  <StaggerReveal stagger={STAGGER_BY_SECTION.prezzi} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <ScrollReveal>
+                    <MobileSnapSlider
+                      ariaLabel={`${cat.label} — ${t('prezzi.slider_label', lang)}`}
+                      trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:after:hidden md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:snap-none"
+                    >
                     {cat.tiers.map((tier, ti) => (
+                      // No h-full here: in an auto-height flex row a percentage
+                      // height doesn't resolve, so cards kept their natural
+                      // height and looked uneven. Without it the wrapper
+                      // stretches to the tallest card (align-items: stretch)
+                      // and the h-full chain inside resolves → equal heights
+                      // on mobile AND on the desktop grid.
+                      <div key={ti} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto">
                       <PriceCard
-                        key={ti}
                         title={tier.title}
                         price={tier.price}
                         priceLabel={tier.priceLabel}
@@ -2341,8 +2441,10 @@ export default function HomeShell() {
                         onTooltipHide={handleTooltipHide}
                         onRequestQuote={(title) => scrollToContatti({ service: title })}
                       />
+                      </div>
                     ))}
-                  </StaggerReveal>
+                    </MobileSnapSlider>
+                  </ScrollReveal>
                 </div>
               ))}
             </div>
@@ -2386,77 +2488,28 @@ export default function HomeShell() {
                 ))}
               </div>
 
-              <StaggerReveal key={`${activeFilter}-${projectsPage}`} stagger={STAGGER_BY_SECTION.progetti} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <MobileSnapSlider
+                key={activeFilter}
+                ariaLabel={t('progetti.slider_label', lang)}
+                trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 after:content-[''] after:shrink-0 after:w-[15%] sm:after:w-[40%] md:hidden"
+              >
+                {filteredProjects.map((project) => (
+                  <div key={project.id} className="shrink-0 snap-start w-[85%] sm:w-[60%] cursor-pointer" onClick={() => setSelectedProject(project)}>
+                    {renderProjectCard(project)}
+                  </div>
+                ))}
+              </MobileSnapSlider>
+
+              <StaggerReveal key={`${activeFilter}-${projectsPage}`} stagger={STAGGER_BY_SECTION.progetti} className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pagedProjects.map((project) => (
                   <div key={project.id} className="cursor-pointer" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' } as React.CSSProperties} onClick={() => setSelectedProject(project)}>
-                    <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group">
-                      <div className="bg-[#0a0a0a] rounded-[20px]">
-                        <div className="relative aspect-video w-full bg-[#0a0a0a] p-3">
-                          <div className="w-full h-full overflow-hidden rounded-xl">
-                            <picture>
-                              {project.thumbnail.startsWith('/uploads/') && !project.thumbnail.startsWith('/uploads/design-works/') && (
-                                <>
-                                  <source srcSet={project.thumbnail.replace('.png', '.avif')} type="image/avif" />
-                                  <source srcSet={project.thumbnail.replace('.png', '.webp')} type="image/webp" />
-                                </>
-                              )}
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={project.thumbnail}
-                                alt={project.title}
-                                loading="lazy"
-                                draggable="false"
-                                onError={(e) => {
-                                  if (project.isVideo) {
-                                    (e.target as HTMLImageElement).src = 'https://img.youtube.com/vi/rc6GzCBa2LY/hqdefault.jpg';
-                                  }
-                                }}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
-                              />
-                            </picture>
-                          </div>
-                        </div>
-                        <div className="p-6">
-                          <h3 className="text-lg font-medium text-white group-hover:text-teal-400 transition-colors">{project.title}</h3>
-                          <p className="text-neutral-400 text-sm mt-2 line-clamp-2 leading-relaxed">{project.description}</p>
-                          {project.tags && (
-                            <div className="flex gap-2 flex-wrap mt-4">
-                              {project.tags.map((t) => (
-                                <span
-                                  key={t}
-                                  {...(tagTooltips[t] ? getSectionHandlers(tagTooltips[t]) : {})}
-                                  className={`bg-white/5 text-neutral-400 text-xs px-2.5 py-1 rounded-lg ${tagTooltips[t] ? 'cursor-help' : ''}`}
-                                >{t}</span>
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex gap-3 mt-5">
-                            {project.url && <a
-                              href={project.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all border border-white/10 text-white hover:bg-white/5 inline-flex items-center justify-center gap-2"
-                            >
-                              {project.isVideo ? t('progetti.watch', lang) : t('progetti.visit', lang)}
-                              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={16} strokeWidth={2} />
-                            </a>}
-                            <button
-                              onClick={(e) => { e.stopPropagation(); scrollToContatti({ service: project.title, message: `Interesse per il progetto: ${project.title}` }); }}
-                              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500"
-                            >
-                              {t('progetti.quote', lang)}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </BorderGlow>
+                    {renderProjectCard(project)}
                   </div>
                 ))}
               </StaggerReveal>
 
               {projectTotalPages > 1 && (
-                <div className="mt-10 flex items-center justify-center gap-4" aria-label={projectNavigationLabel}>
+                <div className="mt-10 hidden md:flex items-center justify-center gap-4" aria-label={projectNavigationLabel}>
                   <button
                     type="button"
                     onClick={() => setProjectsPage(Math.max(0, projectPage - 1))}
@@ -2487,6 +2540,27 @@ export default function HomeShell() {
           {/* ============ CHI SONO ============ */}
           <LazySection rootMargin={800} placeholderHeight={1200}>
           <section id="chisono" className="relative py-16 sm:py-24 px-4 bg-[#010101] overflow-x-clip overflow-y-visible">
+            {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
+               They hide the duplicated skill cards at the marquee edges with a
+               smooth fade, and because they're as tall as the section they also
+               cover the BorderGlow halo (~22px around every card) that used to
+               leak above and below the old short per-row curtains — on mobile
+               and desktop alike. Two layers instead of two-per-row (12 total):
+               much less GPU compositing. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 z-10"
+              style={{ left: 'calc(-50vw + 50%)', width: '100vw' }}
+            >
+              <div
+                className="marquee-edge-curtain marquee-edge-curtain--left"
+                style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.92)' } as React.CSSProperties}
+              />
+              <div
+                className="marquee-edge-curtain marquee-edge-curtain--right"
+                style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.92)' } as React.CSSProperties}
+              />
+            </div>
             {/* Content layer above the terminal */}
             <div className="relative z-10 max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-16">
@@ -2609,18 +2683,11 @@ export default function HomeShell() {
                         edge fade is rendered as non-interactive overlays instead. */}
                     <div className="px-3">
                       <div className="marquee-edge-viewport relative overflow-visible py-3">
-                        {/* Wide opaque side curtains: keep the outer card copies
-                          hidden while preserving a generous clear window in the center. */}
-                        <div
-                          aria-hidden="true"
-                          className="marquee-edge-curtain marquee-edge-curtain--left"
-                          style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.86)' } as React.CSSProperties}
-                        />
-                        <div
-                          aria-hidden="true"
-                          className="marquee-edge-curtain marquee-edge-curtain--right"
-                          style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.86)' } as React.CSSProperties}
-                        />
+                        {/* Per-row curtains removed: the BorderGlow halo (~22px
+                            around each card) leaked past their short top/bottom
+                            edges. The two big section-level curtains in the
+                            #chisono section now span the whole section height
+                            and cover both the duplicate cards AND their glow. */}
                         <InfiniteSlider
                           gap={12}
                           duration={parseFloat(row.speed)}
@@ -3239,7 +3306,7 @@ export default function HomeShell() {
               glowIntensity={1.4}
               edgeSensitivity={0}
               backgroundColor="#0f0f0f"
-              className={`absolute bottom-0 right-0 w-[min(calc(100vw-2rem),340px)] chat-window-h transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
+              className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
                   title-bar background to the rounded-2xl corners. The BorderGlow
@@ -3379,13 +3446,14 @@ export default function HomeShell() {
         {/* Floating Curved CTA — docks at the top with inverted curve when
              the chatbot enters the viewport, returns to the bottom otherwise. */}
         <div
-          className="fixed left-0 right-0 z-[50] flex justify-start sm:justify-center pl-4 pr-[76px] sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms]"
+          className="fixed left-0 right-0 z-[50] flex justify-center pl-4 pr-[76px] sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms]"
           style={ctaDocked
             ? { bottom: 'calc(100vh - 88px)' }
             : { bottom: '24px' }
           }
         >
           <div
+            className="w-full sm:w-auto flex justify-center"
             style={{
               transform: ctaVisible
                 ? `translateY(${ctaHiding ? '20px' : '0'})`

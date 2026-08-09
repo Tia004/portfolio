@@ -173,7 +173,7 @@ const CurvedInput = ({
   const geom = useMemo(() => (w > 2 ? buildGeometry(w, bend, height, pad) : null), [w, bend, height, pad]);
 
   if (!geom) {
-    return <div ref={rootRef} className={`curved-btn ${className}`.trim()} style={{ width: `${width}px` }} />;
+    return <div ref={rootRef} className={`curved-btn ${className}`.trim()} style={{ width: `${width}px`, maxWidth: '100%' }} />;
   }
 
   const T = height;
@@ -206,7 +206,7 @@ const CurvedInput = ({
     <div
       ref={rootRef}
       className={`curved-btn ${className}`.trim()}
-      style={{ width: `${width}px`, position: 'relative' }}
+      style={{ width: `${width}px`, maxWidth: '100%', position: 'relative' }}
       onClick={onClick}
       role="button"
       tabIndex={0}

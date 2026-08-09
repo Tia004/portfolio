@@ -242,6 +242,18 @@ body:has(nextjs-portal) embed {
   display: none;
 }
 
+/* Generic hide-scrollbar utility — used by the mobile snap carousels
+   (services / prices / projects). The native scrollbar would otherwise
+   sit under the cards and look broken on a swipe interface. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 
 /* ── Hero backdrop-blur pre-warming ──────────────────────────
    Elements with backdrop-filter inside .hero-anim are hidden

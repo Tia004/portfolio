@@ -61,6 +61,7 @@ const it: Dict = {
   // Servizi
   'servizi.title': 'Servizi',
   'servizi.subtitle': 'Sei aree, un unico approccio: design, web, software, video, hardware e social media. Per ogni esigenza digitale, con soluzioni su misura.',
+  'servizi.slider_label': 'Servizi — scorri orizzontalmente',
   'servizi.label': 'Cosa offro',
   'servizi.brand': 'Brand & Logo',
   'servizi.brand_desc': 'Marchi, logotipi, palette, tipografia e identità visiva completa.',
@@ -91,6 +92,7 @@ const it: Dict = {
   // Prezzi
   'prezzi.title': 'Prezzi',
   'prezzi.subtitle': 'Ogni progetto ha un preventivo dedicato. Qui trovi una stima indicativa per orientarti.',
+  'prezzi.slider_label': 'Pacchetti — scorri orizzontalmente',
   'prezzi.label': 'Tariffe trasparenti',
   'prezzi.onetime': 'Una tantum',
   'prezzi.monthly': 'Collaborazione',
@@ -117,6 +119,7 @@ const it: Dict = {
   'progetti.title': 'Progetti recenti',
   'progetti.label': 'Portfolio',
   'progetti.subtitle': 'Una selezione dei miei lavori più recenti.',
+  'progetti.slider_label': 'Progetti — scorri orizzontalmente',
   'progetti.visit': 'Visita progetto',
   'progetti.watch': 'Guarda il video',
   'progetti.quote': 'Preventivo',
@@ -314,6 +317,7 @@ const en: Dict = {
 
   'servizi.title': 'Services',
   'servizi.subtitle': 'Six areas, one approach: design, web, software, video, hardware, and social media. Tailored solutions for every digital need.',
+  'servizi.slider_label': 'Services — scroll horizontally',
   'servizi.label': 'What I offer',
   'servizi.brand': 'Brand & Logo',
   'servizi.brand_desc': 'Logos, color palettes, typography, and complete visual identity.',
@@ -343,6 +347,7 @@ const en: Dict = {
 
   'prezzi.title': 'Pricing',
   'prezzi.subtitle': 'Every project gets a custom quote. Here is an indicative estimate to guide you.',
+  'prezzi.slider_label': 'Packages — scroll horizontally',
   'prezzi.label': 'Transparent pricing',
   'prezzi.onetime': 'One-time',
   'prezzi.monthly': 'Retainer',
@@ -366,6 +371,7 @@ const en: Dict = {
   'progetti.title': 'Recent projects',
   'progetti.label': 'Portfolio',
   'progetti.subtitle': 'A selection of my most recent work.',
+  'progetti.slider_label': 'Projects — scroll horizontally',
   'progetti.visit': 'Visit project',
   'progetti.watch': 'Watch video',
   'progetti.quote': 'Quote',
@@ -553,6 +559,7 @@ const es: Dict = {
 
   'servizi.title': 'Servicios',
   'servizi.subtitle': 'Seis áreas, un mismo enfoque: diseño, web, software, video, hardware y redes sociales. Soluciones a medida para cada necesidad digital.',
+  'servizi.slider_label': 'Servicios — desplázate horizontalmente',
   'servizi.label': 'Qué ofrezco',
   'servizi.brand': 'Marca & Logo',
   'servizi.brand_desc': 'Logotipos, paletas de color, tipografía e identidad visual completa.',
@@ -582,6 +589,7 @@ const es: Dict = {
 
   'prezzi.title': 'Precios',
   'prezzi.subtitle': 'Cada proyecto tiene un presupuesto personalizado. Aquí encuentras una estimación orientativa.',
+  'prezzi.slider_label': 'Paquetes — desplázate horizontalmente',
   'prezzi.label': 'Tarifas transparentes',
   'prezzi.onetime': 'Pago único',
   'prezzi.monthly': 'Colaboración',
@@ -605,6 +613,7 @@ const es: Dict = {
   'progetti.title': 'Proyectos recientes',
   'progetti.label': 'Portafolio',
   'progetti.subtitle': 'Una selección de mis trabajos más recientes.',
+  'progetti.slider_label': 'Proyectos — desplázate horizontalmente',
   'progetti.visit': 'Visitar proyecto',
   'progetti.watch': 'Ver video',
   'progetti.quote': 'Presupuesto',

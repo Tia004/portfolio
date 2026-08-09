@@ -117,7 +117,7 @@ export default function LanguageProvider({ children, initialLang }: { children: 
       {children}
 
       {showPopup && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] bg-[#121212]/95 backdrop-blur-xl border border-white/15 rounded-2xl px-5 py-4 shadow-2xl shadow-black/60 max-w-sm w-[calc(100vw-2rem)] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[10000] bg-[#121212]/95 backdrop-blur-xl border border-white/15 rounded-2xl px-5 py-4 shadow-2xl shadow-black/60 max-w-sm w-[calc(100vw_-_2rem)] animate-in fade-in slide-in-from-bottom-4 duration-300">
           <p className="text-white text-sm font-medium mb-1">
             {popupTitle(popupLang, detectedCountry)}
           </p>
