@@ -16,11 +16,11 @@ const asset = (path: string) => encodeURI(`/uploads/design-works/${path}`);
 
 // ── SVG data URI: "Design UI/UX" text thumbnail ─────────
 const UI_UX_THUMB = 'data:image/svg+xml,' + encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280">' +
-  '<rect fill="%23121212" width="400" height="280" rx="12"/>' +
-  '<rect fill="none" stroke="%232dd4bf" stroke-width="1.5" stroke-opacity="0.3" width="400" height="280" rx="12"/>' +
-  '<text fill="%232dd4bf" font-family="Outfit,sans-serif" font-size="26" font-weight="700" text-anchor="middle" x="200" y="132" letter-spacing="0.08em">Design UI/UX</text>' +
-  '<text fill="%23666" font-family="Outfit,sans-serif" font-size="13" text-anchor="middle" x="200" y="160">Portfolio PDF</text>' +
+  '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">' +
+  '<rect fill="%23121212" width="960" height="540" rx="16"/>' +
+  '<rect fill="none" stroke="%232dd4bf" stroke-width="2" stroke-opacity="0.3" width="960" height="540" rx="16"/>' +
+  '<text fill="%232dd4bf" font-family="Outfit,sans-serif" font-size="52" font-weight="700" text-anchor="middle" x="480" y="262" letter-spacing="0.08em">Design UI/UX</text>' +
+  '<text fill="%23666" font-family="Outfit,sans-serif" font-size="24" text-anchor="middle" x="480" y="312">Portfolio PDF</text>' +
   '</svg>'
 );
 

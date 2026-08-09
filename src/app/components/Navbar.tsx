@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Link from 'next/link';
 import { useLenis } from './SmoothScroll';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from './LanguageProvider';
@@ -25,15 +24,29 @@ const NAV_ITEMS = [
 
 function Logo() {
   return (
-    <Link href="/" className="shrink-0">
-      <img
-        src="/TiaDesignsLogo.png"
-        alt="Tia Designs"
-        loading="lazy"
-        className="h-5 sm:h-6 w-auto brightness-0 invert select-none"
-        draggable="false"
-      />
-    </Link>
+    <a
+      href="/"
+      onClick={(e) => {
+        // Brand click = hard refresh: resets the SPA (splash, scroll, chat)
+        // exactly as if the user reloaded the tab.
+        e.preventDefault();
+        window.location.reload();
+      }}
+      className="shrink-0"
+    >
+      <picture>
+        <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
+        <source srcSet="/TiaDesignsLogo.webp" type="image/webp" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/TiaDesignsLogo.png"
+          alt="Tia Designs"
+          loading="lazy"
+          className="h-5 sm:h-6 w-auto brightness-0 invert select-none"
+          draggable="false"
+        />
+      </picture>
+    </a>
   );
 }
 

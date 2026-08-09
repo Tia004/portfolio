@@ -120,6 +120,20 @@ body {
   height: min(70dvh, 560px);
 }
 
+/* AI chatbot window — the section heading sits above it, so on mobile the
+   window must leave room for the heading + padding to keep the whole
+   section (heading + window + input) inside one viewport instead of
+   spilling past the bottom edge. Desktop keeps the generous 70dvh. */
+.chatbot-window-h {
+  height: min(70vh, 640px);
+  height: min(70dvh, 640px);
+}
+@media (max-width: 767px) {
+  .chatbot-window-h {
+    height: min(58dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 17rem));
+  }
+}
+
 /* Toast notification entrance/exit */
 @keyframes toast-slide-up {
   from { opacity: 0; transform: translateY(12px); }

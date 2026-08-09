@@ -139,7 +139,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
           Chars are injected via innerHTML in useLayoutEffect above. */}
       <div
         ref={wordmarkRef}
-        className="text-[10vw] sm:text-[12vw] md:text-[14vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-[0.85] px-2 select-none"
+        className="text-[13vw] sm:text-[13vw] md:text-[14vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-[0.85] px-2 select-none w-full overflow-hidden"
         style={{ perspective: '800px' }}
       />
 
@@ -147,7 +147,12 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
         {/* Sub-footer grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           <div className="col-span-2 md:col-span-1">
-            <img src="/TiaDesignsLogo.png" alt="Tia Designs" loading="lazy" className="h-8 w-auto mb-4 brightness-0 invert select-none" draggable="false" />
+            <picture>
+              <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
+              <source srcSet="/TiaDesignsLogo.webp" type="image/webp" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/TiaDesignsLogo.png" alt="Tia Designs" loading="lazy" className="h-8 w-auto mb-4 brightness-0 invert select-none" draggable="false" />
+            </picture>
             <p className="text-neutral-400 text-xs leading-relaxed max-w-xs">
               {t('footer.desc', lang)}
             </p>

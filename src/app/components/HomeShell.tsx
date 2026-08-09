@@ -90,7 +90,7 @@ import {
 
 /** @category Componenti */
 import SmoothScrollProvider, { useLenis } from './SmoothScroll';
-import HeroDither from './HeroDither';
+import Dither from './Dither';
 import Navbar from './Navbar';
 import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
@@ -591,13 +591,13 @@ function PriceCard({
         edgeSensitivity={0}
         className={`h-full [&_.border-glow-inner]:h-full ${premium ? 'border-teal-400/15' : ''}`}
       >
-        <div className={`p-6 sm:p-8 flex flex-col h-full rounded-[20px] relative ${premium ? 'bg-gradient-to-b from-teal-500/[0.06] to-transparent' : ''}`}>
+        <div className={`p-5 sm:p-8 flex flex-col h-full rounded-[20px] relative ${premium ? 'bg-gradient-to-b from-teal-500/[0.06] to-transparent' : ''}`}>
           {popular && (
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full z-10">
               {t('prezzi.popular', lang)}
             </span>
           )}
-          <h4 className={`font-semibold text-lg mb-1 flex items-center gap-2 ${premium ? 'text-teal-300' : 'text-white'}`}>
+          <h4 className={`font-semibold text-base sm:text-lg mb-1 flex items-center gap-2 ${premium ? 'text-teal-300' : 'text-white'}`}>
             {premium && (
               <svg aria-hidden="true" className="w-4 h-4 text-teal-400 shrink-0 drop-shadow-[0_0_4px_rgba(45,212,191,0.5)]" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M11.21 2.07a1 1 0 011.58 0l2.46 3.11a1 1 0 00.84.4l3.96.16a1 1 0 01.88 1.06l-.67 3.9a1 1 0 00.28.87l2.68 2.92a1 1 0 01-.25 1.58l-3.51 1.85a1 1 0 00-.51.74l-.67 3.9a1 1 0 01-1.48.7l-3.5-1.85a1 1 0 00-.9 0l-3.5 1.85a1 1 0 01-1.48-.7l-.67-3.9a1 1 0 00-.51-.74l-3.51-1.85a1 1 0 01-.25-1.58l2.68-2.92a1 1 0 00.28-.87l-.67-3.9a1 1 0 01.88-1.06l3.96-.16a1 1 0 00.84-.4l2.46-3.11z" />
@@ -611,8 +611,8 @@ function PriceCard({
               >?</span>
             )}
           </h4>
-          <p className="text-neutral-500 text-xs mb-4">{description}</p>
-          <div className="flex items-center gap-2 mb-4">
+          <p className="text-neutral-500 text-[11px] sm:text-xs mb-3">{description}</p>
+          <div className="flex items-center gap-2 mb-3">
             <TiaIcon icon={Clock01Icon} size={14} className="text-teal-400 shrink-0" strokeWidth={2} />
             <span className="text-teal-400/80 text-xs font-medium">{delivery}</span>
             {delivery.match(/giorni|days|días|24-48h|immediata|immediate|inmediata|1-2 settimane|1-2 weeks|1-2 semanas/i) && (
@@ -625,14 +625,14 @@ function PriceCard({
             )}
           </div>
           {hours && (
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-3">
               <svg aria-hidden="true" className="w-3.5 h-3.5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" /></svg>
               <span className="text-teal-400/80 text-xs font-medium">{hours}</span>
             </div>
           )}
-          <div className="mb-6">
+          <div className="mb-4">
             {price ? (
-              <span className={`text-3xl sm:text-4xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
+              <span className={`text-2xl sm:text-4xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
                 <span className="text-neutral-300 text-[11px] font-normal uppercase tracking-[0.15em]" style={{ verticalAlign: 'super' }}>{t('prezzi.from', lang)}</span>
                 <CountUp target={parseInt(price.replace(/[.,]/g, ''), 10)} delay={computedDelay} className="" prefix="€" />
               </span>
@@ -643,11 +643,11 @@ function PriceCard({
             )}
             {period && <span className="text-neutral-500 text-sm ml-1">{period}</span>}
           </div>
-          <ul className="space-y-3 flex-1 mb-6">
+          <ul className="space-y-2.5 flex-1 mb-4">
             {features.map((f, i) => {
               const tip = getTooltip(f, lang);
               return (
-                <li key={i} className="flex items-start gap-2 text-neutral-400 text-sm">
+                <li key={i} className="flex items-start gap-2 text-neutral-400 text-[13px] sm:text-sm">
                   <svg aria-hidden="true" className="w-4 h-4 text-teal-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -666,7 +666,7 @@ function PriceCard({
           </ul>
           <button
             onClick={() => onRequestQuote ? onRequestQuote(title) : scrollToElementAfterLayout('contatti', () => lenis.current)}
-            className={`block w-full text-center py-3 rounded-full text-sm font-medium transition-all ${premium
+            className={`block w-full text-center py-2.5 sm:py-3 rounded-full text-sm font-medium transition-all ${premium
               ? 'bg-teal-400 text-black font-semibold hover:bg-teal-300 shadow-lg shadow-teal-400/40 ring-1 ring-teal-400/50'
               : popular
                 ? 'bg-teal-600 text-white hover:bg-teal-500'
@@ -1021,8 +1021,12 @@ export default function HomeShell() {
   }, []);
 
   // ── Reset the 5s inactivity timer — never hides docked CTA ──
+  // Below 768px (phones, and narrow windows tested in the preview) the CTA
+  // stays always visible: there is no hover to rediscover it and the 5s
+  // auto-hide made it feel broken. The inactivity hide is desktop-only.
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return;
     inactivityTimerRef.current = setTimeout(() => {
       if (window.scrollY < 300 || ctaDockedRef.current) return;
       hideCta();
@@ -2003,12 +2007,15 @@ export default function HomeShell() {
   //    filtered projects in a row) and the desktop paginated grid. ──
   const renderProjectCard = (project: ProjectData) => (
     <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group h-full">
-      <div className="bg-[#0a0a0a] rounded-[20px] h-full flex flex-col">
-        <div className="relative aspect-video w-full bg-[#0a0a0a] p-3">
+      <div className="bg-[#0a0a0a] rounded-[20px] h-full flex flex-col overflow-hidden">
+        <div className="relative aspect-video w-full bg-[#0a0a0a] p-2.5 sm:p-3">
           <div className="w-full h-full overflow-hidden rounded-xl">
             <picture>
               {project.thumbnail.startsWith('/uploads/') && (
                 <>
+                  {/* Prefer the uniform 16:9 crop; fall back to the full uncropped variant. */}
+                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.avif')} type="image/avif" />
+                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.webp')} type="image/webp" />
                   <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
                   <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
                 </>
@@ -2025,39 +2032,39 @@ export default function HomeShell() {
                     (e.target as HTMLImageElement).src = 'https://img.youtube.com/vi/rc6GzCBa2LY/hqdefault.jpg';
                   }
                 }}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
+                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 select-none"
               />
             </picture>
           </div>
         </div>
-        <div className="p-6 flex-1 flex flex-col">
-          <h3 className="text-lg font-medium text-white group-hover:text-teal-400 transition-colors">{project.title}</h3>
-          <p className="text-neutral-400 text-sm mt-2 line-clamp-2 leading-relaxed">{project.description}</p>
+        <div className="p-4 sm:p-6 flex-1 flex flex-col">
+          <h3 className="text-base sm:text-lg font-medium text-white group-hover:text-teal-400 transition-colors">{project.title}</h3>
+          <p className="text-neutral-400 text-[13px] sm:text-sm mt-1.5 sm:mt-2 line-clamp-2 leading-relaxed">{project.description}</p>
           {project.tags && (
-            <div className="flex gap-2 flex-wrap mt-4">
+            <div className="flex gap-2 flex-wrap mt-3 sm:mt-4">
               {project.tags.map((t) => (
                 <span
                   key={t}
                   {...(tagTooltips[t] ? getSectionHandlers(tagTooltips[t]) : {})}
-                  className={`bg-white/5 text-neutral-400 text-xs px-2.5 py-1 rounded-lg ${tagTooltips[t] ? 'cursor-help' : ''}`}
+                  className={`bg-white/5 text-neutral-400 text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg ${tagTooltips[t] ? 'cursor-help' : ''}`}
                 >{t}</span>
               ))}
             </div>
           )}
-          <div className="flex gap-3 mt-5">
+          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-5">
             {project.url && <a
               href={project.url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all border border-white/10 text-white hover:bg-white/5 inline-flex items-center justify-center gap-2"
+              className="flex-1 text-center px-2 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all border border-white/10 text-white hover:bg-white/5 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
             >
               {project.isVideo ? t('progetti.watch', lang) : t('progetti.visit', lang)}
-              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={16} strokeWidth={2} />
+              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={15} strokeWidth={2} className="shrink-0" />
             </a>}
             <button
               onClick={(e) => { e.stopPropagation(); scrollToContatti({ service: project.title, message: `Interesse per il progetto: ${project.title}` }); }}
-              className="flex-1 text-center py-2.5 rounded-xl text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500"
+              className="flex-1 text-center px-2 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500 whitespace-nowrap"
             >
               {t('progetti.quote', lang)}
             </button>
@@ -2137,7 +2144,10 @@ export default function HomeShell() {
 
           {/* ============ HERO ============ */}
           <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-center bg-[#010101] pt-24 pb-16 sm:pt-0 sm:pb-0">
-            <HeroDither
+            {/* The SAME dither as the desktop hero — WebGL waves, no static
+                fallback. The Dither component pauses rendering when scrolled
+                out of view, so it costs nothing off-screen. */}
+            <Dither
               waveColor={[0.298, 0.608, 0.510]}
               waveSpeed={0.06}
               waveFrequency={8.4}
@@ -2209,9 +2219,9 @@ export default function HomeShell() {
 
           {/* ============ SERVIZI ============ */}
           <LazySection rootMargin={400} placeholderHeight={800}>
-          <section id="servizi" className="py-16 sm:py-24 px-4 bg-[#010101]">
+          <section id="servizi" className="py-10 sm:py-24 px-4 bg-[#010101]">
             <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-16">
+              <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('servizi.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('servizi.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -2225,7 +2235,7 @@ export default function HomeShell() {
                 {/* ═══ DESIGN CARDS ═══ */}
                 {/* Card 1 — Brand Identity & Logo */}
                 <ScrollReveal delay={0.12} xOffset={-60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:1] lg:[grid-column:1] lg:[grid-row:1]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2241,7 +2251,7 @@ export default function HomeShell() {
 
                 {/* Card 2 — Graphic Design */}
                 <ScrollReveal delay={0.15} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:1] lg:[grid-column:2] lg:[grid-row:1]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2257,7 +2267,7 @@ export default function HomeShell() {
 
                 {/* Card 3 — Sviluppo Web (hero 2×2) */}
                 <ScrollReveal delay={0} xOffset={60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:1_/_span_2] lg:[grid-column:3_/_span_2] lg:[grid-row:1_/_span_2]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2274,7 +2284,7 @@ export default function HomeShell() {
                 {/* ═══ WEB DEV CARD ═══ */}
                 {/* Card 4 — UI/UX Design (wide 2×1) */}
                 <ScrollReveal delay={0.05} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1_/_span_2] md:[grid-row:2] lg:[grid-column:1_/_span_2] lg:[grid-row:2]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2291,7 +2301,7 @@ export default function HomeShell() {
                 {/* ═══ SOFTWARE CARD ═══ */}
                 {/* Card 5 — Software & App (large) */}
                 <ScrollReveal delay={0.18} xOffset={-50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:3] lg:[grid-column:1] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2308,7 +2318,7 @@ export default function HomeShell() {
                 {/* ═══ VIDEO CARDS ═══ */}
                 {/* Card 6 — Video Content */}
                 <ScrollReveal delay={0.1} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:3] lg:[grid-column:2_/_span_2] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2324,7 +2334,7 @@ export default function HomeShell() {
 
                 {/* Card 7 — Post-Production */}
                 <ScrollReveal delay={0.22} xOffset={50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:3] lg:[grid-column:4] lg:[grid-row:3]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2340,7 +2350,7 @@ export default function HomeShell() {
 
                 {/* Card 8 — Hardware & IT (custom service, no pricing tier) */}
                 <ScrollReveal delay={0.12} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:4] lg:[grid-column:1_/_span_2] lg:[grid-row:4]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2356,7 +2366,7 @@ export default function HomeShell() {
 
                 {/* Card 9 — Social Media (custom service, no pricing tier) */}
                 <ScrollReveal delay={0.16} xOffset={40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:4] lg:[grid-column:3_/_span_2] lg:[grid-row:4]">
-                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[260px] group">
+                  <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
@@ -2376,9 +2386,9 @@ export default function HomeShell() {
 
           {/* ============ PREZZI ============ */}
           <LazySection rootMargin={400} placeholderHeight={900}>
-          <section id="prezzi" className="py-16 sm:py-24 px-4 bg-[#050505]">
+          <section id="prezzi" className="py-10 sm:py-24 px-4 bg-[#050505]">
             <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-12">
+              <ScrollReveal className="text-center mb-8 sm:mb-12">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('prezzi.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('prezzi.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -2387,7 +2397,7 @@ export default function HomeShell() {
               </ScrollReveal>
 
               {/* ── Toggle ── */}
-              <div className="flex justify-center mb-16">
+              <div className="flex justify-center mb-8 sm:mb-16">
                 <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
                   <button
                     onClick={() => setIsMonthly(false)}
@@ -2408,12 +2418,12 @@ export default function HomeShell() {
 
               {/* ── Data-driven pricing cards ── */}
               {pricing.map((cat, ci) => (
-                <div key={ci} className={ci < pricing.length - 1 ? 'mb-16' : ''}>
+                <div key={ci} className={ci < pricing.length - 1 ? 'mb-8 sm:mb-16' : ''}>
                   <h3 className="text-white text-xl font-semibold mb-2 flex items-center gap-3">
                     <span className="w-2 h-2 rounded-full bg-teal-400" />
                     {cat.label}
                   </h3>
-                  <p className="text-neutral-500 text-sm mb-8 ml-5">{cat.subtitle}</p>
+                  <p className="text-neutral-500 text-sm mb-5 sm:mb-8 ml-5">{cat.subtitle}</p>
                   <ScrollReveal>
                     <MobileSnapSlider
                       ariaLabel={`${cat.label} — ${t('prezzi.slider_label', lang)}`}
@@ -2426,7 +2436,7 @@ export default function HomeShell() {
                       // stretches to the tallest card (align-items: stretch)
                       // and the h-full chain inside resolves → equal heights
                       // on mobile AND on the desktop grid.
-                      <div key={ti} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto">
+                      <div key={ti} className="shrink-0 snap-start w-[90%] sm:w-[60%] md:w-auto">
                       <PriceCard
                         title={tier.title}
                         price={tier.price}
@@ -2460,9 +2470,9 @@ export default function HomeShell() {
 
           {/* ============ PROGETTI ============ */}
           <LazySection rootMargin={700} placeholderHeight={600}>
-          <section id="progetti" className="py-16 sm:py-24 px-4 bg-[#050505]" style={{ contain: 'paint style' } as React.CSSProperties}>
+          <section id="progetti" className="py-10 sm:py-24 px-4 bg-[#050505]" style={{ contain: 'paint style' } as React.CSSProperties}>
             <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-16">
+              <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('progetti.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('progetti.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -2471,7 +2481,7 @@ export default function HomeShell() {
               </ScrollReveal>
 
               {/* ── Filter Buttons ── */}
-              <div className="flex justify-center gap-2 sm:gap-3 mb-12 flex-wrap">
+              <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-12 flex-wrap">
                 {['Tutti', 'Design', 'Sviluppo', 'Video'].map((f) => (
                   <button
                     key={f}
@@ -2540,7 +2550,7 @@ export default function HomeShell() {
 
           {/* ============ CHI SONO ============ */}
           <LazySection rootMargin={800} placeholderHeight={1200}>
-          <section id="chisono" className="relative py-16 sm:py-24 px-4 bg-[#010101] overflow-x-clip overflow-y-visible">
+          <section id="chisono" className="relative py-10 sm:py-24 px-4 bg-[#010101] overflow-x-clip overflow-y-visible">
             {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
                They hide the duplicated skill cards at the marquee edges with a
                smooth fade, and because they're as tall as the section they also
@@ -2564,7 +2574,7 @@ export default function HomeShell() {
             </div>
             {/* Content layer above the terminal */}
             <div className="relative z-10 max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-16">
+              <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('chisono.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">Tia Chinaglia</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -2723,14 +2733,14 @@ export default function HomeShell() {
           </section>
 
           {/* ============ CHATBOT ============ */}
-          <section id="chatbot" className="py-16 sm:py-24 px-4 bg-[#010101]">
+          <section id="chatbot" className="py-10 sm:py-24 px-4 bg-[#010101]">
             <div className="max-w-3xl mx-auto">
               <div
                 id="chatbot-heading"
                 className="scroll-mt-[9rem]"
                 style={{ scrollMarginTop: '9rem' }}
               >
-                <ScrollReveal className="text-center mb-16" start="top 85%" end="bottom 25%">
+                <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
                   <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">Preventivo</p>
                   <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('chatbot.title', lang)}</h2>
                   <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -2748,12 +2758,7 @@ export default function HomeShell() {
                 className="[&_.border-glow-inner]:!overflow-visible"
               >
                 <div
-                  className="p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl"
-                  style={{
-                    // Fixed height — the window NEVER grows with content; messages
-                    // scroll inside instead. Capped to the usable dynamic viewport.
-                    height: 'min(70dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem))',
-                  }}
+                  className="chatbot-window-h p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl"
                 >
                   {/* macOS-style title bar */}
                   <div className="flex items-center px-5 py-3 border-b border-white/[0.06] shrink-0">
@@ -2815,7 +2820,7 @@ export default function HomeShell() {
                           <div className="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0 mt-1">
                             <TiaIcon icon={BubbleChatIcon} size={16} className="text-teal-400" />
                           </div>
-                          <div className="max-w-[80%] px-4 py-3 text-sm leading-relaxed bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm">
+                          <div className="max-w-[80%] px-4 py-3 text-sm leading-relaxed break-words min-w-0 bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm">
                             {renderBotMessage(t('bot.welcome_category', lang))}
                           </div>
                         </div>
@@ -2866,7 +2871,7 @@ export default function HomeShell() {
                           </div>
                         )}
                         <div
-                          className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed ${msg.sender === 'user'
+                          className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'user'
                             ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
                             : 'bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm'
                             }`}
@@ -2993,9 +2998,9 @@ export default function HomeShell() {
           {/* ============ RECENSIONI ============ */}
 
           <LazySection rootMargin={400} placeholderHeight={500}>
-          <section id="recensioni" className="py-16 sm:py-24 px-4 bg-[#050505]">
+          <section id="recensioni" className="py-10 sm:py-24 px-4 bg-[#050505]">
             <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-16">
+              <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('recensioni.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('recensioni.title', lang)}</h2>
               </ScrollReveal>
@@ -3091,9 +3096,9 @@ export default function HomeShell() {
           {/* ============ CONTATTI ============ */}
           <div id="contatti-anchor" className="h-0 w-0 overflow-hidden" aria-hidden="true" />
           <LazySection rootMargin={400} placeholderHeight={900}>
-          <section id="contatti" className="py-16 sm:py-24 px-4 bg-[#050505]">
+          <section id="contatti" className="py-10 sm:py-24 px-4 bg-[#050505]">
             <div className="max-w-5xl mx-auto">
-              <ScrollReveal className="text-center mb-16" start="top 85%" end="bottom 25%">
+              <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('contatti.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('contatti.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
@@ -3360,7 +3365,7 @@ export default function HomeShell() {
                         </div>
                       )}
                       <div
-                        className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${msg.sender === 'client'
+                        className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'client'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
                           : 'bg-white/[0.04] text-white rounded-2xl rounded-bl-sm'
                           }`}

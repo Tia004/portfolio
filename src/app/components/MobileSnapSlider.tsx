@@ -73,39 +73,84 @@ export default function MobileSnapSlider({
   // this adds click-and-drag for mouse users on sub-768px windows where
   // the track is a flex scroll container. Listeners live on window during
   // the drag so it keeps tracking even when the pointer leaves the track.
-  // scroll-snap-type is disabled while dragging (it would fight the manual
-  // scrollLeft) and restored on release so the track settles on the
-  // nearest card. A drag of >5px suppresses the click that follows the
-  // pointerup (otherwise releasing over a card would open its modal).
+  //
+  // Feel: like a real mobile scroll — the track follows the pointer with
+  // zero lag, and on release it keeps gliding with friction (momentum)
+  // before stopping at whatever position it reached. Snap is NOT restored
+  // after a mouse drag, so the track never "sticks" to a card; the wheel
+  // always scrolls the page (see removed wheel handler). A drag of >5px
+  // suppresses the click that follows pointerup (otherwise releasing over
+  // a card would open its modal).
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
 
     let drag: { startX: number; startLeft: number; moved: number } | null = null;
     let suppressClick = false;
+    let vel = 0; // px/ms, smoothed
+    let lastT = 0;
+    let inertiaRaf = 0;
+
+    const stopInertia = () => {
+      if (inertiaRaf) { cancelAnimationFrame(inertiaRaf); inertiaRaf = 0; }
+    };
 
     const onMove = (e: PointerEvent) => {
       if (!drag) return;
+      const now = performance.now();
       const dx = e.clientX - drag.startX;
       drag.moved = Math.max(drag.moved, Math.abs(dx));
+      const prev = el.scrollLeft;
       el.scrollLeft = drag.startLeft - dx;
+      const dt = now - lastT;
+      if (dt > 0) {
+        // Exponential smoothing — a single jittery move can't spike the
+        // release velocity; the glide feels natural.
+        const inst = (el.scrollLeft - prev) / dt; // px/ms
+        vel = inst * 0.3 + vel * 0.7;
+      }
+      lastT = now;
     };
+
+    const runInertia = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      el.scrollLeft += vel * 16; // ~1 frame of travel
+      vel *= 0.94; // friction — decays the glide naturally
+      if (el.scrollLeft <= 0 || el.scrollLeft >= max) {
+        el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft));
+        return;
+      }
+      if (Math.abs(vel) < 0.02) return; // settled
+      inertiaRaf = requestAnimationFrame(runInertia);
+    };
+
     const onUp = () => {
       if (!drag) return;
       if (drag.moved > 5) suppressClick = true;
       drag = null;
-      el.style.scrollSnapType = '';
       el.style.userSelect = '';
       el.classList.remove('cursor-grabbing');
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
+      // Free scroll: snap stays disabled so it rests wherever it stopped,
+      // exactly like a mobile scroll. A flick keeps gliding via friction.
+      if (Math.abs(vel) > 0.05) runInertia();
     };
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      // Touch re-enables the native Apple-style snap (class-based); mouse
+      // keeps free scroll with friction.
+      if (e.pointerType !== 'mouse') {
+        if (e.pointerType === 'touch') el.style.scrollSnapType = '';
+        return;
+      }
+      if (e.button !== 0) return;
       if (el.scrollWidth <= el.clientWidth + 1) return; // not scrollable
+      stopInertia();
       drag = { startX: e.clientX, startLeft: el.scrollLeft, moved: 0 };
       suppressClick = false;
+      vel = 0;
+      lastT = performance.now();
       el.style.scrollSnapType = 'none';
       el.style.userSelect = 'none';
       el.classList.add('cursor-grabbing');
@@ -131,6 +176,7 @@ export default function MobileSnapSlider({
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
+      stopInertia();
     };
   }, []);
 
@@ -163,59 +209,95 @@ export default function MobileSnapSlider({
     return () => io.disconnect();
   }, []);
 
-  // ── Mouse-wheel support (narrow desktop windows, <768px) ──────
-  // React's onWheel is attached passively, so preventDefault() wouldn't
-  // work there — attach a native non-passive listener instead. Lenis
-  // listens for 'wheel' on window and does NOT respect preventDefault, so
-  // when the slider consumes the wheel we stopPropagation() to keep Lenis
-  // from also scrolling the page. At a boundary (scrollLeft unchanged) we
-  // let the event bubble through: Lenis then scrolls the page smoothly,
-  // exactly as if the wheel happened over a normal section.
-  //
-  // Deltas are accumulated; every ~30px of wheel movement advances the
-  // track by EXACTLY one card. Landing on a snap position means
-  // scroll-snap-mandatory never fights the programmatic scroll (a raw
-  // pixel scroll would snap straight back to the previous card) and the
-  // track never "springs back" when the wheel stops.
+  // ── Mobile auto-glow on the focused card ──────────────────────
+  // Touch devices have no hover, so the card currently most visible in the
+  // track gets a one-shot border glow: it turns on automatically once the
+  // scroll settles, the beam travels around the border a single time, then
+  // fades out after a moment. After that it only re-triggers on an explicit
+  // tap (cooldown per card), keeping CPU cost near zero — no shared ticker,
+  // just one short rAF rotation while the class is active.
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
-    let acc = 0;
-    const onWheel = (e: WheelEvent) => {
-      // Desktop layout: the track is a CSS grid with overflow-visible,
-      // not scrollable — the page must scroll untouched.
-      if (el.scrollWidth <= el.clientWidth + 1) return;
-      let delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (!delta) return;
-      if (e.deltaMode === 1) delta *= 16; // Firefox lines → px
-      else if (e.deltaMode === 2) delta *= window.innerHeight; // pages → px
+    if (!window.matchMedia('(max-width: 767px)').matches) return; // mobile carousel only
 
-      // Boundary in the wheel's direction → the page owns the wheel
-      // (Lenis keeps it smooth). The reverse direction still moves the
-      // carousel back, not the page.
-      const max = el.scrollWidth - el.clientWidth;
-      if (delta > 0 ? el.scrollLeft >= max - 4 : el.scrollLeft <= 4) return;
+    let activeCard: HTMLElement | null = null;
+    let glowOffTimer: number | null = null;
+    let settleTimer: number | null = null;
+    let lastTriggered: HTMLElement | null = null;
+    let lastTriggeredAt = 0;
 
-      // The carousel owns the wheel while it can move: consume every event
-      // — even sub-threshold ones, so slow trackpad swipes accumulate here
-      // instead of also scrolling the page (double-scroll).
-      e.preventDefault();
-      e.stopPropagation();
+    const cards = () => Array.from(el.querySelectorAll<HTMLElement>('.border-glow-card'));
 
-      acc += delta;
-      if (Math.abs(acc) < 30) return; // keep accumulating
-      const dir = acc > 0 ? 1 : -1;
-      acc = 0;
-      const first = el.firstElementChild as HTMLElement | null;
-      const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
-      const step = first ? first.offsetWidth + gap : el.clientWidth * 0.85;
-      // One snap step — lands exactly on a snap position, so
-      // scroll-snap-mandatory never fights the programmatic scroll.
-      el.scrollBy({ left: dir * step });
+    const activate = (card: HTMLElement | null) => {
+      if (!card) return;
+      const now = Date.now();
+      // Cooldown: don't re-flash the same card unless the user taps it again.
+      if (card === lastTriggered && now - lastTriggeredAt < 4000) return;
+      lastTriggered = card;
+      lastTriggeredAt = now;
+
+      if (activeCard && activeCard !== card) activeCard.classList.remove('scroll-glow-active');
+      activeCard = card;
+      card.classList.add('scroll-glow-active');
+
+      // One smooth 130° rotation so the beam visibly travels once.
+      const start = parseFloat(card.style.getPropertyValue('--cursor-angle')) || 0;
+      const t0 = performance.now();
+      const dur = 900;
+      const raf = (t: number) => {
+        const p = Math.min((t - t0) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        card.style.setProperty('--cursor-angle', `${(start + 130 * eased).toFixed(2)}deg`);
+        if (p < 1) requestAnimationFrame(raf);
+      };
+      requestAnimationFrame(raf);
+
+      if (glowOffTimer) clearTimeout(glowOffTimer);
+      glowOffTimer = window.setTimeout(() => {
+        card.classList.remove('scroll-glow-active');
+        glowOffTimer = null;
+      }, 2600);
     };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+
+    const centerCard = (): HTMLElement | null => {
+      if (el.scrollWidth <= el.clientWidth + 2) return null; // nothing to scroll
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      let best: HTMLElement | null = null;
+      let bestD = Infinity;
+      for (const c of cards()) {
+        const r = c.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - cx);
+        if (d < bestD) { bestD = d; best = c; }
+      }
+      return best;
+    };
+
+    const onScroll = () => {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => activate(centerCard()), 150);
+    };
+    // Tap on a card always re-triggers its glow (capture phase, before the
+    // card's own click handler scrolls or opens a modal).
+    const onClick = (e: Event) => {
+      const card = (e.target as HTMLElement).closest('.border-glow-card') as HTMLElement | null;
+      if (card) activate(card);
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    el.addEventListener('click', onClick, true);
+    // Initial flash + re-arm when children change (category filter re-renders).
+    activate(centerCard());
+
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      el.removeEventListener('click', onClick, true);
+      if (settleTimer) clearTimeout(settleTimer);
+      if (glowOffTimer) clearTimeout(glowOffTimer);
+      if (activeCard) activeCard.classList.remove('scroll-glow-active');
+    };
+  }, [children]);
 
   const scrollDir = useCallback((dir: 1 | -1) => {
     const el = trackRef.current;
@@ -226,7 +308,7 @@ export default function MobileSnapSlider({
     el.scrollBy({ left: dir * step, behavior: 'smooth' });
   }, []);
 
-  const baseBtn = 'h-9 w-9 rounded-full border flex items-center justify-center transition-all select-none';
+  const baseBtn = 'h-10 w-10 sm:h-9 sm:w-9 rounded-full border flex items-center justify-center transition-all select-none';
   const btnEnabled = 'border-white/15 text-white hover:border-teal-400/60 hover:bg-teal-400/10 active:scale-95';
   const btnDisabled = 'border-white/[0.07] text-white/25 cursor-not-allowed';
 
@@ -248,7 +330,7 @@ export default function MobileSnapSlider({
           aria-label="Scorri indietro"
           className={`${baseBtn} ${canPrev ? btnEnabled : btnDisabled}`}
         >
-          <TiaIcon icon={ArrowRight01Icon} size={15} className="-rotate-180" strokeWidth={2} />
+          <TiaIcon icon={ArrowRight01Icon} size={17} className="-rotate-180" strokeWidth={2} />
         </button>
         <button
           type="button"
@@ -257,7 +339,7 @@ export default function MobileSnapSlider({
           aria-label="Scorri avanti"
           className={`${baseBtn} ${canNext ? btnEnabled : btnDisabled}`}
         >
-          <TiaIcon icon={ArrowRight01Icon} size={15} strokeWidth={2} />
+          <TiaIcon icon={ArrowRight01Icon} size={17} strokeWidth={2} />
         </button>
       </div>
     </div>

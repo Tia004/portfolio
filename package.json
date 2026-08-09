@@ -12,6 +12,8 @@
     "lint": "eslint",
     "depcheck": "npx depcheck --ignores=@types/*,prisma --skip-missing=true || true",
     "check:icons": "node scripts/check-icons-sync.mjs",
+    "gen:variants": "node scripts/gen-image-variants.mjs",
+    "gen:thumbs": "node scripts/gen-thumb-variants.mjs",
     "deploy:setup-webhook": "curl -X POST \"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${VERCEL_URL}/api/chat/webhook&secret_token=${TELEGRAM_WEBHOOK_SECRET:?TELEGRAM_WEBHOOK_SECRET required}\" 2>&1 | python3 -m json.tool",
     "deploy:check-webhook": "curl \"https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo\" 2>&1 | python3 -m json.tool",
     "webhook-local": "node scripts/setup-webhook-local.mjs",
