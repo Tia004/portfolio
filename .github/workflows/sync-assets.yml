@@ -1,0 +1,39 @@
+name: Sync assets to Cloudflare R2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/uploads/**"
+  workflow_dispatch:
+
+concurrency:
+  group: assets-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mirror public/uploads → R2 (same folder structure), so every URL in the
+      # code (/uploads/...) resolves to the same path on the CDN. Objects are
+      # uploaded with an immutable 1-year Cache-Control, so repeat visits load
+      # them straight from the browser cache instead of revalidating with the
+      # server (that revalidation is what Vercel does today with
+      # "max-age=0, must-revalidate" — the source of the perceived lag).
+      - name: Sync public/uploads → R2
+        uses: docker://rclone/rclone:latest
+        env:
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        with:
+          args: >-
+            sync public/uploads r2:${{ secrets.R2_BUCKET }}/uploads
+            --header-upload "Cache-Control: public, max-age=31536000, immutable"
+            --fast-list
+            --progress
