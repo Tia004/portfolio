@@ -21,12 +21,18 @@ const nextConfig: NextConfig = {
   ...(assetsCdn
     ? {
         async rewrites() {
-          return [
-            {
-              source: "/uploads/:path*",
-              destination: `${assetsCdn}/uploads/:path*`,
-            },
-          ];
+          return {
+            // beforeFiles: evaluated BEFORE the filesystem, so these take
+            // precedence over the files still shipped in public/ (which stay
+            // there as the GitHub Actions sync source + local dev). Without
+            // this, Vercel serves the local copy and the CDN is never used.
+            beforeFiles: [
+              {
+                source: "/uploads/:path*",
+                destination: `${assetsCdn}/uploads/:path*`,
+              },
+            ],
+          };
         },
       }
     : {}),
