@@ -88,9 +88,14 @@ export async function mountTurnstile(container: HTMLElement, siteKey: string): P
     if (!window.turnstile) throw new Error('turnstile-unavailable');
     turnstileWidget = window.turnstile.render(container, {
       sitekey: siteKey,
-    size: 'invisible',
-    action: 'turnstile-spin-v2',
-    callback: (token: unknown) => {
+      // Invisible mode is configured on the widget in the Cloudflare
+      // dashboard — the render API only accepts normal|flexible|compact
+      // (the old size:'invisible' value now throws and breaks the whole
+      // chat). The container is visually hidden by CSS, and execution is
+      // manual to match the reset()+execute() per-request flow below.
+      execution: 'execute',
+      action: 'turnstile-spin-v2',
+      callback: (token: unknown) => {
         turnstileToken = typeof token === 'string' ? token : '';
         resolveWidgetReady?.();
       },
