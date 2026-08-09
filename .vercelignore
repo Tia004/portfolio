@@ -1,0 +1,6 @@
+# Assets live on Cloudflare R2 in production: excluding public/uploads from
+# the deployment makes /uploads/* requests fall through to the beforeFiles
+# rewrite, which proxies them to the R2 CDN (immutable 1-year cache).
+# The files STAY in the repo as the GitHub Actions sync source and for local
+# dev (ASSETS_CDN_URL unset → served from public/ as usual).
+public/uploads
