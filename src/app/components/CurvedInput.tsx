@@ -180,8 +180,11 @@ const CurvedInput = ({
   const vBase = fontSize * 0.34;
   const bandPath = bentRectPath(geom, 0, geom.W, -T / 2, T / 2, cornerRadius);
 
-  // Layout: sparkle icon → label text → arrow (right edge)
-  const labelStart = showSparkle ? 38 : 18;
+  // Layout: sparkle icon → label text → arrow (right edge). Without the
+  // sparkle (the docked mobile pill) the text needs MORE inset on both sides
+  // so it doesn't feel cramped — 26px left keeps it balanced against the
+  // arrow zone on the right (W-38).
+  const labelStart = showSparkle ? 38 : 26;
   const labelEnd = geom.W - 38;
   const labelPath = bentLinePath(geom, labelStart, labelEnd, vBase);
 

@@ -1,3 +1,28 @@
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+// ── Scroll-aware ScrollTrigger.refresh() ────────────────────
+// ScrollTrigger.refresh() recalculates every trigger position. When several
+// elements intersect during ONE fast gesture (ScrollReveal/StaggerReveal fire
+// their IO as the page flies past) each callback called refresh() while Lenis
+// was mid-animation — GSAP writes the scroll position back and Lenis corrects
+// it on the next frame: the classic tiny up/down jitter. This helper skips
+// refresh during an active gesture and batches bursts into a single refresh.
+let refreshQueued = false;
+let lastScrollAt = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener('scroll', () => { lastScrollAt = Date.now(); }, { passive: true, capture: true });
+}
+
+export function refreshScrollTriggers(): void {
+  if (Date.now() - lastScrollAt < 150) return; // gesture in progress — skip
+  if (refreshQueued) return;
+  refreshQueued = true;
+  requestAnimationFrame(() => {
+    refreshQueued = false;
+    ScrollTrigger.refresh();
+  });
+}
+
 export interface SmoothScrollController {
   scroll?: number;
   scrollTo: (target: number, options?: Record<string, unknown>) => void;

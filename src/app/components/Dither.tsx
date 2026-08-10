@@ -413,7 +413,6 @@ export default function Dither({
   return (
     <div
       ref={wrapperRef}
-      data-performance="heavy"
       style={{
         position: 'absolute',
         inset: 0,
@@ -429,7 +428,13 @@ export default function Dither({
           On WebGL devices the opaque dither canvas paints over it completely. */}
       <StaticDitherTexture />
       {!glFailed && !canvasBroken && (
+        // data-performance="heavy" marks ONLY the WebGL canvas: on genuinely
+        // low-end devices the .is-low-end CSS hides just this canvas and the
+        // bright static texture below stays visible — the hero can never be
+        // a black void (the attribute used to sit on the WRAPPER, hiding the
+        // static fallback too → black hero on every phone).
         <Canvas
+          data-performance="heavy"
           camera={{ position: [0, 0, 6] }}
           dpr={1}
           frameloop={paused ? 'never' : 'always'}

@@ -34,9 +34,16 @@ export default function SmoothScrollProvider({ children }: Props) {
       wheelMultiplier: 1,
       touchMultiplier: 2,
       infinite: false,
+      // Nested scroll containers (chat messages, textareas) scroll NATIVELY,
+      // and when their overscroll chains into the page Lenis syncs its own
+      // position via onNativeScroll — no fight, no up/down jitter, and the
+      // page keeps scrolling when a container hits its boundary (the old
+      // overscroll-contain approach ate the wheel entirely: the page was
+      // stuck at the chatbot).
+      allowNestedScroll: true,
       // Respect data-lenis-prevent: any element (or ancestor) with this
-      // attribute gets native scroll — used by ServiceSelect dropdown,
-      // chatbot message area, and any other overflow-y-auto container.
+      // attribute gets native scroll — used by the ServiceSelect dropdown
+      // and any other overflow-y-auto container that must never chain.
       prevent: (node) => node.closest('[data-lenis-prevent]') !== null,
     });
 

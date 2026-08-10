@@ -3230,10 +3230,8 @@ export default function HomeShell() {
                     <div className="p-5">
                       <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider mb-2">{t('contatti.message', lang)}</label>
                       <textarea id="form-message" required value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={8}
-                        data-lenis-prevent
-                        overscroll-contain
                         aria-invalid={formValidationErrors.has('message')}
-                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[140px] overflow-y-auto overscroll-contain border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
+                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[140px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
                         placeholder={t('contatti.placeholder_message', lang)} />
                       {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400">{t('bot.message_required', lang)}</p>}
                     </div>
@@ -3389,11 +3387,10 @@ export default function HomeShell() {
                   </button>
                 </div>
 
-                {/* Messages area — data-lenis-prevent lets native scroll work inside
-                   the chat; overscroll-contain swallows boundary wheel/touch so it
-                   never chains into the page (chaining fights Lenis and causes the
-                   up/down micro-jitter). */}
-                <div ref={chatMessagesRef} data-lenis-prevent className="flex-1 px-5 py-4 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 relative">
+                {/* Messages area — native scroll via Lenis allowNestedScroll:
+                   the chat scrolls itself and at its boundary the wheel chains
+                   to the page (Lenis stays in sync — no fight, no jitter). */}
+                <div ref={chatMessagesRef} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative">
                   {/* Subtle DotGrid background — always mounted, static for perf */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
                     <DotGrid dotSize={2} gap={18} baseColor="#0a0a0a" activeColor="#2dd4bf" proximity={0} shockRadius={0} shockStrength={0} resistance={0} returnDuration={0} />
@@ -3525,7 +3522,7 @@ export default function HomeShell() {
         <div
           className={`fixed left-0 right-0 flex justify-center px-4 sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms] ${ctaDocked && isMobile ? 'z-[10000]' : 'z-[50]'}`}
           style={ctaDocked
-            ? (isMobile ? { top: '3px' } : { bottom: 'calc(100vh - 88px)' })
+            ? (isMobile ? { top: '4px' } : { bottom: 'calc(100vh - 88px)' })
             : { bottom: '24px' }
           }
         >
@@ -3544,9 +3541,9 @@ export default function HomeShell() {
               label={t('nav.raccontami', lang)}
               showSparkle={!ctaDocked || !isMobile}
               bend={ctaDocked ? (isMobile ? -8 : -22) : 14}
-              height={ctaDocked && isMobile ? 30 : 48}
-              width={ctaDocked && isMobile ? 210 : 360}
-              fontSize={ctaDocked && isMobile ? 12 : 14}
+              height={ctaDocked && isMobile ? 36 : 48}
+              width={ctaDocked && isMobile ? 236 : 360}
+              fontSize={ctaDocked && isMobile ? 13 : 14}
               backgroundColor="#ffffff06"
               textColor="#ffffff"
               borderColor="#ffffff12"

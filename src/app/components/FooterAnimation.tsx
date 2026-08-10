@@ -7,7 +7,7 @@ import { FOOTER } from '@/lib/animation-theme';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
 import { useLenis } from './SmoothScroll';
-import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
+import { scrollToElementAfterLayout, triggerArrivalGlow, refreshScrollTriggers } from '@/lib/scroll';
 
 /**
  * FooterAnimation — split-text rising wordmark + gradient glow
@@ -114,7 +114,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       );
 
       // Refresh ScrollTrigger now that the chars are in the DOM
-      ScrollTrigger.refresh();
+      refreshScrollTriggers();
     }, section);
 
     // ── The wordmark must never be missing ────────────────────
@@ -161,7 +161,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
 
     const refreshOnce = () => {
       fitWordmark();
-      ScrollTrigger.refresh();
+      refreshScrollTriggers();
       ensureVisible();
     };
 

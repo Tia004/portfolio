@@ -4,6 +4,7 @@ import React, { useEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { REVEAL_DEFAULTS } from '@/lib/animation-theme';
+import { refreshScrollTriggers } from '@/lib/scroll';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -56,9 +57,11 @@ export default function ScrollReveal({
     }
 
     // Fix: content-visibility: auto makes the element 0×0 until near viewport,
-    // breaking ScrollTrigger position calculations. Refresh when it gets dimensions.
+    // breaking ScrollTrigger position calculations. Refresh when it gets
+    // dimensions — via refreshScrollTriggers() which skips refresh during an
+    // active scroll gesture (a mid-gesture refresh fights Lenis → jitter).
     const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { ScrollTrigger.refresh(); io.disconnect(); }
+      if (entry.isIntersecting) { refreshScrollTriggers(); io.disconnect(); }
     }, { rootMargin: '400px' });
     io.observe(el);
 

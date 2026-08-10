@@ -27,11 +27,19 @@ export function isLowEndDevice(): boolean {
   const memory = (navigator as any).deviceMemory as number | undefined;
   if (memory !== undefined && memory < 4) return true;
 
-  // Mobile devices: touch support + smaller screen (reliable combo)
+  // Mobile devices: touch + smaller screen — but ONLY when the hardware is
+  // actually weak. Classifying every phone as low-end was a bug: the CSS rule
+  // `.is-low-end [data-performance="heavy"] { display:none }` then hid the
+  // hero dither ENTIRELY (static fallback included) on every phone → black
+  // hero on mobile while desktop (even a narrow window) showed it fine.
+  // A flagship phone (8+ GB RAM, 8+ cores) is not low-end.
   const hasTouch =
     'maxTouchPoints' in navigator && navigator.maxTouchPoints > 0;
   const smallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
-  if (hasTouch && smallScreen) return true;
+  const weakHardware =
+    (memory !== undefined && memory < 4) ||
+    (typeof navigator !== 'undefined' && navigator.hardwareConcurrency <= 4);
+  if (hasTouch && smallScreen && weakHardware) return true;
 
   // Check for low-end GPU via WebGL renderer string
   try {

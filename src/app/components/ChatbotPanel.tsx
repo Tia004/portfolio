@@ -197,13 +197,12 @@ export default function ChatbotPanel({
             flex-1 fills the section's remaining height (the section is exactly
             one viewport tall), so the chat never spills past the screen. */}
         <div className="relative flex-1 min-h-0 flex flex-col">
-          {/* data-lenis-prevent: native scroll inside the chat; overscroll-contain
-              swallows boundary wheel/touch so it never chains into the page
-              (chaining fights Lenis → up/down micro-jitter). */}
+          {/* Native scroll via Lenis allowNestedScroll: the messages scroll
+              themselves, and at their boundary the wheel chains to the page
+              (Lenis stays in sync — no fight, no jitter). */}
           <div
             ref={messagesRef}
-            data-lenis-prevent
-            className="flex-1 min-h-0 relative overflow-y-auto overscroll-contain scrollbar-hide"
+            className="flex-1 min-h-0 relative overflow-y-auto scrollbar-hide"
           >
             {messages.length === 0 && !typing ? (
               /* Top-anchored (not centered) so the welcome message sits right

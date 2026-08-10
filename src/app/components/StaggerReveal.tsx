@@ -4,6 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { STAGGER_DEFAULTS } from '@/lib/animation-theme';
+import { refreshScrollTriggers } from '@/lib/scroll';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -47,9 +48,11 @@ export default function StaggerReveal({
     if (!el) return;
 
     // Fix: content-visibility: auto makes children 0×0 until near viewport,
-    // breaking ScrollTrigger position calculations. Refresh when visible.
+    // breaking ScrollTrigger position calculations. Refresh when visible — via
+    // refreshScrollTriggers() which skips refresh during an active scroll
+    // gesture (a mid-gesture refresh fights Lenis → jitter).
     const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { ScrollTrigger.refresh(); io.disconnect(); }
+      if (entry.isIntersecting) { refreshScrollTriggers(); io.disconnect(); }
     }, { rootMargin: '400px' });
     io.observe(el);
 
