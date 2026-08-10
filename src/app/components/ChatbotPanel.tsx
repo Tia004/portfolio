@@ -162,7 +162,10 @@ export default function ChatbotPanel({
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-400">{t('bot.welcome_category', lang).replace(/\*\*/g, '')}</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-4 p-4 sm:p-5 md:p-6">
+              // Bottom-anchored stack: messages grow upward from just above
+              // the input bar (like Gemini/WhatsApp), pushing older ones up
+              // instead of starting at the top of the box.
+              <div className="flex min-h-full flex-col justify-end gap-4 p-4 sm:p-5 md:p-6">
                 {messages.map((msg) => {
                   // Extract suggestion chips from bot messages
                   const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
@@ -243,17 +246,27 @@ export default function ChatbotPanel({
 
         </div>
 
-        {/* Input bar — Gemini-style: borderless pill with a teal glow that is
-            vivid while the chat is still empty and DIMS once the first message
-            is sent (chatStarted). The textarea never grows the bar (max-h +
-            internal scroll) and its text sits flush with the container padding. */}
-        <div className="shrink-0 pt-4 sm:pt-5">
+        {/* Input bar — Gemini-style. NO border/ring on the bar: the glow is a
+            separate blurred teal HALO that emerges from under the bar and rises
+            toward the welcome message while the chat is empty, then DIMS once
+            the first message is sent (chatStarted). The bar itself is clean
+            liquid glass — translucent, backdrop blur, subtle inner sheen. */}
+        <div className="relative shrink-0 pt-4 sm:pt-5">
+          {/* Teal halo — brightest at the bar's top edge, blurring upward into
+              the empty-state area. pointer-events-none, sits behind the bar. */}
           <div
-            className={`flex items-center gap-2 rounded-full bg-white/[0.05] p-2 sm:p-2.5 backdrop-blur-md transition-all duration-500 ${chatStarted
-              ? 'shadow-[0_0_0_1px_rgba(45,212,191,0.10),0_0_16px_rgba(45,212,191,0.07)]'
-              : 'shadow-[0_0_0_1px_rgba(45,212,191,0.22),0_0_24px_rgba(45,212,191,0.20),0_0_64px_rgba(45,212,191,0.10)]'
-              } focus-within:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_0_26px_rgba(45,212,191,0.26),0_0_70px_rgba(45,212,191,0.12)]`}
-          >
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2 transition-opacity duration-700"
+            style={{
+              top: '-190px',
+              width: 'min(520px, 94%)',
+              height: '220px',
+              background: 'radial-gradient(50% 52% at 50% 100%, rgba(45,212,191,0.55) 0%, rgba(45,212,191,0.16) 55%, transparent 78%)',
+              filter: 'blur(26px)',
+              opacity: chatStarted ? 0.22 : 0.55,
+            }}
+          />
+          <div className="relative z-10 flex items-center gap-2 rounded-full bg-white/[0.06] p-2 sm:p-2.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] transition-all duration-500 focus-within:bg-white/[0.09] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
             {/* Fullscreen composer toggle */}
             <button
               type="button"
