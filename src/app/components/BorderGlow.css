@@ -10,7 +10,6 @@
   position: relative;
   border-radius: var(--border-radius);
   isolation: isolate;
-  transform: translate3d(0, 0, 0.01px);
   display: grid;
   border: 1px solid rgb(255 255 255 / 10%);
   background: var(--card-bg, #0a0a0a);
@@ -27,10 +26,22 @@
   inset: 0;
   border-radius: inherit;
   z-index: -1;
-  /* Pre-allocate GPU layers so the first hover has zero paint delay.
-     On pages with hundreds of cards, the browser may defer compositor
-     updates for pseudo-elements that have never been visible.  will-change
-     forces a dedicated GPU layer from the first frame. */
+}
+
+/* NO idle GPU layers: the skills marquee renders ~190 cards and forcing
+   translate3d + will-change:opacity on every card (4 layers each, ~800
+   total) choked the compositor during scroll. Layers are now promoted ONLY
+   on hover/active — one card at a time — with a one-frame promotion cost
+   that is invisible against the 150ms fade-in. */
+.border-glow-card:hover::before,
+.border-glow-card:hover::after,
+.border-glow-card:hover > .edge-light,
+.border-glow-card.sweep-active::before,
+.border-glow-card.sweep-active::after,
+.border-glow-card.sweep-active > .edge-light,
+.border-glow-card.scroll-glow-active::before,
+.border-glow-card.scroll-glow-active::after,
+.border-glow-card.scroll-glow-active > .edge-light {
   will-change: opacity;
 }
 

@@ -1485,21 +1485,23 @@ export default function HomeShell() {
     }
   };
 
-  // Chat wheel scroll: data-lenis-prevent tells Lenis to skip this
-  // element. We drive scrollTop manually in the React onWheel handler
-  // so there's zero conflict with Lenis or the browser.
+  // Chat wheel scroll: data-lenis-prevent tells Lenis to skip this element,
+  // so the browser's native scroll would run UNCONTROLLED on top of ours
+  // (and CSS scroll-smooth would animate it), causing the double-scroll jolt.
+  // We preventDefault and drive scrollTop directly (scrollTop assignment is
+  // always instant, never smooth). At the boundaries the page takes over via
+  // Lenis — using window.scrollY (never lenis.scroll, which lags behind) with
+  // immediate:true so the next wheel tick cannot fight a running animation.
   const handleChatWheel = useCallback((e: React.WheelEvent<HTMLElement>) => {
+    e.preventDefault();
     const el = e.currentTarget;
     const px = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
     const atTop = el.scrollTop <= 0 && px < 0;
     const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 1 && px > 0;
     if (atTop || atBottom) {
-      lenis.current?.scrollTo(
-        (lenis.current?.scroll ?? window.scrollY) + px,
-        { immediate: false },
-      );
+      lenis.current?.scrollTo(window.scrollY + px, { immediate: true });
     } else {
-      el.scrollBy({ top: px, behavior: 'instant' });
+      el.scrollTop += px;
     }
   }, []);
 
@@ -1522,10 +1524,9 @@ export default function HomeShell() {
     // page scroll instead of letting the overscroll dead-end in Lenis' virtual body.
     if ((atTop && deltaY < 0) || (atBottom && deltaY > 0)) {
       e.preventDefault();
-      lenis.current?.scrollTo(
-        (lenis.current?.scroll ?? window.scrollY) + deltaY,
-        { immediate: true },
-      );
+      // window.scrollY is authoritative — lenis.scroll can lag behind the real
+      // position and would make the page snap back to the chat (the jolt).
+      lenis.current?.scrollTo(window.scrollY + deltaY, { immediate: true });
     }
   };
 

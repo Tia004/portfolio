@@ -130,6 +130,21 @@ export default function ChatbotPanel({
   return (
     <>
       <div className="w-full min-w-0 max-w-full">
+        {/* Header row — "Nuova chat" sits ABOVE the messages (never overlaps
+            them or the curtain), so even the first bubble stays fully visible. */}
+        <div className="mb-2 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onReset}
+            title={resetTitle}
+            aria-label={t('chat.new_chat', lang)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0f0f0f]/85 backdrop-blur-md px-3 py-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-[#0f0f0f] hover:text-neutral-300"
+          >
+            <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
+            <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
+          </button>
+        </div>
+
         {/* Messages — scrollable history under a black curtain, no window chrome */}
         <div className="relative">
           <div
@@ -139,7 +154,7 @@ export default function ChatbotPanel({
             onWheel={onWheel}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
-            className="chatbot-window-h relative overflow-y-auto scroll-smooth scrollbar-custom"
+            className="chatbot-window-h relative overflow-y-auto scrollbar-custom"
           >
             {messages.length === 0 && !typing ? (
               <div className="flex min-h-full flex-col items-center justify-center px-6 py-10 text-center">
@@ -226,24 +241,19 @@ export default function ChatbotPanel({
             <div className="pointer-events-none absolute top-0 left-0 right-0 h-20 z-10 bg-gradient-to-b from-[#010101] via-[#010101]/70 to-transparent" />
           )}
 
-          {/* Nuova chat — floats above BOTH the messages and the curtain */}
-          <button
-            type="button"
-            onClick={onReset}
-            title={resetTitle}
-            aria-label={t('chat.new_chat', lang)}
-            className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0f0f0f]/85 backdrop-blur-md px-3 py-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-[#0f0f0f] hover:text-neutral-300"
-          >
-            <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
-            <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
-          </button>
         </div>
 
-        {/* Input bar — dark, teal accents, no media/mic buttons. The textarea
-            never grows the bar (max-h + internal scroll) and its text sits
-            flush with the container padding (items-center, no vertical py). */}
+        {/* Input bar — Gemini-style: borderless pill with a teal glow that is
+            vivid while the chat is still empty and DIMS once the first message
+            is sent (chatStarted). The textarea never grows the bar (max-h +
+            internal scroll) and its text sits flush with the container padding. */}
         <div className="shrink-0 pt-4 sm:pt-5">
-          <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-2 sm:p-3 transition-all focus-within:border-teal-500/40 focus-within:shadow-[0_0_0_1px_rgba(45,212,191,0.12),0_0_20px_rgba(45,212,191,0.07)]">
+          <div
+            className={`flex items-center gap-2 rounded-full bg-white/[0.05] p-2 sm:p-2.5 backdrop-blur-md transition-all duration-500 ${chatStarted
+              ? 'shadow-[0_0_0_1px_rgba(45,212,191,0.10),0_0_16px_rgba(45,212,191,0.07)]'
+              : 'shadow-[0_0_0_1px_rgba(45,212,191,0.22),0_0_24px_rgba(45,212,191,0.20),0_0_64px_rgba(45,212,191,0.10)]'
+              } focus-within:shadow-[0_0_0_1px_rgba(45,212,191,0.35),0_0_26px_rgba(45,212,191,0.26),0_0_70px_rgba(45,212,191,0.12)]`}
+          >
             {/* Fullscreen composer toggle */}
             <button
               type="button"
@@ -251,7 +261,7 @@ export default function ChatbotPanel({
               disabled={chatBlocked}
               aria-label={t('chat.fullscreen_title', lang)}
               title={t('chat.fullscreen_title', lang)}
-              className="h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-neutral-500 transition-all hover:text-teal-300 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-neutral-500 transition-all hover:text-teal-300 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <TiaIcon icon={ArrowExpandDiagonal01Icon} size={18} strokeWidth={1.8} />
             </button>
@@ -275,7 +285,7 @@ export default function ChatbotPanel({
               onClick={onSend}
               disabled={!input.trim() || chatBlocked}
               aria-label={t('chat.send', lang)}
-              className={`h-10 w-10 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${input.trim() && !chatBlocked ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25' : 'bg-neutral-800/60 text-neutral-500'}`}
+              className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 ${input.trim() && !chatBlocked ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25' : 'bg-neutral-800/60 text-neutral-500'}`}
             >
               <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 19V5" />

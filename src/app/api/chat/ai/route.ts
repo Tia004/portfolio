@@ -376,6 +376,23 @@ function localizedStreamResponse(message: string): Response {
   });
 }
 /**
+ * Fetch with a single retry on HTTP 429 (rate limit). Groq's per-model TPM
+ * can be exhausted for a moment even when the model is healthy; a 700ms pause
+ * followed by one retry turns many "riprova più tardi" fallbacks into real
+ * answers. Non-429 responses (401/500/… ) are returned as-is.
+ */
+async function fetchWithRetry429(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const attempt = (): Promise<Response> => fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const first = await attempt();
+  if (first.status === 429) {
+    console.warn(`[chat/ai] HTTP 429 on ${url.split('/')[2]} — retrying once after 700ms`);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    return await attempt();
+  }
+  return first;
+}
+
+/**
  * Stream from Groq via SSE.
  * `model` is parameterized so the cascade can fall back to a model with a
  * SEPARATE daily quota when the primary one is rate-limited (TPD is per-model:
@@ -385,13 +402,12 @@ function localizedStreamResponse(message: string): Response {
 async function* streamGroq(messages: ChatMessage[], model = 'llama-3.3-70b-versatile', timeoutMs = 45_000): AsyncGenerator<string> {
   if (!GROQ_API_KEY) return;
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetchWithRetry429('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${GROQ_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    signal: AbortSignal.timeout(timeoutMs),
     body: JSON.stringify({
       model,
       messages,
@@ -399,7 +415,7 @@ async function* streamGroq(messages: ChatMessage[], model = 'llama-3.3-70b-versa
       max_tokens: 512,
       stream: true,
     }),
-  });
+  }, timeoutMs);
 
   if (!res.ok) {
     const errBody = await res.text().catch(() => '');
@@ -461,14 +477,14 @@ async function* streamGemini(messages: ChatMessage[], timeoutMs = 45_000): Async
     contents.push({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text: msg.content }] });
   }
 
-  const res = await fetch(
+  const res = await fetchWithRetry429(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512, thinkingConfig: { thinkingBudget: 0 } } }),
-    }
+    },
+    timeoutMs
   );
 
   if (!res.ok) {

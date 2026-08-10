@@ -46,6 +46,9 @@ reference/
 # local backup of original (non-converted) uploads — never commit
 /backup-original-uploads
 .freebuff
+
+# local agent notes — never commit
+/NOTES-RESEND-EMAIL.txt
 prisma
 !prisma/
 !prisma/migrations/
