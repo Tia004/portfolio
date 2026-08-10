@@ -198,19 +198,10 @@ html {
   animation: chat-pop-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* AI chatbot window — the section heading sits above it, so on mobile the
-   window must leave room for the heading + padding to keep the whole
-   section (heading + window + input) inside one viewport instead of
-   spilling past the bottom edge. Desktop keeps the generous 70dvh. */
-.chatbot-window-h {
-  height: min(70vh, 640px);
-  height: min(70dvh, 640px);
-}
-@media (max-width: 767px) {
-  .chatbot-window-h {
-    height: min(58dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 17rem));
-  }
-}
+/* AI chatbot window — the #chatbot section is exactly one viewport tall
+   (h-[100dvh]) with a flex column, so the message window flex-fills the
+   remaining space instead of having its own fixed height. */
+
 
 /* Toast notification entrance/exit */
 @keyframes toast-slide-up {
@@ -367,12 +358,15 @@ body:has(nextjs-portal) embed {
    isolation:isolate forces a dedicated stacking context at
    first paint — the backdrop-filter is composited before the
    element ever becomes visible.  Zero-frame blur gap. */
-/* Hide hero elements from first paint to prevent a hydration flash.
-   opacity:0 is set via CSS but GSAP's inline opacity:1 overrides it
-   during the entrance animation. clearProps only removes transform
-   and filter — opacity:1 stays inline permanently. */
+/* Hero elements are painted at FULL opacity from the very first paint (this
+   is the LCP element — the splash screen, an opaque z-[99999] overlay, hides
+   them from the user while it's up). GSAP pre-sets the blur/transform in a
+   useLayoutEffect BEFORE the first paint, so the hero first paints already
+   blurred behind the splash and LCP fires at first paint instead of after
+   the splash + entrance animation. On splash-complete only transform/filter
+   animate to the sharp state — no opacity animation needed. */
 .hero-anim {
-  opacity: 0;
+  opacity: 1;
 }
 
 .hero-anim [class*="backdrop-blur"] {

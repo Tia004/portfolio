@@ -22,7 +22,6 @@ export interface UseSectionNavOptions {
 export function useSectionNav(options: UseSectionNavOptions = {}) {
   const {
     rootMargin = '0px 0px 0px 0px',
-    threshold = [0, 0.25, 0.5, 0.75, 1],
     deps = [],
     scrollOffset = 0,
     scrollParentIsOffsetParent = false,
@@ -41,41 +40,53 @@ export function useSectionNav(options: UseSectionNavOptions = {}) {
     [],
   );
 
-  // ── IntersectionObserver: track active section ──
+  // ── Track active section from container scroll position ──
+  // An IntersectionObserver with a shrunken rootMargin is unreliable at the
+  // bottom of a scroll container: the last (often short) sections fall below
+  // the shrunken root and never intersect, so the active dot stops a few
+  // sections early — the bug reported for the legal modals. Computing from
+  // scrollTop always resolves: the active section is the last one whose top
+  // crossed the active line (the top inset from rootMargin), and at max
+  // scroll it is clamped to the last section.
   useEffect(() => {
-    const els = sectionRefs.current.filter(Boolean) as HTMLElement[];
-    if (els.length === 0) return;
+    const el = contentRef.current;
+    if (!el) return;
 
-    const handleIntersect = (entries: IntersectionObserverEntry[]) => {
-      const rootTop = entries[0]?.rootBounds?.top ?? 0;
-      let best: number | null = null;
-      let bestDist = Infinity;
+    // Top inset parsed from rootMargin (e.g. "-80px 0px -40% 0px" → 80).
+    // A section becomes active when its top crosses that many px below the
+    // container's top edge.
+    const topInset = -parseFloat((rootMargin.split(/\s+/)[0] || '0').replace(/[^-\d.]/g, '') || '0') || 0;
 
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          const el = entry.target as HTMLElement;
-          const idx = Number(el.dataset.section);
-          if (!isNaN(idx)) {
-            const dist = Math.abs(entry.boundingClientRect.top - rootTop);
-            if (dist < bestDist) {
-              bestDist = dist;
-              best = idx;
-            }
-          }
-        }
+    const computeActive = () => {
+      const sections = sectionRefs.current.filter(Boolean) as HTMLElement[];
+      if (!sections.length) return;
+
+      const line = el.scrollTop + topInset;
+      let active = 0;
+      for (let i = 0; i < sections.length; i++) {
+        const top = scrollParentIsOffsetParent
+          ? sections[i].offsetTop
+          : sections[i].offsetTop - el.offsetTop;
+        if (top <= line) active = i;
+        else break;
       }
 
-      if (best !== null) setActiveSection(best);
+      // At the very bottom, the last section is the active one regardless of
+      // how short it is.
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) {
+        active = sections.length - 1;
+      }
+
+      setActiveSection(active);
     };
 
-    const observer = new IntersectionObserver(handleIntersect, {
-      root: contentRef.current,
-      rootMargin,
-      threshold,
-    });
-
-    els.forEach(el => observer.observe(el));
-    return () => observer.disconnect();
+    computeActive();
+    el.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
+    return () => {
+      el.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 

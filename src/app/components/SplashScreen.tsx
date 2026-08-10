@@ -9,16 +9,28 @@ const LETTER_STAGGER = 0.08;
 const LETTER_DROP_Y = -120;
 const LETTER_DURATION = 0.8;
 const MIN_SPLASH_MS = 1800;  // minimum display time for the letter animation
-const MAX_SPLASH_MS = 6000;  // safety net — never block the site forever
+const MAX_SPLASH_MS = 3500;  // safety net — never block the site forever
 
 function whenPageReady(): Promise<void> {
   return new Promise((resolve) => {
-    // Already fully loaded
-    if (document.readyState === 'complete') { resolve(); return; }
-    // Wait for DOM + all subresources (images, frames)
-    window.addEventListener('load', () => resolve(), { once: true });
-    // Safety: resolve after 5s even if load event never fires
-    setTimeout(resolve, 5000);
+    // DOM parsed + webfonts ready. Deliberately NOT window.load: scripts,
+    // Turnstile, third-party and lazy assets would pin the splash open for
+    // seconds and tank LCP. The hero (the LCP element) is painted at full
+    // opacity BEHIND the splash, so LCP is captured at first paint — the
+    // splash only needs to cover the font swap to avoid text-reflow CLS.
+    const domReady = new Promise<void>((r) => {
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => r(), { once: true });
+      } else {
+        r();
+      }
+    });
+    const fontsReady = typeof document.fonts !== 'undefined'
+      ? document.fonts.ready.then(() => undefined).catch(() => undefined)
+      : Promise.resolve(undefined);
+    Promise.all([domReady, fontsReady]).then(() => resolve());
+    // Safety: resolve after 3.5s even if fonts hang
+    setTimeout(resolve, 3500);
   });
 }
 

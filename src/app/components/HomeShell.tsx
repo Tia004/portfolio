@@ -1496,8 +1496,10 @@ export default function HomeShell() {
   // (and CSS scroll-smooth would animate it), causing the double-scroll jolt.
   // We preventDefault and drive scrollTop directly (scrollTop assignment is
   // always instant, never smooth). At the boundaries the page takes over via
-  // Lenis — using window.scrollY (never lenis.scroll, which lags behind) with
-  // immediate:true so the next wheel tick cannot fight a running animation.
+  // Lenis — using window.scrollY (never lenis.scroll, which lags behind) and
+  // ANIMATED (no immediate): Lenis keeps its easing/inertia, so the handoff
+  // is a slow glide instead of a teleport. Rapid wheel ticks just retarget
+  // Lenis' running animation — it cannot fight itself.
   const handleChatWheel = useCallback((e: React.WheelEvent<HTMLElement>) => {
     e.preventDefault();
     const el = e.currentTarget;
@@ -1505,7 +1507,7 @@ export default function HomeShell() {
     const atTop = el.scrollTop <= 0 && px < 0;
     const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 1 && px > 0;
     if (atTop || atBottom) {
-      lenis.current?.scrollTo(window.scrollY + px, { immediate: true });
+      lenis.current?.scrollTo(window.scrollY + px);
     } else {
       el.scrollTop += px;
     }
@@ -2120,10 +2122,11 @@ export default function HomeShell() {
   const heroEntranceStartedRef = useRef(false);
   const heroEntranceTweenRef = useRef<gsap.core.Tween | null>(null);
 
-  // .hero-anim has opacity:0 in CSS to prevent a hydration flash (server
-  // renders at final position; GSAP moves elements to the offset before the
-  // first paint). The splash screen covers everything with z-[99999], and
-  // the entrance tween animates opacity back to 1 after splashDone.
+  // .hero-anim is painted at opacity:1 from the first paint (it's the LCP
+  // element; the opaque splash covers it until it fades). GSAP moves elements
+  // to the offset + blur in a useLayoutEffect BEFORE the first paint, so the
+  // hero first paints already blurred behind the splash — LCP fires at first
+  // paint instead of after the splash + entrance animation.
   useLayoutEffect(() => {
     const elements = heroRef.current?.querySelectorAll<HTMLElement>('.hero-anim');
     if (!elements?.length) return;
@@ -2141,8 +2144,8 @@ export default function HomeShell() {
   }, []);
 
   // Reveal the hero exactly once, immediately after the splash completes.
-  // `to()` animates from the already-hidden state, so it never flashes visible
-  // and then starts over.
+  // Only transform/filter animate (opacity stays 1 the whole time), so the
+  // blur eases out as the splash fades — never a flash, never a re-hide.
   useEffect(() => {
     if (!splashDone || heroEntranceStartedRef.current) return;
     const elements = heroRef.current?.querySelectorAll<HTMLElement>('.hero-anim');
@@ -2150,7 +2153,6 @@ export default function HomeShell() {
 
     heroEntranceStartedRef.current = true;
     heroEntranceTweenRef.current = gsap.to(elements, {
-      opacity: 1,
       y: 0,
       scale: 1,
       filter: 'blur(0px)',
@@ -2943,14 +2945,14 @@ export default function HomeShell() {
               edge on phones — the window then looks like it "exceeds to the
               right". px-6 keeps the halo inside; overflow-x-clip guarantees no
               horizontal scroll from any residual glow. */}
-          <section id="chatbot" className="py-10 sm:py-24 px-6 sm:px-4 bg-[#010101] overflow-x-clip">
-            <div className="max-w-3xl mx-auto">
+          <section id="chatbot" className="h-[100dvh] flex flex-col px-6 sm:px-4 bg-[#010101] overflow-x-clip">
+            <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
               <div
                 id="chatbot-heading"
-                className="scroll-mt-[9rem]"
+                className="scroll-mt-[9rem] shrink-0"
                 style={{ scrollMarginTop: '9rem' }}
               >
-                <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
+                <ScrollReveal className="text-center mb-4 sm:mb-6" start="top 85%" end="bottom 25%">
                   <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">Preventivo</p>
                   <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('chatbot.title', lang)}</h2>
                   <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">

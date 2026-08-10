@@ -292,9 +292,9 @@ function StaticDitherTexture() {
         className="absolute inset-0"
         style={{
           background:
-            `radial-gradient(ellipse 90% 70% at 50% 32%, ${tealRgba(0.42)}, transparent 74%),` +
-            `radial-gradient(ellipse 55% 40% at 78% 78%, ${tealRgba(0.24)}, transparent 72%),` +
-            `radial-gradient(ellipse 30% 24% at 22% 60%, ${tealRgba(0.16)}, transparent 70%)`,
+            `radial-gradient(ellipse 95% 75% at 50% 30%, ${tealRgba(0.52)}, transparent 72%),` +
+            `radial-gradient(ellipse 60% 45% at 80% 80%, ${tealRgba(0.34)}, transparent 70%),` +
+            `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.24)}, transparent 68%)`,
         }}
       />
       {/* Dither dots — the pixelated character of the effect, brighter than
@@ -302,15 +302,15 @@ function StaticDitherTexture() {
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `radial-gradient(circle, ${tealRgba(0.5)} 1.2px, transparent 1.6px)`,
-          backgroundSize: '14px 14px',
-          opacity: 0.6,
+          backgroundImage: `radial-gradient(circle, ${tealRgba(0.75)} 1.3px, transparent 1.7px)`,
+          backgroundSize: '13px 13px',
+          opacity: 0.85,
         }}
       />
       {/* Grain noise in screen blend — lightens the texture like the shader */}
       <div
         className="absolute inset-0"
-        style={{ backgroundImage: NOISE_URI, opacity: 0.55, mixBlendMode: 'screen' }}
+        style={{ backgroundImage: NOISE_URI, opacity: 0.6, mixBlendMode: 'screen' }}
       />
     </div>
   );
@@ -340,7 +340,14 @@ export default function Dither({
   mouseRadius?: number;
 }) {
   const [paused, setPaused] = useState(false);
-  const [staticMode, setStaticMode] = useState(false);
+  // Synchronous initial value — no WebGL flash on touch devices: phones and
+  // windows under 768px get the static dither from the very first paint.
+  // The (max-width: 767px) gate also catches Samsung desktop-mode phones
+  // (hover:hover / fine pointer) that would otherwise try WebGL and can
+  // silently render a black void over the static layer.
+  const [staticMode, setStaticMode] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse), (max-width: 767px)').matches,
+  );
   const [glFailed, setGlFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -348,7 +355,7 @@ export default function Dither({
   // matchMedia gate mirrors real device capabilities — a desktop window
   // squeezed to phone width still reports hover: hover and keeps WebGL.
   useEffect(() => {
-    const mq = window.matchMedia('(hover: none), (pointer: coarse)');
+    const mq = window.matchMedia('(hover: none), (pointer: coarse), (max-width: 767px)');
     setStaticMode(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setStaticMode(e.matches);
     mq.addEventListener('change', onChange);

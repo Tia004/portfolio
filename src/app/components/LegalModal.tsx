@@ -67,22 +67,22 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-8"
+      className="fixed inset-0 z-[10001] flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label={doc.title}
     >
-      {/* Backdrop */}
+      {/* Solid backdrop — the site behind is completely hidden (no bleed-through) */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-xl"
+        className="absolute inset-0 bg-[#050505]"
         onClick={onClose}
       />
 
-      {/* Modal card */}
+      {/* Fullscreen modal — opaque, covers the whole viewport */}
       <div
         ref={contentRef}
         tabIndex={-1}
-        className="relative w-full max-w-4xl max-h-[85vh] bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col outline-none"
+        className="relative flex-1 min-h-0 flex flex-col bg-[#050505] text-neutral-200 overflow-hidden outline-none animate-in fade-in duration-300"
       >
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.05] backdrop-blur-xl">

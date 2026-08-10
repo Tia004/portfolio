@@ -85,6 +85,38 @@ export default function ChatbotPanel({
     return () => window.removeEventListener('keydown', onKey);
   }, [composerOpen]);
 
+  // ── Expand tip ──
+  // Temporary tooltip pointing at the fullscreen toggle. On desktop it
+  // reappears on hover; on mobile it stays while writing until dismissed.
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none), (pointer: coarse)');
+    setIsTouch(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsTouch(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const [showTip, setShowTip] = useState(true);
+  const [tipHover, setTipHover] = useState(false);
+  const [tipFocused, setTipFocused] = useState(false);
+  const [tipDismissed, setTipDismissed] = useState(false);
+  // Auto-hide the initial hint after a few seconds.
+  useEffect(() => {
+    const timer = setTimeout(() => setShowTip(false), 4500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-grow the compact input bar up to 3 lines; beyond that it scrolls
+  // internally instead of pushing the bar taller.
+  useEffect(() => {
+    const ta = inputRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+    ta.style.height = `${Math.min(ta.scrollHeight, lineHeight * 3)}px`;
+  }, [input]);
+
   const resetTitle = lang === 'it'
     ? 'Avvia una nuova chat — la conversazione corrente verrà eliminata'
     : lang === 'es'
@@ -129,7 +161,7 @@ export default function ChatbotPanel({
 
   return (
     <>
-      <div className="w-full min-w-0 max-w-full">
+      <div className="w-full min-w-0 max-w-full flex flex-col flex-1 min-h-0">
         {/* Header row — "Nuova chat" sits ABOVE the messages (never overlaps
             them or the curtain), so even the first bubble stays fully visible. */}
         <div className="mb-2 flex items-center justify-end">
@@ -145,8 +177,10 @@ export default function ChatbotPanel({
           </button>
         </div>
 
-        {/* Messages — scrollable history under a black curtain, no window chrome */}
-        <div className="relative">
+        {/* Messages — scrollable history under a black curtain, no window chrome.
+            flex-1 fills the section's remaining height (the section is exactly
+            one viewport tall), so the chat never spills past the screen. */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
           <div
             ref={messagesRef}
             data-lenis-prevent
@@ -154,7 +188,7 @@ export default function ChatbotPanel({
             onWheel={onWheel}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
-            className="chatbot-window-h relative overflow-y-auto scrollbar-custom"
+            className="flex-1 min-h-0 relative overflow-y-auto scrollbar-custom"
           >
             {messages.length === 0 && !typing ? (
               <div className="flex min-h-full flex-col items-center justify-center px-6 py-10 text-center">
@@ -164,8 +198,10 @@ export default function ChatbotPanel({
             ) : (
               // Bottom-anchored stack: messages grow upward from just above
               // the input bar (like Gemini/WhatsApp), pushing older ones up
-              // instead of starting at the top of the box.
-              <div className="flex min-h-full flex-col justify-end gap-4 p-4 sm:p-5 md:p-6">
+              // instead of starting at the top of the box. pt-24 clears the
+              // black curtain (h-20) so the very first message is never
+              // covered when the user scrolls all the way back up.
+              <div className="flex min-h-full flex-col justify-end gap-4 px-4 sm:px-5 md:px-6 pt-24 pb-4 sm:pb-5 md:pb-6">
                 {messages.map((msg) => {
                   // Extract suggestion chips from bot messages
                   const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
@@ -267,6 +303,28 @@ export default function ChatbotPanel({
             }}
           />
           <div className="relative z-10 flex items-center gap-2 rounded-full bg-white/[0.06] p-2 sm:p-2.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] transition-all duration-500 focus-within:bg-white/[0.09] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+            {/* Expand tip — temporary; hover on desktop, focus + X on mobile */}
+            {(showTip || tipHover || (isTouch && tipFocused && !tipDismissed)) && (
+              <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-20 w-max max-w-[250px]">
+                <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-teal-400/25 bg-[#0d0d0d]/95 px-3 py-2 text-[11px] leading-snug text-neutral-300 shadow-lg shadow-black/50 backdrop-blur-xl">
+                  <TiaIcon icon={ArrowExpandDiagonal01Icon} size={13} className="shrink-0 text-teal-400" />
+                  <span>{t('chat.fullscreen_tip', lang)}</span>
+                  {isTouch && (
+                    <button
+                      type="button"
+                      onClick={() => setTipDismissed(true)}
+                      aria-label={t('chat.fullscreen_close', lang)}
+                      className="shrink-0 ml-1 -mr-1 p-0.5 rounded-full text-neutral-500 hover:text-white transition-colors"
+                    >
+                      <TiaIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                    </button>
+                  )}
+                </div>
+                {/* Arrow pointing down at the toggle */}
+                <div className="absolute left-5 -bottom-[5px] h-2.5 w-2.5 rotate-45 rounded-[2px] border-r border-b border-teal-400/25 bg-[#0d0d0d]" />
+              </div>
+            )}
+
             {/* Fullscreen composer toggle */}
             <button
               type="button"
@@ -274,6 +332,8 @@ export default function ChatbotPanel({
               disabled={chatBlocked}
               aria-label={t('chat.fullscreen_title', lang)}
               title={t('chat.fullscreen_title', lang)}
+              onMouseEnter={() => setTipHover(true)}
+              onMouseLeave={() => setTipHover(false)}
               className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-neutral-500 transition-all hover:text-teal-300 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <TiaIcon icon={ArrowExpandDiagonal01Icon} size={18} strokeWidth={1.8} />
@@ -282,10 +342,12 @@ export default function ChatbotPanel({
               ref={inputRef}
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
+              onFocus={() => setTipFocused(true)}
+              onBlur={() => { setTipFocused(false); setTipDismissed(false); }}
               placeholder={chatBlocked ? t('bot.offtopic_blocked_hint', lang) : t(categoryOption?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
               disabled={chatBlocked}
               rows={1}
-              className="flex-1 min-w-0 bg-transparent px-1 py-0 text-sm leading-6 text-white placeholder-neutral-600 resize-none overflow-y-auto outline-none max-h-24 sm:max-h-32 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex-1 min-w-0 bg-transparent px-1 py-0 text-sm leading-6 text-white placeholder-neutral-600 resize-none overflow-y-auto outline-none disabled:cursor-not-allowed disabled:opacity-60"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -319,37 +381,54 @@ export default function ChatbotPanel({
       {/* Once a specialization is chosen the bar moves to the bottom of the
           section, with whitespace so the options stay readable below the chat. */}
       {chatStarted && (
-        <div className="mt-6 pb-6 sm:mt-8 sm:pb-10">{specializationBar}</div>
+        <div className="shrink-0 mt-4 pb-4 sm:mt-6 sm:pb-6">{specializationBar}</div>
       )}
 
-      {/* ── Fullscreen composer overlay — padded, focused writing surface ── */}
+      {/* ── Fullscreen composer — the same liquid-glass bar, extended ── */}
       {composerOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 sm:p-6"
+          className="fixed inset-0 z-[9999] flex flex-col bg-black/85 backdrop-blur-sm p-4 sm:p-6"
           onClick={(e) => { if (e.target === e.currentTarget) setComposerOpen(false); }}
           role="dialog"
           aria-modal="true"
           aria-label={t('chat.fullscreen_title', lang)}
         >
-          <div className="flex h-[min(85dvh,640px)] w-full max-w-2xl flex-col rounded-3xl border border-white/[0.08] bg-[#0f0f0f] p-4 sm:p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h4 className="text-sm font-semibold text-white">{t('chat.fullscreen_title', lang)}</h4>
-              <button
-                type="button"
-                onClick={() => setComposerOpen(false)}
-                aria-label={t('chat.fullscreen_close', lang)}
-                className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-neutral-500 transition-all hover:bg-white/[0.06] hover:text-white"
-              >
-                <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
-              </button>
-            </div>
+          {/* Header row — title + close, clean like the compact bar */}
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 pb-3 sm:pb-4">
+            <h4 className="text-sm font-semibold text-white">{t('chat.fullscreen_title', lang)}</h4>
+            <button
+              type="button"
+              onClick={() => setComposerOpen(false)}
+              aria-label={t('chat.fullscreen_close', lang)}
+              className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-neutral-500 transition-all hover:bg-white/[0.06] hover:text-white"
+            >
+              <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={1.8} />
+            </button>
+          </div>
+
+          {/* The extended bar — same translucent surface, inner sheen and teal
+              halo as the compact input, just larger. Gives the feel that the
+              compact bar itself grew to fill the screen. */}
+          <div className="relative mx-auto flex w-full max-w-2xl flex-1 min-h-0 flex-col rounded-3xl bg-white/[0.06] p-4 sm:p-5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+            {/* Teal halo echoing the compact bar's glow */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2"
+              style={{
+                top: '-140px',
+                width: 'min(560px, 96%)',
+                height: '180px',
+                background: 'radial-gradient(50% 52% at 50% 100%, rgba(45,212,191,0.5) 0%, rgba(45,212,191,0.14) 55%, transparent 78%)',
+                filter: 'blur(26px)',
+              }}
+            />
             <textarea
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               placeholder={t(categoryOption?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
               autoFocus
               disabled={chatBlocked}
-              className="flex-1 w-full resize-none rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm sm:text-base leading-relaxed text-white placeholder-neutral-600 outline-none focus:border-teal-500/40 focus:shadow-[0_0_0_1px_rgba(45,212,191,0.12),0_0_20px_rgba(45,212,191,0.07)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="relative z-10 flex-1 w-full resize-none bg-transparent text-sm sm:text-base leading-relaxed text-white placeholder-neutral-600 outline-none disabled:cursor-not-allowed disabled:opacity-60"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
@@ -357,23 +436,25 @@ export default function ChatbotPanel({
                 }
               }}
             />
-            <p className="mt-3 text-xs text-neutral-500">{t('chat.fullscreen_hint', lang)}</p>
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setComposerOpen(false)}
-                className="rounded-xl border border-white/[0.08] px-4 py-2 text-sm font-medium text-neutral-400 transition-all hover:bg-white/[0.06] hover:text-white"
-              >
-                {t('chat.fullscreen_close', lang)}
-              </button>
-              <button
-                type="button"
-                onClick={() => { onSend(); setComposerOpen(false); }}
-                disabled={!input.trim() || chatBlocked}
-                className={`rounded-xl px-5 py-2 text-sm font-semibold transition-all duration-300 ${input.trim() && !chatBlocked ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25' : 'bg-neutral-800/60 text-neutral-500'}`}
-              >
-                {t('chat.send', lang)}
-              </button>
+            <div className="relative z-10 mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
+              <p className="text-xs text-neutral-500">{t('chat.fullscreen_hint', lang)}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setComposerOpen(false)}
+                  className="rounded-full border border-white/[0.08] px-4 py-2 text-sm font-medium text-neutral-400 transition-all hover:bg-white/[0.06] hover:text-white"
+                >
+                  {t('chat.fullscreen_close', lang)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { onSend(); setComposerOpen(false); }}
+                  disabled={!input.trim() || chatBlocked}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300 ${input.trim() && !chatBlocked ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25' : 'bg-neutral-800/60 text-neutral-500'}`}
+                >
+                  {t('chat.send', lang)}
+                </button>
+              </div>
             </div>
           </div>
         </div>
