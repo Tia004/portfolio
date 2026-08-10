@@ -67,7 +67,7 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10001] flex flex-col"
+      className="fixed inset-0 z-[10005] flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label={doc.title}
@@ -80,12 +80,12 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
 
       {/* Fullscreen modal — opaque, covers the whole viewport */}
       <div
-        ref={contentRef}
-        tabIndex={-1}
-        className="relative flex-1 min-h-0 flex flex-col bg-[#050505] text-neutral-200 overflow-hidden outline-none animate-in fade-in duration-300"
+        className="relative flex-1 min-h-0 flex flex-col bg-[#050505] text-neutral-200 overflow-hidden animate-in fade-in duration-300"
       >
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-white/[0.05] backdrop-blur-xl">
+        {/* Header — title pushed right (pl-16 sm:pl-28) so the fixed site logo
+            (z-[10040], top-left) stays visible above the modal without
+            overlapping the title. */}
+        <div className="shrink-0 flex items-center justify-between pl-16 sm:pl-28 lg:pl-36 pr-6 py-4 border-b border-white/[0.06] bg-white/[0.05] backdrop-blur-xl">
           <div>
             <h2 className="text-white text-lg font-semibold tracking-tight">{doc.title}</h2>
             <p className="text-neutral-500 text-xs mt-0.5">{t('legal.updated', lang)}: {doc.lastUpdated}</p>
@@ -139,7 +139,12 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
           {/* Content — scrollable (data-lenis-prevent + -touch tell Lenis to
              skip both wheel AND touch interception, so the modal scrolls
              natively on desktop and mobile) */}
-          <div data-lenis-prevent data-lenis-prevent-touch className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8 scroll-smooth min-h-0 overscroll-contain">
+          <div
+            ref={contentRef}
+            tabIndex={-1}
+            data-lenis-prevent data-lenis-prevent-touch
+            className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-8 scroll-smooth min-h-0 overscroll-contain outline-none"
+          >
             {doc.sections.map((s, i) => (
               <section
                 key={i}

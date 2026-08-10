@@ -978,6 +978,18 @@ export default function HomeShell() {
   useEffect(() => { ctaDockedRef.current = ctaDocked; }, [ctaDocked]);
   useEffect(() => { ctaVisibleRef.current = ctaVisible; }, [ctaVisible]);
 
+  // ── Mobile detection — when docked at the top the CTA shrinks into a
+  // small pill that sits in the navbar row (between the logo and the burger)
+  // instead of a full-size bar floating at the very top of the viewport. ──
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   // ── CTA tooltip: always shows on hover (removed localStorage gate) ──
   const [showCtaTooltip] = useState(true);
   const lastScrollYRef = useRef(0);
@@ -1000,7 +1012,16 @@ export default function HomeShell() {
     const check = () => {
       const l = lenis.current;
       if (!l) return;
-      setBlurBottomHidden(l.scroll >= l.limit - 20);
+      // Also hide the bottom blur while the chatbot section fills the whole
+      // screen (CTA landing): otherwise the blur covers the specialization
+      // bar at the bottom of the section.
+      const chatbot = document.getElementById('chatbot');
+      let chatbotFullscreen = false;
+      if (chatbot) {
+        const r = chatbot.getBoundingClientRect();
+        chatbotFullscreen = r.top <= 2 && r.bottom >= window.innerHeight - 2;
+      }
+      setBlurBottomHidden(l.scroll >= l.limit - 20 || chatbotFullscreen);
     };
     check();
     lenis.current?.on('scroll', check);
@@ -2938,14 +2959,18 @@ export default function HomeShell() {
               })}
             </div>
           </section>
+          </LazySection>
 
           {/* ============ CHATBOT ============ */}
-          {/* overflow-x-clip + extra mobile padding: the BorderGlow halo extends
-              28px beyond the window, which on px-4 would poke past the viewport
-              edge on phones — the window then looks like it "exceeds to the
-              right". px-6 keeps the halo inside; overflow-x-clip guarantees no
-              horizontal scroll from any residual glow. */}
-          <section id="chatbot" className="h-[100dvh] flex flex-col px-6 sm:px-4 bg-[#010101] overflow-x-clip">
+          {/* Eager section (NOT lazy): the chatbot used to sit inside the
+              #chisono LazySection — a 1200px placeholder vs ~2200px of real
+              content made the document jump while scrolling past it (the
+              "scroll stops then restarts" hiccup). It is cheap to keep
+              mounted; the expensive WebGL/marquee work lives in the sections
+              around it. pt/sm:pt clears the fixed navbar, pb/sm:pb gives the
+              specialization bar whitespace at the bottom. overflow-x-clip
+              guarantees no horizontal scroll from any residual glow. */}
+          <section id="chatbot" className="h-[100dvh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 bg-[#010101] overflow-x-clip">
             <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
               <div
                 id="chatbot-heading"
@@ -2984,7 +3009,6 @@ export default function HomeShell() {
               />
             </div>
           </section>
-          </LazySection>
 
           {/* ============ RECENSIONI ============ */}
 
@@ -3460,11 +3484,15 @@ export default function HomeShell() {
         </div>
 
         {/* Floating Curved CTA — docks at the top with inverted curve when
-             the chatbot enters the viewport, returns to the bottom otherwise. */}
+             the chatbot enters the viewport, returns to the bottom otherwise.
+             On mobile the docked state shrinks into a small pill inside the
+             navbar row (between the logo and the burger): it must sit above
+             the navbar header (z-9999) to stay clickable, but still below the
+             burger menu (z-10001) and every modal. */}
         <div
-          className="fixed left-0 right-0 z-[50] flex justify-center px-4 sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms]"
+          className={`fixed left-0 right-0 flex justify-center px-4 sm:px-0 pointer-events-none transition-[top,bottom] duration-[350ms] ${ctaDocked && isMobile ? 'z-[10000]' : 'z-[50]'}`}
           style={ctaDocked
-            ? { bottom: 'calc(100vh - 88px)' }
+            ? (isMobile ? { top: '3px' } : { bottom: 'calc(100vh - 88px)' })
             : { bottom: '24px' }
           }
         >
@@ -3481,11 +3509,11 @@ export default function HomeShell() {
           >
             <CurvedInput
               label={t('nav.raccontami', lang)}
-              showSparkle
-              bend={ctaDocked ? -22 : 14}
-              height={48}
-              width={360}
-              fontSize={14}
+              showSparkle={!ctaDocked || !isMobile}
+              bend={ctaDocked ? (isMobile ? -8 : -22) : 14}
+              height={ctaDocked && isMobile ? 30 : 48}
+              width={ctaDocked && isMobile ? 210 : 360}
+              fontSize={ctaDocked && isMobile ? 12 : 14}
               backgroundColor="#ffffff06"
               textColor="#ffffff"
               borderColor="#ffffff12"
@@ -3496,17 +3524,18 @@ export default function HomeShell() {
                 logAnalytics('cta_floating_open_chatbot');
                 navigator.vibrate?.(30);
 
-                // Robust scroll to the chatbot: scrollToElementAfterLayout
-                // force-mounts LazySections, refreshes Lenis' scroll limits
-                // ("click does nothing" after dynamic mounts) and falls back
-                // to native window.scrollTo if Lenis is ever unavailable —
-                // the same path the navbar links use. offsetPx 120 lands the
-                // heading ~240px from the top, matching the old behavior.
-                scrollToElementAfterLayout('chatbot-heading', () => lenis.current, {
-                  offsetPx: 120,
+                // Scroll so the WHOLE section fills the viewport: target the
+                // section itself with offsetPx -120 (cancels the BASE_OFFSET)
+                // so its top is flush with the viewport top and everything is
+                // visible — nothing under the progressive blur (the bottom
+                // blur hides while the section fills the screen). preventScroll
+                // on focus: focusing the input must never trigger a second
+                // native scroll-into-view that yanks the page down.
+                scrollToElementAfterLayout('chatbot', () => lenis.current, {
+                  offsetPx: -120,
                   duration: 1.0,
                   onComplete: () => {
-                    window.setTimeout(() => botInputRef.current?.focus(), 300);
+                    window.setTimeout(() => botInputRef.current?.focus({ preventScroll: true }), 300);
                   },
                 });
               }}

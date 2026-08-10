@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import TiaIcon from './TiaIcon';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
@@ -97,6 +97,22 @@ export default function ChatbotPanel({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Right-edge curtain on the specialization bubbles: on mobile the row
+  // scrolls horizontally, so when it overflows we fade the last chip out to
+  // hint that more categories can be swiped to. Hidden on sm+ where there is
+  // usually enough room (and hover/scrollbars are the affordance).
+  const [catOverflow, setCatOverflow] = useState(false);
+  const catScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    const check = () => setCatOverflow(el.scrollWidth > el.clientWidth + 8);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const [showTip, setShowTip] = useState(true);
   const [tipHover, setTipHover] = useState(false);
   const [tipFocused, setTipFocused] = useState(false);
@@ -136,24 +152,30 @@ export default function ChatbotPanel({
         <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400/80">{t('chat.category_label', lang)}</span>
         <span className="text-[10px] text-neutral-600">{t('chat.category_single', lang)}</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom" role="radiogroup" aria-label={t('chat.category_label', lang)}>
-        {CHAT_CATEGORY_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={category === option.value}
-            title={categoryTooltip(t(option.labelKey, lang))}
-            disabled={chatBlocked}
-            onClick={() => onSelectCategory(option.value)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 ${category === option.value
-              ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
-              : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
-              }`}
-          >
-            {t(option.labelKey, lang)}
-          </button>
-        ))}
+      <div className="relative">
+        <div ref={catScrollRef} className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" role="radiogroup" aria-label={t('chat.category_label', lang)}>
+          {CHAT_CATEGORY_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={category === option.value}
+              title={categoryTooltip(t(option.labelKey, lang))}
+              disabled={chatBlocked}
+              onClick={() => onSelectCategory(option.value)}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 ${category === option.value
+                ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
+                : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
+                }`}
+            >
+              {t(option.labelKey, lang)}
+            </button>
+          ))}
+        </div>
+        {/* Right curtain — fades the last chip out to hint at more categories */}
+        {catOverflow && (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 sm:hidden bg-gradient-to-l from-[#010101] via-[#010101]/70 to-transparent" />
+        )}
       </div>
       <p className="text-[11px] leading-relaxed text-neutral-500">{t(categoryOption?.exampleKey ?? 'chat.example_software_web', lang)}</p>
     </div>
@@ -188,10 +210,13 @@ export default function ChatbotPanel({
             onWheel={onWheel}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
-            className="flex-1 min-h-0 relative overflow-y-auto scrollbar-custom"
+            className="flex-1 min-h-0 relative overflow-y-auto scrollbar-hide"
           >
             {messages.length === 0 && !typing ? (
-              <div className="flex min-h-full flex-col items-center justify-center px-6 py-10 text-center">
+              /* Top-anchored (not centered) so the welcome message sits right
+                 under the "Nuova chat" header instead of leaving a big empty
+                 gap in the middle of the section. */
+              <div className="flex min-h-full flex-col items-center justify-start px-6 pt-2 sm:pt-6 pb-10 text-center">
                 <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">{t('chat.empty_heading', lang)}</h3>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-400">{t('bot.welcome_category', lang).replace(/\*\*/g, '')}</p>
               </div>
@@ -347,7 +372,7 @@ export default function ChatbotPanel({
               placeholder={chatBlocked ? t('bot.offtopic_blocked_hint', lang) : t(categoryOption?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
               disabled={chatBlocked}
               rows={1}
-              className="flex-1 min-w-0 bg-transparent px-1 py-0 text-sm leading-6 text-white placeholder-neutral-600 resize-none overflow-y-auto outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex-1 min-w-0 bg-transparent px-1 py-0 text-sm leading-6 text-white placeholder-neutral-600 resize-none overflow-y-auto scrollbar-hide outline-none disabled:cursor-not-allowed disabled:opacity-60"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -379,9 +404,9 @@ export default function ChatbotPanel({
       </div>
 
       {/* Once a specialization is chosen the bar moves to the bottom of the
-          section, with whitespace so the options stay readable below the chat. */}
+          section; the section's own pb gives it whitespace below the bubbles. */}
       {chatStarted && (
-        <div className="shrink-0 mt-4 pb-4 sm:mt-6 sm:pb-6">{specializationBar}</div>
+        <div className="shrink-0 mt-4 sm:mt-6">{specializationBar}</div>
       )}
 
       {/* ── Fullscreen composer — the same liquid-glass bar, extended ── */}
@@ -428,7 +453,7 @@ export default function ChatbotPanel({
               placeholder={t(categoryOption?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
               autoFocus
               disabled={chatBlocked}
-              className="relative z-10 flex-1 w-full resize-none bg-transparent text-sm sm:text-base leading-relaxed text-white placeholder-neutral-600 outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              className="relative z-10 flex-1 w-full resize-none overflow-y-auto scrollbar-hide bg-transparent text-sm sm:text-base leading-relaxed text-white placeholder-neutral-600 outline-none disabled:cursor-not-allowed disabled:opacity-60"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();

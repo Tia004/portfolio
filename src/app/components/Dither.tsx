@@ -292,9 +292,9 @@ function StaticDitherTexture() {
         className="absolute inset-0"
         style={{
           background:
-            `radial-gradient(ellipse 95% 75% at 50% 30%, ${tealRgba(0.52)}, transparent 72%),` +
-            `radial-gradient(ellipse 60% 45% at 80% 80%, ${tealRgba(0.34)}, transparent 70%),` +
-            `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.24)}, transparent 68%)`,
+            `radial-gradient(ellipse 95% 75% at 50% 30%, ${tealRgba(0.62)}, transparent 72%),` +
+            `radial-gradient(ellipse 60% 45% at 80% 80%, ${tealRgba(0.42)}, transparent 70%),` +
+            `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.30)}, transparent 68%)`,
         }}
       />
       {/* Dither dots — the pixelated character of the effect, brighter than
@@ -302,9 +302,9 @@ function StaticDitherTexture() {
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `radial-gradient(circle, ${tealRgba(0.75)} 1.3px, transparent 1.7px)`,
-          backgroundSize: '13px 13px',
-          opacity: 0.85,
+          backgroundImage: `radial-gradient(circle, ${tealRgba(0.85)} 1.4px, transparent 1.9px)`,
+          backgroundSize: '12px 12px',
+          opacity: 0.9,
         }}
       />
       {/* Grain noise in screen blend — lightens the texture like the shader */}
@@ -317,6 +317,15 @@ function StaticDitherTexture() {
 }
 
 // ── Public component ─────────────────────────────────────────
+
+// Any touch-capable device gets the static dither — even Samsung "Desktop
+// site" mode (which reports hover:hover, pointer:fine and a viewport wider
+// than 768px) MUST never mount the WebGL canvas: on mobile GPUs the fbm wave
+// shader can silently render a uniform black field over the static layer
+// (highp precision limits), which is exactly the "black hero" seen on phones.
+// (any-pointer: coarse) / (any-hover: none) catch every phone regardless of
+// what its primary input claims; (max-width: 767px) also covers phones.
+const STATIC_QUERY = '(hover: none), (pointer: coarse), (any-pointer: coarse), (any-hover: none), (max-width: 767px)';
 
 export default function Dither({
   waveSpeed = 0.05,
@@ -340,22 +349,15 @@ export default function Dither({
   mouseRadius?: number;
 }) {
   const [paused, setPaused] = useState(false);
-  // Synchronous initial value — no WebGL flash on touch devices: phones and
-  // windows under 768px get the static dither from the very first paint.
-  // The (max-width: 767px) gate also catches Samsung desktop-mode phones
-  // (hover:hover / fine pointer) that would otherwise try WebGL and can
-  // silently render a black void over the static layer.
   const [staticMode, setStaticMode] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse), (max-width: 767px)').matches,
+    () => typeof window !== 'undefined' && window.matchMedia(STATIC_QUERY).matches,
   );
   const [glFailed, setGlFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Touch devices (no hover / coarse pointer) get the static texture. The
-  // matchMedia gate mirrors real device capabilities — a desktop window
-  // squeezed to phone width still reports hover: hover and keeps WebGL.
+  // Mirror the initial synchronous value on mount + when capabilities change.
   useEffect(() => {
-    const mq = window.matchMedia('(hover: none), (pointer: coarse), (max-width: 767px)');
+    const mq = window.matchMedia(STATIC_QUERY);
     setStaticMode(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setStaticMode(e.matches);
     mq.addEventListener('change', onChange);

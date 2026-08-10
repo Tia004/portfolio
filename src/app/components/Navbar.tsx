@@ -260,7 +260,36 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── HEADER ── */}
+      {/* ── BRAND OVERLAY — the logo always floats above modals ── */}
+      {/* The modal title is padded (pl-16/pl-28 in the modals) to clear it.
+          pointer-events-none on the strip, auto on the logo link itself, so
+          the rest of the top bar never blocks clicks below. */}
+      <div
+        className="fixed top-0 left-0 right-0 z-[10040] pointer-events-none"
+      >
+        <div
+          className={`mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 ${
+            isScrolled
+              ? 'max-w-5xl py-1.5 sm:py-2'
+              : 'max-w-none py-3 sm:py-3.5'
+          }`}
+          style={{
+            transitionTimingFunction: isScrolled
+              ? 'cubic-bezier(0.34, 1.56, 0.64, 1)'
+              : 'cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <span className="pointer-events-auto">
+            <Logo />
+          </span>
+        </div>
+      </div>
+
+      {/* ── HEADER (hamburger only) ── */}
+      {/* z-[10002] when the menu is open (above the menu's z-[10001], so the
+          close button stays clickable) but BELOW every modal (z-[10005]+):
+          the X must never sit on top of a modal. A width-matching spacer on
+          the left keeps the button right-aligned like the logo used to. */}
       <header className={`fixed top-0 left-0 right-0 ${(menuVisible || closing) ? 'z-[10002]' : 'z-[9999]'}`}>
         <div
           className={`flex items-center justify-between mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 ${
@@ -274,7 +303,9 @@ export default function Navbar() {
               : 'cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <Logo />
+          {/* Invisible spacer — mirrors the logo width so the hamburger keeps
+              its position (logo lives in the overlay above). */}
+          <span className="w-[37px] sm:w-[45px] h-5 sm:h-6 shrink-0" aria-hidden="true" />
           <div className="flex items-center gap-3">
 
             {/* Hamburger — always visible, all screen sizes */}
