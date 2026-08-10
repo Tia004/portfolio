@@ -87,9 +87,12 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
 
   return (
     <div className={`fixed inset-0 z-[10001] flex ${closing ? 'pointer-events-none' : ''}`}>
-      {/* Glass backdrop — fades 100ms after content */}
+      {/* Glass backdrop — fades 100ms after content. Full-viewport
+          backdrop-blur(24px) over the composited page (body position:fixed)
+          is a known GPU-crash trigger on phones, so below sm it's a
+          near-opaque dark instead; sm+ keeps the glass. */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-xl transition-opacity duration-200 delay-100 ${closing ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute inset-0 bg-black/85 sm:bg-black/50 sm:backdrop-blur-xl transition-opacity duration-200 delay-100 ${closing ? 'opacity-0' : 'opacity-100'}`}
         onClick={onClose}
       />
 

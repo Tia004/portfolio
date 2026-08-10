@@ -215,6 +215,35 @@
   opacity: 1;
   transition: opacity 0.4s ease-out;
 }
+
+/* ── Continuous beam on the highlighted card (touch devices) ──
+   MobileSnapSlider / MobileGlowActivator mark the most visible card with
+   .scroll-glow-active, and this CSS loop rotates --cursor-angle forever —
+   the border glow "runs" by itself on the highlighted card, no tap needed.
+   The moment the highlight moves to another card the animation stops there
+   and the beam fades with the class. @property makes the custom property
+   interpolable; inherits:true keeps the pseudo-elements (::before/::after/
+   .edge-light, which read var(--cursor-angle)) seeing the animated value. */
+@property --cursor-angle {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 45deg;
+}
+
+@keyframes border-glow-rotate {
+  from { --cursor-angle: 0deg; }
+  to { --cursor-angle: 360deg; }
+}
+
+.border-glow-card.scroll-glow-active {
+  animation: border-glow-rotate 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .border-glow-card.scroll-glow-active {
+    animation: none;
+  }
+}
 .border-glow-inner {
   display: flex;
   flex-direction: column;

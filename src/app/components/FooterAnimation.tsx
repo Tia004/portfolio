@@ -117,8 +117,62 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       ScrollTrigger.refresh();
     }, section);
 
+    // ── The wordmark must never be missing ────────────────────
+    // The chars start at opacity:0 and are revealed by the ScrollTrigger
+    // scrub. The footer mounts LAST via next/dynamic, and the page height
+    // keeps changing while the lazy sections / fonts / images above settle
+    // — if the trigger positions are stale at that point, the scrub never
+    // advances and "Tia Designs" stays invisible. Two layers of protection:
+    //   1) re-measure after the page truly settles (load + fonts + delayed);
+    //   2) if the wordmark is on screen and the chars are STILL fully hidden,
+    //      lock them visible via CSS (.gsap-revealed uses !important). The
+    //      normal scrub keeps working for partial scroll positions, so the
+    //      scroll-linked reveal is preserved.
+    const ensureVisible = () => {
+      if (!section || charEls.length === 0) return;
+      const r = wordmark.getBoundingClientRect();
+      // The wordmark must be meaningfully on screen (top above the middle)
+      // before we consider it "stuck" — a partially-entering wordmark with a
+      // working scrub has partially-revealed chars and must NOT be forced.
+      const onScreen = r.top < window.innerHeight * 0.5 && r.bottom > 0;
+      if (!onScreen) return;
+      const stuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
+      if (stuck) charEls.forEach((c) => c.classList.add('gsap-revealed'));
+    };
+
+    const refreshOnce = () => {
+      ScrollTrigger.refresh();
+      ensureVisible();
+    };
+
+    // Re-measure once everything settles (same late-layout pattern used by
+    // ScrollReveal/StaggerReveal for content-visibility dimension changes).
+    window.addEventListener('load', refreshOnce, { once: true });
+    document.fonts?.ready.then(refreshOnce).catch(() => {});
+    const t1 = window.setTimeout(refreshOnce, 800);
+    const t2 = window.setTimeout(refreshOnce, 2500);
+
+    // Scroll-driven failsafe (rAF-throttled): catches a stale trigger even
+    // if the user reaches the footer before any timer has fired. Lenis
+    // scrolls via window.scrollTo, so the native scroll event fires on every
+    // frame — this works whether or not the Lenis instance is ready yet.
+    let rafPending = false;
+    const onScrollFailsafe = () => {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        ensureVisible();
+      });
+    };
+    window.addEventListener('scroll', onScrollFailsafe, { passive: true });
+
     return () => {
       ctx.revert();
+      window.removeEventListener('load', refreshOnce);
+      window.removeEventListener('scroll', onScrollFailsafe);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
     };
   }, []);
 

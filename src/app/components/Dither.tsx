@@ -195,7 +195,7 @@ function DitheredWaves({
 }) {
   const mesh = useRef<THREE.Mesh>(null!);
   const mouseRef = useRef(new THREE.Vector2());
-  const { viewport, size, gl } = useThree();
+  const { viewport, gl } = useThree();
 
   const uniformsRef = useRef({
     time: new THREE.Uniform(0),
@@ -209,22 +209,22 @@ function DitheredWaves({
     mouseRadius: new THREE.Uniform(mouseRadius),
   });
 
-  useEffect(() => {
-    if (!mesh.current) return;
-    const dpr = gl.getPixelRatio();
-    const w = Math.floor(size.width * dpr);
-    const h = Math.floor(size.height * dpr);
-    const mat = mesh.current.material as THREE.ShaderMaterial;
-    const v = mat.uniforms.resolution.value as THREE.Vector2;
-    if (v.x !== w || v.y !== h) v.set(w, h);
-  }, [size, gl]);
-
   const prevColor = useRef([...waveColor]);
+  const drawBufferSize = useRef(new THREE.Vector2());
 
   useFrame(({ clock }) => {
     if (!mesh.current) return;
     // Access the material's actual cloned uniforms — uniformsRef holds only the initial values
     const mat = mesh.current.material as THREE.ShaderMaterial;
+    // Resolution guard — CRITICAL on mobile: the uniform starts at (0,0) and
+    // a resize effect runs only AFTER the first frames. Until it's set, the
+    // shader computes gl_FragCoord / (0,0) = NaN and paints the whole canvas
+    // black — the classic "black hero" on devices whose mount timing differs.
+    // Syncing from the real drawing-buffer size every frame is cheap and
+    // makes even the very first frame correct.
+    const res = mat.uniforms.resolution.value as THREE.Vector2;
+    const db = gl.getDrawingBufferSize(drawBufferSize.current);
+    if (res.x !== db.x || res.y !== db.y) res.copy(db);
     if (!disableAnimation) mat.uniforms.time.value = clock.getElapsedTime();
     mat.uniforms.waveSpeed.value = waveSpeed;
     mat.uniforms.waveFrequency.value = waveFrequency;
@@ -292,9 +292,9 @@ function StaticDitherTexture() {
         className="absolute inset-0"
         style={{
           background:
-            `radial-gradient(ellipse 95% 75% at 50% 30%, ${tealRgba(0.62)}, transparent 72%),` +
-            `radial-gradient(ellipse 60% 45% at 80% 80%, ${tealRgba(0.42)}, transparent 70%),` +
-            `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.30)}, transparent 68%)`,
+            `radial-gradient(ellipse 95% 75% at 50% 30%, ${tealRgba(0.62)}, rgba(0,0,0,0) 72%),` +
+            `radial-gradient(ellipse 60% 45% at 80% 80%, ${tealRgba(0.42)}, rgba(0,0,0,0) 70%),` +
+            `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.30)}, rgba(0,0,0,0) 68%)`,
         }}
       />
       {/* Dither dots — the pixelated character of the effect, brighter than
@@ -302,7 +302,7 @@ function StaticDitherTexture() {
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `radial-gradient(circle, ${tealRgba(0.85)} 1.4px, transparent 1.9px)`,
+          backgroundImage: `radial-gradient(circle, ${tealRgba(0.85)} 1.4px, rgba(0,0,0,0) 1.9px)`,
           backgroundSize: '12px 12px',
           opacity: 0.9,
         }}
@@ -317,15 +317,6 @@ function StaticDitherTexture() {
 }
 
 // ── Public component ─────────────────────────────────────────
-
-// Any touch-capable device gets the static dither — even Samsung "Desktop
-// site" mode (which reports hover:hover, pointer:fine and a viewport wider
-// than 768px) MUST never mount the WebGL canvas: on mobile GPUs the fbm wave
-// shader can silently render a uniform black field over the static layer
-// (highp precision limits), which is exactly the "black hero" seen on phones.
-// (any-pointer: coarse) / (any-hover: none) catch every phone regardless of
-// what its primary input claims; (max-width: 767px) also covers phones.
-const STATIC_QUERY = '(hover: none), (pointer: coarse), (any-pointer: coarse), (any-hover: none), (max-width: 767px)';
 
 export default function Dither({
   waveSpeed = 0.05,
@@ -349,26 +340,18 @@ export default function Dither({
   mouseRadius?: number;
 }) {
   const [paused, setPaused] = useState(false);
-  const [staticMode, setStaticMode] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(STATIC_QUERY).matches,
-  );
   const [glFailed, setGlFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Mirror the initial synchronous value on mount + when capabilities change.
-  useEffect(() => {
-    const mq = window.matchMedia(STATIC_QUERY);
-    setStaticMode(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setStaticMode(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  // The WebGL canvas runs on EVERY device — phones included — exactly like
+  // the React Bits source this component is copied from (their demos run on
+  // phones fine). The old matchMedia "static mode" gate hid the real dither
+  // behind a static texture on touch devices, which read as a flat black
+  // hero on some phones. The only fallback now is a genuine WebGL absence.
 
-  // Belt-and-braces WebGL probe: some devices report hover:hover but still
-  // can't create a GL context (old Safari, aggressive GPU blocklists, webview
-  // containers). If the context can't be created, skip the Canvas entirely —
-  // the always-rendered static layer below shows through instead of a black
-  // void. The probe is cheap (one tiny canvas, no shaders).
+  // WebGL probe: if the context can't be created (old Safari, aggressive GPU
+  // blocklists, webview containers), skip the Canvas entirely — the static
+  // teal layer below shows through instead of a black void.
   useEffect(() => {
     try {
       const probe = document.createElement('canvas');
@@ -379,9 +362,9 @@ export default function Dither({
     }
   }, []);
 
-  // Pause WebGL rendering when canvas is scrolled out of viewport
+  // Pause WebGL rendering when the hero is scrolled out of the viewport —
+  // saves GPU/battery on mobile (the dither animates only when visible).
   useEffect(() => {
-    if (staticMode) return;
     const el = wrapperRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
@@ -389,7 +372,7 @@ export default function Dither({
     }, { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
-  }, [staticMode]);
+  }, []);
 
   return (
     <div
@@ -406,14 +389,14 @@ export default function Dither({
         touchAction: 'pan-y',
       }}
     >
-      {/* Always-on static dither — guaranteed hero contrast on EVERY device.
-          The WebGL canvas (when active) is opaque and paints over it. */}
+      {/* Subtle static teal base — only visible if WebGL is truly unavailable.
+          On WebGL devices the opaque dither canvas paints over it completely. */}
       <StaticDitherTexture />
-      {!staticMode && !glFailed && (
+      {!glFailed && (
         <Canvas
           camera={{ position: [0, 0, 6] }}
-          dpr={0.75}
-          frameloop="always"
+          dpr={[1, 1.5]}
+          frameloop={paused ? 'never' : 'always'}
           gl={{ antialias: true, preserveDrawingBuffer: true }}
           style={{
             width: '100%',

@@ -19,11 +19,24 @@ export default function MobileGlowActivator({ children }: { children: ReactNode 
 
     let activeEl: HTMLElement | null = null;
 
+    const deactivate = (el: HTMLElement) => {
+      el.style.setProperty('--edge-proximity', '0');
+      el.classList.remove('scroll-glow-active');
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
-        // Find the card with the highest intersection ratio
+        // First, let go of any highlighted card that fully left the viewport
+        // (ratio 0) — otherwise its infinite glow would keep running off-screen.
         let best: { el: HTMLElement; ratio: number } | null = null;
         for (const entry of entries) {
+          if (entry.intersectionRatio === 0) {
+            if (entry.target === activeEl) {
+              deactivate(entry.target as HTMLElement);
+              activeEl = null;
+            }
+            continue;
+          }
           if (entry.intersectionRatio > (best?.ratio ?? 0)) {
             best = { el: entry.target as HTMLElement, ratio: entry.intersectionRatio };
           }
@@ -31,11 +44,9 @@ export default function MobileGlowActivator({ children }: { children: ReactNode 
 
         if (best && best.el !== activeEl && best.ratio > 0.3) {
           // Deactivate previous
-          if (activeEl) {
-            activeEl.style.setProperty('--edge-proximity', '0');
-            activeEl.classList.remove('scroll-glow-active');
-          }
-          // Activate new
+          if (activeEl) deactivate(activeEl);
+          // Activate new — its glow now runs continuously (CSS animation
+          // on .scroll-glow-active rotates the beam forever).
           best.el.style.setProperty('--edge-proximity', '100');
           best.el.classList.add('scroll-glow-active');
           activeEl = best.el;
@@ -51,10 +62,7 @@ export default function MobileGlowActivator({ children }: { children: ReactNode 
 
     return () => {
       observer.disconnect();
-      if (activeEl) {
-        activeEl.style.setProperty('--edge-proximity', '0');
-        activeEl.classList.remove('scroll-glow-active');
-      }
+      if (activeEl) deactivate(activeEl);
     };
   }, []);
 

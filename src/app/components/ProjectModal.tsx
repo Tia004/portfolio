@@ -181,9 +181,13 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
       aria-modal="true"
       aria-label={project.title}
     >
-      {/* Backdrop */}
+      {/* Backdrop — full-viewport backdrop-blur(24px) over the whole page
+          while the body is composited (position:fixed scroll-lock) is a known
+          GPU-crash trigger on phones (Samsung/Android renderer kill → the tab
+          restarts). Below sm we drop the blur and use a near-opaque dark so
+          the modal interaction can never spike the GPU; sm+ keeps the glass. */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/85 sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
         onClick={handleBackdrop}
       />
 
@@ -197,6 +201,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Floating actions (top-right): fullscreen + close ── */}
         <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 z-20 flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setFullscreen(true)}
             aria-label={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
             title={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
@@ -208,6 +213,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
             </svg>
           </button>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
             className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
@@ -448,9 +454,10 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
             aria-label={lang === 'it' ? 'Progetto a schermo intero' : lang === 'es' ? 'Proyecto a pantalla completa' : 'Project fullscreen'}
           >
             <div className="relative w-full h-full flex items-center justify-center">
-              <button
-                onClick={() => setFullscreen(false)}
-                aria-label={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
+          <button
+            type="button"
+            onClick={() => setFullscreen(false)}
+            aria-label={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
                 title={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
                 className="absolute top-1 sm:top-2 right-1 sm:right-2 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all border border-white/15 backdrop-blur-xl"
               >

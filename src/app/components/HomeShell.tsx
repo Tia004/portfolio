@@ -948,11 +948,27 @@ export default function HomeShell() {
     });
     ro.observe(document.body);
 
+    // LazySection mounts change the document height (placeholder → real
+    // content). lenis.resize() is safe at any moment — it only recalculates
+    // scrollHeight/limit and never writes the scroll position — so update the
+    // limit IMMEDIATELY on mount instead of waiting for the scroll-stop
+    // debounce. Otherwise a fast continuous scroll past a just-mounted section
+    // clamps Lenis' target to the stale smaller limit: the scroll visibly
+    // "stops" and then restarts once the debounce finally runs.
+    let mountRaf = 0;
+    const onSectionMounted = () => {
+      cancelAnimationFrame(mountRaf);
+      mountRaf = requestAnimationFrame(() => lenis.current?.resize());
+    };
+    window.addEventListener('tia:section-mounted', onSectionMounted);
+
     return () => {
       lenis.current?.off('scroll', onScroll);
       ro.disconnect();
       if (resizeTimer) clearTimeout(resizeTimer);
       if (scrollStoppedTimer) clearTimeout(scrollStoppedTimer);
+      cancelAnimationFrame(mountRaf);
+      window.removeEventListener('tia:section-mounted', onSectionMounted);
     };
   }, []);
   const [isMonthly, setIsMonthly] = useState(false);
@@ -1371,7 +1387,6 @@ export default function HomeShell() {
   const botNextIdRef = useRef(1);
   const botMessagesRef = useRef<HTMLDivElement>(null);
   const botInputRef = useRef<HTMLTextAreaElement>(null);
-  const lastTouchYRef = useRef(0);
   // Track the id of the most recent message of ANY kind: chips deactivate as
   // soon as ANY newer message exists (user text, a chip pick, or a bot reply).
   const latestMessageIdRef = useRef(0);
@@ -1512,53 +1527,12 @@ export default function HomeShell() {
     }
   };
 
-  // Chat wheel scroll: data-lenis-prevent tells Lenis to skip this element,
-  // so the browser's native scroll would run UNCONTROLLED on top of ours
-  // (and CSS scroll-smooth would animate it), causing the double-scroll jolt.
-  // We preventDefault and drive scrollTop directly (scrollTop assignment is
-  // always instant, never smooth). At the boundaries the page takes over via
-  // Lenis — using window.scrollY (never lenis.scroll, which lags behind) and
-  // ANIMATED (no immediate): Lenis keeps its easing/inertia, so the handoff
-  // is a slow glide instead of a teleport. Rapid wheel ticks just retarget
-  // Lenis' running animation — it cannot fight itself.
-  const handleChatWheel = useCallback((e: React.WheelEvent<HTMLElement>) => {
-    e.preventDefault();
-    const el = e.currentTarget;
-    const px = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
-    const atTop = el.scrollTop <= 0 && px < 0;
-    const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= 1 && px > 0;
-    if (atTop || atBottom) {
-      lenis.current?.scrollTo(window.scrollY + px);
-    } else {
-      el.scrollTop += px;
-    }
-  }, []);
-
-  // Touch-scroll delegation for the chat list (see handleChatWheel): track the
-  // initial touch Y, then delegate overscroll to Lenis for the page.
-  const handleBotTouchStart = (e: React.TouchEvent<HTMLElement>) => {
-    lastTouchYRef.current = e.touches[0]?.clientY ?? 0;
-  };
-  const handleBotTouchMove = (e: React.TouchEvent<HTMLElement>) => {
-    const touchY = e.touches[0]?.clientY ?? 0;
-    const deltaY = lastTouchYRef.current - touchY;
-    lastTouchYRef.current = touchY;
-
-    const el = e.currentTarget;
-    const atTop = el.scrollTop <= 1;
-    const atBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) <= 2;
-
-    // At the top pulling down (deltaY < 0) or at the bottom pushing up
-    // (deltaY > 0): prevent native rubber-banding and delegate to Lenis for
-    // page scroll instead of letting the overscroll dead-end in Lenis' virtual body.
-    if ((atTop && deltaY < 0) || (atBottom && deltaY > 0)) {
-      e.preventDefault();
-      // window.scrollY is authoritative — lenis.scroll can lag behind the real
-      // position and would make the page snap back to the chat (the jolt).
-      lenis.current?.scrollTo(window.scrollY + deltaY, { immediate: true });
-    }
-  };
-
+  // Chat wheel/touch over the message areas: data-lenis-prevent lets the
+  // BROWSER scroll them natively, and overscroll-contain (on the containers)
+  // swallows boundary wheel/touch so it NEVER chains into the page. A native
+  // overscroll that reaches the page would scroll window.scrollY instantly
+  // while Lenis still animates toward its own (stale) position — that fight
+  // is the up/down micro-jitter when scrolling past the chat.
   const sendBotMessage = (inputOverride?: string, options?: { quoteDraft?: Record<string, string>; displayUserMessage?: boolean; category?: ChatCategory }) => {
     const text = (inputOverride ?? botInput).trim();
     if (!text) return;
@@ -2970,17 +2944,24 @@ export default function HomeShell() {
               around it. pt/sm:pt clears the fixed navbar, pb/sm:pb gives the
               specialization bar whitespace at the bottom. overflow-x-clip
               guarantees no horizontal scroll from any residual glow. */}
-          <section id="chatbot" className="h-[100dvh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 bg-[#010101] overflow-x-clip">
+          {/* h-[100svh] (small viewport) instead of dvh: the mobile URL bar
+              show/hide changes dvh and reflows the section mid-scroll — one
+              more source of the up/down jitter. svh is stable. */}
+          <section id="chatbot" className="h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 bg-[#010101] overflow-x-clip">
             <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
               <div
                 id="chatbot-heading"
                 className="scroll-mt-[9rem] shrink-0"
                 style={{ scrollMarginTop: '9rem' }}
               >
-                <ScrollReveal className="text-center mb-4 sm:mb-6" start="top 85%" end="bottom 25%">
-                  <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">Preventivo</p>
-                  <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('chatbot.title', lang)}</h2>
-                  <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
+                {/* Heading kept identical on desktop; on mobile it's compact
+                    (smaller margins, subtitle clamped to 2 lines) so the chat
+                    itself — messages + bar + specializations — fits in one
+                    screen without removing any content. */}
+                <ScrollReveal className="text-center mb-3 sm:mb-6" start="top 85%" end="bottom 25%">
+                  <p className="text-teal-400 text-[10px] sm:text-xs font-medium uppercase tracking-[0.2em] mb-2 sm:mb-4">Preventivo</p>
+                  <h2 className="text-2xl sm:text-5xl font-bold tracking-tight text-white">{t('chatbot.title', lang)}</h2>
+                  <p className="text-neutral-400 mt-2 sm:mt-4 max-w-lg mx-auto text-[13px] sm:text-base leading-snug sm:leading-relaxed line-clamp-2 sm:line-clamp-none">
                     {t('chatbot.subtitle', lang)}
                   </p>
                 </ScrollReveal>
@@ -2998,9 +2979,6 @@ export default function HomeShell() {
                 onReset={resetChat}
                 messagesRef={botMessagesRef}
                 inputRef={botInputRef}
-                onWheel={handleChatWheel}
-                onTouchStart={handleBotTouchStart}
-                onTouchMove={handleBotTouchMove}
                 onSuggestion={(sugg) => {
                   setBotInput(sugg);
                   setTimeout(() => sendBotMessage(sugg), 50);
@@ -3203,10 +3181,9 @@ export default function HomeShell() {
                       <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider mb-2">{t('contatti.message', lang)}</label>
                       <textarea id="form-message" required value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={8}
                         data-lenis-prevent
-                        data-lenis-prevent-wheel
-                        onWheel={handleChatWheel}
+                        overscroll-contain
                         aria-invalid={formValidationErrors.has('message')}
-                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[140px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
+                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[140px] overflow-y-auto overscroll-contain border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
                         placeholder={t('contatti.placeholder_message', lang)} />
                       {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400">{t('bot.message_required', lang)}</p>}
                     </div>
@@ -3360,10 +3337,10 @@ export default function HomeShell() {
                 </div>
 
                 {/* Messages area — data-lenis-prevent lets native scroll work inside
-                   the chat without Lenis intercepting wheel events. When the container
-                   has no overflow (empty chat or at boundary), the wheel naturally
-                   passes through to the page. */}
-                <div ref={chatMessagesRef} data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch onWheel={handleChatWheel} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative">
+                   the chat; overscroll-contain swallows boundary wheel/touch so it
+                   never chains into the page (chaining fights Lenis and causes the
+                   up/down micro-jitter). */}
+                <div ref={chatMessagesRef} data-lenis-prevent className="flex-1 px-5 py-4 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-3 relative">
                   {/* Subtle DotGrid background — always mounted, static for perf */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
                     <DotGrid dotSize={2} gap={18} baseColor="#0a0a0a" activeColor="#2dd4bf" proximity={0} shockRadius={0} shockStrength={0} resistance={0} returnDuration={0} />

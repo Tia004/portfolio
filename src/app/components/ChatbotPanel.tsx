@@ -40,9 +40,6 @@ interface ChatbotPanelProps {
   onReset: () => void;
   messagesRef: React.RefObject<HTMLDivElement | null>;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
-  onWheel: (e: React.WheelEvent<HTMLElement>) => void;
-  onTouchStart: (e: React.TouchEvent<HTMLElement>) => void;
-  onTouchMove: (e: React.TouchEvent<HTMLElement>) => void;
   onSuggestion: (text: string) => void;
   renderBotText: (msg: ChatbotMessage) => React.ReactNode;
 }
@@ -60,9 +57,6 @@ export default function ChatbotPanel({
   onReset,
   messagesRef,
   inputRef,
-  onWheel,
-  onTouchStart,
-  onTouchMove,
   onSuggestion,
   renderBotText,
 }: ChatbotPanelProps) {
@@ -203,14 +197,13 @@ export default function ChatbotPanel({
             flex-1 fills the section's remaining height (the section is exactly
             one viewport tall), so the chat never spills past the screen. */}
         <div className="relative flex-1 min-h-0 flex flex-col">
+          {/* data-lenis-prevent: native scroll inside the chat; overscroll-contain
+              swallows boundary wheel/touch so it never chains into the page
+              (chaining fights Lenis → up/down micro-jitter). */}
           <div
             ref={messagesRef}
             data-lenis-prevent
-            data-lenis-prevent-touch
-            onWheel={onWheel}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            className="flex-1 min-h-0 relative overflow-y-auto scrollbar-hide"
+            className="flex-1 min-h-0 relative overflow-y-auto overscroll-contain scrollbar-hide"
           >
             {messages.length === 0 && !typing ? (
               /* Top-anchored (not centered) so the welcome message sits right
@@ -226,7 +219,7 @@ export default function ChatbotPanel({
               // instead of starting at the top of the box. pt-24 clears the
               // black curtain (h-20) so the very first message is never
               // covered when the user scrolls all the way back up.
-              <div className="flex min-h-full flex-col justify-end gap-4 px-4 sm:px-5 md:px-6 pt-24 pb-4 sm:pb-5 md:pb-6">
+              <div className="flex min-h-full flex-col justify-end gap-4 px-4 sm:px-5 md:px-6 pt-16 sm:pt-24 pb-4 sm:pb-5 md:pb-6">
                 {messages.map((msg) => {
                   // Extract suggestion chips from bot messages
                   const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
@@ -300,9 +293,11 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Black curtain — covers messages as they are pushed up */}
+          {/* Black curtain — covers messages as they are pushed up. Short and
+              soft on mobile so it never swallows the first visible messages;
+              taller on sm+ where there is more headroom. */}
           {messages.length > 0 && (
-            <div className="pointer-events-none absolute top-0 left-0 right-0 h-20 z-10 bg-gradient-to-b from-[#010101] via-[#010101]/70 to-transparent" />
+            <div className="pointer-events-none absolute top-0 left-0 right-0 h-12 sm:h-20 z-10 bg-gradient-to-b from-[#010101] via-[#010101]/50 to-transparent" />
           )}
 
         </div>
@@ -330,23 +325,21 @@ export default function ChatbotPanel({
           <div className="relative z-10 flex items-center gap-2 rounded-full bg-white/[0.06] p-2 sm:p-2.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] transition-all duration-500 focus-within:bg-white/[0.09] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
             {/* Expand tip — temporary; hover on desktop, focus + X on mobile */}
             {(showTip || tipHover || (isTouch && tipFocused && !tipDismissed)) && (
-              <div className="pointer-events-none absolute bottom-full left-0 mb-2 z-20 w-max max-w-[250px]">
-                <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-teal-400/25 bg-[#0d0d0d]/95 px-3 py-2 text-[11px] leading-snug text-neutral-300 shadow-lg shadow-black/50 backdrop-blur-xl">
-                  <TiaIcon icon={ArrowExpandDiagonal01Icon} size={13} className="shrink-0 text-teal-400" />
-                  <span>{t('chat.fullscreen_tip', lang)}</span>
+              <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 z-20 w-max max-w-[240px]">
+                <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-medium text-neutral-500 backdrop-blur-md transition-colors hover:text-neutral-300">
+                  <TiaIcon icon={ArrowExpandDiagonal01Icon} size={11} className="shrink-0 text-teal-400/70" />
+                  <span className="truncate">{t('chat.fullscreen_tip', lang)}</span>
                   {isTouch && (
                     <button
                       type="button"
                       onClick={() => setTipDismissed(true)}
                       aria-label={t('chat.fullscreen_close', lang)}
-                      className="shrink-0 ml-1 -mr-1 p-0.5 rounded-full text-neutral-500 hover:text-white transition-colors"
+                      className="shrink-0 ml-0.5 -mr-0.5 p-0.5 rounded-full text-neutral-600 hover:text-white transition-colors"
                     >
-                      <TiaIcon icon={Cancel01Icon} size={12} strokeWidth={2} />
+                      <TiaIcon icon={Cancel01Icon} size={10} strokeWidth={2} />
                     </button>
                   )}
                 </div>
-                {/* Arrow pointing down at the toggle */}
-                <div className="absolute left-5 -bottom-[5px] h-2.5 w-2.5 rotate-45 rounded-[2px] border-r border-b border-teal-400/25 bg-[#0d0d0d]" />
               </div>
             )}
 

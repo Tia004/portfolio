@@ -211,53 +211,38 @@ export default function MobileSnapSlider({
 
   // ── Mobile auto-glow on the focused card ──────────────────────
   // Touch devices have no hover, so the card currently most visible in the
-  // track gets a one-shot border glow: it turns on automatically once the
-  // scroll settles, the beam travels around the border a single time, then
-  // fades out after a moment. After that it only re-triggers on an explicit
-  // tap (cooldown per card), keeping CPU cost near zero — no shared ticker,
-  // just one short rAF rotation while the class is active.
+  // track gets a border glow that runs CONTINUOUSLY: the CSS animation on
+  // .scroll-glow-active rotates --cursor-angle forever, so the beam travels
+  // around the border by itself as long as the card stays highlighted — no
+  // tap needed. The highlight follows the scroll: when it settles, the
+  // center card becomes the active one and the previous card's glow fades.
+  // When the whole track leaves the viewport the glow is cleared, so no
+  // off-screen card keeps burning GPU.
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
     if (!window.matchMedia('(max-width: 767px)').matches) return; // mobile carousel only
 
     let activeCard: HTMLElement | null = null;
-    let glowOffTimer: number | null = null;
     let settleTimer: number | null = null;
-    let lastTriggered: HTMLElement | null = null;
-    let lastTriggeredAt = 0;
 
     const cards = () => Array.from(el.querySelectorAll<HTMLElement>('.border-glow-card'));
 
     const activate = (card: HTMLElement | null) => {
       if (!card) return;
-      const now = Date.now();
-      // Cooldown: don't re-flash the same card unless the user taps it again.
-      if (card === lastTriggered && now - lastTriggeredAt < 4000) return;
-      lastTriggered = card;
-      lastTriggeredAt = now;
-
-      if (activeCard && activeCard !== card) activeCard.classList.remove('scroll-glow-active');
+      if (activeCard === card) return;
+      if (activeCard) activeCard.classList.remove('scroll-glow-active');
       activeCard = card;
       card.classList.add('scroll-glow-active');
+    };
 
-      // One smooth 130° rotation so the beam visibly travels once.
-      const start = parseFloat(card.style.getPropertyValue('--cursor-angle')) || 0;
-      const t0 = performance.now();
-      const dur = 900;
-      const raf = (t: number) => {
-        const p = Math.min((t - t0) / dur, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        card.style.setProperty('--cursor-angle', `${(start + 130 * eased).toFixed(2)}deg`);
-        if (p < 1) requestAnimationFrame(raf);
-      };
-      requestAnimationFrame(raf);
-
-      if (glowOffTimer) clearTimeout(glowOffTimer);
-      glowOffTimer = window.setTimeout(() => {
-        card.classList.remove('scroll-glow-active');
-        glowOffTimer = null;
-      }, 2600);
+    const clearActive = () => {
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = null;
+      if (activeCard) {
+        activeCard.classList.remove('scroll-glow-active');
+        activeCard = null;
+      }
     };
 
     const centerCard = (): HTMLElement | null => {
@@ -278,23 +263,33 @@ export default function MobileSnapSlider({
       if (settleTimer) clearTimeout(settleTimer);
       settleTimer = window.setTimeout(() => activate(centerCard()), 150);
     };
-    // Tap on a card always re-triggers its glow (capture phase, before the
-    // card's own click handler scrolls or opens a modal).
+    // Tap on a card always highlights it (capture phase, before the card's
+    // own click handler scrolls or opens a modal).
     const onClick = (e: Event) => {
       const card = (e.target as HTMLElement).closest('.border-glow-card') as HTMLElement | null;
       if (card) activate(card);
     };
 
+    // Clear the glow once the track leaves the viewport (no off-screen burn).
+    const trackIo = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        onScroll();
+      } else {
+        clearActive();
+      }
+    }, { rootMargin: '100px 0px' });
+    trackIo.observe(el);
+
     el.addEventListener('scroll', onScroll, { passive: true });
     el.addEventListener('click', onClick, true);
-    // Initial flash + re-arm when children change (category filter re-renders).
+    // Initial highlight + re-arm when children change (category filter re-renders).
     activate(centerCard());
 
     return () => {
       el.removeEventListener('scroll', onScroll);
       el.removeEventListener('click', onClick, true);
+      trackIo.disconnect();
       if (settleTimer) clearTimeout(settleTimer);
-      if (glowOffTimer) clearTimeout(glowOffTimer);
       if (activeCard) activeCard.classList.remove('scroll-glow-active');
     };
   }, [children]);

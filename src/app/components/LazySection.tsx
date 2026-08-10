@@ -37,6 +37,11 @@ export default function LazySection({
           renderedRef.current = true;
           // Once rendered, stop observing — keep it mounted
           observer.disconnect();
+          // The placeholder → real-content swap changes the document height.
+          // HomeShell listens for this and calls lenis.resize() right away so
+          // Lenis' scroll limit never goes stale mid-gesture (stale limit =
+          // scroll that stops and restarts while scrolling past the section).
+          window.dispatchEvent(new Event('tia:section-mounted'));
         }
       },
       { rootMargin: `${rootMargin}px` },
