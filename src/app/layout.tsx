@@ -11,12 +11,9 @@ import DeviceClassInjector from "./components/DeviceClassInjector";
 import SplashScreen from "./components/SplashScreen";
 import FpsOverlayWrapper from "./components/FpsOverlayWrapper";
 import ScrollbarReveal from "./components/ScrollbarReveal";
-import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import type { Lang } from "@/lib/translations";
 import { LANGS } from "@/lib/translations";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 // Localized metadata — Google sees the right title/description per language
 export async function generateMetadata(): Promise<Metadata> {
@@ -98,7 +95,7 @@ export default async function RootLayout({
   return (
     <html
       lang={initialLang}
-      className={cn("h-full antialiased bg-[#010101]", "font-sans", geist.variable)}
+      className={cn("h-full antialiased bg-[#010101]", "font-sans")}
     >
       <head>
         {/* Dynamic hreflang — tells Google this page exists in 3 languages */}
@@ -114,7 +111,12 @@ export default async function RootLayout({
             before the page becomes visible → no CLS from text reflow. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@500;600&display=swap" />
+        {/* Only the weights actually used: Outfit 400/500/600/700/900 (the
+            site never uses thin/extralight/light/extrabold), plus Share Tech
+            Mono for font-mono. Space Grotesk and IBM Plex Mono were in the
+            old request but are never referenced — fewer @font-face files means
+            document.fonts.ready resolves sooner, so the splash fades faster. */}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap" />
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         <LanguageProvider initialLang={initialLang}>
