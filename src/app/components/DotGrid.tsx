@@ -322,13 +322,23 @@ const DotGrid: React.FC<DotGridProps> = memo(({
       }
     };
 
+    // pointermove covers mouse, touch AND pen: on mobile the finger drags
+    // across the services carousel and each card's grid lights up under the
+    // finger as it passes (the `inside` rect check keeps off-card grids idle).
     const throttledMove = throttle(onMove, 50);
-    window.addEventListener('mousemove', throttledMove, { passive: true });
+    window.addEventListener('pointermove', throttledMove, { passive: true });
     window.addEventListener('click', onClick);
+    // When the finger lifts, pointerleave/pointercancel fire — clear the
+    // inside flag so the grid's rAF loop gates itself off (idle = cheap).
+    const clearOnLift = () => { pointerInsideRef.current = false; };
+    window.addEventListener('pointerup', clearOnLift);
+    window.addEventListener('pointercancel', clearOnLift);
 
     return () => {
-      window.removeEventListener('mousemove', throttledMove);
+      window.removeEventListener('pointermove', throttledMove);
       window.removeEventListener('click', onClick);
+      window.removeEventListener('pointerup', clearOnLift);
+      window.removeEventListener('pointercancel', clearOnLift);
     };
   }, [maxSpeed, speedTrigger, proximity, resistance, returnDuration, shockRadius, shockStrength]);
 

@@ -210,4 +210,10 @@
   position: relative;
   overflow: visible;
   z-index: 1;
+  /* Critical for responsive cards: as a grid item, the default min-width:auto
+     sizes this to the content's min-content width. A wide unbreakable child
+     (e.g. the chatbot's horizontally-scrolling category chips) then forces
+     the whole card wider than its container — on phones the window visibly
+     exceeds the viewport. min-width:0 lets the item shrink to its track. */
+  min-width: 0;
 }

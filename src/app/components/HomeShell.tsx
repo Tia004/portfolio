@@ -197,7 +197,8 @@ function normalizeContactService(value?: string): string | undefined {
 }
 
 const CHAT_CATEGORY_OPTIONS: { value: ChatCategory; labelKey: string; exampleKey: string; placeholderKey: string }[] = [
-  { value: 'general', labelKey: 'chat.category_general', exampleKey: 'chat.example_general', placeholderKey: 'chat.placeholder_general' },
+  // 'general' stays the internal default (user typed freely without picking a
+  // bubble) but is intentionally NOT offered as a visible option.
   { value: 'software-web', labelKey: 'chat.category_software_web', exampleKey: 'chat.example_software_web', placeholderKey: 'chat.placeholder_software_web' },
   { value: 'design', labelKey: 'chat.category_design', exampleKey: 'chat.example_design', placeholderKey: 'chat.placeholder_design' },
   { value: 'video', labelKey: 'chat.category_video', exampleKey: 'chat.example_video', placeholderKey: 'chat.placeholder_video' },
@@ -1323,6 +1324,9 @@ export default function HomeShell() {
   // ── Standalone chatbot state (for the #chatbot section) ──
   const [botInput, setBotInput] = useState('');
   const [chatCategory, setChatCategory] = useState<ChatCategory>('general');
+  // The specialization bar under the chat stays hidden until the visitor passes
+  // the first welcome message (tapping a category bubble or typing a message).
+  const [chatStarted, setChatStarted] = useState(false);
   // Details collected by the small in-chat form stay in the conversation until
   // the AI finishes the quote. They must not trigger a page jump on their own.
   const quoteDraftRef = useRef<Record<string, string>>({});
@@ -1366,6 +1370,7 @@ export default function HomeShell() {
       }
       // Restore full conversation — max last 20 messages to bound state size
       setBotMessages(data.messages.slice(-20));
+      setChatStarted(true);
       if (data.category && CHAT_CATEGORY_OPTIONS.some(o => o.value === data.category)) {
         setChatCategory(data.category);
       }
@@ -1401,6 +1406,7 @@ export default function HomeShell() {
   const resetChat = useCallback(() => {
     setBotMessages([]);
     setBotTyping(false);
+    setChatStarted(false);
     setBotInput('');
     quoteDraftRef.current = {};
     quoteEmailSentRef.current = null;
@@ -1455,9 +1461,15 @@ export default function HomeShell() {
     }
   }, []);
 
-  const sendBotMessage = (inputOverride?: string, options?: { quoteDraft?: Record<string, string>; displayUserMessage?: boolean }) => {
+  const sendBotMessage = (inputOverride?: string, options?: { quoteDraft?: Record<string, string>; displayUserMessage?: boolean; category?: ChatCategory }) => {
     const text = (inputOverride ?? botInput).trim();
     if (!text) return;
+    // Any real message (text or a chip) counts as "passing the welcome": the
+    // specialization bar below the chat appears from here on.
+    setChatStarted(true);
+    // Allow the request to carry an explicit category even though the state
+    // update above hasn't flushed yet (welcome-bubble clicks pass their own).
+    const activeCategory = options?.category ?? chatCategory;
     const uid = botNextIdRef.current++;
     if (isInappropriateChatMessage(text)) {
       setBotInput('');
@@ -1488,7 +1500,7 @@ export default function HomeShell() {
       body: JSON.stringify({
         messages: msgs,
         lang,
-        category: chatCategory,
+        category: activeCategory,
         quoteDraft: options?.quoteDraft ?? quoteDraftRef.current,
       }),
     }).then(async (res) => {
@@ -2167,15 +2179,15 @@ export default function HomeShell() {
         <div className="bg-[#010101] text-neutral-200 font-sans">
 
           {/* ============ HERO ============ */}
-          {/* Mobile: content starts near the top (items-start + pt-28) with a
-              generous bottom clearance (pb-44) so the stats row (clienti,
-              risposta, pagamento) sits ABOVE the floating CTA + chat bubble
-              instead of being covered by them. Desktop keeps the original
+          {/* Mobile: content starts near the top (items-start + pt-20) with a
+              generous bottom clearance (pb-56) so the stats row (clienti,
+              risposta, pagamento) sits comfortably ABOVE the floating CTA + chat
+              bubble instead of being covered by them. Desktop keeps the original
               vertical centering (sm:items-center, no paddings). */}
-          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center bg-[#010101] pt-28 pb-44 sm:pt-0 sm:pb-0">
-            {/* The SAME dither as the desktop hero — WebGL waves, no static
-                fallback. The Dither component pauses rendering when scrolled
-                out of view, so it costs nothing off-screen. */}
+          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center bg-[#010101] pt-20 pb-56 sm:pt-0 sm:pb-0">
+            {/* The dither: an always-rendered static teal texture guarantees
+                hero contrast on every device; the animated WebGL waves paint
+                over it where supported. It pauses rendering off-screen. */}
             <Dither
               waveColor={[0.298, 0.608, 0.510]}
               waveSpeed={0.06}
@@ -2203,7 +2215,7 @@ export default function HomeShell() {
               <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative">
                 <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none" />                {t('hero.subtitle', lang)}
               </p>
-              <div className="hero-anim mt-5 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center">
+              <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center">
                 <button
                   onClick={() => { scrollToContatti(); trackClick('hero_cta_quote'); }}
                   className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-500 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
@@ -2228,7 +2240,7 @@ export default function HomeShell() {
               </div>
 
               {/* ── Inline Stats Row — clienti, risposta, pagamento ── */}
-              <div className="hero-anim mt-5 sm:mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-5 text-[11px] sm:text-sm">
+              <div className="hero-anim mt-4 sm:mt-8 flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-5 text-[11px] sm:text-sm">
                 <div className="flex items-center gap-1.5 sm:gap-2 bg-white/[0.03] backdrop-blur-md border border-white/[0.06] rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2">
                   <HeroGlow stagger={0}><span className="text-teal-400 text-sm sm:text-lg font-bold"><CountUp target={15} delay={HERO_COUNTUP_DELAYS[0]} ready={splashDone} className="" />+</span></HeroGlow>
                   <span className="text-white/80">{t('hero.stat_clients', lang)}</span>
@@ -2858,18 +2870,21 @@ export default function HomeShell() {
                             {renderBotMessage(t('bot.welcome_category', lang))}
                           </div>
                         </div>
-                        {/* Category bubbles — picking one starts (or restarts) the
-                            chat in that specialization, as the welcome explains. */}
+                        {/* Category bubbles — the first interaction. Picking one
+                            starts the chat in that specialization and the AI
+                            immediately asks the drill-down questions for it (no
+                            bubble is highlighted: they are all equal choices). */}
                         <div className="flex gap-2 flex-wrap mt-3 ml-12">
                           {CHAT_CATEGORY_OPTIONS.map((option, idx) => (
                             <button
                               key={option.value}
                               type="button"
-                              onClick={() => selectChatCategory(option.value)}
-                              className={`animate-pop-in shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation ${chatCategory === option.value
-                                ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
-                                : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
-                                }`}
+                              onClick={() => {
+                                setChatCategory(option.value);
+                                setChatStarted(true);
+                                sendBotMessage(t(option.labelKey, lang), { category: option.value });
+                              }}
+                              className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-neutral-500 transition-all touch-manipulation hover:border-white/20 hover:text-neutral-200"
                               style={{ animationDelay: `${120 + idx * 45}ms` }}
                             >
                               {t(option.labelKey, lang)}
@@ -2972,7 +2987,10 @@ export default function HomeShell() {
 
                   </div>
 
-                  {/* Specialization selector — single category at a time */}
+                  {/* Specialization selector — single category at a time. Hidden
+                      until the visitor passes the first welcome message; the AI
+                      tells them the bar appears below once the chat has begun. */}
+                  {chatStarted && (
                   <div className="border-t border-white/[0.06] px-4 pt-3 sm:px-5 md:px-6">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400/80">{t('chat.category_label', lang)}</span>
@@ -2997,6 +3015,7 @@ export default function HomeShell() {
                     </div>
                     <p className="pb-3 text-[11px] leading-relaxed text-neutral-500">{t(CHAT_CATEGORY_OPTIONS.find(option => option.value === chatCategory)?.exampleKey ?? 'chat.example_software_web', lang)}</p>
                   </div>
+                  )}
 
                   {/* Input */}
                   <div className="flex items-end gap-2 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6">
@@ -3531,26 +3550,16 @@ export default function HomeShell() {
                 logAnalytics('cta_floating_open_chatbot');
                 navigator.vibrate?.(30);
 
-                // Chatbot section is now always in the DOM (no LazySection).
-                // Target its heading directly — position is stable from page load.
-                const heading = document.getElementById('chatbot-heading');
-                if (!heading || !lenis.current) return;
-
-                const absoluteTop = heading.getBoundingClientRect().top + window.pageYOffset;
-                const target = absoluteTop - 240;
-                const max = document.documentElement.scrollHeight - window.innerHeight;
-
-                const finalTarget = Math.min(Math.max(0, target), max);
-                lenis.current.scrollTo(finalTarget, {
+                // Robust scroll to the chatbot: scrollToElementAfterLayout
+                // force-mounts LazySections, refreshes Lenis' scroll limits
+                // ("click does nothing" after dynamic mounts) and falls back
+                // to native window.scrollTo if Lenis is ever unavailable —
+                // the same path the navbar links use. offsetPx 120 lands the
+                // heading ~240px from the top, matching the old behavior.
+                scrollToElementAfterLayout('chatbot-heading', () => lenis.current, {
+                  offsetPx: 120,
                   duration: 1.0,
-                  lock: true,
-                  force: true,
                   onComplete: () => {
-                    // Absorb any height changes from LazySection mounts that
-                    // happened during the scroll, then re-anchor to the exact
-                    // target position — prevents the second "scatto" jump.
-                    lenis.current?.resize();
-                    lenis.current?.scrollTo(finalTarget, { immediate: true, lock: true, force: true });
                     window.setTimeout(() => botInputRef.current?.focus(), 300);
                   },
                 });

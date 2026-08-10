@@ -51,17 +51,36 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html,
+body {
+  /* Paint the whole canvas — INCLUDING the reserved scrollbar gutter — with
+     the site's base color. Without this, html/body are transparent and the
+     browser's white canvas shows through the scrollbar-gutter strip, which
+     reads as an ugly extra bar next to the teal scrollbar that "cuts" the
+     progressive blur and the page content on desktop. */
+  background-color: #010101;
+}
+
 body {
   font-family: var(--font-sans);
   overflow-x: hidden;
-  /* Always reserve the vertical scrollbar track (old-browser fallback) so a
-     scrollbar appearing/disappearing can never shift the layout (CLS). */
-  overflow-y: scroll;
+  /* overflow-y MUST stay auto (never scroll): html { overflow-x: hidden }
+     in the base layer makes the root overflow non-visible, which stops
+     body's overflow from propagating to the viewport. With `scroll`, body
+     then becomes its own scroll container and renders a SECOND teal
+     scrollbar right next to the html one — the "barra in più" on desktop.
+     auto never paints a bar without overflow, and body has none (its content
+     height equals its box height). */
+  overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 html {
+  /* html is the SINGLE vertical scroller: it scrolls (content is taller than
+     the viewport), so its auto overflow shows exactly ONE teal scrollbar.
+     scrollbar-gutter reserves the track space so nothing shifts (CLS). */
+  overflow-y: auto;
   /* Modern equivalent of the body overflow-y:scroll fallback — reserves the
      gutter so content never jumps when the scrollbar toggles. */
   scrollbar-gutter: stable;
@@ -190,6 +209,16 @@ html {
 /* Skill title vertical line — draws from top when ScrollReveal fires */
 .skill-line {
   position: relative;
+}
+/* Mobile: skill subtitles ("Sviluppo Web", "Linguaggi & Backend", …) sit
+   flush left instead of being pushed in by the desktop SKILL_TITLE_OFFSET
+   (clamp(2rem, 10vw, 8rem)). The accent line follows so it stays aligned
+   (both properties are set inline, so both need !important). */
+@media (max-width: 767px) {
+  .skill-line {
+    padding-left: 0 !important;
+    --skill-line-offset: 0px !important;
+  }
 }
 .skill-line::before {
   content: '';
@@ -543,10 +572,9 @@ img {
   }
 }
 
-/* Chat widget icon pop — two stacked animations:
-   1. chat-icon-pop:   fires once on mount (key change = open/close)
-   2. chat-icon-idle:  infinite loop, quick pulse every 5s so the
-      floating widget always looks alive. */
+/* Chat widget icon pop — fires once on mount (key change = open/close).
+   No idle loop: a repeating 5s pulse read as a "re-entrance animation"
+   in the corner of the screen, so the widget stays still until touched. */
 @keyframes chat-icon-pop {
   0%   { transform: scale(0.6); opacity: 0.4; }
   60%  { transform: scale(1.18); }
@@ -588,18 +616,12 @@ img {
   animation: caret-blink 0.85s step-end infinite;
 }
 
-@keyframes chat-icon-idle {
-  0%, 95%  { transform: scale(1); opacity: 1; }
-  96%     { transform: scale(0.7); opacity: 0.4; }
-  98%     { transform: scale(1.18); }
-  100%    { transform: scale(1); opacity: 1; }
-}
 .chat-icon-pop {
-  animation-name: chat-icon-pop, chat-icon-idle;
-  animation-duration: 350ms, 5s;
-  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), ease-in-out;
-  animation-fill-mode: both, none;
-  animation-iteration-count: 1, infinite;
+  animation-name: chat-icon-pop;
+  animation-duration: 350ms;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-fill-mode: both;
+  animation-iteration-count: 1;
 }
 
 /* Throttle animations by reducing their frequency */

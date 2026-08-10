@@ -198,7 +198,7 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
             {/* "Tia Designs" — letter by letter drop */}
             <h1
-              className="flex flex-wrap justify-center gap-[0.02em] text-5xl sm:text-7xl md:text-8xl max-[450px]:text-4xl max-[374px]:text-3xl font-black tracking-tight text-white select-none"
+              className="flex flex-wrap justify-center gap-[0.02em] text-6xl sm:text-7xl md:text-8xl max-[450px]:text-5xl max-[374px]:text-4xl font-black tracking-tight text-white select-none"
               style={{ fontFamily: 'var(--font-sans), Outfit, sans-serif' }}
             >
               {LETTERS.map((char, i) => (
@@ -215,13 +215,13 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
 
             {/* Percentage counter */}
             <div className="mt-8 flex items-center gap-3">
-              <div className="h-[2px] w-32 sm:w-48 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-[3px] w-40 sm:w-48 bg-white/10 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-teal-400 rounded-full transition-[width] duration-100 ease-linear"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-teal-400 text-sm sm:text-base font-mono tabular-nums min-w-[3ch] text-right">
+              <span className="text-teal-400 text-base sm:text-base font-mono tabular-nums min-w-[3ch] text-right">
                 {progress}%
               </span>
             </div>

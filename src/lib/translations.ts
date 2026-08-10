@@ -207,7 +207,7 @@ const it: Dict = {
   'chat.send': 'Invia messaggio',
   'chat.bot_placeholder': 'Descrivi il tuo progetto…',
   'chat.bot_empty': 'Raccontami cosa hai in mente. Scegli una specializzazione e scrivimi di un sito, un\'app, un brand, un video, il tuo PC o i tuoi contenuti social. Ti darò un\'idea dei costi e dei tempi prima di preparare il preventivo.',
-  'bot.welcome_category': 'Ciao! 👋 Sono l\'**AI di Tia Designs**, l\'assistente di Tia. Puoi scegliere la specializzazione tra le bolle qui sotto, oppure scrivermi direttamente. Ricorda però: **cambiando specializzazione avvierai una nuova chat** e questa conversazione verrà eliminata.',
+  'bot.welcome_category': 'Ciao! 👋 Sono l\'**AI di Tia Designs**, l\'assistente di Tia. Scegli la specializzazione tra le bolle qui sotto, oppure scrivimi direttamente cosa hai in mente. Dopo il primo messaggio potrai cambiare specializzazione con la barra qui sotto. Ricorda: **cambiando specializzazione avvierai una nuova chat** e questa conversazione verrà eliminata.',
   'chat.empty_intro': 'Sono Tia Chinaglia. Raccontami cosa hai in mente.',
   'chat.category_label': 'Specializzazione',
   'chat.category_single': 'Una categoria alla volta',
@@ -453,7 +453,7 @@ const en: Dict = {
   'chat.send': 'Send message',
   'chat.bot_placeholder': 'Describe your project…',
   'chat.bot_empty': 'Tell me what you have in mind. Choose a specialization and ask about a website, app, brand, video, PC, or social content. I\'ll outline costs and timing before preparing your quote.',
-  'bot.welcome_category': 'Hi! 👋 I\'m the **Tia Designs AI**, Tia\'s assistant. You can pick a specialization from the bubbles below, or just type to me directly. Remember: **switching specialization starts a new chat** and this conversation will be deleted.',
+  'bot.welcome_category': 'Hi! 👋 I\'m the **Tia Designs AI**, Tia\'s assistant. Pick a specialization from the bubbles below, or just type what you have in mind. After your first message you can switch specialization from the bar below. Remember: **switching specialization starts a new chat** and this conversation will be deleted.',
   'chat.empty_intro': 'I\'m Tia Chinaglia. Tell me what you have in mind.',
   'chat.category_label': 'Specialization',
   'chat.category_single': 'One category at a time',
@@ -695,7 +695,7 @@ const es: Dict = {
   'chat.send': 'Enviar mensaje',
   'chat.bot_placeholder': 'Describe tu proyecto…',
   'chat.bot_empty': 'Cuéntame qué tienes en mente. Elige una especialización y pregúntame por un sitio, una app, una marca, un video, tu PC o contenido para redes. Te orientaré sobre costes y tiempos antes de preparar el presupuesto.',
-  'bot.welcome_category': '¡Hola! 👋 Soy la **IA de Tia Designs**, el asistente de Tia. Puedes elegir la especialización con las burbujas de abajo, o escribirme directamente. Recuerda: **cambiar de especialización inicia un nuevo chat** y esta conversación se eliminará.',
+  'bot.welcome_category': '¡Hola! 👋 Soy la **IA de Tia Designs**, el asistente de Tia. Elige una especialización con las burbujas de abajo, o escríbeme directamente qué tienes en mente. Después del primer mensaje podrás cambiar de especialización con la barra de abajo. Recuerda: **cambiar de especialización inicia un nuevo chat** y esta conversación se eliminará.',
   'chat.empty_intro': 'Soy Tia Chinaglia. Cuéntame qué tienes en mente.',
   'chat.category_label': 'Especialización',
   'chat.category_single': 'Una categoría a la vez',
@@ -886,7 +886,7 @@ const PROJECTS_BY_LANG: Record<Lang, ProjectData[]> = {
     { id: 'moretti', title: 'Studio Ing. Moretti', description: 'Sito professionale per studio di ingegneria. Design pulito, ottimizzato SEO e performance al top. Online e operativo.', url: 'https://www.studioingmoretti.it/', thumbnail: '/uploads/studioingmoretti.png', category: 'Sviluppo', tags: ['Next.js', 'SEO', 'Sito Professionale'] },
     { id: 'pcs', title: 'PCS Mantova', description: 'Sito istituzionale per azienda del territorio mantovano. Struttura moderna, navigazione intuitiva e immagine coordinata.', url: 'https://pcsmantova-github-io.vercel.app/', thumbnail: '/uploads/pcsmantova.png', category: 'Sviluppo', tags: ['Next.js', 'Design', 'Sviluppo'] },
     { id: 'canapa', title: 'Canapa Store', description: 'Concept store per prodotti naturali. Esperienza d\'acquisto fluida con design minimal, palette terrosa e attenzione al dettaglio.', url: 'https://canapa-store.vercel.app/', thumbnail: '/uploads/canapastore.png', category: 'Sviluppo', tags: ['Next.js', 'E-commerce', 'UI Design'] },
-    { id: 'showreel', title: 'Showreel Video', description: 'Montaggio video professionale con motion graphics, color grading e sound design. Produzione completa per brand e aziende.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: 'https://img.youtube.com/vi/rc6GzCBa2LY/maxresdefault.jpg', isVideo: true, category: 'Video', tags: ['Final Cut Pro', 'After Effects', 'Color Grading'] },
+    { id: 'showreel', title: 'Pigg', description: 'Cortometraggio realizzato per l\'Accademia di Belle Arti: la storia di un ragazzo bullizzato che si rimette in piedi da solo dopo che gli è stato affibbiato un nome che non gli appartiene.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: '/uploads/pigg.png', isVideo: true, category: 'Video', tags: ['Cortometraggio', 'Montaggio', 'Color Grading'] },
   ],
   en: [
     { id: 'gsa-hotels', title: 'GSA Hotels', description: 'Luxury hotel website prototype. Elegant design, smooth animations, and interactive booking system.', url: 'https://gsa-hotels-demo.vercel.app/', thumbnail: '/uploads/gsahotels.png', category: 'Sviluppo', tags: ['Next.js', 'Tailwind', 'Animations'] },
@@ -894,7 +894,7 @@ const PROJECTS_BY_LANG: Record<Lang, ProjectData[]> = {
     { id: 'moretti', title: 'Studio Ing. Moretti', description: 'Professional website for an engineering firm. Clean design, SEO-optimized, top performance. Live and operational.', url: 'https://www.studioingmoretti.it/', thumbnail: '/uploads/studioingmoretti.png', category: 'Sviluppo', tags: ['Next.js', 'SEO', 'Professional Site'] },
     { id: 'pcs', title: 'PCS Mantova', description: 'Institutional website for a Mantua-based company. Modern structure, intuitive navigation, and coordinated branding.', url: 'https://pcsmantova-github-io.vercel.app/', thumbnail: '/uploads/pcsmantova.png', category: 'Sviluppo', tags: ['Next.js', 'Design', 'Development'] },
     { id: 'canapa', title: 'Canapa Store', description: 'Concept store for natural products. Smooth shopping experience with minimal design, earthy palette, and attention to detail.', url: 'https://canapa-store.vercel.app/', thumbnail: '/uploads/canapastore.png', category: 'Sviluppo', tags: ['Next.js', 'E-commerce', 'UI Design'] },
-    { id: 'showreel', title: 'Showreel Video', description: 'Professional video editing with motion graphics, color grading, and sound design. Complete production for brands and businesses.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: 'https://img.youtube.com/vi/rc6GzCBa2LY/maxresdefault.jpg', isVideo: true, category: 'Video', tags: ['Final Cut Pro', 'After Effects', 'Color Grading'] },
+    { id: 'showreel', title: 'Pigg', description: 'Short film made for the Academy of Fine Arts: the story of a bullied boy who stands back up on his own after being given a name that doesn\'t belong to him.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: '/uploads/pigg.png', isVideo: true, category: 'Video', tags: ['Short Film', 'Editing', 'Color Grading'] },
   ],
   es: [
     { id: 'gsa-hotels', title: 'GSA Hotels', description: 'Prototipo de sitio web de lujo para hotel de alto nivel. Diseño elegante, animaciones fluidas y sistema de reservas interactivo.', url: 'https://gsa-hotels-demo.vercel.app/', thumbnail: '/uploads/gsahotels.png', category: 'Sviluppo', tags: ['Next.js', 'Tailwind', 'Animaciones'] },
@@ -902,7 +902,7 @@ const PROJECTS_BY_LANG: Record<Lang, ProjectData[]> = {
     { id: 'moretti', title: 'Studio Ing. Moretti', description: 'Sitio profesional para estudio de ingeniería. Diseño limpio, optimizado SEO y máximo rendimiento. Online y operativo.', url: 'https://www.studioingmoretti.it/', thumbnail: '/uploads/studioingmoretti.png', category: 'Sviluppo', tags: ['Next.js', 'SEO', 'Sitio Profesional'] },
     { id: 'pcs', title: 'PCS Mantova', description: 'Sitio institucional para empresa de la región de Mantua. Estructura moderna, navegación intuitiva e imagen coordinada.', url: 'https://pcsmantova-github-io.vercel.app/', thumbnail: '/uploads/pcsmantova.png', category: 'Sviluppo', tags: ['Next.js', 'Diseño', 'Desarrollo'] },
     { id: 'canapa', title: 'Canapa Store', description: 'Concept store para productos naturales. Experiencia de compra fluida con diseño minimal, paleta terrosa y atención al detalle.', url: 'https://canapa-store.vercel.app/', thumbnail: '/uploads/canapastore.png', category: 'Sviluppo', tags: ['Next.js', 'E-commerce', 'UI Design'] },
-    { id: 'showreel', title: 'Showreel Video', description: 'Edición de video profesional con motion graphics, color grading y diseño de sonido. Producción completa para marcas y empresas.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: 'https://img.youtube.com/vi/rc6GzCBa2LY/maxresdefault.jpg', isVideo: true, category: 'Video', tags: ['Final Cut Pro', 'After Effects', 'Color Grading'] },
+    { id: 'showreel', title: 'Pigg', description: 'Cortometraje realizado para la Academia de Bellas Artes: la historia de un chico acosado que se levanta por sí solo después de que le hayan puesto un nombre que no le pertenece.', url: 'https://youtu.be/rc6GzCBa2LY', thumbnail: '/uploads/pigg.png', isVideo: true, category: 'Video', tags: ['Cortometraje', 'Edición', 'Color Grading'] },
   ],
 };
 

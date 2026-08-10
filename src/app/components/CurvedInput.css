@@ -50,25 +50,20 @@
 /* Sparkle — real SparklesIcon from hugeicons, positioned on the
    same curve as the text via geom.point().  Animated via opacity
    only (the parent <g> already has a positioning transform).
-   Same two-layer pattern: mount pulse + idle loop every 5s. */
+   Mount pulse only — the old 5s idle loop made the CTA look like it
+   was re-running its entrance animation in the corner of the screen. */
 .curved-btn__sparkle {
-  animation-name: sparkle-pulse, sparkle-idle;
-  animation-duration: 350ms, 5s;
-  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1), ease-in-out;
-  animation-fill-mode: both, none;
-  animation-iteration-count: 1, infinite;
+  animation-name: sparkle-pulse;
+  animation-duration: 350ms;
+  animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation-fill-mode: both;
+  animation-iteration-count: 1;
 }
 
 @keyframes sparkle-pulse {
   0%   { opacity: 0; }
   60%  { opacity: 1; }
   100% { opacity: 1; }
-}
-
-@keyframes sparkle-idle {
-  0%, 94%  { opacity: 1; }
-  97%     { opacity: 0.15; }
-  100%    { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

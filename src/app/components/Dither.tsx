@@ -271,14 +271,50 @@ function DitheredWaves({
   );
 }
 
-// ── Static fallback for touch devices ────────────────────────
+// ── Static fallback layer (touch devices + any WebGL failure) ──
 // Real phones often fail to create a WebGL context (driver blocklists, no
 // WebGL2, highp shader limits) — the canvas silently renders nothing and the
-// hero looks like a flat black void. Touch devices get this layered static
-// texture instead: the same teal palette as the WebGL waves, a faint dot
-// grid, and grain noise. Guaranteed render, zero GPU, instant paint.
-// Desktop keeps the animated WebGL dither exactly as before.
+// hero looks like a flat black void. This layered static texture (same teal
+// palette as the WebGL waves + dot grid + grain) is ALWAYS rendered as the
+// base layer, so the hero can never be a black void: on desktop the opaque
+// WebGL canvas covers it; anywhere WebGL is unavailable or broken, the
+// static dither shows through. Guaranteed render, zero GPU, instant paint.
 const NOISE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")`;
+
+function StaticDitherTexture() {
+  // Teal in CSS form (waveColor is normalized RGB ≈ 0.298, 0.608, 0.510).
+  const tealRgba = (a: number) => `rgba(45, 212, 191, ${a})`;
+  return (
+    <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none" style={{ background: '#010101', touchAction: 'pan-y' }}>
+      {/* Teal glow — strong radial wash so the hero has real contrast on
+          small screens (the old 0.26 alpha read as "all black" on phones). */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            `radial-gradient(ellipse 90% 70% at 50% 32%, ${tealRgba(0.42)}, transparent 74%),` +
+            `radial-gradient(ellipse 55% 40% at 78% 78%, ${tealRgba(0.24)}, transparent 72%),` +
+            `radial-gradient(ellipse 30% 24% at 22% 60%, ${tealRgba(0.16)}, transparent 70%)`,
+        }}
+      />
+      {/* Dither dots — the pixelated character of the effect, brighter than
+          before so the grid reads clearly on a phone display. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(circle, ${tealRgba(0.5)} 1.2px, transparent 1.6px)`,
+          backgroundSize: '14px 14px',
+          opacity: 0.6,
+        }}
+      />
+      {/* Grain noise in screen blend — lightens the texture like the shader */}
+      <div
+        className="absolute inset-0"
+        style={{ backgroundImage: NOISE_URI, opacity: 0.55, mixBlendMode: 'screen' }}
+      />
+    </div>
+  );
+}
 
 // ── Public component ─────────────────────────────────────────
 
@@ -305,6 +341,7 @@ export default function Dither({
 }) {
   const [paused, setPaused] = useState(false);
   const [staticMode, setStaticMode] = useState(false);
+  const [glFailed, setGlFailed] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Touch devices (no hover / coarse pointer) get the static texture. The
@@ -318,6 +355,21 @@ export default function Dither({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  // Belt-and-braces WebGL probe: some devices report hover:hover but still
+  // can't create a GL context (old Safari, aggressive GPU blocklists, webview
+  // containers). If the context can't be created, skip the Canvas entirely —
+  // the always-rendered static layer below shows through instead of a black
+  // void. The probe is cheap (one tiny canvas, no shaders).
+  useEffect(() => {
+    try {
+      const probe = document.createElement('canvas');
+      const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+      if (!gl) setGlFailed(true);
+    } catch {
+      setGlFailed(true);
+    }
+  }, []);
+
   // Pause WebGL rendering when canvas is scrolled out of viewport
   useEffect(() => {
     if (staticMode) return;
@@ -329,9 +381,6 @@ export default function Dither({
     io.observe(el);
     return () => io.disconnect();
   }, [staticMode]);
-
-  // Teal in CSS form (waveColor is normalized RGB ≈ 0.298, 0.608, 0.510).
-  const tealRgba = (a: number) => `rgba(45, 212, 191, ${a})`;
 
   return (
     <div
@@ -348,33 +397,10 @@ export default function Dither({
         touchAction: 'pan-y',
       }}
     >
-      {staticMode ? (
-        <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none" style={{ background: '#010101', touchAction: 'pan-y' }}>
-          {/* Teal glow — same soft radial wash as the WebGL waves */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                `radial-gradient(ellipse 85% 65% at 50% 35%, ${tealRgba(0.26)}, transparent 72%),` +
-                `radial-gradient(ellipse 45% 35% at 72% 72%, ${tealRgba(0.14)}, transparent 70%)`,
-            }}
-          />
-          {/* Faint dot grid — the dither's pixelated character */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `radial-gradient(circle, ${tealRgba(0.3)} 1px, transparent 1.5px)`,
-              backgroundSize: '16px 16px',
-              opacity: 0.45,
-            }}
-          />
-          {/* Grain noise in screen blend — lightens the texture like the shader */}
-          <div
-            className="absolute inset-0"
-            style={{ backgroundImage: NOISE_URI, opacity: 0.5, mixBlendMode: 'screen' }}
-          />
-        </div>
-      ) : (
+      {/* Always-on static dither — guaranteed hero contrast on EVERY device.
+          The WebGL canvas (when active) is opaque and paints over it. */}
+      <StaticDitherTexture />
+      {!staticMode && !glFailed && (
         <Canvas
           camera={{ position: [0, 0, 6] }}
           dpr={0.75}
