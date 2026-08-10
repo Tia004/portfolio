@@ -95,4 +95,5 @@ export {
   Cancel01Icon,
   ExternalLinkIcon,
   Settings01Icon,
+  ArrowExpandDiagonal01Icon,
 } from '@hugeicons/core-free-icons';

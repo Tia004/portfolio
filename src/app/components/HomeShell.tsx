@@ -104,6 +104,7 @@ const FooterAnimation = dynamic(() => import('./FooterAnimation'), {
 import LegalModal from './LegalModal';
 import { getLegalDoc, type LegalDoc } from '@/lib/legal-content';
 import BorderGlow from './BorderGlow';
+import ChatbotPanel, { CHAT_CATEGORY_OPTIONS } from './ChatbotPanel';
 import DotGrid from './DotGrid';
 import TooltipContent from './TooltipContent';
 import UrlPreviewCard from './UrlPreviewCard';
@@ -196,16 +197,7 @@ function normalizeContactService(value?: string): string | undefined {
   return ALL_OPTIONS.some(option => option.value.toLowerCase() === lower) ? raw : 'Altro';
 }
 
-const CHAT_CATEGORY_OPTIONS: { value: ChatCategory; labelKey: string; exampleKey: string; placeholderKey: string }[] = [
-  // 'general' stays the internal default (user typed freely without picking a
-  // bubble) but is intentionally NOT offered as a visible option.
-  { value: 'software-web', labelKey: 'chat.category_software_web', exampleKey: 'chat.example_software_web', placeholderKey: 'chat.placeholder_software_web' },
-  { value: 'design', labelKey: 'chat.category_design', exampleKey: 'chat.example_design', placeholderKey: 'chat.placeholder_design' },
-  { value: 'video', labelKey: 'chat.category_video', exampleKey: 'chat.example_video', placeholderKey: 'chat.placeholder_video' },
-  { value: 'hardware', labelKey: 'chat.category_hardware', exampleKey: 'chat.example_hardware', placeholderKey: 'chat.placeholder_hardware' },
-  { value: 'social', labelKey: 'chat.category_social', exampleKey: 'chat.example_social', placeholderKey: 'chat.placeholder_social' },
-  { value: 'other', labelKey: 'chat.category_other', exampleKey: 'chat.example_other', placeholderKey: 'chat.placeholder_other' },
-];
+// CHAT_CATEGORY_OPTIONS now lives in ChatbotPanel (the chatbot UI moved there).
 
 function ServiceSelect({ value, onChange, highlighted }: { value: string; onChange: (v: string) => void; highlighted?: boolean }) {
   const { lang } = useLanguage();
@@ -744,6 +736,7 @@ function sanitizeBotText(text: string): string {
     .replace(/\[PREVENTIVO:[\s\S]*?\]/gi, '')
     .replace(/\[FORM_REQUIRED:[^\]]*\]/gi, '')
     .replace(/\[SUGGESTIONS:[^\]]*\]/gi, '')
+    .replace(/\[OFFTOPIC\]/gi, '')
     .replace(/(?:private|internal)\s+(?:quote|context|payload|metadata)[^.!?]*[.!?]?/gi, '')
     .replace(/(?:contesto|payload|metadata|protocollo)\s+(?:interno|privato)[^.!?]*[.!?]?/gi, '')
     .replace(/(?:dati|dettagli|informazioni)\s+(?:raccolti|raccolte|inseriti|inserite)\s+(?:per|del|del tuo)\s+preventivo[^.!?]*[.!?]?/gi, '')
@@ -773,7 +766,7 @@ function stripMarkdown(text: string): string {
 }
 
 function sanitizeStreamingBotText(text: string): string {
-  const markerStart = text.search(/\[(?:PREVENTIVO|FORM_REQUIRED|SUGGESTIONS):/i);
+  const markerStart = text.search(/\[(?:PREVENTIVO|FORM_REQUIRED|SUGGESTIONS|OFFTOPIC)[:\]]/i);
   return sanitizeBotText(markerStart >= 0 ? text.slice(0, markerStart) : text);
 }
 
@@ -1327,6 +1320,12 @@ export default function HomeShell() {
   // The specialization bar under the chat stays hidden until the visitor passes
   // the first welcome message (tapping a category bubble or typing a message).
   const [chatStarted, setChatStarted] = useState(false);
+  // ── Off-topic guard: after 3 off-topic messages the chat input is blocked
+  // for 30 minutes. Persisted in sessionStorage so a reload can't bypass it. ──
+  const OFFTOPIC_BLOCK_MS = 30 * 60 * 1000;
+  const [chatBlockedUntil, setChatBlockedUntil] = useState(0);
+  const [offtopicStrikes, setOfftopicStrikes] = useState(0);
+  const offtopicStrikesRef = useRef(0);
   // Details collected by the small in-chat form stay in the conversation until
   // the AI finishes the quote. They must not trigger a page jump on their own.
   const quoteDraftRef = useRef<Record<string, string>>({});
@@ -1354,6 +1353,25 @@ export default function HomeShell() {
   const CHAT_STORAGE_KEY = 'tia_bot_chat';
   const CHAT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+  // Restore the off-topic block / strikes from sessionStorage on mount.
+  useEffect(() => {
+    try {
+      const untilRaw = sessionStorage.getItem('tia_bot_blocked_until');
+      const until = untilRaw ? Number(untilRaw) : 0;
+      const strikesRaw = sessionStorage.getItem('tia_bot_offtopic_strikes');
+      const strikes = strikesRaw ? Number(strikesRaw) : 0;
+      if (until > Date.now()) {
+        setChatBlockedUntil(until);
+        setOfftopicStrikes(strikes);
+        offtopicStrikesRef.current = strikes;
+      } else if (untilRaw || strikesRaw) {
+        // Expired or stale — reset both.
+        sessionStorage.removeItem('tia_bot_blocked_until');
+        sessionStorage.removeItem('tia_bot_offtopic_strikes');
+      }
+    } catch { /* storage unavailable, ignore */ }
+  }, []);
+
   // Restore chat on mount if within TTL
   const chatRestoredRef = useRef(false);
   useEffect(() => {
@@ -1379,6 +1397,25 @@ export default function HomeShell() {
       botNextIdRef.current = maxId + 1;
     } catch { /* malformed storage, ignore */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clearChatBlock = useCallback(() => {
+    setChatBlockedUntil(0);
+    setOfftopicStrikes(0);
+    offtopicStrikesRef.current = 0;
+    try {
+      sessionStorage.removeItem('tia_bot_blocked_until');
+      sessionStorage.removeItem('tia_bot_offtopic_strikes');
+    } catch { /* ignore */ }
+  }, []);
+
+  // Unblock automatically once the 30-minute pause expires.
+  useEffect(() => {
+    if (chatBlockedUntil <= Date.now()) return;
+    const id = setTimeout(clearChatBlock, chatBlockedUntil - Date.now() + 1000);
+    return () => clearTimeout(id);
+  }, [chatBlockedUntil, clearChatBlock]);
+
+  const chatBlocked = chatBlockedUntil > Date.now();
 
   // Save chat whenever messages change (debounced by rAF)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1428,20 +1465,25 @@ export default function HomeShell() {
     }, 1800);
   }, []);
 
-  // Choose a specialization. Changing it starts a NEW chat: the old one is
-  // deleted (the AI welcome tells users this). Clicking the active category
-  // again is a no-op.
-  const selectChatCategory = useCallback((value: ChatCategory) => {
+  // Choose a specialization from the always-visible bar. In the empty state it
+  // is the FIRST interaction: it starts the chat in that specialization so the
+  // AI immediately asks the drill-down questions. Mid-chat it starts a fresh
+  // conversation in the new specialization (old one is wiped). Clicking the
+  // active category again is a no-op.
+  const selectChatCategory = (value: ChatCategory) => {
     if (value === chatCategory) return;
+    if (chatBlocked) return;
     setChatCategory(value);
-    if (botMessages.length > 0) {
-      // New specialization => fresh conversation, old one wiped.
-      resetChat();
+    setChatStarted(true);
+    if (botMessages.length === 0) {
+      sendBotMessage(
+        t(CHAT_CATEGORY_OPTIONS.find(option => option.value === value)?.labelKey ?? 'chat.category_software_web', lang),
+        { category: value },
+      );
     } else {
-      setBotInput('');
-      setTimeout(() => botInputRef.current?.focus(), 80);
+      resetChat();
     }
-  }, [chatCategory, botMessages.length, resetChat]);
+  };
 
   // Chat wheel scroll: data-lenis-prevent tells Lenis to skip this
   // element. We drive scrollTop manually in the React onWheel handler
@@ -1461,9 +1503,37 @@ export default function HomeShell() {
     }
   }, []);
 
+  // Touch-scroll delegation for the chat list (see handleChatWheel): track the
+  // initial touch Y, then delegate overscroll to Lenis for the page.
+  const handleBotTouchStart = (e: React.TouchEvent<HTMLElement>) => {
+    lastTouchYRef.current = e.touches[0]?.clientY ?? 0;
+  };
+  const handleBotTouchMove = (e: React.TouchEvent<HTMLElement>) => {
+    const touchY = e.touches[0]?.clientY ?? 0;
+    const deltaY = lastTouchYRef.current - touchY;
+    lastTouchYRef.current = touchY;
+
+    const el = e.currentTarget;
+    const atTop = el.scrollTop <= 1;
+    const atBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) <= 2;
+
+    // At the top pulling down (deltaY < 0) or at the bottom pushing up
+    // (deltaY > 0): prevent native rubber-banding and delegate to Lenis for
+    // page scroll instead of letting the overscroll dead-end in Lenis' virtual body.
+    if ((atTop && deltaY < 0) || (atBottom && deltaY > 0)) {
+      e.preventDefault();
+      lenis.current?.scrollTo(
+        (lenis.current?.scroll ?? window.scrollY) + deltaY,
+        { immediate: true },
+      );
+    }
+  };
+
   const sendBotMessage = (inputOverride?: string, options?: { quoteDraft?: Record<string, string>; displayUserMessage?: boolean; category?: ChatCategory }) => {
     const text = (inputOverride ?? botInput).trim();
     if (!text) return;
+    // Off-topic block: after 3 strikes the visitor cannot send anything for 30 min.
+    if (chatBlockedUntil > Date.now()) return;
     // Any real message (text or a chip) counts as "passing the welcome": the
     // specialization bar below the chat appears from here on.
     setChatStarted(true);
@@ -1561,10 +1631,36 @@ export default function HomeShell() {
       // Neither marker is ever shown in the chat.
       const formRequiredMatch = full.match(/\[FORM_REQUIRED:([^\]]+)\]/i);
       const preventivoMatch = full.match(/\[PREVENTIVO:([\s\S]+?)\]/i);
+      // Off-topic guard: the AI marks off-topic replies with [OFFTOPIC]. Count
+      // the strikes and block the input for 30 minutes after the third one.
+      const offtopicMatch = full.match(/\[OFFTOPIC\]/i);
+      let blockTriggered = false;
+      if (offtopicMatch) {
+        offtopicStrikesRef.current += 1;
+        const strikes = offtopicStrikesRef.current;
+        setOfftopicStrikes(strikes);
+        try { sessionStorage.setItem('tia_bot_offtopic_strikes', String(strikes)); } catch { /* ignore */ }
+        if (strikes >= 3) {
+          const until = Date.now() + OFFTOPIC_BLOCK_MS;
+          setChatBlockedUntil(until);
+          blockTriggered = true;
+          try { sessionStorage.setItem('tia_bot_blocked_until', String(until)); } catch { /* ignore */ }
+        }
+      }
+      // The budget slider must NEVER share a bubble with the name/email form. If
+      // the model merged both markers into one message, split them: the slider
+      // gets its own dedicated bot message right before this one, which keeps
+      // only the form fields.
+      const sliderMarkersInFull = full.match(/\[SLIDER:[^\]]*\]/gi) ?? [];
+      const splitSliderForm = Boolean(formRequiredMatch && sliderMarkersInFull.length > 0);
       let displayText = full;
       let parsedPrefill: Record<string, string> | undefined;
       let requiresApproval = false;
-      if (formRequiredMatch) {
+      if (splitSliderForm) {
+        // Strip the slider markers here so only the name/email form renders;
+        // the slider is re-emitted as its own message immediately before this.
+        displayText = full.replace(/\[SLIDER:[^\]]*\]/gi, '').trim();
+      } else if (formRequiredMatch) {
         // Keep the private marker in state so renderBotMessage can mount the
         // friendly inline fields; it is stripped before rendering.
         displayText = full;
@@ -1620,13 +1716,40 @@ export default function HomeShell() {
           }
         } catch { /* invalid JSON, ignore */ }
       }
-      setBotMessages(prev => prev.map(m => m.id === replyId ? {
-        ...m,
-        text: displayText,
-        prefill: parsedPrefill,
-        requiresApproval,
-        approvalState: requiresApproval ? 'pending' : undefined,
-      } : m));
+      // Dedicated budget/slider message, inserted BEFORE the form message so
+      // the flow order (budget first, then name/email) is preserved. The ids are
+      // reserved outside the updater to avoid side effects inside it.
+      const sliderMsgId = splitSliderForm ? botNextIdRef.current++ : 0;
+      const blockMsgId = blockTriggered ? botNextIdRef.current++ : 0;
+      // The [OFFTOPIC] marker is private — strip it from what the visitor sees.
+      const finalDisplayText = displayText.replace(/\[OFFTOPIC\]/gi, '').trim();
+      setBotMessages(prev => {
+        const updated: typeof botMessages = prev.map(m => m.id === replyId ? {
+          ...m,
+          text: finalDisplayText,
+          prefill: parsedPrefill,
+          requiresApproval,
+          approvalState: requiresApproval ? 'pending' : undefined,
+        } : m);
+        if (splitSliderForm) {
+          const sliderMsg: typeof botMessages[number] = {
+            id: sliderMsgId,
+            text: `${t('bot.budget_ask', lang)}\n\n${sliderMarkersInFull.join('\n')}`,
+            sender: 'bot',
+          };
+          const idx = updated.findIndex(m => m.id === replyId);
+          updated.splice(idx < 0 ? updated.length : idx, 0, sliderMsg);
+        }
+        if (blockTriggered) {
+          // Inform the visitor that the chat is paused for 30 minutes.
+          updated.push({
+            id: blockMsgId,
+            text: t('bot.offtopic_block', lang),
+            sender: 'bot',
+          });
+        }
+        return updated;
+      });
       setBotTyping(false);
     }).catch(() => {
       setBotMessages(prev => prev.map(m => m.id === replyId ? { ...m, text: t('bot.error_connection', lang) } : m));
@@ -1641,6 +1764,31 @@ export default function HomeShell() {
     // Send the internal third-person message for Tia (which the AI updates on
     // revision with the requested changes), falling back to the visible text.
     const finalQuote = sanitizeBotText(prefill.message || quote).trim();
+
+    // Structured details for the email "chips": service, sub-category, budget
+    // (the REAL slider value is authoritative), pages and delivery. The AI's
+    // PREVENTIVO JSON may carry type/budget/pages/delivery; the slider value
+    // from quoteDraftRef._sliders wins for budget because it is the actual
+    // number the visitor picked on the slider.
+    const sliderValues = (() => {
+      try {
+        const raw = quoteDraftRef.current._sliders ?? prefill._sliders;
+        return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      } catch { return {}; }
+    })();
+    const budgetFromSlider = typeof sliderValues.budget === 'number' && Number.isFinite(sliderValues.budget)
+      ? sliderValues.budget
+      : undefined;
+    const details: Record<string, string | number> = {};
+    if (service) details.service = service;
+    if (prefill.type) details.type = prefill.type;
+    if (budgetFromSlider !== undefined) details.budget = budgetFromSlider;
+    else if (prefill.budget) {
+      const n = Number(prefill.budget);
+      details.budget = Number.isFinite(n) ? n : prefill.budget;
+    }
+    if (prefill.pages) details.pages = prefill.pages;
+    if (prefill.delivery) details.delivery = prefill.delivery;
 
     // Validate again at the final boundary. This protects both the UI action
     // and the server endpoint if the AI returned malformed or inappropriate data.
@@ -1668,7 +1816,7 @@ export default function HomeShell() {
     try {
       const response = await secureChatFetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote' }),
+        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote', details }),
       });
       if (!response.ok) throw new Error('quote-send-failed');
 
@@ -2794,256 +2942,28 @@ export default function HomeShell() {
                   </p>
                 </ScrollReveal>
               </div>
-              <BorderGlow
-                continuousHover
-                borderRadius={24}
-                glowRadius={28}
-                glowIntensity={1.4}
-                edgeSensitivity={0}
-                backgroundColor="#0f0f0f"
-                className="[&_.border-glow-inner]:!overflow-visible"
-              >
-                <div
-                  className="chatbot-window-h p-0 relative flex flex-col bg-[#0f0f0f] backdrop-blur-xl overflow-hidden rounded-3xl w-full min-w-0 max-w-full"
-                >
-                  {/* macOS-style title bar */}
-                  <div className="flex items-center px-5 py-3 border-b border-white/[0.06] shrink-0">
-                    {/* Traffic light dots */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-                      <span className="w-3 h-3 rounded-full bg-[#fdbc40]" />
-                      <span className="w-3 h-3 rounded-full bg-[#2dd4bf]" />
-                    </div>
-                    {/* Title — centered */}
-                    <span className="flex-1 text-center text-xs font-medium text-neutral-400 tracking-wide">{t('chat.ai_title', lang)}</span>
-                    {/* Reset button — starts a fresh conversation */}
-                    <button
-                      type="button"
-                      onClick={resetChat}
-                      title={lang === 'it' ? 'Avvia una nuova chat — la conversazione corrente verrà eliminata' : lang === 'es' ? 'Iniciar nuevo chat — se eliminará la conversación actual' : 'Start a new chat — the current conversation will be deleted'}
-                      className="shrink-0 rounded-full border border-white/[0.08] p-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-white/[0.06] hover:text-neutral-300"
-                      aria-label={lang === 'it' ? 'Nuova chat' : lang === 'es' ? 'Nueva chat' : 'New chat'}
-                    >
-                      <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
-                    </button>
-                  </div>
-                  {/* Chat messages */}
-                  <div
-                    ref={botMessagesRef}
-                    data-lenis-prevent
-                    data-lenis-prevent-touch
-                    onWheel={handleChatWheel}
-                    onTouchStart={(e) => {
-                      // Track initial touch Y for delta calculation in onTouchMove
-                      lastTouchYRef.current = e.touches[0]?.clientY ?? 0;
-                    }}
-                    onTouchMove={(e) => {
-                      const touchY = e.touches[0]?.clientY ?? 0;
-                      const deltaY = lastTouchYRef.current - touchY;
-                      lastTouchYRef.current = touchY;
-
-                      const el = e.currentTarget;
-                      const atTop = el.scrollTop <= 1;
-                      const atBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) <= 2;
-
-                      // At the top pulling down (deltaY < 0) or at the bottom
-                      // pushing up (deltaY > 0): prevent native rubber-banding
-                      // and delegate to Lenis for page scroll instead of letting
-                      // the overscroll dead-end in Lenis' virtual body.
-                      if ((atTop && deltaY < 0) || (atBottom && deltaY > 0)) {
-                        e.preventDefault();
-                        lenis.current?.scrollTo(
-                          (lenis.current?.scroll ?? window.scrollY) + deltaY,
-                          { immediate: true },
-                        );
-                      }
-                    }}
-                    className="flex flex-col gap-4 overflow-y-auto p-4 sm:p-5 md:p-6 mb-4 flex-1 min-h-[120px] scroll-smooth"
-                  >
-                    {botMessages.length === 0 && !botTyping && (
-                      <div className="animate-bot-msg-in motion-safe:animate-bot-msg-in">
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0 mt-1">
-                            <TiaIcon icon={BubbleChatIcon} size={16} className="text-teal-400" />
-                          </div>
-                          <div className="max-w-[80%] px-4 py-3 text-sm leading-relaxed break-words min-w-0 bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm">
-                            {renderBotMessage(t('bot.welcome_category', lang))}
-                          </div>
-                        </div>
-                        {/* Category bubbles — the first interaction. Picking one
-                            starts the chat in that specialization and the AI
-                            immediately asks the drill-down questions for it (no
-                            bubble is highlighted: they are all equal choices). */}
-                        <div className="flex gap-2 flex-wrap mt-3 ml-12">
-                          {CHAT_CATEGORY_OPTIONS.map((option, idx) => (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => {
-                                setChatCategory(option.value);
-                                setChatStarted(true);
-                                sendBotMessage(t(option.labelKey, lang), { category: option.value });
-                              }}
-                              className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-neutral-500 transition-all touch-manipulation hover:border-white/20 hover:text-neutral-200"
-                              style={{ animationDelay: `${120 + idx * 45}ms` }}
-                            >
-                              {t(option.labelKey, lang)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Compute the latest message ID of ANY kind (user text, a chip
-                        pick, or a bot reply) once (O(n)); the map uses the ref to
-                        determine staleness per-message (O(1)). Chips deactivate as
-                        soon as anything newer exists, exactly as required. */}
-                    {(() => {
-                      let latestId = 0;
-                      for (const m of botMessages) {
-                        if (m.id > latestId) latestId = m.id;
-                      }
-                      latestMessageIdRef.current = latestId;
-                      return null; // Side-effect only, renders nothing
-                    })()}
-                    {botMessages.map((msg) => {
-                      // Extract suggestion chips from bot messages
-                      const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
-                      const suggestions = suggMatch ? suggMatch[1].split('|').map(s => s.trim()).filter(Boolean) : [];
-                      return (<div key={msg.id} className={msg.sender === 'bot' ? 'animate-bot-msg-in motion-safe:animate-bot-msg-in' : ''}>
-                      <div
-                        className={`flex items-start gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        {msg.sender === 'bot' && (
-                          <div className="w-9 h-9 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0 mt-1">
-                            <TiaIcon icon={BubbleChatIcon} size={16} className="text-teal-400" />
-                          </div>
-                        )}
-                        <div
-                          className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'user'
-                            ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
-                            : 'bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm'
-                            }`}
-                        >
-                          {msg.sender === 'bot' && msg.text
-                            ? (<React.Fragment>
-                                {renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState)}
-                                {/* Blinking writing caret while the reply is still streaming in */}
-                                {botTyping && msg.id === latestMessageIdRef.current && (
-                                  <span className="bot-typing-caret" aria-hidden="true" />
-                                )}
-                              </React.Fragment>)
-                            : (msg.text || (
-                              <span className="flex gap-1.5 py-1">
-                                <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '300ms' }} />
-                              </span>
-                            ))}
-                        </div>
-                        {msg.sender === 'user' && (
-                          <div className="w-9 h-9 rounded-full bg-teal-600/30 flex items-center justify-center shrink-0 mt-1">
-                            <TiaIcon icon={UserIcon} size={16} className="text-teal-300" />
-                          </div>
-                        )}
-                      </div>
-                      {/* Suggestion chips — only the latest message's chips are clickable;
-                           they deactivate as soon as ANY newer message exists. */}
-                      {suggestions.length > 0 && (() => {
-                        // Latest ID is computed once above the map for O(n) perf
-                        const isStale = msg.id !== latestMessageIdRef.current;
-                        return (
-                          <div className="flex gap-2 flex-wrap mt-2 ml-12">
-                            {suggestions.map((sugg, idx) => (
-                              isStale ? (
-                                <span
-                                  key={idx}
-                                  className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-neutral-600 cursor-default"
-                                >
-                                  {sugg}
-                                </span>
-                              ) : (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    setBotInput(sugg);
-                                    setTimeout(() => sendBotMessage(sugg), 50);
-                                  }}
-                                  className="animate-pop-in shrink-0 rounded-full border border-teal-400/30 bg-teal-400/[0.08] px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-400/20 hover:border-teal-400/50 hover:text-teal-200 transition-all"
-                                  style={{ animationDelay: `${idx * 45}ms` }}
-                                >
-                                  {sugg}
-                                </button>
-                              )
-                            ))}
-                          </div>
-                        );
-                      })()}
-                      </div>);
-                    })}
-
-
-
-                  </div>
-
-                  {/* Specialization selector — single category at a time. Hidden
-                      until the visitor passes the first welcome message; the AI
-                      tells them the bar appears below once the chat has begun. */}
-                  {chatStarted && (
-                  <div className="border-t border-white/[0.06] px-4 pt-3 sm:px-5 md:px-6">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400/80">{t('chat.category_label', lang)}</span>
-                      <span className="text-[10px] text-neutral-600">{t('chat.category_single', lang)}</span>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-custom" role="radiogroup" aria-label={t('chat.category_label', lang)}>
-                      {CHAT_CATEGORY_OPTIONS.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          role="radio"
-                          aria-checked={chatCategory === option.value}
-                          onClick={() => selectChatCategory(option.value)}
-                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation ${chatCategory === option.value
-                            ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
-                            : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
-                            }`}
-                        >
-                          {t(option.labelKey, lang)}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="pb-3 text-[11px] leading-relaxed text-neutral-500">{t(CHAT_CATEGORY_OPTIONS.find(option => option.value === chatCategory)?.exampleKey ?? 'chat.example_software_web', lang)}</p>
-                  </div>
-                  )}
-
-                  {/* Input */}
-                  <div className="flex items-end gap-2 px-4 pb-4 sm:px-5 sm:pb-5 md:px-6 md:pb-6">
-                    <textarea
-                      ref={botInputRef}
-                      value={botInput}
-                      onChange={(e) => setBotInput(e.target.value)}
-                      placeholder={t(CHAT_CATEGORY_OPTIONS.find(option => option.value === chatCategory)?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
-                      rows={1}
-                      className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/30 resize-none placeholder-neutral-600 overflow-y-auto sm:min-h-[60px]"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendBotMessage();
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => sendBotMessage()}
-                      disabled={!botInput.trim()}
-                      className={`h-[42px] w-[42px] rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${botInput.trim() ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25' : 'bg-neutral-800/60 text-neutral-500'}`}
-                      aria-label={t('chat.send', lang)}
-                    >
-                      <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} style={{ transform: 'rotate(-20deg)' }}><path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13" /><path strokeLinecap="round" strokeLinejoin="round" d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>
-                    </button>
-                  </div>
-                </div>
-              </BorderGlow>
+              <ChatbotPanel
+                messages={botMessages}
+                typing={botTyping}
+                input={botInput}
+                onInputChange={setBotInput}
+                onSend={() => sendBotMessage()}
+                category={chatCategory}
+                onSelectCategory={selectChatCategory}
+                chatStarted={chatStarted}
+                chatBlocked={chatBlocked}
+                onReset={resetChat}
+                messagesRef={botMessagesRef}
+                inputRef={botInputRef}
+                onWheel={handleChatWheel}
+                onTouchStart={handleBotTouchStart}
+                onTouchMove={handleBotTouchMove}
+                onSuggestion={(sugg) => {
+                  setBotInput(sugg);
+                  setTimeout(() => sendBotMessage(sugg), 50);
+                }}
+                renderBotText={(msg) => renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState)}
+              />
             </div>
           </section>
           </LazySection>

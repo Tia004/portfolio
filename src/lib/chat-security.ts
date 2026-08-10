@@ -173,9 +173,29 @@ export function sanitizeQuoteDraft(input: unknown): Record<string, string> {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
   const source = input as Record<string, unknown>;
   const result: Record<string, string> = {};
-  for (const key of ['name', 'email', 'service']) {
+  for (const key of ['name', 'email', 'service', 'type', 'pages', 'delivery', 'budget']) {
     const value = sanitizeChatText(source[key], 254);
     if (value) result[key] = value;
+  }
+  // Slider values travel as a JSON string (e.g. {"budget":3000}). They are
+  // collected by the in-chat slider (budget, product count, ...) and MUST
+  // reach the model or the recap will silently skip them. Validate the JSON
+  // and keep only finite numbers / short safe strings.
+  const rawSliders = source['_sliders'];
+  if (typeof rawSliders === 'string' && rawSliders.length <= 2_048) {
+    try {
+      const parsed = JSON.parse(rawSliders) as Record<string, unknown>;
+      const clean: Record<string, string> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          clean[key] = String(Math.round(value));
+        } else if (typeof value === 'string') {
+          const safe = sanitizeChatText(value, 80);
+          if (safe) clean[key] = safe;
+        }
+      }
+      if (Object.keys(clean).length > 0) result['_sliders'] = JSON.stringify(clean);
+    } catch { /* malformed JSON — ignore */ }
   }
   return result;
 }
