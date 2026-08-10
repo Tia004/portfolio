@@ -1,10 +1,8 @@
 'use client';
 /* eslint-disable react/no-unknown-property */
 
-import { useRef, useEffect, useState, forwardRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
-import { EffectComposer, wrapEffect } from '@react-three/postprocessing';
-import { Effect } from 'postprocessing';
 import * as THREE from 'three';
 
 // ── Shaders (exact React Bits source) ────────────────────────
@@ -29,6 +27,8 @@ uniform vec3 waveColor;
 uniform vec2 mousePos;
 uniform int enableMouseInteraction;
 uniform float mouseRadius;
+uniform float colorNum;
+uniform float pixelSize;
 
 vec4 mod289(vec4 x) { return x - floor(x * (1.0/289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
@@ -81,8 +81,25 @@ float pattern(vec2 p) {
   return fbm(p + fbm(p2));
 }
 
+// 4x4 Bayer ordered-dithering threshold, computed arithmetically (no const
+// array) — the original postprocessing pass indexed a bayerMatrix8x8 const
+// array dynamically, which is rejected on WebGL1 / GLSL ES 1.00 configs
+// (some iOS setups), compiling to a BLACK canvas. This recursive
+// construction yields all 16 thresholds with plain arithmetic.
+float bayer4(vec2 p) {
+  vec2 ip = floor(p);
+  float x = mod(ip.x, 4.0);
+  float y = mod(ip.y, 4.0);
+  float b2 = 2.0 * mod(y, 2.0) + mod(x, 2.0);
+  float qx = floor(x / 2.0);
+  float qy = floor(y / 2.0);
+  return (4.0 * b2 + 2.0 * qy + qx) / 16.0;
+}
+
 void main() {
-  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  // Sample at the center of the dither cell (blocky when pixelSize > 1).
+  vec2 cell = floor(gl_FragCoord.xy / pixelSize) * pixelSize + pixelSize * 0.5;
+  vec2 uv = cell / resolution.xy;
   uv -= 0.5;
   uv.x *= resolution.x / resolution.y;
   float f = pattern(uv);
@@ -93,79 +110,18 @@ void main() {
     float effect = 1.0 - smoothstep(0.0, mouseRadius, dist);
     f -= 0.5 * effect;
   }
+  // Dithered quantization INLINED (was a separate EffectComposer pass).
+  // Doing it in this single shader pass removes the postprocessing render
+  // targets / Effect pipeline that iOS Safari can silently fail on.
+  f = clamp(f, 0.0, 1.0);
+  float threshold = bayer4(cell / pixelSize) - 0.25;
+  f += threshold / (colorNum - 1.0);
+  f = clamp(f - 0.2, 0.0, 1.0);
+  f = floor(f * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
   vec3 col = mix(vec3(0.0), waveColor, f);
   gl_FragColor = vec4(col, 1.0);
 }
 `;
-
-const ditherFragmentShader = /* glsl */ `
-uniform float colorNum;
-uniform float pixelSize;
-const float bayerMatrix8x8[64] = float[64](
-  0.0/64.0, 48.0/64.0, 12.0/64.0, 60.0/64.0,  3.0/64.0, 51.0/64.0, 15.0/64.0, 63.0/64.0,
-  32.0/64.0,16.0/64.0, 44.0/64.0, 28.0/64.0, 35.0/64.0,19.0/64.0, 47.0/64.0, 31.0/64.0,
-  8.0/64.0, 56.0/64.0,  4.0/64.0, 52.0/64.0, 11.0/64.0,59.0/64.0,  7.0/64.0, 55.0/64.0,
-  40.0/64.0,24.0/64.0, 36.0/64.0, 20.0/64.0, 43.0/64.0,27.0/64.0, 39.0/64.0, 23.0/64.0,
-  2.0/64.0, 50.0/64.0, 14.0/64.0, 62.0/64.0,  1.0/64.0,49.0/64.0, 13.0/64.0, 61.0/64.0,
-  34.0/64.0,18.0/64.0, 46.0/64.0, 30.0/64.0, 33.0/64.0,17.0/64.0, 45.0/64.0, 29.0/64.0,
-  10.0/64.0,58.0/64.0,  6.0/64.0, 54.0/64.0,  9.0/64.0,57.0/64.0,  5.0/64.0, 53.0/64.0,
-  42.0/64.0,26.0/64.0, 38.0/64.0, 22.0/64.0, 41.0/64.0,25.0/64.0, 37.0/64.0, 21.0/64.0
-);
-
-vec3 dither(vec2 uv, vec3 color) {
-  vec2 scaledCoord = floor(uv * resolution / pixelSize);
-  int x = int(mod(scaledCoord.x, 8.0));
-  int y = int(mod(scaledCoord.y, 8.0));
-  float threshold = bayerMatrix8x8[y * 8 + x] - 0.25;
-  float step = 1.0 / (colorNum - 1.0);
-  color += threshold * step;
-  float bias = 0.2;
-  color = clamp(color - bias, 0.0, 1.0);
-  return floor(color * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
-}
-
-void mainImage(in vec4 inputColor, in vec2 uv, out vec4 outputColor) {
-  vec2 normalizedPixelSize = pixelSize / resolution;
-  vec2 uvPixel = normalizedPixelSize * floor(uv / normalizedPixelSize);
-  vec4 color = texture2D(inputBuffer, uvPixel);
-  color.rgb = dither(uv, color.rgb);
-  outputColor = color;
-}
-`;
-
-// ── RetroEffect ──────────────────────────────────────────────
-
-class RetroEffectImpl extends Effect {
-  public uniforms: Map<string, THREE.Uniform<any>>;
-  constructor() {
-    const uniforms = new Map<string, THREE.Uniform<any>>([
-      ['colorNum', new THREE.Uniform(4.0)],
-      ['pixelSize', new THREE.Uniform(2.0)],
-    ]);
-    super('RetroEffect', ditherFragmentShader, { uniforms });
-    this.uniforms = uniforms;
-  }
-  set colorNum(value: number) {
-    this.uniforms.get('colorNum')!.value = value;
-  }
-  get colorNum(): number {
-    return this.uniforms.get('colorNum')!.value;
-  }
-  set pixelSize(value: number) {
-    this.uniforms.get('pixelSize')!.value = value;
-  }
-  get pixelSize(): number {
-    return this.uniforms.get('pixelSize')!.value;
-  }
-}
-
-const RetroEffect = forwardRef<RetroEffectImpl, { colorNum: number; pixelSize: number }>((props, ref) => {
-  const { colorNum, pixelSize } = props;
-  const WrappedRetroEffect = wrapEffect(RetroEffectImpl);
-  return <WrappedRetroEffect ref={ref} colorNum={colorNum} pixelSize={pixelSize} />;
-});
-
-RetroEffect.displayName = 'RetroEffect';
 
 // ── DitheredWaves ────────────────────────────────────────────
 
@@ -204,6 +160,8 @@ function DitheredWaves({
     mousePos: new THREE.Uniform(new THREE.Vector2(0, 0)),
     enableMouseInteraction: new THREE.Uniform(enableMouseInteraction ? 1 : 0),
     mouseRadius: new THREE.Uniform(mouseRadius),
+    colorNum: new THREE.Uniform(colorNum),
+    pixelSize: new THREE.Uniform(pixelSize),
   });
 
   const prevColor = useRef([...waveColor]);
@@ -252,9 +210,6 @@ function DitheredWaves({
           uniforms={uniformsRef.current}
         />
       </mesh>
-      <EffectComposer>
-        <RetroEffect colorNum={colorNum} pixelSize={pixelSize} />
-      </EffectComposer>
       <mesh
         onPointerMove={handlePointerMove}
         position={[0, 0, 0.01]}
@@ -278,6 +233,12 @@ function DitheredWaves({
 // static dither shows through. Guaranteed render, zero GPU, instant paint.
 const NOISE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
+// Dithered teal dot field — feTurbulence noise thresholded through the alpha
+// channel, so the dots are IRREGULAR (noise-driven) like the real shader's
+// output, not a boring regular grid. Two scales layered give the waves depth.
+const DITHER_FINE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  16 0 0 0 -7.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+const DITHER_COARSE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.28' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  14 0 0 0 -7.0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+
 function StaticDitherTexture() {
   // Teal in CSS form (waveColor is normalized RGB ≈ 0.298, 0.608, 0.510).
   const tealRgba = (a: number) => `rgba(45, 212, 191, ${a})`;
@@ -294,20 +255,14 @@ function StaticDitherTexture() {
             `radial-gradient(ellipse 35% 28% at 20% 58%, ${tealRgba(0.30)}, rgba(0,0,0,0) 68%)`,
         }}
       />
-      {/* Dither dots — the pixelated character of the effect, brighter than
-          before so the grid reads clearly on a phone display. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `radial-gradient(circle, ${tealRgba(0.85)} 1.4px, rgba(0,0,0,0) 1.9px)`,
-          backgroundSize: '12px 12px',
-          opacity: 0.9,
-        }}
-      />
+      {/* Irregular dithered dots (fine + coarse) — the pixelated character
+          of the shader output, noise-driven so it never reads as a grid. */}
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_FINE_URI, opacity: 0.9 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_COARSE_URI, opacity: 0.55 }} />
       {/* Grain noise in screen blend — lightens the texture like the shader */}
       <div
         className="absolute inset-0"
-        style={{ backgroundImage: NOISE_URI, opacity: 0.6, mixBlendMode: 'screen' }}
+        style={{ backgroundImage: NOISE_URI, opacity: 0.55, mixBlendMode: 'screen' }}
       />
     </div>
   );
@@ -337,6 +292,7 @@ export default function Dither({
   mouseRadius?: number;
 }) {
   const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
   const [glFailed, setGlFailed] = useState(false);
   // Canvas paints black: the context was created but the shader / EffectComposer
   // silently failed on this GPU (WebGL1 highp limits, unsupported float render
@@ -364,20 +320,32 @@ export default function Dither({
     }
   }, []);
 
-  // Black-output detection: sample the live canvas a couple of times after
-  // mount. If EVERY sampled point is still near-black on both passes, the GPU
-  // is rendering a uniform black field — drop the Canvas so the static teal
-  // dither (guaranteed render, zero GPU) shows instead of a black hero.
+  // Black-output detection: sample the live canvas a few times after mount.
+  // If EVERY sampled point is still near-black on several consecutive passes
+  // while the hero is actually visible and rendering, the GPU is producing a
+  // uniform black field — drop the Canvas so the dithered static texture
+  // (guaranteed render, zero GPU) shows instead of a black hero.
+  //
+  // CRITICAL: only judge while the hero is on screen and the tab is focused.
+  // When the frameloop is paused (hero scrolled away) or the tab is hidden,
+  // the canvas keeps a stale/black buffer — reading it as a shader failure
+  // would permanently replace the real dither with the fallback (exactly the
+  // "goes to fallback on iPhone" symptom). A skipped sample is never counted,
+  // and ANY non-black sample resets the streak.
   // preserveDrawingBuffer:true makes readPixels reliable.
   useEffect(() => {
     if (glFailed) return;
     let blackPasses = 0;
-    const check = () => {
+    let alive = true;
+    let timer: number | undefined;
+
+    // Returns true when black, false when not, null when we can't judge yet.
+    const sample = (): boolean | null => {
       const canvas = wrapperRef.current?.querySelector('canvas');
-      if (!canvas || !canvas.width || !canvas.height) return;
+      if (!canvas || !canvas.width || !canvas.height) return null;
       try {
         const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-        if (!gl) return;
+        if (!gl) return null;
         const px = new Uint8Array(4);
         const spots = [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92], [0.5, 0.5]];
         let nearBlack = true;
@@ -385,17 +353,40 @@ export default function Dither({
           gl.readPixels(Math.floor(canvas.width * sx), Math.floor(canvas.height * sy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
           if (px[0] > 24 || px[1] > 24 || px[2] > 24) { nearBlack = false; break; }
         }
-        if (nearBlack) {
-          blackPasses += 1;
-          if (blackPasses >= 2) setCanvasBroken(true);
-        } else {
-          blackPasses = 0;
-        }
-      } catch { /* context busy / readback error — ignore, keep WebGL */ }
+        return nearBlack;
+      } catch {
+        return null; // context busy / readback error — not a verdict
+      }
     };
-    const t1 = window.setTimeout(check, 1000);
-    const t2 = window.setTimeout(check, 2500);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+
+    const run = () => {
+      if (!alive) return;
+      if (pausedRef.current || document.hidden) {
+        // Can't judge right now (hero away / tab hidden) — reschedule without
+        // counting, and never accumulate a streak from a stale buffer.
+        blackPasses = 0;
+        timer = window.setTimeout(run, 800);
+        return;
+      }
+      const verdict = sample();
+      if (verdict === null) {
+        // Canvas not mounted/sized yet (slow phone, late mount) — reschedule.
+        timer = window.setTimeout(run, 800);
+        return;
+      }
+      blackPasses = verdict ? blackPasses + 1 : 0;
+      if (blackPasses >= 3) {
+        setCanvasBroken(true);
+        return;
+      }
+      timer = window.setTimeout(run, 1500);
+    };
+
+    timer = window.setTimeout(run, 2000);
+    return () => {
+      alive = false;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [glFailed]);
 
   // Pause WebGL rendering when the hero is scrolled out of the viewport —
@@ -404,7 +395,8 @@ export default function Dither({
     const el = wrapperRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
-      setPaused(!entry.isIntersecting);
+      pausedRef.current = !entry.isIntersecting;
+      setPaused(pausedRef.current);
     }, { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
@@ -428,13 +420,11 @@ export default function Dither({
           On WebGL devices the opaque dither canvas paints over it completely. */}
       <StaticDitherTexture />
       {!glFailed && !canvasBroken && (
-        // data-performance="heavy" marks ONLY the WebGL canvas: on genuinely
-        // low-end devices the .is-low-end CSS hides just this canvas and the
-        // bright static texture below stays visible — the hero can never be
-        // a black void (the attribute used to sit on the WRAPPER, hiding the
-        // static fallback too → black hero on every phone).
+        // The WebGL canvas runs on every device. (The old `.is-low-end
+        // [data-performance="heavy"] { display:none }` CSS rule that could
+        // hide it on phones was removed — genuine GPU failures are handled
+        // here by the WebGL probe + black-output detection instead.)
         <Canvas
-          data-performance="heavy"
           camera={{ position: [0, 0, 6] }}
           dpr={1}
           frameloop={paused ? 'never' : 'always'}

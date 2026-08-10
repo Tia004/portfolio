@@ -566,11 +566,11 @@ img {
   animation-duration: calc(var(--scroll-duration, 60s) * 2) !important;
 }
 
-/* Disable decorative WebGL/canvas backgrounds on low-end devices */
-.is-low-end [data-performance="heavy"],
-.is-low-end [data-performance="heavy"] canvas {
-  display: none !important;
-}
+/* NOTE: the old `.is-low-end [data-performance="heavy"] { display:none }` rule
+   was removed on purpose. It hid the hero dither ENTIRELY on phones classified
+   as low-end (the hero turned into a black void twice), and the dither itself
+   now has its own safety nets (WebGL probe + black-output detection with a
+   dithered static fallback), so the CSS layer is redundant and harmful here. */
 
 /* Reduce shadow/glow complexity */
 .is-low-end .shadow-teal-400\/40,

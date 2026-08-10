@@ -14,8 +14,9 @@ import { scrollToElementAfterLayout, triggerArrivalGlow, refreshScrollTriggers }
  * Splits "Tia Designs" into individual <span>s via innerHTML in
  * useLayoutEffect (before paint), then animates each character with
  * GSAP ScrollTrigger as the footer enters the viewport.
- * A CSS .gsap-revealed class locks visibility post-animation so HMR /
- * re-renders can't wipe the text.
+ * A reversible one-shot reveal (gsap.to) guarantees the text is never
+ * missing if the trigger positions go stale, WITHOUT permanently blocking
+ * the scrub (the old CSS class used !important and made it static).
  */
 export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onOpenLegal?: (doc: string) => void }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -122,13 +123,17 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     // scrub. The footer mounts LAST via next/dynamic, and the page height
     // keeps changing while the lazy sections / fonts / images above settle
     // — if the trigger positions are stale at that point, the scrub never
-    // advances and "Tia Designs" stays invisible. Two layers of protection:
-    //   1) re-measure after the page truly settles (load + fonts + delayed);
+    // advances and "Tia Designs" stays invisible. Protection:
+    //   1) re-measure after the page truly settles (load + fonts + delayed)
+    //      and whenever a lazy section mounts (tia:section-mounted — that's
+    //      the main source of late page-height changes);
     //   2) if the wordmark is on screen and the chars are STILL fully hidden,
-    //      lock them visible via CSS (.gsap-revealed uses !important). The
-    //      normal scrub keeps working for partial scroll positions, so the
-    //      scroll-linked reveal is preserved.
-    const ensureVisible = () => {
+    //      reveal them with a one-shot, REVERSIBLE gsap.to — NOT a CSS class:
+    //      the class used !important and permanently blocked the scrub, which
+    //      is exactly the "static wordmark" regression. A plain gsap.to is
+    //      overridden the moment the scrub updates, so once the trigger is
+    //      refreshed the scroll-linked reveal resumes.
+    const revealOnce = () => {
       if (!section || charEls.length === 0) return;
       const r = wordmark.getBoundingClientRect();
       // The wordmark must be meaningfully on screen (top above the middle)
@@ -137,24 +142,47 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       const onScreen = r.top < window.innerHeight * 0.5 && r.bottom > 0;
       if (!onScreen) return;
       const stuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
-      if (stuck) charEls.forEach((c) => c.classList.add('gsap-revealed'));
+      if (stuck) {
+        gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+      }
     };
 
     // ── Fit the wordmark to the full viewport width ────────────
-    // Measure the natural width at a reference font size and scale the size
-    // so the rendered text spans EXACTLY the container width (the viewport
-    // minus the 2vw side paddings). Bigger than any fixed vw size and immune
-    // to font-metric differences across devices. line-height:1 + no
-    // overflow-hidden mean descenders (the "g" in Designs) are never clipped.
+    // Measure the natural text width at a reference font size and scale the
+    // size so the rendered text fills the content box (viewport minus the
+    // 2vw side paddings) — and NEVER smaller than the fixed CSS sizes it
+    // replaces (13vw mobile / 14vw desktop), so the fit only ever enlarges.
+    // line-height:1 + no overflow-hidden: descenders (the "g" in Designs)
+    // are never clipped.
+    const hPadding = () => {
+      const cs = getComputedStyle(wordmark);
+      return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    };
+    // Measure the pure text width at a reference size INDEPENDENT of the
+    // container: measuring in place with scrollWidth fails on wide screens —
+    // when the container is wider than the text at 100px there is no overflow
+    // and scrollWidth collapses to clientWidth, yielding a fit of ~100px (the
+    // "wordmark got smaller on desktop" bug). A detached clone is never
+    // constrained by the container, so the fit is always correct.
+    const measureNaturalWidth = () => {
+      const tmp = document.createElement('div');
+      tmp.style.cssText =
+        'position:absolute;left:-99999px;top:0;visibility:hidden;white-space:nowrap;' +
+        'font:900 100px Outfit, ui-sans-serif, system-ui, sans-serif;letter-spacing:-0.02em;';
+      tmp.textContent = 'Tia\u00A0Designs';
+      document.body.appendChild(tmp);
+      const w = tmp.getBoundingClientRect().width;
+      document.body.removeChild(tmp);
+      return w;
+    };
     const fitWordmark = () => {
       if (!wordmark || charEls.length === 0) return;
-      const prev = wordmark.style.fontSize;
-      wordmark.style.fontSize = '100px';
-      const natural = wordmark.scrollWidth;
-      wordmark.style.fontSize = prev;
-      const target = wordmark.clientWidth;
+      const natural = measureNaturalWidth();
+      const target = wordmark.clientWidth - hPadding(); // content-box width
+      const floor = window.innerWidth * (window.innerWidth < 768 ? 0.13 : 0.14);
       if (natural > 0 && target > 0) {
-        wordmark.style.fontSize = `${Math.round((target / natural) * 100)}px`;
+        const fit = Math.round((target / natural) * 100);
+        wordmark.style.fontSize = `${Math.max(fit, Math.round(floor))}px`;
       }
     };
     fitWordmark();
@@ -162,7 +190,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     const refreshOnce = () => {
       fitWordmark();
       refreshScrollTriggers();
-      ensureVisible();
+      revealOnce();
     };
 
     // Refit on any container resize (orientation change on phones) —
@@ -180,7 +208,11 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
 
     // Re-measure once everything settles (same late-layout pattern used by
     // ScrollReveal/StaggerReveal for content-visibility dimension changes).
+    // tia:section-mounted is the BIG one: every lazy section above mounts
+    // while scrolling near it, growing the page and shifting the footer's
+    // trigger positions — refresh right away so the scrub never goes stale.
     window.addEventListener('load', refreshOnce, { once: true });
+    window.addEventListener('tia:section-mounted', refreshOnce);
     document.fonts?.ready.then(refreshOnce).catch(() => {});
     const t1 = window.setTimeout(refreshOnce, 800);
     const t2 = window.setTimeout(refreshOnce, 2500);
@@ -195,7 +227,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       rafPending = true;
       requestAnimationFrame(() => {
         rafPending = false;
-        ensureVisible();
+        revealOnce();
       });
     };
     window.addEventListener('scroll', onScrollFailsafe, { passive: true });
@@ -204,6 +236,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       ctx.revert();
       ro.disconnect();
       window.removeEventListener('load', refreshOnce);
+      window.removeEventListener('tia:section-mounted', refreshOnce);
       window.removeEventListener('scroll', onScrollFailsafe);
       window.clearTimeout(t1);
       window.clearTimeout(t2);

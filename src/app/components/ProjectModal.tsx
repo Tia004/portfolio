@@ -223,7 +223,11 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         </div>
 
         {/* ── Main Panel: live project or Instagram-style gallery ── */}
-        <div className="flex-1 lg:flex-[3] relative bg-white/[0.03] backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.07] shadow-2xl shadow-black/40 min-h-0">
+        {/* The panels keep the glass blur only from sm+ — below sm a large
+            backdrop-blur-xl surface over the composited body (position:fixed
+            scroll-lock + Lenis) is a known GPU-crash trigger on phones; the
+            same reason the full-viewport backdrop drops the blur on mobile. */}
+        <div className="flex-1 lg:flex-[3] relative bg-white/[0.06] sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.07] shadow-2xl shadow-black/40 min-h-0">
           {hasGallery ? (
             <div
               role="region"
@@ -349,6 +353,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                     <img src={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} alt={project.title} className="absolute inset-0 h-full w-full object-cover opacity-30" draggable="false" />
                   </picture>
                   <button
+                    type="button"
                     onClick={() => {
                       setIframeLoaded(true);
                       setIframeLoading(true);
@@ -367,7 +372,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
               {iframeLoaded && (
                 <>
                   {iframeLoading && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-white/[0.03] backdrop-blur-xl">
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/70 sm:bg-white/[0.03] sm:backdrop-blur-xl">
                       <div className="h-10 w-10 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
                       <div className="h-3 w-32 animate-pulse rounded-full bg-white/[0.06]" />
                     </div>
@@ -381,8 +386,8 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
 
         {/* ── Side Panel: Project info (bento card) — data-lenis-prevent so Lenis skips preventDefault on wheel events ── */}
         <div className="flex flex-col lg:w-[320px] xl:w-[380px] shrink-0">
-          {/* Scrollable content */}
-          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.03] backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
+          {/* Scrollable content — glass blur only from sm+ (see main panel) */}
+          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.06] sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
             {/* Content */}
             <div>
             {/* ── Section 0: Title & Tags ── */}
@@ -420,6 +425,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                   </a>
                 )}
                 <button
+                  type="button"
                   onClick={() => onQuote(project)}
                   className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500"
                 >
@@ -432,6 +438,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
 
           {/* ── Mobile index trigger (outside scrollable, always visible) ── */}
           <button
+            type="button"
             onClick={() => setShowIndex(true)}
             className="lg:hidden w-full py-3 rounded-b-2xl bg-teal-600/80 backdrop-blur-lg border-t border-teal-400/20 text-white text-xs font-medium hover:bg-teal-600 transition-all shrink-0"
           >
@@ -528,7 +535,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Mobile Index Overlay ── */}
         {showIndex && (
           <div
-            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/60 lg:hidden"
             onClick={() => setShowIndex(false)}
           >
             <div
@@ -541,6 +548,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
               <div className="flex flex-col gap-1.5">
                 {sections.map((label, i) => (
                   <button
+                    type="button"
                     key={i}
                     onClick={() => {
                       scrollToSection(i);
@@ -564,6 +572,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                 ))}
               </div>
               <button
+                type="button"
                 onClick={() => setShowIndex(false)}
                 className="mt-5 w-full text-center text-neutral-500 text-xs hover:text-neutral-300 transition-colors py-1"
               >
