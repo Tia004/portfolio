@@ -980,6 +980,28 @@ export default function HomeShell() {
   const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatClosing, setChatClosing] = useState(false);
+  // Keyboard offset (mobile): when the on-screen keyboard opens, visualViewport
+  // shrinks while the layout viewport doesn't — Chrome would otherwise scroll
+  // the WHOLE page up to reveal the chat input (the ugly jump). Lifting the
+  // widget by the keyboard height keeps the chat (and its input) pinned just
+  // above the keyboard instead.
+  const [kbOffset, setKbOffset] = useState(0);
+  useEffect(() => {
+    if (!chatOpen) { setKbOffset(0); return; }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height));
+      setKbOffset(prev => (prev === kb ? prev : kb));
+    };
+    onResize();
+    vv.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, [chatOpen]);
   const [ctaVisible, setCtaVisible] = useState(true);
   const [ctaHiding, setCtaHiding] = useState(false);
   const [ctaDocked, setCtaDocked] = useState(false); // true = docked at top with inverted curve
@@ -1944,17 +1966,33 @@ export default function HomeShell() {
   useEffect(() => {
     let rafId = 0;
 
+    // The chatbot's position in DOCUMENT coordinates (top/bottom from the
+    // document start). Cached once the layout settles — document coords don't
+    // move with scroll, so comparing the LIVE window.scrollY against this
+    // stable band is immune to the transient rect measurements at load
+    // (scroll restoration, lazy-section mounts, fonts) that used to leave the
+    // CTA wrongly docked at the top while the user was still in the hero.
+    const band = { top: -1, bottom: -1 };
+    const measureBand = () => {
+      const chatbot = document.getElementById('chatbot');
+      if (!chatbot) return false;
+      const r = chatbot.getBoundingClientRect();
+      if (r.height <= 0) return false;
+      band.top = r.top + window.scrollY;
+      band.bottom = r.bottom + window.scrollY;
+      return true;
+    };
+
     // Three-zone CTA behaviour:
     // 1. Above the chatbot   → bottom, normal curve (ctaDocked=false)
     // 2. Inside the chatbot  → hidden (ctaVisible=false)
     // 3. After the chatbot   → top, inverted curve (ctaDocked=true)
     const syncCtaWithChatbotPosition = () => {
-      const chatbot = document.getElementById('chatbot');
-      if (!chatbot) return;
-
-      const { top: ct, bottom: cb } = chatbot.getBoundingClientRect();
-      const aboveChatbot = ct > window.innerHeight;   // zone 1
-      const pastChatbot = cb < 0 || ct < -window.innerHeight * 0.5; // zone 3 (also handles tall sections on mobile)
+      if (band.top < 0 && !measureBand()) return;
+      const sy = window.scrollY;
+      const vh = window.innerHeight;
+      const aboveChatbot = band.top > sy + vh; // chatbot below the viewport
+      const pastChatbot = sy > band.bottom;    // chatbot fully above the viewport
 
       if (aboveChatbot) {
         // Zone 1 — normal bottom position.
@@ -1965,7 +2003,7 @@ export default function HomeShell() {
           setCtaHiding(false);
         }
         if (!ctaVisibleRef.current) setCtaVisible(true);
-        if (window.scrollY >= 300) resetInactivityTimer();
+        if (sy >= 300) resetInactivityTimer();
         return;
       }
 
@@ -1994,20 +2032,32 @@ export default function HomeShell() {
       });
     };
 
-    syncCtaWithChatbotPosition();
-
-    // IntersectionObserver as a secondary source — catches layout shifts
-    // that don't produce scroll events (e.g. chatbot content loading).
-    const chatbot = document.getElementById('chatbot');
-    const observer = chatbot
-      ? new IntersectionObserver(() => syncCtaWithChatbotPosition(), { threshold: 0 })
-      : null;
-    if (chatbot && observer) observer.observe(chatbot);
+    // Defer the FIRST sync until the layout settles (fonts + a settle beat)
+    // so we never measure the band mid-hydration; re-measure whenever a lazy
+    // section above the chatbot mounts (its document position moves) and
+    // re-sync when the splash finishes (the page may have settled at a
+    // browser-restored deep scroll position).
+    const settle = () => {
+      measureBand();
+      syncCtaWithChatbotPosition();
+    };
+    const settleTimer = window.setTimeout(settle, 600);
+    window.addEventListener('load', settle);
+    document.fonts?.ready.then(settle).catch(() => {});
+    const onMounted = () => {
+      measureBand();
+      syncCtaWithChatbotPosition();
+    };
+    window.addEventListener('tia:section-mounted', onMounted);
+    window.addEventListener('splash-complete', onMounted);
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
-      observer?.disconnect();
+      window.removeEventListener('tia:section-mounted', onMounted);
+      window.removeEventListener('splash-complete', onMounted);
+      window.removeEventListener('load', settle);
+      window.clearTimeout(settleTimer);
       if (rafId) cancelAnimationFrame(rafId);
     };
     // Deliberately NOT dependent on ctaVisible: re-running this effect when
@@ -3293,17 +3343,19 @@ export default function HomeShell() {
 
         </div>
         {/* ── Floating Chat Widget ──
-             Apple-style snap: when the CTA sits at the bottom (zone 1) the
-             bubble floats just ABOVE it (right-aligned), and it drops to the
-             default bottom-right corner when the CTA docks at the top, hides
-             inside the chatbot section, or the chat is open. The bottom
-             transition is timed to match the CTA's own movement so the two
-             never feel desynced. */}
+             Apple-style snap — MOBILE ONLY: while the CTA sits at the bottom
+             the bubble floats just ABOVE it (right-aligned) so they never
+             overlap; it drops to the bottom-right corner otherwise. On
+             DESKTOP the bubble is always in the bottom-right corner (the CTA
+             is centered, so there is nothing to avoid). The window inside
+             this container is anchored bottom-0, so its base is always at the
+             same height as the bubble's base. When the on-screen keyboard
+             opens (kbOffset > 0) the whole widget is lifted above it and the
+             transition is disabled so it follows the keyboard without lag. */}
         <div
           ref={chatWidgetRef}
-          className={`fixed right-4 sm:right-6 z-50 pointer-events-auto transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            ctaVisible && !ctaHiding && !ctaDocked ? 'bottom-[124px] sm:bottom-[84px]' : 'bottom-4 sm:bottom-6'
-          }`}
+          className={`fixed right-4 sm:right-6 z-50 pointer-events-auto ${kbOffset === 0 ? 'transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)]' : ''}`}
+          style={{ bottom: (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) + kbOffset }}
         >
           {/* Chat popup */}
           {(chatOpen || chatClosing) && (
@@ -3316,6 +3368,7 @@ export default function HomeShell() {
               edgeSensitivity={0}
               backgroundColor="#0f0f0f"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
+              style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
                   title-bar background to the rounded-2xl corners. The BorderGlow
@@ -3398,7 +3451,10 @@ export default function HomeShell() {
 
                 </div>
 
-                {/* Input */}
+                {/* Input — desktop autofocuses for convenience; on mobile the
+                    keyboard must NOT auto-open (it would jump/resize the whole
+                    page while the window animates in): the user taps the bar
+                    to type, and the visualViewport lift keeps it visible. */}
                 <div className="px-5 pb-5 pt-2 border-t border-white/[0.06]">
                   <div className="flex items-end gap-2">
                     <textarea
@@ -3407,7 +3463,7 @@ export default function HomeShell() {
                       onChange={(e) => setChatMessage(e.target.value)}
                       placeholder={t('chat.placeholder', lang)}
                       rows={1}
-                      autoFocus
+                      autoFocus={!isMobile}
                       className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {

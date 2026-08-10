@@ -140,10 +140,43 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       if (stuck) charEls.forEach((c) => c.classList.add('gsap-revealed'));
     };
 
+    // ── Fit the wordmark to the full viewport width ────────────
+    // Measure the natural width at a reference font size and scale the size
+    // so the rendered text spans EXACTLY the container width (the viewport
+    // minus the 2vw side paddings). Bigger than any fixed vw size and immune
+    // to font-metric differences across devices. line-height:1 + no
+    // overflow-hidden mean descenders (the "g" in Designs) are never clipped.
+    const fitWordmark = () => {
+      if (!wordmark || charEls.length === 0) return;
+      const prev = wordmark.style.fontSize;
+      wordmark.style.fontSize = '100px';
+      const natural = wordmark.scrollWidth;
+      wordmark.style.fontSize = prev;
+      const target = wordmark.clientWidth;
+      if (natural > 0 && target > 0) {
+        wordmark.style.fontSize = `${Math.round((target / natural) * 100)}px`;
+      }
+    };
+    fitWordmark();
+
     const refreshOnce = () => {
+      fitWordmark();
       ScrollTrigger.refresh();
       ensureVisible();
     };
+
+    // Refit on any container resize (orientation change on phones) —
+    // rAF-throttled, and re-measures ScrollTrigger after the size settles.
+    let resizeRaf = 0;
+    const onResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        refreshOnce();
+      });
+    };
+    const ro = new ResizeObserver(onResize);
+    ro.observe(wordmark);
 
     // Re-measure once everything settles (same late-layout pattern used by
     // ScrollReveal/StaggerReveal for content-visibility dimension changes).
@@ -169,10 +202,12 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
 
     return () => {
       ctx.revert();
+      ro.disconnect();
       window.removeEventListener('load', refreshOnce);
       window.removeEventListener('scroll', onScrollFailsafe);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
     };
   }, []);
 
@@ -189,11 +224,14 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
         }}
       />
 
-      {/* Rising wordmark — maximalist: spans full viewport width.
-          Chars are injected via innerHTML in useLayoutEffect above. */}
+      {/* Rising wordmark — maximalist: spans the full viewport width with
+          2vw whitespace on each side, sized by fitWordmark() above so it's
+          always as large as possible without clipping. line-height:1 and NO
+          overflow-hidden: the "g" descender is never cut. Chars are injected
+          via innerHTML in useLayoutEffect above. */}
       <div
         ref={wordmarkRef}
-        className="text-[13vw] sm:text-[13vw] md:text-[14vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-[0.85] px-2 select-none w-full overflow-hidden"
+        className="text-[13vw] sm:text-[13vw] md:text-[14vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-none px-[2vw] select-none w-full whitespace-nowrap"
         style={{ perspective: '800px' }}
       />
 

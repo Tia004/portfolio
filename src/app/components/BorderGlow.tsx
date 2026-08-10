@@ -7,6 +7,8 @@ import './BorderGlow.css';
 interface BorderGlowProps {
   children?: ReactNode;
   className?: string;
+  /** Extra inline styles merged onto the card (e.g. a dynamic height cap). */
+  style?: React.CSSProperties;
   edgeSensitivity?: number;
   glowColor?: string;
   backgroundColor?: string;
@@ -82,6 +84,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   children,
   className = '',
   edgeSensitivity = 0,
+  style,
   glowColor = '170 80 50',
   backgroundColor = '#0a0a0a',
   borderRadius = 28,
@@ -259,6 +262,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
         '--fill-opacity': fillOpacity,
         ...glowVars,
         ...buildGradientVars(colors),
+        ...style,
       } as React.CSSProperties}
     >
       <span className="edge-light" />

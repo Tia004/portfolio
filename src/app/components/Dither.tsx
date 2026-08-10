@@ -10,7 +10,6 @@ import * as THREE from 'three';
 // ── Shaders (exact React Bits source) ────────────────────────
 
 const waveVertexShader = /* glsl */ `
-precision highp float;
 varying vec2 vUv;
 void main() {
   vUv = uv;
@@ -21,7 +20,6 @@ void main() {
 `;
 
 const waveFragmentShader = /* glsl */ `
-precision highp float;
 uniform vec2 resolution;
 uniform float time;
 uniform float waveSpeed;
@@ -101,7 +99,6 @@ void main() {
 `;
 
 const ditherFragmentShader = /* glsl */ `
-precision highp float;
 uniform float colorNum;
 uniform float pixelSize;
 const float bayerMatrix8x8[64] = float[64](
@@ -341,6 +338,11 @@ export default function Dither({
 }) {
   const [paused, setPaused] = useState(false);
   const [glFailed, setGlFailed] = useState(false);
+  // Canvas paints black: the context was created but the shader / EffectComposer
+  // silently failed on this GPU (WebGL1 highp limits, unsupported float render
+  // targets, driver quirks). When detected, the Canvas is unmounted and the
+  // bright static texture below takes over — the hero can never be a black void.
+  const [canvasBroken, setCanvasBroken] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // The WebGL canvas runs on EVERY device — phones included — exactly like
@@ -361,6 +363,40 @@ export default function Dither({
       setGlFailed(true);
     }
   }, []);
+
+  // Black-output detection: sample the live canvas a couple of times after
+  // mount. If EVERY sampled point is still near-black on both passes, the GPU
+  // is rendering a uniform black field — drop the Canvas so the static teal
+  // dither (guaranteed render, zero GPU) shows instead of a black hero.
+  // preserveDrawingBuffer:true makes readPixels reliable.
+  useEffect(() => {
+    if (glFailed) return;
+    let blackPasses = 0;
+    const check = () => {
+      const canvas = wrapperRef.current?.querySelector('canvas');
+      if (!canvas || !canvas.width || !canvas.height) return;
+      try {
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return;
+        const px = new Uint8Array(4);
+        const spots = [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92], [0.5, 0.5]];
+        let nearBlack = true;
+        for (const [sx, sy] of spots) {
+          gl.readPixels(Math.floor(canvas.width * sx), Math.floor(canvas.height * sy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          if (px[0] > 24 || px[1] > 24 || px[2] > 24) { nearBlack = false; break; }
+        }
+        if (nearBlack) {
+          blackPasses += 1;
+          if (blackPasses >= 2) setCanvasBroken(true);
+        } else {
+          blackPasses = 0;
+        }
+      } catch { /* context busy / readback error — ignore, keep WebGL */ }
+    };
+    const t1 = window.setTimeout(check, 1000);
+    const t2 = window.setTimeout(check, 2500);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+  }, [glFailed]);
 
   // Pause WebGL rendering when the hero is scrolled out of the viewport —
   // saves GPU/battery on mobile (the dither animates only when visible).
@@ -392,10 +428,10 @@ export default function Dither({
       {/* Subtle static teal base — only visible if WebGL is truly unavailable.
           On WebGL devices the opaque dither canvas paints over it completely. */}
       <StaticDitherTexture />
-      {!glFailed && (
+      {!glFailed && !canvasBroken && (
         <Canvas
           camera={{ position: [0, 0, 6] }}
-          dpr={[1, 1.5]}
+          dpr={1}
           frameloop={paused ? 'never' : 'always'}
           gl={{ antialias: true, preserveDrawingBuffer: true }}
           style={{

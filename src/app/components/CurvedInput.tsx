@@ -224,12 +224,19 @@ const CurvedInput = ({
         setTooltipVisible(false);
       }}
     >
-      {/* Backdrop-blur layer — clipped to exact curved-bar shape via bandPath */}
+      {/* Backdrop-blur layer — clipped to exact curved-bar shape via bandPath.
+          zIndex 0, NOT -1: a negative z-index inside the CTA's transformed /
+          opacity stacking context makes Chrome/Android drop the
+          backdrop-filter entirely (the mobile blur was missing). borderRadius
+          is the fallback for browsers without clip-path: path() support
+          (Safari): if the path clip is ignored, the blur still shows as a
+          rounded rect covering the bar's bounding box. */}
       <div
         className="absolute inset-0 backdrop-blur-sm pointer-events-none"
         style={{
-          zIndex: -1,
+          zIndex: 0,
           clipPath: `path("${bandPath}")`,
+          borderRadius: `${cornerRadius}px`,
         }}
       />
 
@@ -250,6 +257,7 @@ const CurvedInput = ({
       )}
       <svg
         className="curved-btn__svg"
+        style={{ position: 'relative', zIndex: 1 }}
         width={geom.W}
         height={round2(geom.svgH)}
         viewBox={`0 0 ${geom.W} ${round2(geom.svgH)}`}
