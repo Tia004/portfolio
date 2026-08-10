@@ -200,9 +200,20 @@ export function sanitizeQuoteDraft(input: unknown): Record<string, string> {
   return result;
 }
 
+/** Per-scope message allowance per 60s window. The direct Telegram chat is a
+ *  live conversation with Tia — a real person can type 5+ messages in a
+ *  minute during an exchange, and the old 5/min + 15-min block made sends
+ *  silently stop mid-conversation. Bot endpoints (AI, contact, session)
+ *  keep the tight default; the human chat gets realistic headroom while the
+ *  15-min block still catches automated spam. */
+function rateLimitForScope(scope: string): number {
+  return scope === 'telegram' ? 15 : 5;
+}
+
 function takeLocalChatRateLimit(ip: string, sessionId: string, scope: string): { ok: boolean; retryAfter: number } {
   const now = Date.now();
   const keys = [`${scope}:ip:${ip}`, `${scope}:session:${sessionId}`];
+  const limit = rateLimitForScope(scope);
   let retryAfter = 0;
 
   for (const key of keys) {
@@ -216,7 +227,7 @@ function takeLocalChatRateLimit(ip: string, sessionId: string, scope: string): {
       continue;
     }
     bucket.count += 1;
-    if (bucket.count > 5) {
+    if (bucket.count > limit) {
       bucket.blockedUntil = now + BLOCK_MS;
       retryAfter = Math.max(retryAfter, Math.ceil(BLOCK_MS / 1000));
     }
@@ -271,7 +282,7 @@ export async function takeChatRateLimit(ip: string, sessionId: string, scope: st
       ...[...keys, ...blockedKeys].map(encodeURIComponent),
       String(now),
       String(RATE_WINDOW_MS / 1000),
-      '5',
+      String(rateLimitForScope(scope)),
       String(BLOCK_MS / 1000),
     ].join('/');
     const response = await fetch(path, {

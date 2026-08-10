@@ -168,6 +168,35 @@ html {
   height: min(70vh, 560px);
   height: min(70dvh, 560px);
 }
+/* The dialog inside BorderGlow must fill the card EXACTLY, or it grows with
+   the message history and slides past the window's base / overflows the
+   viewport. BorderGlow renders children inside .border-glow-inner (a grid
+   item) — give that inner wrapper a definite height so the dialog's h-full
+   (and the messages flex-1 overflow) resolve against a fixed box. */
+.border-glow-card.chat-window-h > .border-glow-inner {
+  height: 100%;
+  min-height: 0;
+}
+@media (max-width: 767px) {
+  /* The floating widget sits 7.75rem (124px) above the viewport bottom when
+     the CTA is visible on phones — clamp the window so it can never push
+     past the top edge. 11.5rem = widget offset + safe margins. */
+  .chat-window-h {
+    height: min(62dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 11.5rem));
+  }
+}
+
+/* Telegram chat pop-up — the window emerges FROM the bubble's base and
+   grows upward (origin at the bottom edge) instead of appearing fully
+   formed above it. Mirrors the closing animation (translate-y + scale). */
+@keyframes chat-pop-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-pop-up {
+  transform-origin: bottom center;
+  animation: chat-pop-up 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
 /* AI chatbot window — the section heading sits above it, so on mobile the
    window must leave room for the heading + padding to keep the whole

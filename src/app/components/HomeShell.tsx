@@ -969,8 +969,14 @@ export default function HomeShell() {
   const [ctaDocked, setCtaDocked] = useState(false); // true = docked at top with inverted curve
   const ctaDockedRef = useRef(false);
   const ctaHidingRef = useRef(false);
-  // Keep the ref in sync so callbacks (scroll, timer) always read the latest value.
+  const ctaVisibleRef = useRef(true);
+  // Keep the refs in sync so callbacks (scroll, timer) always read the latest
+  // value. ctaVisibleRef is CRITICAL: the position-sync effect below must NOT
+  // re-run when ctaVisible flips, or the 5s inactivity hide would be instantly
+  // reverted by the effect's own sync call — an endless show/hide "bounce"
+  // every few seconds on desktop (mobile is immune: the timer is disabled).
   useEffect(() => { ctaDockedRef.current = ctaDocked; }, [ctaDocked]);
+  useEffect(() => { ctaVisibleRef.current = ctaVisible; }, [ctaVisible]);
 
   // ── CTA tooltip: always shows on hover (removed localStorage gate) ──
   const [showCtaTooltip] = useState(true);
@@ -1097,7 +1103,7 @@ export default function HomeShell() {
     };
   }, []);
 
-  const [messages, setMessages] = useState<{ id: number; text: string; sender: 'client' | 'tia' }[]>([]);
+  const [messages, setMessages] = useState<{ id: number; text: string; sender: 'client' | 'tia' | 'system' }[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatWidgetRef = useRef<HTMLDivElement>(null);
@@ -1961,7 +1967,7 @@ export default function HomeShell() {
           ctaHidingRef.current = false;
           setCtaHiding(false);
         }
-        if (!ctaVisible) setCtaVisible(true);
+        if (!ctaVisibleRef.current) setCtaVisible(true);
         if (window.scrollY >= 300) resetInactivityTimer();
         return;
       }
@@ -1973,13 +1979,13 @@ export default function HomeShell() {
           ctaHidingRef.current = false;
           setCtaHiding(false);
         }
-        if (!ctaVisible) setCtaVisible(true);
+        if (!ctaVisibleRef.current) setCtaVisible(true);
         if (!ctaDockedRef.current) setCtaDocked(true);
         return;
       }
 
       // Zone 2 — inside the chatbot section: hide the CTA.
-      if (!ctaHidingRef.current && ctaVisible) hideCta();
+      if (!ctaHidingRef.current && ctaVisibleRef.current) hideCta();
     };
 
     const onScroll = () => {
@@ -2007,7 +2013,11 @@ export default function HomeShell() {
       observer?.disconnect();
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [ctaVisible, hideCta, resetInactivityTimer]);
+    // Deliberately NOT dependent on ctaVisible: re-running this effect when
+    // the CTA hides would immediately re-show it (syncCta reads the ref) and
+    // re-arm the inactivity timer — the 5s show/hide bounce. hideCta and
+    // resetInactivityTimer are stable useCallbacks, so this runs once.
+  }, [hideCta, resetInactivityTimer]);
 
   // ── Analytics helper (fire-and-forget) ──
   const logAnalytics = (event: string, text?: string) => {
@@ -2084,7 +2094,12 @@ export default function HomeShell() {
         return [...prev, { id: autoReplyId, text: autoReplyText, sender: 'tia' }];
       });
     } catch {
-      // Keep the chat UI quiet rather than exposing server/security details.
+      // The optimistic bubble above already shows the message, but the server
+      // rejected it (rate limit, session expiry, outage). Never stay silent:
+      // a neutral system notice makes the failure visible instead of looking
+      // like the message went through while Telegram never receives it.
+      const failId = nextIdRef.current++;
+      setMessages(prev => [...prev, { id: failId, text: t('chat.send_error', lang), sender: 'system' }]);
     }
   };
 
@@ -3297,7 +3312,7 @@ export default function HomeShell() {
               glowIntensity={1.4}
               edgeSensitivity={0}
               backgroundColor="#0f0f0f"
-              className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h transition-all duration-300 ${chatClosing ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}
+              className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
                   title-bar background to the rounded-2xl corners. The BorderGlow
@@ -3329,6 +3344,13 @@ export default function HomeShell() {
                   </div>
 
                   {messages.map((msg) => (
+                    msg.sender === 'system' ? (
+                      // Neutral system notice (e.g. delivery failure) — centered,
+                      // dim, clearly not a message from either side.
+                      <div key={msg.id} className="flex justify-center">
+                        <span className="max-w-[85%] rounded-full bg-white/[0.04] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-500">{msg.text}</span>
+                      </div>
+                    ) : (
                     <div
                       key={msg.id}
                       className={`flex items-end gap-2 ${msg.sender === 'client' ? 'justify-end' : 'justify-start'}`}
@@ -3352,6 +3374,7 @@ export default function HomeShell() {
                         </div>
                       )}
                     </div>
+                    )
                   ))}
 
                   {/* Typing indicator */}
