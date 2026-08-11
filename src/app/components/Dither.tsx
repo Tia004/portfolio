@@ -94,9 +94,16 @@ float bayer4(vec2 p) {
   float qx = floor(x / 2.0);
   float qy = floor(y / 2.0);
   return (4.0 * b2 + 2.0 * qy + qx) / 16.0;
-}
+}  // sRGB output conversion. The old pipeline rendered through an
+  // EffectComposer whose final pass converted linear → sRGB; the inlined
+  // single-pass shader writes straight to the canvas, so without this the
+  // linear values render DARK and desaturated (the "gray dither" regression
+  // on desktop). Same piecewise curve three.js uses (LinearTosRGB).
+  vec3 linearTosRGB(vec3 linear) {
+    return mix(linear * 12.92, 1.055 * pow(linear, vec3(1.0/2.4)) - 0.055, step(0.0031308, linear));
+  }
 
-void main() {
+  void main() {
   // Sample at the center of the dither cell (blocky when pixelSize > 1).
   vec2 cell = floor(gl_FragCoord.xy / pixelSize) * pixelSize + pixelSize * 0.5;
   vec2 uv = cell / resolution.xy;
@@ -119,8 +126,8 @@ void main() {
   f = clamp(f - 0.2, 0.0, 1.0);
   f = floor(f * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
   vec3 col = mix(vec3(0.0), waveColor, f);
-  gl_FragColor = vec4(col, 1.0);
-}
+  gl_FragColor = vec4(linearTosRGB(col), 1.0);
+  }
 `;
 
 // ── DitheredWaves ────────────────────────────────────────────

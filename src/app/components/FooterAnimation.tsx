@@ -59,64 +59,122 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     const charEls = wordmark.querySelectorAll<HTMLSpanElement>('[data-footer-char]');
     const content = contentRef.current;
 
-    const ctx = gsap.context(() => {
-      // Parallax: content rises + scales up as the footer enters the viewport
-      if (content) {
-        gsap.fromTo(
-          content,
-          { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
+    // ── Fit the wordmark to the full viewport width ────────────
+    // Runs FIRST, before any GSAP work: in the field the wordmark shipped at
+    // the small CSS default, so the fit was clearly not applying on some
+    // setups — an exception later in this effect must never be able to block
+    // the sizing. Measure the natural text width at a reference font size and
+    // scale the size so the rendered text fills the content box (viewport
+    // minus the 2vw side paddings) — and NEVER smaller than the fixed CSS
+    // sizes it replaces (13vw mobile / 15vw desktop), so the fit only ever
+    // enlarges. line-height:1 + no overflow-hidden: descenders (the "g" in
+    // Designs) are never clipped.
+    const hPadding = () => {
+      const cs = getComputedStyle(wordmark);
+      return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    };
+    // Measure the pure text width at a reference size INDEPENDENT of the
+    // container: measuring in place with scrollWidth fails on wide screens —
+    // when the container is wider than the text at 100px there is no overflow
+    // and scrollWidth collapses to clientWidth, yielding a fit of ~100px (the
+    // "wordmark got smaller on desktop" bug). A detached clone is never
+    // constrained by the container, so the fit is always correct.
+    const measureNaturalWidth = () => {
+      const tmp = document.createElement('div');
+      tmp.style.cssText =
+        'position:absolute;left:-99999px;top:0;visibility:hidden;white-space:nowrap;' +
+        'font:900 100px Outfit, ui-sans-serif, system-ui, sans-serif;letter-spacing:-0.02em;';
+      tmp.textContent = 'Tia\u00A0Designs';
+      document.body.appendChild(tmp);
+      const w = tmp.getBoundingClientRect().width;
+      document.body.removeChild(tmp);
+      return w;
+    };
+    const fitWordmark = () => {
+      if (!wordmark || charEls.length === 0) return;
+      try {
+        const natural = measureNaturalWidth();
+        // Prefer the real content-box width; if the element has no layout yet
+        // (clientWidth 0), fall back to the viewport width minus the 2vw side
+        // paddings so the wordmark is still sized maximally.
+        const box = wordmark.clientWidth > 0 ? wordmark.clientWidth : window.innerWidth;
+        const target = box - hPadding(); // content-box width
+        const floor = window.innerWidth * (window.innerWidth < 768 ? 0.13 : 0.15);
+        if (natural > 0 && target > 0) {
+          const fit = Math.round((target / natural) * 100);
+          wordmark.style.fontSize = `${Math.max(fit, Math.round(floor))}px`;
+        }
+      } catch {
+        // Never let sizing break the footer.
+      }
+    };
+    fitWordmark();
+
+    // GSAP setup — isolated in try/catch so a plugin/trigger failure can never
+    // prevent sizing (already done above) or the reveal failsafe below.
+    let ctx: gsap.Context | null = null;
+    try {
+      ctx = gsap.context(() => {
+        // Parallax: content rises + scales up as the footer enters the viewport
+        if (content) {
+          gsap.fromTo(
+            content,
+            { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
+            {
+              y: 0,
+              scale: 1,
+              ease: FOOTER.contentParallax.ease,
+              scrollTrigger: {
+                trigger: section,
+                start: FOOTER.contentParallax.start,
+                end: FOOTER.contentParallax.end,
+                scrub: FOOTER.contentParallax.scrub,
+              },
+            }
+          );
+        }
+
+        // Gradient glow: shift position on scroll
+        gsap.to(glow, {
+          backgroundPosition: '50% 100%',
+          ease: FOOTER.glow.ease,
+          scrollTrigger: {
+            trigger: section,
+            start: FOOTER.glow.start,
+            end: FOOTER.glow.end,
+            scrub: FOOTER.glow.scrub,
+          },
+        });
+
+        // ── Scroll-driven character reveal ──────────────────────
+        // Each character animates from hidden (y:80, opacity:0, rotateX:-15)
+        // to fully visible (y:0, opacity:1, rotateX:0) proportionally to
+        // the scroll position.  Scroll down → characters rise; scroll up →
+        // they sink back.  The stagger distributes each character's progress
+        // across the scroll range for a cascading wave effect.
+        gsap.fromTo(charEls,
+          { y: FOOTER.chars.yOffset, opacity: 0, rotateX: FOOTER.chars.rotateX },
           {
             y: 0,
-            scale: 1,
-            ease: FOOTER.contentParallax.ease,
+            opacity: 1,
+            rotateX: 0,
+            stagger: FOOTER.chars.stagger,
+            ease: FOOTER.chars.ease,
             scrollTrigger: {
               trigger: section,
-              start: FOOTER.contentParallax.start,
-              end: FOOTER.contentParallax.end,
-              scrub: FOOTER.contentParallax.scrub,
+              start: FOOTER.chars.start,
+              end: FOOTER.chars.end,
+              scrub: FOOTER.chars.scrub,
             },
           }
         );
-      }
 
-      // Gradient glow: shift position on scroll
-      gsap.to(glow, {
-        backgroundPosition: '50% 100%',
-        ease: FOOTER.glow.ease,
-        scrollTrigger: {
-          trigger: section,
-          start: FOOTER.glow.start,
-          end: FOOTER.glow.end,
-          scrub: FOOTER.glow.scrub,
-        },
-      });
-
-      // ── Scroll-driven character reveal ──────────────────────
-      // Each character animates from hidden (y:80, opacity:0, rotateX:-15)
-      // to fully visible (y:0, opacity:1, rotateX:0) proportionally to
-      // the scroll position.  Scroll down → characters rise; scroll up →
-      // they sink back.  The stagger distributes each character's progress
-      // across the scroll range for a cascading wave effect.
-      gsap.fromTo(charEls,
-        { y: FOOTER.chars.yOffset, opacity: 0, rotateX: FOOTER.chars.rotateX },
-        {
-          y: 0,
-          opacity: 1,
-          rotateX: 0,
-          stagger: FOOTER.chars.stagger,
-          ease: FOOTER.chars.ease,
-          scrollTrigger: {
-            trigger: section,
-            start: FOOTER.chars.start,
-            end: FOOTER.chars.end,
-            scrub: FOOTER.chars.scrub,
-          },
-        }
-      );
-
-      // Refresh ScrollTrigger now that the chars are in the DOM
-      refreshScrollTriggers();
-    }, section);
+        // Refresh ScrollTrigger now that the chars are in the DOM
+        refreshScrollTriggers();
+      }, section);
+    } catch (err) {
+      console.error('[footer] GSAP init fallito:', err);
+    }
 
     // ── The wordmark must never be missing ────────────────────
     // The chars start at opacity:0 and are revealed by the ScrollTrigger
@@ -143,50 +201,27 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       if (!onScreen) return;
       const stuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
       if (stuck) {
-        gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+        // Before declaring the scrub dead, re-measure the trigger positions
+        // once — the page may have grown since mount (lazy sections above),
+        // leaving the trigger range stale and the chars stuck at opacity 0.
+        // A single refresh + update is enough; then re-check after a frame
+        // and only force visibility if the scrub genuinely never advances.
+        if (!refreshAttempted) {
+          refreshAttempted = true;
+          ScrollTrigger.refresh();
+          ScrollTrigger.update();
+          requestAnimationFrame(() => {
+            const stillStuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
+            if (stillStuck) gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+          });
+        } else {
+          gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+        }
       }
     };
 
-    // ── Fit the wordmark to the full viewport width ────────────
-    // Measure the natural text width at a reference font size and scale the
-    // size so the rendered text fills the content box (viewport minus the
-    // 2vw side paddings) — and NEVER smaller than the fixed CSS sizes it
-    // replaces (13vw mobile / 14vw desktop), so the fit only ever enlarges.
-    // line-height:1 + no overflow-hidden: descenders (the "g" in Designs)
-    // are never clipped.
-    const hPadding = () => {
-      const cs = getComputedStyle(wordmark);
-      return (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-    };
-    // Measure the pure text width at a reference size INDEPENDENT of the
-    // container: measuring in place with scrollWidth fails on wide screens —
-    // when the container is wider than the text at 100px there is no overflow
-    // and scrollWidth collapses to clientWidth, yielding a fit of ~100px (the
-    // "wordmark got smaller on desktop" bug). A detached clone is never
-    // constrained by the container, so the fit is always correct.
-    const measureNaturalWidth = () => {
-      const tmp = document.createElement('div');
-      tmp.style.cssText =
-        'position:absolute;left:-99999px;top:0;visibility:hidden;white-space:nowrap;' +
-        'font:900 100px Outfit, ui-sans-serif, system-ui, sans-serif;letter-spacing:-0.02em;';
-      tmp.textContent = 'Tia\u00A0Designs';
-      document.body.appendChild(tmp);
-      const w = tmp.getBoundingClientRect().width;
-      document.body.removeChild(tmp);
-      return w;
-    };
-    const fitWordmark = () => {
-      if (!wordmark || charEls.length === 0) return;
-      const natural = measureNaturalWidth();
-      const target = wordmark.clientWidth - hPadding(); // content-box width
-      const floor = window.innerWidth * (window.innerWidth < 768 ? 0.13 : 0.14);
-      if (natural > 0 && target > 0) {
-        const fit = Math.round((target / natural) * 100);
-        wordmark.style.fontSize = `${Math.max(fit, Math.round(floor))}px`;
-      }
-    };
-    fitWordmark();
 
+    let refreshAttempted = false;
     const refreshOnce = () => {
       fitWordmark();
       refreshScrollTriggers();
@@ -217,6 +252,32 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     const t1 = window.setTimeout(refreshOnce, 800);
     const t2 = window.setTimeout(refreshOnce, 2500);
 
+    // ── Fresh trigger positions right before the footer enters ──
+    // The page keeps growing while the lazy sections above mount, so the
+    // positions measured at mount are stale by the time the user reaches the
+    // footer — the scrub sits at progress 1 and the wordmark is visible but
+    // STATIC. refreshScrollTriggers() is scroll-aware and skips during a
+    // gesture, i.e. exactly when the user is scrolling here, so use a direct
+    // refresh instead: the footer approaches only after every section above
+    // has mounted, and a single refresh is a bounded, non-jittering event.
+    // Re-arms when the footer leaves the 1.5-viewport approach zone.
+    let approachRefreshed = false;
+    const approachIO = new IntersectionObserver(
+      (entries) => {
+        const visible = entries[0]?.isIntersecting ?? false;
+        if (visible && !approachRefreshed) {
+          approachRefreshed = true;
+          fitWordmark();
+          ScrollTrigger.refresh();
+          ScrollTrigger.update();
+        } else if (!visible) {
+          approachRefreshed = false;
+        }
+      },
+      { rootMargin: '0px 0px 150% 0px', threshold: 0 }
+    );
+    approachIO.observe(section);
+
     // Scroll-driven failsafe (rAF-throttled): catches a stale trigger even
     // if the user reaches the footer before any timer has fired. Lenis
     // scrolls via window.scrollTo, so the native scroll event fires on every
@@ -233,8 +294,9 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     window.addEventListener('scroll', onScrollFailsafe, { passive: true });
 
     return () => {
-      ctx.revert();
+      ctx?.revert();
       ro.disconnect();
+      approachIO.disconnect();
       window.removeEventListener('load', refreshOnce);
       window.removeEventListener('tia:section-mounted', refreshOnce);
       window.removeEventListener('scroll', onScrollFailsafe);
@@ -264,7 +326,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
           via innerHTML in useLayoutEffect above. */}
       <div
         ref={wordmarkRef}
-        className="text-[13vw] sm:text-[13vw] md:text-[14vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-none px-[2vw] select-none w-full whitespace-nowrap"
+        className="text-[13vw] sm:text-[14vw] md:text-[15vw] font-black tracking-[-0.02em] text-white text-center mb-8 sm:mb-12 leading-none px-[2vw] select-none w-full whitespace-nowrap"
         style={{ perspective: '800px' }}
       />
 

@@ -1041,6 +1041,23 @@ export default function HomeShell() {
     return () => window.removeEventListener('splash-complete', cb);
   }, []);
 
+  // Hide BOTH ProgressiveBlur bars while the chatbot section fills the whole
+  // screen ("esattamente nel chatbot"): the bottom bar would otherwise frost
+  // the input bar + specialization bubbles, the top bar the heading. They come
+  // back as soon as you scroll above or past the section. IntersectionObserver
+  // is used (not scroll math) because it fires reliably regardless of how the
+  // scroll happens (Lenis animation, wheel, CTA landing, touch).
+  const [chatFullscreen, setChatFullscreen] = useState(false);
+  useEffect(() => {
+    const chatbot = document.getElementById('chatbot');
+    if (!chatbot) return;
+    const io = new IntersectionObserver(([entry]) => {
+      setChatFullscreen(entry.isIntersecting && entry.intersectionRatio > 0.85);
+    }, { threshold: [0.85] });
+    io.observe(chatbot);
+    return () => io.disconnect();
+  }, []);
+
   // Hide bottom ProgressiveBlur when scrolled to the very bottom — the blur
   // otherwise covers the footer and modals, making them unreadable.
   // Must use Lenis scroll position (not window.scrollY) because Lenis
@@ -1050,16 +1067,7 @@ export default function HomeShell() {
     const check = () => {
       const l = lenis.current;
       if (!l) return;
-      // Also hide the bottom blur while the chatbot section fills the whole
-      // screen (CTA landing): otherwise the blur covers the specialization
-      // bar at the bottom of the section.
-      const chatbot = document.getElementById('chatbot');
-      let chatbotFullscreen = false;
-      if (chatbot) {
-        const r = chatbot.getBoundingClientRect();
-        chatbotFullscreen = r.top <= 2 && r.bottom >= window.innerHeight - 2;
-      }
-      setBlurBottomHidden(l.scroll >= l.limit - 20 || chatbotFullscreen);
+      setBlurBottomHidden(l.scroll >= l.limit - 20);
     };
     check();
     lenis.current?.on('scroll', check);
@@ -2365,16 +2373,24 @@ export default function HomeShell() {
     <SmoothScrollProvider>
       <MobileGlowActivator>
         <Navbar />
-        <ProgressiveBlur
-          className="fixed top-0 z-20"
-          height="4.5rem"
-          position="top"
-          blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
-        />
+        <div
+          className="fixed inset-x-0 top-0 z-20 pointer-events-none"
+          style={{
+            opacity: chatFullscreen ? 0 : 1,
+            transition: 'opacity 0.35s ease',
+          }}
+        >
+          <ProgressiveBlur
+            className=""
+            height="4.5rem"
+            position="top"
+            blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
+          />
+        </div>
         <div
           className="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
           style={{
-            opacity: blurBottomHidden ? 0 : 1,
+            opacity: blurBottomHidden || chatFullscreen ? 0 : 1,
             transition: 'opacity 0.35s ease',
           }}
         >
