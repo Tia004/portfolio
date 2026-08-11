@@ -50,12 +50,12 @@ export const HERO = {
   yOffset: -60,        // negative = starts above viewport, descends into place
   scale: 1.04,         // slight zoom-in as it settles
   blur: 6,             // noticeable entrance blur, clears on arrival (px)
-  // Slightly faster than before (1.2s → 0.9s) so the hero — the LCP element —
-  // becomes visible sooner after the splash without losing the cinematic feel.
-  duration: 0.9,
-  stagger: 0.08,
+  // Snappy: the hero — the LCP element — must reach its sharp state quickly
+  // after the splash fades. 0.9s → 0.5s, smaller stagger, no leading delay.
+  duration: 0.5,
+  stagger: 0.05,
   ease: 'power4.out',
-  delay: 0.1,
+  delay: 0,
 } as const;
 
 // ── CountUp (pricing / hero numbers) ──
@@ -80,9 +80,9 @@ export const COUNTUP = {
 // ── Hero-specific CountUp delays (staggered manually for visual rhythm) ──
 
 // CountUp delays are relative to splashDone (when ready becomes true).
-// The hero entrance animation completes at ~2.0s; counts start cascading
+// The hero entrance animation completes at ~0.7s; counts start cascading
 // just as the last elements settle into place.
-export const HERO_COUNTUP_DELAYS = [1.2, 1.5, 1.8, 2.1, 2.4] as const;
+export const HERO_COUNTUP_DELAYS = [0.5, 0.65, 0.8, 0.95, 1.1] as const;
 
 // ── Footer parallax ──
 

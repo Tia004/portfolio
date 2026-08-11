@@ -32,7 +32,11 @@ function Logo() {
         e.preventDefault();
         window.location.reload();
       }}
-      className="shrink-0"
+      // inline-block shrink-wraps the image: an inline <a> around a block-level
+      // <img> otherwise stretches the clickable box across the whole navbar,
+      // putting it ABOVE the header (z-10040 > z-9999) and swallowing taps
+      // aimed at the hamburger → the menu click "reloaded" the page.
+      className="shrink-0 inline-block"
     >
       <picture>
         <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />

@@ -122,8 +122,13 @@ float bayer8(vec2 p) {
   }
 
   void main() {
-  // Sample at the center of the dither cell (chunky blocks when pixelSize > 1).
-  vec2 cell = floor(gl_FragCoord.xy / pixelSize) * pixelSize + pixelSize * 0.5;
+  // Sample the wave at the pixel-SNAPPED uv — the exact React Bits RetroEffect
+  // reads texture2D(inputBuffer, uvPixel) where uvPixel is snapped to the
+  // pixelSize grid (block CORNER, not center: normalizedPixelSize *
+  // floor(uv / normalizedPixelSize)). Matching the corner keeps the dither
+  // output pixel-identical to the React Bits demo; a +0.5px center offset
+  // shifts every wave value and lands 70%+ of pixels on different levels.
+  vec2 cell = floor(gl_FragCoord.xy / pixelSize) * pixelSize;
   vec2 uv = cell / resolution.xy;
   uv -= 0.5;
   uv.x *= resolution.x / resolution.y;
@@ -142,7 +147,13 @@ float bayer8(vec2 p) {
   // postprocessing pipeline (the EffectComposer + const-array combo silently
   // compiled to a black canvas on iOS Safari). Each RGB channel quantizes
   // INDEPENDENTLY, which is what produces the colorful pixel grain.
-  vec2 scaledCoord = floor(uv * resolution / pixelSize);
+  //
+  // The threshold coordinate comes from gl_FragCoord (PER-PIXEL), NOT from the
+  // cell-centered uv above: React Bits passes its per-pixel uv into dither()
+  // while sampling the wave color at the pixel-snapped uv. If the threshold
+  // used the snapped uv too, every pixel inside a 2x2 block would share the
+  // same threshold → solid blocks that read as "righette" instead of dots.
+  vec2 scaledCoord = floor(gl_FragCoord.xy / pixelSize);
   float threshold = bayer8(scaledCoord) - 0.25;
   float step = 1.0 / (colorNum - 1.0);
   col += threshold * step;

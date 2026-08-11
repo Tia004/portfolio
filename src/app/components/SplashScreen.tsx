@@ -5,11 +5,11 @@ import { gsap } from 'gsap';
 
 // ── Configuration ──────────────────────────────────────────
 const LETTERS = 'Tia Designs'.split('');
-const LETTER_STAGGER = 0.08;
+const LETTER_STAGGER = 0.06;
 const LETTER_DROP_Y = -120;
-const LETTER_DURATION = 0.8;
-const MIN_SPLASH_MS = 1800;  // minimum display time for the letter animation
-const MAX_SPLASH_MS = 3500;  // safety net — never block the site forever
+const LETTER_DURATION = 0.55;
+const MIN_SPLASH_MS = 1200;  // minimum display time for the letter animation
+const MAX_SPLASH_MS = 2600;  // safety net — never block the site forever
 
 function whenPageReady(): Promise<void> {
   return new Promise((resolve) => {
@@ -112,7 +112,7 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
       gsap.to(splashRef.current, {
         opacity: 0,
         scale: 0.97,
-        duration: 0.5,
+        duration: 0.35,
         ease: 'power2.inOut',
         onComplete: () => {
           if (alive) {
