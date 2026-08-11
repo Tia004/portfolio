@@ -2427,7 +2427,7 @@ export default function HomeShell() {
               colorNum={8.6}
               pixelSize={2}
               enableMouseInteraction={true}
-              mouseRadius={0.2}
+              mouseRadius={0.1}
             />
 
             {/* Mobile-first sizing: the hero must read as a confident
