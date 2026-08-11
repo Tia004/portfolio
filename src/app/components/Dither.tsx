@@ -125,8 +125,16 @@ float bayer4(vec2 p) {
   f += threshold / (colorNum - 1.0);
   f = clamp(f - 0.2, 0.0, 1.0);
   f = floor(f * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
-  vec3 col = mix(vec3(0.0), waveColor, f);
-  gl_FragColor = vec4(linearTosRGB(col), 1.0);
+  // Gamma on the scalar f (brightness), NOT on the final RGB: converting the
+  // final color to sRGB washed the whole hero out (linear teal 0.298/0.608/0.510
+  // gamma-lifted to a pale gray-teal — the "spento simil bianco" regression).
+  // Lifting f and multiplying by the saturated teal keeps the hue vivid at
+  // every level: black valleys, dark saturated teal, bright teal peaks. The
+  // 1.65 boost opens the midtones toward the "teal accesa" look. Same piecewise
+  // curve three.js uses (LinearTosRGB).
+  float bright = linearTosRGB(vec3(clamp(f * 1.65, 0.0, 1.0))).r;
+  vec3 col = mix(vec3(0.0), waveColor, bright);
+  gl_FragColor = vec4(col, 1.0);
   }
 `;
 
