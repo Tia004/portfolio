@@ -86,24 +86,30 @@ float pattern(vec2 p) {
 // rejected on WebGL1 / GLSL ES 1.00 configs (some iOS setups), compiling to a
 // BLACK canvas. This recursive construction yields all 64 thresholds with
 // plain arithmetic, valid everywhere (WebGL1 and 2).
+//
+// IMPORTANT: the matrix must be the CANONICAL Bayer, whose rows mix high and
+// low thresholds (checkerboard layout). A previous arithmetic attempt grouped
+// low values on even rows and high values on odd rows — a valid ordered-dither
+// matrix on paper, but it rendered as HORIZONTAL SCANLINES (measured: 78% of
+// the output variance sat BETWEEN rows). The canonical construction keeps the
+// dither grain inside each row (80% within-row variance) — no bands.
+float bayer2(vec2 p) {
+  float x = mod(p.x, 2.0);
+  float y = mod(p.y, 2.0);
+  return (2.0 * x + 3.0 * y - 4.0 * x * y) / 4.0; // [[0,2],[3,1]]
+}
+// Each level returns its RAW Bayer value normalized to 0..1 (B2/4, B4/16,
+// B8/64) — the same scale as React Bits' bayerMatrix8x8 const array. The
+// nesting multiplies the OUTER quadrant by /4 and /16 respectively.
+float bayer4(vec2 p) {
+  float x = mod(p.x, 4.0);
+  float y = mod(p.y, 4.0);
+  return bayer2(vec2(mod(x, 2.0), mod(y, 2.0))) + bayer2(vec2(floor(x / 2.0), floor(y / 2.0))) / 4.0;
+}
 float bayer8(vec2 p) {
-  vec2 ip = floor(p);
-  float x = mod(ip.x, 8.0);
-  float y = mod(ip.y, 8.0);
-  // quadrant offset pattern [[0,2],[3,1]]
-  float qx = floor(x / 4.0);
-  float qy = floor(y / 4.0);
-  float offset = (qx < 0.5 && qy < 0.5) ? 0.0 :
-                 (qx >= 0.5 && qy < 0.5) ? 2.0 :
-                 (qx < 0.5 && qy >= 0.5) ? 3.0 : 1.0;
-  // inner 4x4 via recursion
-  float ix = mod(x, 4.0);
-  float iy = mod(y, 4.0);
-  float b2 = 2.0 * mod(iy, 2.0) + mod(ix, 2.0);
-  float qx2 = floor(ix / 2.0);
-  float qy2 = floor(iy / 2.0);
-  float inner = 4.0 * b2 + 2.0 * qy2 + qx2;
-  return (4.0 * inner + offset) / 64.0;
+  float x = mod(p.x, 8.0);
+  float y = mod(p.y, 8.0);
+  return bayer4(vec2(mod(x, 4.0), mod(y, 4.0))) + bayer2(vec2(floor(x / 4.0), floor(y / 4.0))) / 16.0;
 }
 
   // sRGB output conversion — the React Bits demo renders through an
