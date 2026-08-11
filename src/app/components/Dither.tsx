@@ -81,30 +81,42 @@ float pattern(vec2 p) {
   return fbm(p + fbm(p2));
 }
 
-// 4x4 Bayer ordered-dithering threshold, computed arithmetically (no const
-// array) — the original postprocessing pass indexed a bayerMatrix8x8 const
-// array dynamically, which is rejected on WebGL1 / GLSL ES 1.00 configs
-// (some iOS setups), compiling to a BLACK canvas. This recursive
-// construction yields all 16 thresholds with plain arithmetic.
-float bayer4(vec2 p) {
+// 8x8 Bayer ordered-dithering threshold, computed arithmetically — the React
+// Bits dither pass indexed a bayerMatrix8x8 const array dynamically, which is
+// rejected on WebGL1 / GLSL ES 1.00 configs (some iOS setups), compiling to a
+// BLACK canvas. This recursive construction yields all 64 thresholds with
+// plain arithmetic, valid everywhere (WebGL1 and 2).
+float bayer8(vec2 p) {
   vec2 ip = floor(p);
-  float x = mod(ip.x, 4.0);
-  float y = mod(ip.y, 4.0);
-  float b2 = 2.0 * mod(y, 2.0) + mod(x, 2.0);
-  float qx = floor(x / 2.0);
-  float qy = floor(y / 2.0);
-  return (4.0 * b2 + 2.0 * qy + qx) / 16.0;
-}  // sRGB output conversion. The old pipeline rendered through an
-  // EffectComposer whose final pass converted linear → sRGB; the inlined
-  // single-pass shader writes straight to the canvas, so without this the
-  // linear values render DARK and desaturated (the "gray dither" regression
-  // on desktop). Same piecewise curve three.js uses (LinearTosRGB).
+  float x = mod(ip.x, 8.0);
+  float y = mod(ip.y, 8.0);
+  // quadrant offset pattern [[0,2],[3,1]]
+  float qx = floor(x / 4.0);
+  float qy = floor(y / 4.0);
+  float offset = (qx < 0.5 && qy < 0.5) ? 0.0 :
+                 (qx >= 0.5 && qy < 0.5) ? 2.0 :
+                 (qx < 0.5 && qy >= 0.5) ? 3.0 : 1.0;
+  // inner 4x4 via recursion
+  float ix = mod(x, 4.0);
+  float iy = mod(y, 4.0);
+  float b2 = 2.0 * mod(iy, 2.0) + mod(ix, 2.0);
+  float qx2 = floor(ix / 2.0);
+  float qy2 = floor(iy / 2.0);
+  float inner = 4.0 * b2 + 2.0 * qy2 + qx2;
+  return (4.0 * inner + offset) / 64.0;
+}
+
+  // sRGB output conversion — the React Bits demo renders through an
+  // EffectComposer whose final pass converts linear → sRGB (color-managed
+  // three.js). The inlined single-pass shader writes straight to the canvas,
+  // so the same conversion is applied here explicitly; without it the linear
+  // values render dark and desaturated on screen.
   vec3 linearTosRGB(vec3 linear) {
     return mix(linear * 12.92, 1.055 * pow(linear, vec3(1.0/2.4)) - 0.055, step(0.0031308, linear));
   }
 
   void main() {
-  // Sample at the center of the dither cell (blocky when pixelSize > 1).
+  // Sample at the center of the dither cell (chunky blocks when pixelSize > 1).
   vec2 cell = floor(gl_FragCoord.xy / pixelSize) * pixelSize + pixelSize * 0.5;
   vec2 uv = cell / resolution.xy;
   uv -= 0.5;
@@ -117,24 +129,20 @@ float bayer4(vec2 p) {
     float effect = 1.0 - smoothstep(0.0, mouseRadius, dist);
     f -= 0.5 * effect;
   }
-  // Dithered quantization INLINED (was a separate EffectComposer pass).
-  // Doing it in this single shader pass removes the postprocessing render
-  // targets / Effect pipeline that iOS Safari can silently fail on.
-  f = clamp(f, 0.0, 1.0);
-  float threshold = bayer4(cell / pixelSize) - 0.25;
-  f += threshold / (colorNum - 1.0);
-  f = clamp(f - 0.2, 0.0, 1.0);
-  f = floor(f * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
-  // Gamma on the scalar f (brightness), NOT on the final RGB: converting the
-  // final color to sRGB washed the whole hero out (linear teal 0.298/0.608/0.510
-  // gamma-lifted to a pale gray-teal — the "spento simil bianco" regression).
-  // Lifting f and multiplying by the saturated teal keeps the hue vivid at
-  // every level: black valleys, dark saturated teal, bright teal peaks. The
-  // 1.65 boost opens the midtones toward the "teal accesa" look. Same piecewise
-  // curve three.js uses (LinearTosRGB).
-  float bright = linearTosRGB(vec3(clamp(f * 1.65, 0.0, 1.0))).r;
-  vec3 col = mix(vec3(0.0), waveColor, bright);
-  gl_FragColor = vec4(col, 1.0);
+  vec3 col = mix(vec3(0.0), waveColor, clamp(f, 0.0, 1.0));
+
+  // Per-channel ordered dithering with the 8x8 Bayer matrix — the exact React
+  // Bits RetroEffect algorithm, inlined into this single pass so there is no
+  // postprocessing pipeline (the EffectComposer + const-array combo silently
+  // compiled to a black canvas on iOS Safari). Each RGB channel quantizes
+  // INDEPENDENTLY, which is what produces the colorful pixel grain.
+  vec2 scaledCoord = floor(uv * resolution / pixelSize);
+  float threshold = bayer8(scaledCoord) - 0.25;
+  float step = 1.0 / (colorNum - 1.0);
+  col += threshold * step;
+  col = clamp(col - 0.2, 0.0, 1.0);
+  col = floor(col * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
+  gl_FragColor = vec4(linearTosRGB(col), 1.0);
   }
 `;
 

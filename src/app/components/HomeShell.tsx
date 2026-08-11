@@ -2415,15 +2415,18 @@ export default function HomeShell() {
             {/* The dither: an always-rendered static teal texture guarantees
                 hero contrast on every device; the animated WebGL waves paint
                 over it where supported. It pauses rendering off-screen. */}
+            {/* React Bits configuration with the site's teal: bright mint,
+                saturated (G=1, B=0.77 → not too green), pixelated via the
+                per-channel 8x8 dither with pixelSize 2. */}
             <Dither
-              waveColor={[0.298, 0.608, 0.510]}
-              waveSpeed={0.06}
-              waveFrequency={8.4}
-              waveAmplitude={0.3}
-              colorNum={6}
-              pixelSize={1}
+              waveColor={[0.30196078431372547, 1, 0.7686274509803922]}
+              waveSpeed={0.07}
+              waveFrequency={4.9}
+              waveAmplitude={0.32}
+              colorNum={9.2}
+              pixelSize={2}
               enableMouseInteraction={true}
-              mouseRadius={0.1}
+              mouseRadius={0.3}
             />
 
             {/* Mobile-first sizing: the hero must read as a confident
