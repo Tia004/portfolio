@@ -791,14 +791,14 @@ function renderMarkdown(text: string): React.ReactNode {
         <ul key={pi} className="list-disc list-inside space-y-1 mb-2">
           {lines.map((line, li) => {
             const content = line.trim().replace(/^\s*[-*]\s+/, '');
-            return <li key={li} className="text-neutral-200 text-sm">{renderInline(content)}</li>;
+            return <li key={li} className="text-neutral-200 text-sm sm:text-base">{renderInline(content)}</li>;
           })}
         </ul>
       );
     }
     // Regular paragraph
     return (
-      <p key={pi} className="mb-2 last:mb-0 text-sm leading-relaxed">
+      <p key={pi} className="mb-2 last:mb-0 text-sm sm:text-base leading-relaxed">
         {renderInline(para)}
       </p>
     );
@@ -1354,7 +1354,7 @@ export default function HomeShell() {
         <>
           {processed}
           <div className="mt-4 rounded-xl border border-teal-400/20 bg-teal-400/[0.06] p-3">
-            <p className="mb-3 text-xs leading-relaxed text-teal-200/80">{t('bot.quote_review', lang)}</p>
+            <p className="mb-3 text-xs sm:text-sm leading-relaxed text-teal-200/80">{t('bot.quote_review', lang)}</p>
             {approvalState === 'approved' ? (
               <div className="flex items-center gap-2 text-sm font-medium text-teal-300">
                 <TiaIcon icon={CheckmarkCircle01Icon} size={17} strokeWidth={2} />

@@ -150,7 +150,7 @@ export default function ChatbotPanel({
           title={t(option.labelKey, lang)}
           disabled={chatBlocked}
           onClick={() => onSelectCategory(option.value)}
-          className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-neutral-300 transition-all touch-manipulation hover:border-teal-400/40 hover:bg-teal-400/[0.06] hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 transition-all touch-manipulation hover:border-teal-400/40 hover:bg-teal-400/[0.06] hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {t(option.labelKey, lang)}
         </button>
@@ -211,7 +211,7 @@ export default function ChatbotPanel({
               <div className="flex min-h-full flex-col items-center justify-center px-6 pt-2 sm:pt-6 pb-10 text-center">
                 <div className="my-auto flex w-full flex-col items-center text-center">
                   <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">{t('chat.empty_heading', lang)}</h3>
-                  <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-400">{t('chat.welcome_short', lang)}</p>
+                  <p className="mt-2 max-w-md text-sm sm:text-base leading-relaxed text-neutral-400">{t('chat.welcome_short', lang)}</p>
                   {welcomeBubbles}
                 </div>
               </div>
@@ -238,7 +238,7 @@ export default function ChatbotPanel({
                             <TiaIcon icon={BubbleChatIcon} size={16} className="text-teal-400" />
                           </div>
                         )}
-                        <div className={`max-w-[80%] px-4 py-3 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'user'
+                        <div className={`max-w-[80%] px-4 py-3 text-sm sm:text-base leading-relaxed break-words min-w-0 ${msg.sender === 'user'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
                           : 'bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm'
                           }`}
@@ -272,7 +272,7 @@ export default function ChatbotPanel({
                             isStale ? (
                               <span
                                 key={idx}
-                                className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-neutral-600 cursor-default"
+                                className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs sm:text-sm text-neutral-600 cursor-default"
                               >
                                 {sugg}
                               </span>
@@ -282,7 +282,7 @@ export default function ChatbotPanel({
                                 type="button"
                                 onClick={() => onSuggestion(sugg)}
                                 disabled={chatBlocked}
-                                className="animate-pop-in shrink-0 rounded-full border border-teal-400/30 bg-teal-400/[0.08] px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-400/20 hover:border-teal-400/50 hover:text-teal-200 transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-teal-400/[0.08] disabled:hover:border-teal-400/30 disabled:hover:text-teal-300"
+                                className="animate-pop-in shrink-0 rounded-full border border-teal-400/30 bg-teal-400/[0.08] px-3 py-1.5 text-xs sm:text-sm text-teal-300 hover:bg-teal-400/20 hover:border-teal-400/50 hover:text-teal-200 transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-teal-400/[0.08] disabled:hover:border-teal-400/30 disabled:hover:text-teal-300"
                                 style={{ animationDelay: `${idx * 45}ms` }}
                               >
                                 {sugg}
