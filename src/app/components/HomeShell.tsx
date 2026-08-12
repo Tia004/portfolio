@@ -1392,8 +1392,9 @@ export default function HomeShell() {
   // ── Standalone chatbot state (for the #chatbot section) ──
   const [botInput, setBotInput] = useState('');
   const [chatCategory, setChatCategory] = useState<ChatCategory>('general');
-  // The specialization bar under the chat stays hidden until the visitor passes
-  // the first welcome message (tapping a category bubble or typing a message).
+  // chatStarted dims the teal halo once the visitor passes the welcome
+  // (tapping a welcome bubble or typing a message). The old specialization
+  // bar is gone — specializations live in the welcome bubbles now.
   const [chatStarted, setChatStarted] = useState(false);
   // ── Off-topic guard: after 3 off-topic messages the chat input is blocked
   // for 30 minutes. Persisted in sessionStorage so a reload can't bypass it. ──
@@ -1574,7 +1575,8 @@ export default function HomeShell() {
     // Off-topic block: after 3 strikes the visitor cannot send anything for 30 min.
     if (chatBlockedUntil > Date.now()) return;
     // Any real message (text or a chip) counts as "passing the welcome": the
-    // specialization bar below the chat appears from here on.
+    // teal halo dims from here on (specializations stay in the welcome
+    // bubbles until a new chat is started).
     setChatStarted(true);
     // Allow the request to carry an explicit category even though the state
     // update above hasn't flushed yet (welcome-bubble clicks pass their own).
@@ -3016,9 +3018,10 @@ export default function HomeShell() {
               content made the document jump while scrolling past it (the
               "scroll stops then restarts" hiccup). It is cheap to keep
               mounted; the expensive WebGL/marquee work lives in the sections
-              around it. pt/sm:pt clears the fixed navbar, pb/sm:pb gives the
-              specialization bar whitespace at the bottom. overflow-x-clip
-              guarantees no horizontal scroll from any residual glow. */}
+              around it. pt/sm:pt clears the fixed navbar, pb/sm:pb keeps the
+              section vertically balanced inside its one-viewport height.
+              overflow-x-clip guarantees no horizontal scroll from any
+              residual glow. */}
           {/* h-[100svh] (small viewport) instead of dvh: the mobile URL bar
               show/hide changes dvh and reflows the section mid-scroll — one
               more source of the up/down jitter. svh is stable. */}
