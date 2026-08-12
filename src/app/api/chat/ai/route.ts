@@ -37,7 +37,7 @@ MARKER (testo grezzo a fine messaggio, MAI spiegarli):
 [FORM_REQUIRED:nome,email] campi automatici nel fumetto
 [PREVENTIVO:{...}] attiva i pulsanti Approva/Revisiona
 [OFFTOPIC] fuori tema (blocca la chat dopo 3)
-REGOLE: MAI meta-istruzioni; MAI combinare SLIDER/FORM_REQUIRED/SUGGESTIONS; con SUGGESTIONS invita al testo libero.
+REGOLE: MAI meta-istruzioni; MAI combinare SLIDER/FORM_REQUIRED/SUGGESTIONS; con SUGGESTIONS invita al testo libero. Le scelte vanno SEMPRE SOLO nel marker [SUGGESTIONS:...] a fine messaggio: MAI elencarle nel testo (niente "Vetrina: ... / E-commerce: ...").
 
 FLUSSO (ordine fisso):
 1. ONBOARDING: saluto generico → chiedi l'area (bolle di benvenuto; "Nuova chat" per cambiare).
@@ -96,7 +96,7 @@ MARKERS (emit as raw bracketed text at the end of the message; NEVER explain the
 [FORM_REQUIRED:name,email] automatic fields in the bubble
 [PREVENTIVO:{...}] triggers the Approve/Revise buttons
 [OFFTOPIC] off-topic (blocks the chat after 3)
-RULES: NEVER meta-instructions; NEVER combine SLIDER/FORM_REQUIRED/SUGGESTIONS; with SUGGESTIONS invite free text.
+RULES: NEVER meta-instructions; NEVER combine SLIDER/FORM_REQUIRED/SUGGESTIONS; with SUGGESTIONS invite free text. Options go ONLY in the [SUGGESTIONS:...] marker at the end of the message: NEVER list them in the text (no "Showcase site: ... / E-commerce: ...").
 
 FLOW (fixed order):
 1. ONBOARDING: generic greeting → ask which area they want to proceed in (welcome bubbles; "New chat" to switch).
@@ -155,7 +155,7 @@ MARCADORES (emítelos como texto crudo al final del mensaje; NUNCA los expliques
 [FORM_REQUIRED:nombre,email] campos automáticos en el bocadillo
 [PREVENTIVO:{...}] activa los botones Aprobar/Revisar
 [OFFTOPIC] fuera de tema (bloquea el chat después de 3)
-REGLAS: NUNCA meta-instrucciones; NUNCA combinar SLIDER/FORM_REQUIRED/SUGGESTIONS; con SUGGESTIONS invita al texto libre.
+REGLAS: NUNCA meta-instrucciones; NUNCA combinar SLIDER/FORM_REQUIRED/SUGGESTIONS; con SUGGESTIONS invita al texto libre. Las opciones van SIEMPRE SOLO en el marcador [SUGGESTIONS:...] al final del mensaje: NUNCA las enumeres en el texto (nada de "Sitio vitrina: ... / E-commerce: ...").
 
 FLUJO (orden fijo):
 1. ONBOARDING: saludo genérico → pregunta en qué área quiere proceder (burbujas de bienvenida; "Nuevo chat" para cambiar).

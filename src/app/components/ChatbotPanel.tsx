@@ -16,6 +16,68 @@ export interface ChatbotMessage {
   approvalState?: 'pending' | 'approved' | 'revising';
 }
 
+// Known option labels per specialization and language. Used as a fallback so
+// the choice chips ALWAYS render: when the AI writes the drill-down options as
+// a plain-text list instead of emitting the [SUGGESTIONS:...] marker, we
+// detect the known labels and render them as bubbles anyway (same chip system:
+// stale-deactivation, click-to-answer, pop-in).
+const KNOWN_OPTION_LABELS: Record<string, Record<string, string[]>> = {
+  it: {
+    'software-web': ['Vetrina', 'E-commerce', 'Web App / Dashboard', 'SaaS', 'Software su misura'],
+    design: ['UI', 'UX', 'Logo', 'Branding', 'Grafica social', 'Altro'],
+    video: ['Documentario', 'Cortometraggio', 'Mediometraggio', 'Lungometraggio', 'Spot pubblicitario'],
+    hardware: ['Diagnosi', 'Riparazione', 'Upgrade', 'Consulenza IT'],
+    social: ['Post', 'Carousel', 'Stories', 'Thumbnail', 'Calendario editoriale'],
+    interlude: ['Ricevere i file del sito', 'Pubblicazione completa affidata a Tia', '1-3 pagine', '4-6 pagine', '7-10 pagine', 'Più di 10 pagine'],
+  },
+  en: {
+    'software-web': ['Showcase site', 'E-commerce', 'Web App / Dashboard', 'SaaS', 'Custom software'],
+    design: ['UI', 'UX', 'Logo', 'Branding', 'Social graphics', 'Other'],
+    video: ['Documentary', 'Short film', 'Medium-length film', 'Feature film', 'Commercial spot'],
+    hardware: ['Diagnosis', 'Repair', 'Upgrade', 'IT consulting'],
+    social: ['Posts', 'Carousels', 'Stories', 'Thumbnails', 'Editorial calendar'],
+    interlude: ['Receive the website files', 'Full publishing handled by Tia', '1-3 pages', '4-6 pages', '7-10 pages', 'More than 10 pages'],
+  },
+  es: {
+    'software-web': ['Sitio vitrina', 'E-commerce', 'Web App / Dashboard', 'SaaS', 'Software a medida'],
+    design: ['UI', 'UX', 'Logo', 'Branding', 'Gráficos para redes', 'Otro'],
+    video: ['Documental', 'Cortometraje', 'Mediometraje', 'Largometraje', 'Spot publicitario'],
+    hardware: ['Diagnóstico', 'Reparación', 'Upgrade', 'Consultoría IT'],
+    social: ['Posts', 'Carruseles', 'Stories', 'Miniaturas', 'Calendario editorial'],
+    interlude: ['Recibir los archivos del sitio', 'Publicación completa a cargo de Tia', '1-3 páginas', '4-6 páginas', '7-10 páginas', 'Más de 10 páginas'],
+  },
+};
+
+/**
+ * Fallback: extract known option labels a bot message mentions as a plain-text
+ * list ("Vetrina: ... \n E-commerce: ...") and turn them into chips. Only
+ * triggers when at least 2 known labels are found, so ordinary descriptive
+ * replies ("per il tuo sito e-commerce…") never spawn stray bubbles.
+ */
+function detectPlainTextSuggestions(text: string, category: ChatCategory, lang: string): string[] {
+  const byLang = KNOWN_OPTION_LABELS[lang];
+  if (!byLang) return [];
+  const labels = [...(byLang[category] ?? []), ...byLang.interlude];
+  const found: { label: string; idx: number }[] = [];
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match at line start, or after a pipe/list marker — never mid-sentence.
+    const re = new RegExp(`(?:^|\n|\|)\s*(?:[-*•]|\\d+[.)])?\s*${escaped}\\b`, 'i');
+    const m = re.exec(text);
+    if (m) found.push({ label, idx: m.index });
+  }
+  if (found.length < 2) return [];
+  // Dedupe by position keeping the longest label (e.g. "Spot pubblicitario"
+  // over "Spot"), then preserve the order of appearance in the text.
+  const byIdx = new Map<number, string>();
+  for (const f of found) {
+    const existing = byIdx.get(f.idx);
+    if (!existing || f.label.length > existing.length) byIdx.set(f.idx, f.label);
+  }
+  const result = [...byIdx.values()];
+  return result.length >= 2 ? result : [];
+}
+
 // Specialization options — 'general' stays the internal default (user typed
 // freely without picking a bubble) but is intentionally NOT offered visually.
 export const CHAT_CATEGORY_OPTIONS: { value: ChatCategory; labelKey: string; exampleKey: string; placeholderKey: string }[] = [
@@ -223,9 +285,16 @@ export default function ChatbotPanel({
               // covered when the user scrolls all the way back up.
               <div className="flex min-h-full flex-col justify-end gap-4 px-4 sm:px-5 md:px-6 pt-16 sm:pt-24 pb-4 sm:pb-5 md:pb-6">
                 {messages.map((msg) => {
-                  // Extract suggestion chips from bot messages
+                  // Extract suggestion chips from bot messages. Primary source
+                  // is the [SUGGESTIONS:...] marker; when the AI wrote the
+                  // options as a plain-text list instead, detect the known
+                  // labels so the bubbles ALWAYS appear.
                   const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
-                  const suggestions = suggMatch ? suggMatch[1].split('|').map(s => s.trim()).filter(Boolean) : [];
+                  const suggestions = suggMatch
+                    ? suggMatch[1].split('|').map(s => s.trim()).filter(Boolean)
+                    : msg.sender === 'bot' && msg.text
+                      ? detectPlainTextSuggestions(msg.text, category, lang)
+                      : [];
                   const isStale = msg.id !== latestId;
                   // A form is stale when a NEWER message re-asks the fields.
                   const hasForm = /\[FORM_REQUIRED:/i.test(msg.text ?? '');
