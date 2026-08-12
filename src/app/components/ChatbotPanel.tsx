@@ -203,15 +203,17 @@ export default function ChatbotPanel({
             className="flex-1 min-h-0 relative overflow-y-auto scrollbar-hide"
           >
             {messages.length === 0 && !typing ? (
-              /* Top-anchored (not centered) so the welcome message sits right
-                 under the "Nuova chat" header instead of leaving a big empty
-                 gap in the middle of the section. Short intro + centered
-                 specialization bubbles — the old long welcome text and the
-                 bottom bar are gone. */
-              <div className="flex min-h-full flex-col items-center justify-start px-6 pt-2 sm:pt-6 pb-10 text-center">
-                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">{t('chat.empty_heading', lang)}</h3>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-400">{t('chat.welcome_short', lang)}</p>
-                {welcomeBubbles}
+              /* Vertically centered in the space between the "Nuova chat"
+                 header and the input bar. The inner wrapper uses my-auto:
+                 when there is room the welcome block centers, and on small
+                 screens where it doesn't fit the auto margins collapse to 0
+                 so it starts at the top and scrolls — nothing is cut off. */
+              <div className="flex min-h-full flex-col items-center justify-center px-6 pt-2 sm:pt-6 pb-10 text-center">
+                <div className="my-auto flex w-full flex-col items-center text-center">
+                  <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">{t('chat.empty_heading', lang)}</h3>
+                  <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-400">{t('chat.welcome_short', lang)}</p>
+                  {welcomeBubbles}
+                </div>
               </div>
             ) : (
               // Bottom-anchored stack: messages grow upward from just above
