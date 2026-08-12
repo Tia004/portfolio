@@ -92,12 +92,15 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
   return (
     <div className={`fixed inset-0 z-[10001] flex ${closing ? 'pointer-events-none' : ''}`}>
       {/* Glass backdrop — fades 100ms after content. Full-viewport
-          backdrop-blur(24px) over the composited page (body position:fixed)
-          can spike the GPU on low-end phones, so mobile uses a moderate
-          12px blur over a darker base (still visibly glassy, far cheaper
-          than 24px); sm+ keeps the full glass. */}
+          backdrop-blur over the composited page (body position:fixed) is the
+          exact surface that triggered the Samsung/Android renderer-kill with
+          24px. On mobile the base is bg-black/80 (80% opaque), so the blur
+          behind it is barely visible: 4px gives the same look at a fraction
+          of the GPU cost. The real glass is on the small panels; sm+ keeps
+          the full 24px blur where the background is lighter. Weak devices
+          get all blur removed by the .is-low-end rule anyway. */}
       <div
-        className={`absolute inset-0 bg-black/80 backdrop-blur-md sm:bg-black/50 sm:backdrop-blur-xl transition-opacity duration-200 delay-100 ${closing ? 'opacity-0' : 'opacity-100'}`}
+        className={`absolute inset-0 bg-black/80 backdrop-blur-sm sm:bg-black/50 sm:backdrop-blur-xl transition-opacity duration-200 delay-100 ${closing ? 'opacity-0' : 'opacity-100'}`}
         onClick={onClose}
       />
 

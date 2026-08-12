@@ -181,13 +181,15 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
       aria-modal="true"
       aria-label={project.title}
     >
-      {/* Backdrop — full-viewport backdrop-blur(24px) over the whole page
-          while the body is composited (position:fixed scroll-lock) can spike
-          the GPU on low-end phones (Samsung/Android renderer kill → the tab
-          restarts). Mobile uses a moderate 12px blur over a darker base:
-          still visibly glassy but far cheaper than 24px; sm+ keeps 24px. */}
+      {/* Backdrop — full-viewport backdrop-blur over the whole page while
+          the body is composited (position:fixed scroll-lock) is the exact
+          surface that triggered the Samsung/Android renderer-kill with 24px.
+          On mobile the base is bg-black/80 (80% opaque), so the blur behind
+          it is barely visible: 4px gives the same look at a fraction of the
+          GPU cost. The real glass lives on the small panels; sm+ keeps the
+          full 24px blur. Weak devices get all blur removed by .is-low-end. */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
         onClick={handleBackdrop}
       />
 
@@ -535,7 +537,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Mobile Index Overlay ── */}
         {showIndex && (
           <div
-            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md lg:hidden"
+            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setShowIndex(false)}
           >
             <div
