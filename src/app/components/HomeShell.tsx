@@ -1243,6 +1243,7 @@ export default function HomeShell() {
     requiresApproval = false,
     messageId?: number,
     approvalState: 'pending' | 'approved' | 'revising' = 'pending',
+    isFormStale = false,
   ): React.ReactNode => {
     // Extract internal form instructions before sanitizing. The marker is never
     // rendered; it only decides which friendly fields appear below the reply.
@@ -1322,6 +1323,7 @@ export default function HomeShell() {
           <InlinePreventivoForm
             missingFields={formFields}
             sliders={sliders.length > 0 ? sliders : undefined}
+            disabled={isFormStale}
             onSubmit={(data) => {
               // Put collected details in the real form immediately, but keep
               // the visitor in the AI conversation until the quote is complete.
@@ -1548,9 +1550,12 @@ export default function HomeShell() {
     setChatCategory(value);
     setChatStarted(true);
     if (botMessages.length === 0) {
+      // The specialization itself is not posted as a user bubble: the bot
+      // picks it up directly and immediately replies with the first question
+      // for that specialization (see welcome bubbles in ChatbotPanel).
       sendBotMessage(
         t(CHAT_CATEGORY_OPTIONS.find(option => option.value === value)?.labelKey ?? 'chat.category_software_web', lang),
-        { category: value },
+        { category: value, displayUserMessage: false },
       );
     } else {
       resetChat();
@@ -3053,7 +3058,7 @@ export default function HomeShell() {
                   setBotInput(sugg);
                   setTimeout(() => sendBotMessage(sugg), 50);
                 }}
-                renderBotText={(msg) => renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState)}
+                renderBotText={(msg, isFormStale) => renderBotMessage(msg.text, msg.prefill, msg.requiresApproval, msg.id, msg.approvalState, isFormStale)}
               />
             </div>
           </section>

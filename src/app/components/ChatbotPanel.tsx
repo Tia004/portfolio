@@ -41,7 +41,7 @@ interface ChatbotPanelProps {
   messagesRef: React.RefObject<HTMLDivElement | null>;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   onSuggestion: (text: string) => void;
-  renderBotText: (msg: ChatbotMessage) => React.ReactNode;
+  renderBotText: (msg: ChatbotMessage, isFormStale?: boolean) => React.ReactNode;
 }
 
 export default function ChatbotPanel({
@@ -65,6 +65,14 @@ export default function ChatbotPanel({
   // Latest message id of ANY kind — chips deactivate as soon as anything newer
   // exists (user text, a chip pick, or a bot reply).
   const latestId = messages.reduce((max, m) => Math.max(max, m.id), 0);
+  // Latest message id that still carries a [FORM_REQUIRED] marker: only the
+  // most recent request stays active. When the bot re-asks the same fields
+  // (e.g. the visitor skipped name/email), older forms collapse to a dimmed
+  // note so the same data can't be entered twice and the history stays clean.
+  const latestFormId = messages.reduce(
+    (max, m) => (/\[FORM_REQUIRED:/i.test(m.text) ? Math.max(max, m.id) : max),
+    0,
+  );
   const categoryOption = CHAT_CATEGORY_OPTIONS.find(option => option.value === category);
 
   // Fullscreen composer — a focused, padded overlay to write long messages
@@ -91,20 +99,15 @@ export default function ChatbotPanel({
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  // Right-edge curtain on the specialization bubbles: on mobile the row
-  // scrolls horizontally, so when it overflows we fade the last chip out to
-  // hint that more categories can be swiped to. Hidden on sm+ where there is
-  // usually enough room (and hover/scrollbars are the affordance).
-  const [catOverflow, setCatOverflow] = useState(false);
-  const catScrollRef = useRef<HTMLDivElement>(null);
+  // ── "Nuova chat" tooltip ──
+  // Explains that starting a new chat deletes the current one and lets you
+  // pick a specialization from the welcome bubbles. Temporary on mobile
+  // (auto-hides after 5s), hover on desktop.
+  const [showResetTip, setShowResetTip] = useState(true);
+  const [resetTipHover, setResetTipHover] = useState(false);
   useEffect(() => {
-    const el = catScrollRef.current;
-    if (!el) return;
-    const check = () => setCatOverflow(el.scrollWidth > el.clientWidth + 8);
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
+    const timer = setTimeout(() => setShowResetTip(false), 5000);
+    return () => clearTimeout(timer);
   }, []);
 
   const [showTip, setShowTip] = useState(true);
@@ -133,45 +136,25 @@ export default function ChatbotPanel({
       ? 'Iniciar nuevo chat — se eliminará la conversación actual'
       : 'Start a new chat — the current conversation will be deleted';
 
-  const categoryTooltip = (label: string) => lang === 'it'
-    ? `Passa alla specializzazione ${label} — avvierà una nuova chat`
-    : lang === 'es'
-      ? `Cambia a la especialización ${label} — iniciará un nuevo chat`
-      : `Switch to the ${label} specialization — it will start a new chat`;
-
-  /** Specialization selector — always visible, one category at a time. */
-  const specializationBar = (
-    <div className="w-full">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-teal-400/80">{t('chat.category_label', lang)}</span>
-        <span className="text-[10px] text-neutral-600">{t('chat.category_single', lang)}</span>
-      </div>
-      <div className="relative">
-        <div ref={catScrollRef} className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" role="radiogroup" aria-label={t('chat.category_label', lang)}>
-          {CHAT_CATEGORY_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={category === option.value}
-              title={categoryTooltip(t(option.labelKey, lang))}
-              disabled={chatBlocked}
-              onClick={() => onSelectCategory(option.value)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-all touch-manipulation disabled:cursor-not-allowed disabled:opacity-40 ${category === option.value
-                ? 'border-teal-400/50 bg-teal-400/15 text-teal-300 shadow-[0_0_14px_rgba(45,212,191,0.12)]'
-                : 'border-white/[0.08] bg-white/[0.03] text-neutral-500 hover:border-white/20 hover:text-neutral-200'
-                }`}
-            >
-              {t(option.labelKey, lang)}
-            </button>
-          ))}
-        </div>
-        {/* Right curtain — fades the last chip out to hint at more categories */}
-        {catOverflow && (
-          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 sm:hidden bg-gradient-to-l from-[#010101] via-[#010101]/70 to-transparent" />
-        )}
-      </div>
-      <p className="text-[11px] leading-relaxed text-neutral-500">{t(categoryOption?.exampleKey ?? 'chat.example_software_web', lang)}</p>
+  /** Welcome specialization bubbles — the replacement for the old bar.
+      Choosing one does NOT post a user message: it picks the specialization
+      and the bot immediately replies (see selectChatCategory in HomeShell). */
+  const welcomeBubbles = (
+    <div className="mt-6 flex flex-wrap items-center justify-center gap-2" role="radiogroup" aria-label={t('chat.category_label', lang)}>
+      {CHAT_CATEGORY_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={category === option.value}
+          title={t(option.labelKey, lang)}
+          disabled={chatBlocked}
+          onClick={() => onSelectCategory(option.value)}
+          className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-medium text-neutral-300 transition-all touch-manipulation hover:border-teal-400/40 hover:bg-teal-400/[0.06] hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {t(option.labelKey, lang)}
+        </button>
+      ))}
     </div>
   );
 
@@ -179,18 +162,33 @@ export default function ChatbotPanel({
     <>
       <div className="w-full min-w-0 max-w-full flex flex-col flex-1 min-h-0">
         {/* Header row — "Nuova chat" sits ABOVE the messages (never overlaps
-            them or the curtain), so even the first bubble stays fully visible. */}
+            them or the curtain), so even the first bubble stays fully visible.
+            Its tooltip explains that a new chat deletes the current one and
+            lets you pick a specialization from the welcome bubbles (the old
+            specialization bar is gone). */}
         <div className="mb-2 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={onReset}
-            title={resetTitle}
-            aria-label={t('chat.new_chat', lang)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0f0f0f]/85 backdrop-blur-md px-3 py-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-[#0f0f0f] hover:text-neutral-300"
-          >
-            <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
-            <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={onReset}
+              title={resetTitle}
+              aria-label={t('chat.new_chat', lang)}
+              onMouseEnter={() => setResetTipHover(true)}
+              onMouseLeave={() => setResetTipHover(false)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0f0f0f]/85 backdrop-blur-md px-3 py-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-[#0f0f0f] hover:text-neutral-300"
+            >
+              <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
+              <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
+            </button>
+            {/* Tooltip — 5s on mount (mobile), hover on desktop */}
+            {(showResetTip || resetTipHover) && (
+              <div className="pointer-events-none absolute right-0 top-full mt-2 z-20 w-max max-w-[240px]">
+                <div className="rounded-xl border border-white/[0.08] bg-black/85 px-3 py-2 text-[11px] leading-snug text-neutral-400 shadow-xl backdrop-blur-md">
+                  {t('chat.new_chat_tip', lang)}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Messages — scrollable history under a black curtain, no window chrome.
@@ -207,10 +205,13 @@ export default function ChatbotPanel({
             {messages.length === 0 && !typing ? (
               /* Top-anchored (not centered) so the welcome message sits right
                  under the "Nuova chat" header instead of leaving a big empty
-                 gap in the middle of the section. */
+                 gap in the middle of the section. Short intro + centered
+                 specialization bubbles — the old long welcome text and the
+                 bottom bar are gone. */
               <div className="flex min-h-full flex-col items-center justify-start px-6 pt-2 sm:pt-6 pb-10 text-center">
                 <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">{t('chat.empty_heading', lang)}</h3>
-                <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-400">{t('bot.welcome_category', lang).replace(/\*\*/g, '')}</p>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-neutral-400">{t('chat.welcome_short', lang)}</p>
+                {welcomeBubbles}
               </div>
             ) : (
               // Bottom-anchored stack: messages grow upward from just above
@@ -224,6 +225,9 @@ export default function ChatbotPanel({
                   const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
                   const suggestions = suggMatch ? suggMatch[1].split('|').map(s => s.trim()).filter(Boolean) : [];
                   const isStale = msg.id !== latestId;
+                  // A form is stale when a NEWER message re-asks the fields.
+                  const hasForm = /\[FORM_REQUIRED:/i.test(msg.text ?? '');
+                  const isFormStale = hasForm && msg.id !== latestFormId;
                   return (
                     <div key={msg.id} className={msg.sender === 'bot' ? 'animate-bot-msg-in motion-safe:animate-bot-msg-in' : ''}>
                       <div className={`flex items-start gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -238,8 +242,8 @@ export default function ChatbotPanel({
                           }`}
                         >
                           {msg.sender === 'bot' && msg.text
-                            ? (<React.Fragment>
-                                {renderBotText(msg)}
+                            ? (                              <React.Fragment>
+                                {renderBotText(msg, isFormStale)}
                                 {/* Blinking writing caret while the reply is still streaming in */}
                                 {typing && msg.id === latestId && (
                                   <span className="bot-typing-caret" aria-hidden="true" />
@@ -387,19 +391,7 @@ export default function ChatbotPanel({
           </div>
         </div>
 
-        {/* Specializations under the input bar while the chat is still empty */}
-        {!chatStarted && (
-          <div className="shrink-0 pt-4 sm:pt-5">
-            {specializationBar}
-          </div>
-        )}
       </div>
-
-      {/* Once a specialization is chosen the bar moves to the bottom of the
-          section; the section's own pb gives it whitespace below the bubbles. */}
-      {chatStarted && (
-        <div className="shrink-0 mt-4 sm:mt-6">{specializationBar}</div>
-      )}
 
       {/* ── Fullscreen composer — the same liquid-glass bar, extended ── */}
       {composerOpen && (

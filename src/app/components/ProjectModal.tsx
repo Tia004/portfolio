@@ -182,12 +182,12 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
       aria-label={project.title}
     >
       {/* Backdrop — full-viewport backdrop-blur(24px) over the whole page
-          while the body is composited (position:fixed scroll-lock) is a known
-          GPU-crash trigger on phones (Samsung/Android renderer kill → the tab
-          restarts). Below sm we drop the blur and use a near-opaque dark so
-          the modal interaction can never spike the GPU; sm+ keeps the glass. */}
+          while the body is composited (position:fixed scroll-lock) can spike
+          the GPU on low-end phones (Samsung/Android renderer kill → the tab
+          restarts). Mobile uses a moderate 12px blur over a darker base:
+          still visibly glassy but far cheaper than 24px; sm+ keeps 24px. */}
       <div
-        className="fixed inset-0 bg-black/85 sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
         onClick={handleBackdrop}
       />
 
@@ -198,8 +198,8 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         style={{ transform: `translateY(${swipeOffset}px)`, transition: isSwiping ? 'none' : 'transform 0.3s cubic-bezier(0.16,1,0.3,1)' }}
       >
         
-        {/* ── Floating actions (top-right): fullscreen + close ── */}
-        <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 z-20 flex items-center gap-2">
+        {/* ── Floating actions (top-right, INSIDE the window): fullscreen + close ── */}
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setFullscreen(true)}
@@ -227,7 +227,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
             backdrop-blur-xl surface over the composited body (position:fixed
             scroll-lock + Lenis) is a known GPU-crash trigger on phones; the
             same reason the full-viewport backdrop drops the blur on mobile. */}
-        <div className="flex-1 lg:flex-[3] relative bg-white/[0.06] sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.07] shadow-2xl shadow-black/40 min-h-0">
+        <div className="flex-1 lg:flex-[3] relative bg-white/[0.06] backdrop-blur-md sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl overflow-hidden border border-white/[0.07] shadow-2xl shadow-black/40 min-h-0">
           {hasGallery ? (
             <div
               role="region"
@@ -372,7 +372,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
               {iframeLoaded && (
                 <>
                   {iframeLoading && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/70 sm:bg-white/[0.03] sm:backdrop-blur-xl">
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-black/70 backdrop-blur-md sm:bg-white/[0.03] sm:backdrop-blur-xl">
                       <div className="h-10 w-10 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
                       <div className="h-3 w-32 animate-pulse rounded-full bg-white/[0.06]" />
                     </div>
@@ -387,7 +387,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Side Panel: Project info (bento card) — data-lenis-prevent so Lenis skips preventDefault on wheel events ── */}
         <div className="flex flex-col lg:w-[320px] xl:w-[380px] shrink-0">
           {/* Scrollable content — glass blur only from sm+ (see main panel) */}
-          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.06] sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
+          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.06] backdrop-blur-md sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
             {/* Content */}
             <div>
             {/* ── Section 0: Title & Tags ── */}
@@ -535,7 +535,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Mobile Index Overlay ── */}
         {showIndex && (
           <div
-            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/60 lg:hidden"
+            className="fixed inset-0 z-[10020] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md lg:hidden"
             onClick={() => setShowIndex(false)}
           >
             <div

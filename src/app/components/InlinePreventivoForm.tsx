@@ -20,6 +20,10 @@ interface InlinePreventivoFormProps {
   missingFields: string[];
   sliders?: SliderConfig[];
   onSubmit: (data: { name: string; email: string; service: string; sliders?: Record<string, number> }) => void;
+  /** When a newer message re-asks the same fields, the old form is
+      deactivated so the visitor can't enter the same data twice and the
+      history stays clean. Disabled forms collapse to a small dimmed note. */
+  disabled?: boolean;
 }
 
 const SERVICE_OPTIONS = [
@@ -36,7 +40,7 @@ const SERVICE_OPTIONS = [
   { value: 'Altro', labelKey: 'servizi.option_other' },
 ];
 
-export default function InlinePreventivoForm({ missingFields, sliders, onSubmit }: InlinePreventivoFormProps) {
+export default function InlinePreventivoForm({ missingFields, sliders, onSubmit, disabled = false }: InlinePreventivoFormProps) {
   const { lang } = useLanguage();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -76,6 +80,14 @@ export default function InlinePreventivoForm({ missingFields, sliders, onSubmit 
       <div className="mt-3 flex items-center gap-3 rounded-xl border border-teal-500/20 bg-teal-500/[0.06] p-4">
         <TiaIcon icon={CheckmarkCircle01Icon} size={20} className="shrink-0 text-teal-400" strokeWidth={2} />
         <span className="text-sm font-medium text-teal-300">{tInline('bot.details_saved', lang)}</span>
+      </div>
+    );
+  }
+
+  if (disabled) {
+    return (
+      <div className="mt-3 rounded-xl border border-white/[0.05] bg-white/[0.02] p-4">
+        <p className="text-xs text-neutral-600">{tInline('bot.form_obsolete', lang)}</p>
       </div>
     );
   }
@@ -187,6 +199,7 @@ function tInline(key: string, lang: 'it' | 'en' | 'es'): string {
     'bot.invalid_service': { it: 'Seleziona un servizio per continuare.', en: 'Select a service to continue.', es: 'Selecciona un servicio para continuar.' },
     'bot.details_saved': { it: 'Perfetto, ora completo il preventivo personalizzato.', en: 'Perfect, I will now complete your personalised quote.', es: 'Perfecto, ahora completaré tu presupuesto personalizado.' },
     'bot.complete_details': { it: 'Mi servono ancora questi dati per preparare il preventivo:', en: 'I still need these details to prepare your quote:', es: 'Todavía necesito estos datos para preparar tu presupuesto:' },
+    'bot.form_obsolete': { it: 'Questi campi non sono più attivi — i dati sono stati richiesti di nuovo sotto.', en: 'These fields are no longer active — the data was requested again below.', es: 'Estos campos ya no están activos — los datos se volvieron a pedir abajo.' },
     'bot.continue_quote': { it: 'Continua la chat', en: 'Continue the chat', es: 'Continuar el chat' },
     'contatti.placeholder_name': { it: 'Il tuo nome', en: 'Your name', es: 'Tu nombre' },
     'contatti.placeholder_email': { it: 'tua@email.com', en: 'your@email.com', es: 'tu@email.com' },
