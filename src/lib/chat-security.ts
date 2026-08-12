@@ -10,8 +10,14 @@ const MAX_MESSAGE_CHARS = 8_000;
 // Cap the transcript sent to the model: each historical turn consumes the
 // Groq/Gemini per-minute token quota (TPM), so a long conversation would
 // otherwise exhaust the budget and trigger the static fallback mid-chat.
-const MAX_AI_HISTORY = 14;
-const MAX_AI_INPUT_CHARS = 24_000;
+// The cap must still fit a full guided flow (welcome → category → drill-down
+// → interlude → budget → name/email → recap ≈ 18 messages), so overflow is
+// trimmed from the head (oldest) rather than rejecting the whole request.
+const MAX_AI_HISTORY = 22;
+// Total transcript budget in chars. ~12K chars ≈ 3.2K tokens, which combined
+// with the ~1.5K-token system prompt keeps a single turn under Groq's
+// 6K TPM free-tier budget instead of blowing it in one request.
+const MAX_AI_INPUT_CHARS = 12_000;
 
 interface ChatSessionPayload {
   sid: string;
@@ -156,20 +162,26 @@ export function sanitizeChatText(value: unknown, maxChars = MAX_MESSAGE_CHARS): 
 }
 
 export function sanitizeChatMessages(input: unknown): { role: 'user' | 'assistant'; content: string }[] {
-  if (!Array.isArray(input) || input.length > MAX_AI_HISTORY) return [];
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [];
+  if (!Array.isArray(input)) return [];
+  // Walk from the NEWEST message backward so the latest user input is always
+  // kept: dropping old history only trims what the model sees, but dropping
+  // the newest message would make the bot answer to stale context. The recap
+  // still works because the structured quoteDraft (name/email/service/budget/
+  // _sliders) is sent alongside.
+  const newest: { role: 'user' | 'assistant'; content: string }[] = [];
   let total = 0;
-  for (const item of input) {
+  for (let i = input.length - 1; i >= 0; i--) {
+    const item = input[i];
     if (!item || typeof item !== 'object') continue;
     const candidate = item as { role?: unknown; content?: unknown };
     const role = candidate.role === 'assistant' ? 'assistant' : candidate.role === 'user' ? 'user' : null;
     const content = sanitizeChatText(candidate.content, MAX_MESSAGE_CHARS);
     if (!role || !content) continue;
     total += content.length;
-    if (total > MAX_AI_INPUT_CHARS) break;
-    messages.push({ role, content });
+    if (total > MAX_AI_INPUT_CHARS || newest.length >= MAX_AI_HISTORY) break;
+    newest.push({ role, content });
   }
-  return messages;
+  return newest.reverse();
 }
 
 export function sanitizeQuoteDraft(input: unknown): Record<string, string> {
