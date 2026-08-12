@@ -1688,23 +1688,39 @@ export default function HomeShell() {
           try { sessionStorage.setItem('tia_bot_blocked_until', String(until)); } catch { /* ignore */ }
         }
       }
-      // The budget slider must NEVER share a bubble with the name/email form. If
-      // the model merged both markers into one message, split them: the slider
-      // gets its own dedicated bot message right before this one, which keeps
-      // only the form fields.
+      // ── Interaction normalization ──
+      // Each step (suggestions, budget slider, name/email form, recap) must
+      // live in its OWN dedicated message, in flow order. The AI sometimes
+      // merges several steps into one response (budget slider + style bubbles,
+      // or recap + leftover drill-down chips): a slider buried next to a
+      // question is never used, and chips next to the form only confuse the
+      // visitor. Split them here so every interaction stays usable.
+      const suggMarkersInFull = full.match(/\[SUGGESTIONS:[^\]]*\]/gi) ?? [];
       const sliderMarkersInFull = full.match(/\[SLIDER:[^\]]*\]/gi) ?? [];
-      const splitSliderForm = Boolean(formRequiredMatch && sliderMarkersInFull.length > 0);
+      const hasSugg = suggMarkersInFull.length > 0;
+      const hasSlider = sliderMarkersInFull.length > 0;
+      const hasForm = Boolean(formRequiredMatch);
+      const hasRecap = Boolean(preventivoMatch);
+      // The budget slider never shares a bubble with anything else: when it is
+      // merged with bubbles, the form or the recap, it gets its own message.
+      const splitSliderMsg = hasSlider && (hasSugg || hasForm || hasRecap);
+      // Chips merged into a form/recap message are stale or wrong-category:
+      // drop them so they never appear next to the name/email fields.
+      const dropSugg = hasSugg && (hasForm || hasRecap);
       let displayText = full;
       let parsedPrefill: Record<string, string> | undefined;
       let requiresApproval = false;
-      if (splitSliderForm) {
-        // Strip the slider markers here so only the name/email form renders;
-        // the slider is re-emitted as its own message immediately before this.
-        displayText = full.replace(/\[SLIDER:[^\]]*\]/gi, '').trim();
-      } else if (formRequiredMatch) {
+      if (dropSugg) {
+        displayText = displayText.replace(/\[SUGGESTIONS:[^\]]*\]/gi, '').trim();
+      }
+      if (splitSliderMsg) {
+        // The slider is re-emitted as its own dedicated message below.
+        displayText = displayText.replace(/\[SLIDER:[^\]]*\]/gi, '').trim();
+      }
+      if (formRequiredMatch) {
         // Keep the private marker in state so renderBotMessage can mount the
         // friendly inline fields; it is stripped before rendering.
-        displayText = full;
+        displayText = displayText;
       } else if (preventivoMatch) {
         try {
           const prefill = JSON.parse(preventivoMatch[1]);
@@ -1757,10 +1773,11 @@ export default function HomeShell() {
           }
         } catch { /* invalid JSON, ignore */ }
       }
-      // Dedicated budget/slider message, inserted BEFORE the form message so
-      // the flow order (budget first, then name/email) is preserved. The ids are
+      // Dedicated budget/slider message, inserted so the flow order is
+      // preserved: BEFORE the form/recap (budget first), but AFTER a merged
+      // suggestions question (requirements first, then budget). The ids are
       // reserved outside the updater to avoid side effects inside it.
-      const sliderMsgId = splitSliderForm ? botNextIdRef.current++ : 0;
+      const sliderMsgId = splitSliderMsg ? botNextIdRef.current++ : 0;
       const blockMsgId = blockTriggered ? botNextIdRef.current++ : 0;
       // The [OFFTOPIC] marker is private — strip it from what the visitor sees.
       const finalDisplayText = displayText.replace(/\[OFFTOPIC\]/gi, '').trim();
@@ -1772,14 +1789,17 @@ export default function HomeShell() {
           requiresApproval,
           approvalState: requiresApproval ? 'pending' : undefined,
         } : m);
-        if (splitSliderForm) {
+        if (splitSliderMsg) {
           const sliderMsg: typeof botMessages[number] = {
             id: sliderMsgId,
             text: `${t('bot.budget_ask', lang)}\n\n${sliderMarkersInFull.join('\n')}`,
             sender: 'bot',
           };
           const idx = updated.findIndex(m => m.id === replyId);
-          updated.splice(idx < 0 ? updated.length : idx, 0, sliderMsg);
+          // After a merged question (bubbles + slider) the slider goes AFTER
+          // the question; next to the form/recap it goes BEFORE it.
+          const insertAt = hasSugg && !hasForm && !hasRecap ? idx + 1 : idx;
+          updated.splice(insertAt < 0 ? updated.length : insertAt, 0, sliderMsg);
         }
         if (blockTriggered) {
           // Inform the visitor that the chat is paused for 30 minutes.
