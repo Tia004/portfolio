@@ -7,7 +7,10 @@ const SESSION_TTL_SECONDS = 24 * 60 * 60;
 const RATE_WINDOW_MS = 60_000;
 const BLOCK_MS = 15 * 60_000;
 const MAX_MESSAGE_CHARS = 8_000;
-const MAX_AI_HISTORY = 24;
+// Cap the transcript sent to the model: each historical turn consumes the
+// Groq/Gemini per-minute token quota (TPM), so a long conversation would
+// otherwise exhaust the budget and trigger the static fallback mid-chat.
+const MAX_AI_HISTORY = 14;
 const MAX_AI_INPUT_CHARS = 24_000;
 
 interface ChatSessionPayload {
