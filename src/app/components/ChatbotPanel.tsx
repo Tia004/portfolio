@@ -14,6 +14,10 @@ export interface ChatbotMessage {
   prefill?: Record<string, string>;
   requiresApproval?: boolean;
   approvalState?: 'pending' | 'approved' | 'revising';
+  /** True when this message carries an input (budget slider, name/email form
+      or recap): suggestion chips must NEVER render under those — a stray
+      bubble there re-proposes the field below it. */
+  noChips?: boolean;
 }
 
 // Known option labels per specialization and language. Used as a fallback so
@@ -288,11 +292,12 @@ export default function ChatbotPanel({
                   // Extract suggestion chips from bot messages. Primary source
                   // is the [SUGGESTIONS:...] marker; when the AI wrote the
                   // options as a plain-text list instead, detect the known
-                  // labels so the bubbles ALWAYS appear.
-                  const suggMatch = msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
+                  // labels so the bubbles ALWAYS appear. Messages that carry
+                  // an input (slider/form/recap) NEVER show chips.
+                  const suggMatch = !msg.noChips && msg.sender === 'bot' && msg.text ? msg.text.match(/\[SUGGESTIONS:([^\]]+)\]/i) : null;
                   const suggestions = suggMatch
                     ? suggMatch[1].split('|').map(s => s.trim()).filter(Boolean)
-                    : msg.sender === 'bot' && msg.text
+                    : !msg.noChips && msg.sender === 'bot' && msg.text
                       ? detectPlainTextSuggestions(msg.text, category, lang)
                       : [];
                   const isStale = msg.id !== latestId;

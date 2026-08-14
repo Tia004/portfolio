@@ -126,7 +126,7 @@ export default function InlinePreventivoForm({ missingFields, sliders, onSubmit,
             <TiaIcon icon={UserIcon} size={14} className={fieldError('name') ? 'shrink-0 text-red-400' : 'shrink-0 text-neutral-500'} strokeWidth={1.5} />
             <input
               type="text"
-              placeholder={tInline('contatti.placeholder_name', lang)}
+              placeholder={tInline('bot.placeholder_fullname', lang)}
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -201,6 +201,7 @@ function tInline(key: string, lang: 'it' | 'en' | 'es'): string {
     'bot.complete_details': { it: 'Mi servono ancora questi dati per preparare il preventivo:', en: 'I still need these details to prepare your quote:', es: 'Todavía necesito estos datos para preparar tu presupuesto:' },
     'bot.form_obsolete': { it: 'Questi campi non sono più attivi — i dati sono stati richiesti di nuovo sotto.', en: 'These fields are no longer active — the data was requested again below.', es: 'Estos campos ya no están activos — los datos se volvieron a pedir abajo.' },
     'bot.continue_quote': { it: 'Continua la chat', en: 'Continue the chat', es: 'Continuar el chat' },
+    'bot.placeholder_fullname': { it: 'Il tuo nome e cognome', en: 'Your first and last name', es: 'Tu nombre y apellidos' },
     'contatti.placeholder_name': { it: 'Il tuo nome', en: 'Your name', es: 'Tu nombre' },
     'contatti.placeholder_email': { it: 'tua@email.com', en: 'your@email.com', es: 'tu@email.com' },
     'contatti.select': { it: 'Seleziona un servizio', en: 'Select a service', es: 'Selecciona un servicio' },

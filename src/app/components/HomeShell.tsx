@@ -1336,13 +1336,29 @@ export default function HomeShell() {
               if (sliderData && Object.keys(sliderData).length > 0) {
                 collected._sliders = JSON.stringify(sliderData);
               }
-              // Keep these details private to the conversation. The real
-              // contact form is populated only after explicit quote approval.
               quoteDraftRef.current = { ...quoteDraftRef.current, ...collected };
-              // Continue the quote naturally in the AI chat. The collected
-              // fields travel privately in `quoteDraft`; no internal labels or
-              // form payload are shown as a user message.
-              sendBotMessage('Prepare the personalised quote using the details already collected.', { quoteDraft: quoteDraftRef.current, displayUserMessage: false });
+              // Send a REAL user message with the collected values (friendly,
+              // localized) instead of a hidden instruction: the model sees the
+              // actual name/email/budget in the transcript, so it never re-asks
+              // for fields that are already filled — that was the source of the
+              // infinite name/email loop. The values also travel privately in
+              // `quoteDraft` for the recap guard and the email chips.
+              const bits: string[] = [];
+              if (sliderData && typeof sliderData.budget === 'number' && Number.isFinite(sliderData.budget)) {
+                bits.push(t('bot.budget_submitted', lang).replace(/\{value\}/g, () => String(Math.round(sliderData.budget))));
+              }
+              if (filtered.name && filtered.email) {
+                bits.push(
+                  t('bot.identity_submitted', lang)
+                    .replace(/\{name\}/g, () => filtered.name)
+                    .replace(/\{email\}/g, () => filtered.email)
+                );
+              } else {
+                if (filtered.name) bits.push(t('bot.name_submitted', lang).replace(/\{name\}/g, () => filtered.name));
+                if (filtered.email) bits.push(t('bot.email_submitted', lang).replace(/\{email\}/g, () => filtered.email));
+              }
+              const submittedMsg = bits.join(' ') || t('bot.details_saved', lang);
+              sendBotMessage(submittedMsg, { quoteDraft: quoteDraftRef.current, displayUserMessage: true });
             }}
           />
         </>
@@ -1413,6 +1429,8 @@ export default function HomeShell() {
     prefill?: Record<string, string>;
     requiresApproval?: boolean;
     approvalState?: 'pending' | 'approved' | 'revising';
+    /** Messages carrying an input (slider/form/recap) never render chips. */
+    noChips?: boolean;
   }[]>([]);
   const [botTyping, setBotTyping] = useState(false);
   const [approvalSendingId, setApprovalSendingId] = useState<number | null>(null);
@@ -1704,9 +1722,14 @@ export default function HomeShell() {
       // The budget slider never shares a bubble with anything else: when it is
       // merged with bubbles, the form or the recap, it gets its own message.
       const splitSliderMsg = hasSlider && (hasSugg || hasForm || hasRecap);
-      // Chips merged into a form/recap message are stale or wrong-category:
-      // drop them so they never appear next to the name/email fields.
-      const dropSugg = hasSugg && (hasForm || hasRecap);
+      // Chips merged into a slider/form/recap message are stale or
+      // wrong-category: drop them so they NEVER appear next to the budget
+      // slider or the name/email fields (a stray bubble under those inputs
+      // makes the fields get re-proposed — the loop the user hit).
+      const dropSugg = hasSugg && (hasSlider || hasForm || hasRecap);
+      // Messages that carry an input (slider, form, recap) must never render
+      // suggestion chips at all — not even detected plain-text ones.
+      const noChipsOnMessage = hasSlider || hasForm || hasRecap;
       let displayText = full;
       let parsedPrefill: Record<string, string> | undefined;
       let requiresApproval = false;
@@ -1788,12 +1811,14 @@ export default function HomeShell() {
           prefill: parsedPrefill,
           requiresApproval,
           approvalState: requiresApproval ? 'pending' : undefined,
+          noChips: noChipsOnMessage,
         } : m);
         if (splitSliderMsg) {
           const sliderMsg: typeof botMessages[number] = {
             id: sliderMsgId,
             text: `${t('bot.budget_ask', lang)}\n\n${sliderMarkersInFull.join('\n')}`,
             sender: 'bot',
+            noChips: true,
           };
           const idx = updated.findIndex(m => m.id === replyId);
           // After a merged question (bubbles + slider) the slider goes AFTER
