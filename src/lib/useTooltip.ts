@@ -10,8 +10,15 @@ interface UseTooltipOptions {
 interface TooltipHandlers {
   onPointerEnter: (e: React.PointerEvent<HTMLElement>) => void;
   onPointerLeave: (e: React.PointerEvent<HTMLElement>) => void;
+  onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
   onPointerUp: (e: React.PointerEvent<HTMLElement>) => void;
 }
+
+// Max movement (CSS px) between pointerdown and pointerup for a gesture to
+// count as a tap. Beyond this it's a drag/scroll — even on browsers that
+// don't fire pointercancel reliably, a scroll started on the trigger must
+// never open (or close) the tooltip.
+const TAP_SLOP = 12;
 
 /**
  * useTooltip — incapsula la logica di show/hide con delay per tooltip.
@@ -101,9 +108,24 @@ export function useTooltip(
         activeElRef.current = null;
         hideWithDelay();
       },
+      onPointerDown(e) {
+        if (e.pointerType !== 'touch') return;
+        // Remember where the gesture started so pointerup can tell a real tap
+        // from a drag/scroll (see TAP_SLOP).
+        const el = e.currentTarget as HTMLElement;
+        el.dataset.tipDownX = String(e.clientX);
+        el.dataset.tipDownY = String(e.clientY);
+      },
       onPointerUp(e) {
         if (e.pointerType !== 'touch') return;
         const el = e.currentTarget as HTMLElement;
+        const dx = e.clientX - Number(el.dataset.tipDownX ?? e.clientX);
+        const dy = e.clientY - Number(el.dataset.tipDownY ?? e.clientY);
+        delete el.dataset.tipDownX;
+        delete el.dataset.tipDownY;
+        // Dragged (scroll gesture) → never toggle; the browser's pointercancel
+        // already handled the scroll, this is a belt-and-braces guard.
+        if (Math.hypot(dx, dy) > TAP_SLOP) return;
         if (activeElRef.current === el) {
           activeElRef.current = null;
           onHide();
