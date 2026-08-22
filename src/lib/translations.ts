@@ -29,6 +29,7 @@ const it: Dict = {
   // Navbar
   'nav.servizi': 'Servizi',
   'nav.prezzi': 'Prezzi',
+  'nav.processo': 'Processo',
   'nav.progetti': 'Progetti',
   'nav.chisono': 'Chi sono',
   'nav.recensioni': 'Recensioni',
@@ -200,6 +201,7 @@ const it: Dict = {
   'footer.video_making': 'Video Making',
   'footer.consulenza': 'Consulenza',
   'footer.progetti': 'Progetti',
+  'footer.processo': 'Processo',
   'footer.prezzi': 'Prezzi',
   'footer.recensioni': 'Recensioni',
   'footer.faq_link': 'FAQ',
@@ -327,6 +329,7 @@ const it: Dict = {
 const en: Dict = {
   'nav.servizi': 'Services',
   'nav.prezzi': 'Pricing',
+  'nav.processo': 'Process',
   'nav.progetti': 'Projects',
   'nav.chisono': 'About',
   'nav.recensioni': 'Reviews',
@@ -487,6 +490,7 @@ const en: Dict = {
   'footer.video_making': 'Video Making',
   'footer.consulenza': 'Consulting',
   'footer.progetti': 'Projects',
+  'footer.processo': 'Process',
   'footer.prezzi': 'Pricing',
   'footer.recensioni': 'Reviews',
   'footer.faq_link': 'FAQ',
@@ -608,6 +612,7 @@ const en: Dict = {
 const es: Dict = {
   'nav.servizi': 'Servicios',
   'nav.prezzi': 'Precios',
+  'nav.processo': 'Proceso',
   'nav.progetti': 'Proyectos',
   'nav.chisono': 'Sobre mí',
   'nav.recensioni': 'Reseñas',
@@ -768,6 +773,7 @@ const es: Dict = {
   'footer.video_making': 'Producción Video',
   'footer.consulenza': 'Consultoría',
   'footer.progetti': 'Proyectos',
+  'footer.processo': 'Proceso',
   'footer.prezzi': 'Precios',
   'footer.recensioni': 'Reseñas',
   'footer.faq_link': 'FAQ',

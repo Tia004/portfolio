@@ -371,6 +371,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
             <ul className="space-y-2">
               {[
                 { key: 'footer.progetti', href: '#progetti' },
+                { key: 'footer.processo', href: '#processo' },
                 { key: 'footer.prezzi', href: '#prezzi' },
                 { key: 'footer.recensioni', href: '#recensioni' },
                 { key: 'footer.faq_link', href: '#faq' },

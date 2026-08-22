@@ -14,6 +14,7 @@ import { SECTION_OFFSETS } from '@/lib/animation-theme';
 
 const NAV_ITEMS = [
   { key: 'servizi', href: '#servizi' },
+  { key: 'processo', href: '#processo' },
   { key: 'prezzi', href: '#prezzi' },
   { key: 'progetti', href: '#progetti' },
   { key: 'chisono', href: '#chisono' },
