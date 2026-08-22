@@ -378,6 +378,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
               <li>{t('footer.location', lang)}</li>
               <li><a href="mailto:info@tiadesigns.it" className="hover:text-white transition-colors">info@tiadesigns.it</a></li>
               <li><a href="tel:+393318821334" className="hover:text-white transition-colors">+39 331 882 1334</a></li>
+              <li>{t('contatti.vat_invoice', lang)}</li>
             </ul>
           </div>
         </div>

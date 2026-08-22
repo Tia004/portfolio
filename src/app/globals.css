@@ -109,6 +109,16 @@ html {
     var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
     transparent 100%
   );
+  /* Radial cap instead of a hard rectangle: an ellipse 3× wider than the band
+     and as tall as the section, anchored on the band's outer edge. The black
+     plateau (0→38%) keeps the fade fully opaque across the whole middle band
+     (where the marquee rows live) while the 38→50% ramp fades ONLY the top and
+     bottom ~12% to transparent — the curtain no longer looks "cut" at top/bottom
+     against the molten background, and the corners get a soft rounded falloff.
+     The horizontal fade into the page is still handled by the linear gradient
+     above. */
+  -webkit-mask-image: radial-gradient(ellipse 300% 100% at 0% 50%, black 0%, black 38%, transparent 50%);
+  mask-image: radial-gradient(ellipse 300% 100% at 0% 50%, black 0%, black 38%, transparent 50%);
 }
 
 .marquee-edge-curtain--right {
@@ -120,6 +130,25 @@ html {
     var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
     transparent 100%
   );
+  /* Mirrored radial cap — same ellipse anchored on the band's right edge. */
+  -webkit-mask-image: radial-gradient(ellipse 300% 100% at 100% 50%, black 0%, black 38%, transparent 50%);
+  mask-image: radial-gradient(ellipse 300% 100% at 100% 50%, black 0%, black 38%, transparent 50%);
+}
+
+/* Hero bottom curtain — the same radial treatment as the marquee curtains,
+   applied to the hero's bottom edge so the dark dither dissolves into the
+   molten background instead of ending with a hard line. The hero's dark base
+   + dither live in one container (.hero-bottom-curtain) that is MASKED away
+   toward the bottom; the section itself is transparent, so below the fade
+   the fixed molten layer shows through and the hero → sections transition
+   becomes seamless. The ellipse is anchored below the bottom edge
+   (at 50% 100%), transparent at the bottom (d = distance from that anchor)
+   and opaque at d ≥ 60% — the fade is tallest in the middle of the hero and
+   shorter at the corners, a curved organic dissolve that matches the molten
+   waves. Content (z-20) sits above the mask and is never faded. */
+.hero-bottom-curtain {
+  -webkit-mask-image: radial-gradient(ellipse 160% 45% at 50% 100%, transparent 0%, transparent 25%, black 60%, black 100%);
+  mask-image: radial-gradient(ellipse 160% 45% at 50% 100%, transparent 0%, transparent 25%, black 60%, black 100%);
 }
 
 /* FAQ edge curtains: narrower than the default marquee curtains so an expanded
@@ -720,4 +749,18 @@ img {
     radial-gradient(ellipse 60% 80% at 82% 18%, rgba(14, 255, 193, 0.07) 0%, rgba(14, 255, 193, 0) 55%),
     radial-gradient(ellipse 70% 60% at 15% 85%, rgba(5, 188, 142, 0.06) 0%, rgba(5, 188, 142, 0) 55%),
     #010101;
+}
+
+/* ── Apple-style language banner offset ──────────────────────── */
+/* When the geo-detected banner is up, LanguageProvider publishes the
+   banner height as --lang-banner-h on <html>; the fixed navbar slides
+   down (its top uses the same variable) and the hero gains matching top
+   padding so its content is never hidden under the banner. */
+.hero-banner-pad {
+  padding-top: calc(5rem + var(--lang-banner-h, 0px));
+}
+@media (min-width: 640px) {
+  .hero-banner-pad {
+    padding-top: var(--lang-banner-h, 0px);
+  }
 }

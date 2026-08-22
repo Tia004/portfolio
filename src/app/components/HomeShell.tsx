@@ -100,7 +100,7 @@ import CurvedInput from './CurvedInput';
 import MobileSnapSlider from './MobileSnapSlider';
 const FooterAnimation = dynamic(() => import('./FooterAnimation'), {
   ssr: false,
-  loading: () => <div className="h-[400px] bg-[#050505]" aria-hidden="true" />,
+  loading: () => <div className="h-[400px] bg-[rgba(6,10,10,0.4)]" aria-hidden="true" />,
 });
 import LegalModal from './LegalModal';
 import { getLegalDoc, type LegalDoc } from '@/lib/legal-content';
@@ -2223,7 +2223,7 @@ export default function HomeShell() {
   const renderReviewCard = (review: Review, key: string) => {
     const project = review.projectId ? projectById.get(review.projectId) : undefined;
     return (
-      <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} backgroundColor="#050505" edgeSensitivity={0} className="w-full">
+      <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
         <div
           className={`p-5 sm:p-6 ${project ? 'cursor-pointer' : ''}`}
           onClick={() => { if (project) setSelectedProject(project); }}
@@ -2348,8 +2348,8 @@ export default function HomeShell() {
   //    filtered projects in a row) and the desktop paginated grid. ──
   const renderProjectCard = (project: ProjectData) => (
     <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group h-full">
-      <div className="bg-[#0a0a0a] rounded-[20px] h-full flex flex-col overflow-hidden">
-        <div className="relative aspect-video w-full bg-[#0a0a0a] p-2.5 sm:p-3">
+      <div className="bg-white/[0.03] rounded-[20px] h-full flex flex-col overflow-hidden">
+        <div className="relative aspect-video w-full bg-white/[0.02] p-2.5 sm:p-3">
           <div className="w-full h-full overflow-hidden rounded-xl">
             <picture>
               {project.thumbnail.startsWith('/uploads/') && (
@@ -2527,7 +2527,11 @@ export default function HomeShell() {
               risposta, pagamento) sits comfortably ABOVE the floating CTA + chat
               bubble instead of being covered by them. Desktop keeps the original
               vertical centering (sm:items-center, no paddings). */}
-          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center bg-[#010101] pt-20 pb-56 sm:pt-0 sm:pb-0">
+          {/* Section is transparent: the dark base + dither live inside a
+              masked container (.hero-bottom-curtain) whose bottom edge fades
+              radially into the molten background — the hero no longer ends
+              with a hard line against the sections below. */}
+          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center hero-banner-pad pt-20 pb-56 sm:pt-0 sm:pb-0">
             {/* The dither: an always-rendered static teal texture guarantees
                 hero contrast on every device; the animated WebGL waves paint
                 over it where supported. It pauses rendering off-screen. */}
@@ -2535,6 +2539,7 @@ export default function HomeShell() {
                 luminous than the previous mint (G=0.72, B=0.62 → not too
                 green), pixelated via the per-channel 8x8 dither with
                 pixelSize 2. */}
+            <div className="absolute inset-0 z-0 hero-bottom-curtain" style={{ background: '#010101' }}>
             <Dither
               waveColor={[0.16470588235294117, 0.7176470588235294, 0.6235294117647059]}
               waveSpeed={0.07}
@@ -2545,6 +2550,7 @@ export default function HomeShell() {
               enableMouseInteraction={true}
               mouseRadius={0.1}
             />
+            </div>
 
             {/* Mobile-first sizing: the hero must read as a confident
                 statement, not a wall of text. Base sizes are tuned for a
@@ -3023,7 +3029,6 @@ export default function HomeShell() {
                                 glowRadius={22}
                                 glowIntensity={1.6}
                                 edgeSensitivity={0}
-                                backgroundColor="#0a0a0a"
                                 className="shrink-0 group"
                               >
                                 <div className="bg-white/[0.04] rounded-2xl px-5 py-3 flex items-center gap-3 flex-shrink-0 transition-colors duration-300 group-hover:bg-white/[0.08] cursor-default">
@@ -3110,8 +3115,8 @@ export default function HomeShell() {
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5">
                 {/* Fade top & bottom */}
-                <div className="absolute top-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-[#050505] via-[#050505]/80 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-transparent via-[#050505]/80 to-[#050505]" />                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
+                <div className="absolute top-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-[#060a0a] via-[#060a0a]/80 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-transparent via-[#060a0a]/80 to-[#060a0a]" />                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
                   <InfiniteSlider
                     gap={16}
                     duration={45}
@@ -3148,6 +3153,9 @@ export default function HomeShell() {
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('prezzi.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
                   {t('prezzi.subtitle', lang)}
+                </p>
+                <p className="text-neutral-500 mt-2 text-xs mx-auto">
+                  {t('prezzi.vat_note', lang)}
                 </p>
               </ScrollReveal>
 
@@ -3213,6 +3221,9 @@ export default function HomeShell() {
                   </ScrollReveal>
                 </div>
               ))}
+              {isMonthly && (
+                <p className="text-center text-xs text-neutral-500 mt-10 sm:mt-14">{t('prezzi.flex_note', lang)}</p>
+              )}
             </div>
           </section>
           </LazySection>
@@ -3222,25 +3233,25 @@ export default function HomeShell() {
             <div id="faq" className="scroll-mt-[9rem]">
             <FaqScroller
               mainTitle={t('faq.title', lang)}
-              mainSubtitle="Hai dei dubbi? Qui trovi le risposte alle domande più comuni. Se non trovi ciò che cerchi, scrivimi."
+              mainSubtitle={t('faq.subtitle', lang)}
               rows={[
                 {
                   id: 'row1',
                   speed: '55s',
                   direction: 'right',
-                  faqItems: FAQS.slice(0, 3).map((faq, i) => ({ id: `faq-row1-${i}`, question: faq.q, answer: faq.a })),
+                  faqItems: FAQS.slice(0, 7).map((faq, i) => ({ id: `faq-row1-${i}`, question: faq.q, answer: faq.a })),
                 },
                 {
                   id: 'row2',
                   speed: '48s',
                   direction: 'left',
-                  faqItems: FAQS.slice(3, 6).map((faq, i) => ({ id: `faq-row2-${i}`, question: faq.q, answer: faq.a })),
+                  faqItems: FAQS.slice(7, 14).map((faq, i) => ({ id: `faq-row2-${i}`, question: faq.q, answer: faq.a })),
                 },
                 {
                   id: 'row3',
                   speed: '62s',
                   direction: 'right',
-                  faqItems: FAQS.slice(6, 10).map((faq, i) => ({ id: `faq-row3-${i}`, question: faq.q, answer: faq.a })),
+                  faqItems: FAQS.slice(14, 20).map((faq, i) => ({ id: `faq-row3-${i}`, question: faq.q, answer: faq.a })),
                 },
               ]}
             />
@@ -3417,6 +3428,10 @@ export default function HomeShell() {
                         <TiaIcon icon={Clock01Icon} size={11} className="text-teal-400 shrink-0" strokeWidth={2} />
                         <span>{t('contatti.response_time', lang)}</span>
                       </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
+                        <TiaIcon icon={FilePenIcon} size={11} className="text-teal-400 shrink-0" strokeWidth={2} />
+                        <span>{t('contatti.vat_invoice', lang)}</span>
+                      </div>
                     </div>
                   </BorderGlow>
                 </div>
@@ -3477,7 +3492,7 @@ export default function HomeShell() {
               glowRadius={28}
               glowIntensity={1.4}
               edgeSensitivity={0}
-              backgroundColor="#0f0f0f"
+              backgroundColor="rgba(6, 10, 10, 0.62)"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >
@@ -3485,7 +3500,7 @@ export default function HomeShell() {
                   title-bar background to the rounded-2xl corners. The BorderGlow
                   lives on the parent card's pseudo-elements + .edge-light, which
                   are siblings — clipping this child never touches the glow. */}
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#0f0f0f] rounded-2xl overflow-hidden flex flex-col">
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[rgba(6,10,10,0.62)] rounded-2xl overflow-hidden flex flex-col">
                 {/* Title bar */}
                 <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
                   {/* Centered title */}

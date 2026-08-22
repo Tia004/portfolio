@@ -275,8 +275,12 @@ export default function Navbar() {
       {/* The modal title is padded (pl-16/pl-28 in the modals) to clear it.
           pointer-events-none on the strip, auto on the logo link itself, so
           the rest of the top bar never blocks clicks below. */}
+      {/* When the Apple-style language banner is up it publishes
+          --lang-banner-h on <html>; both fixed bars slide down below it and
+          back up when it closes (Apple-style "pushed" page). */}
       <div
         className="fixed top-0 left-0 right-0 z-[10040] pointer-events-none"
+        style={{ top: 'var(--lang-banner-h, 0px)', transition: 'top 500ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         <div
           className={`mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 ${
@@ -301,7 +305,10 @@ export default function Navbar() {
           close button stays clickable) but BELOW every modal (z-[10005]+):
           the X must never sit on top of a modal. A width-matching spacer on
           the left keeps the button right-aligned like the logo used to. */}
-      <header className={`fixed top-0 left-0 right-0 ${(menuVisible || closing) ? 'z-[10002]' : 'z-[9999]'}`}>
+      <header
+        className={`fixed top-0 left-0 right-0 ${(menuVisible || closing) ? 'z-[10002]' : 'z-[9999]'}`}
+        style={{ top: 'var(--lang-banner-h, 0px)', transition: 'top 500ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+      >
         <div
           className={`flex items-center justify-between mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 ${
             isScrolled

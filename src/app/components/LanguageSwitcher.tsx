@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from './LanguageProvider';
 
 const FULL_NAMES: Record<string, string> = {
@@ -16,7 +17,8 @@ const SHORT_NAMES: Record<string, string> = {
 };
 
 export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'clean' }) {
-  const { lang, setLang } = useLanguage();
+  const { lang } = useLanguage();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const isClean = variant === 'clean';
@@ -61,7 +63,7 @@ export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'c
             {Object.keys(FULL_NAMES).filter(code => code !== lang).map((code) => (
               <button
                 key={code}
-                onClick={() => { setLang(code as 'it' | 'en' | 'es'); setOpen(false); }}
+                onClick={() => { router.push(code === 'it' ? '/' : `/${code}`, { scroll: false }); setOpen(false); }}
                 className="whitespace-nowrap text-sm font-medium transition-colors text-white/50 hover:text-teal-400"
               >
                 {FULL_NAMES[code]}
@@ -94,7 +96,7 @@ export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'c
           {Object.keys(SHORT_NAMES).filter(code => code !== lang).map((code) => (
             <button
               key={code}
-              onClick={() => { setLang(code as 'it' | 'en' | 'es'); setOpen(false); }}
+              onClick={() => { router.push(code === 'it' ? '/' : `/${code}`, { scroll: false }); setOpen(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all text-white/80 hover:bg-white/[0.08] hover:text-white"
             >
               <span className="text-sm leading-none">{code === 'it' ? '🇮🇹' : code === 'en' ? '🇬🇧' : '🇪🇸'}</span>

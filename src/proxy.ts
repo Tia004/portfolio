@@ -8,23 +8,10 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get('master_session')?.value;
   const { pathname } = request.nextUrl;
 
-  // 0. Language-prefixed routes: /en or /es → set cookie + redirect to /
-  // This gives Google distinct URLs per language for hreflang SEO
-  const langMatch = pathname.match(/^\/(en|es)(\/.*)?$/);
-  if (langMatch) {
-    const lang = langMatch[1];
-    const homeUrl = new URL('/', request.url);
-    const response = NextResponse.redirect(homeUrl);
-    // Cookie name mirrors LanguageProvider.getCookieKey(): __Host-lang on HTTPS, lang on HTTP
-    const cookieName = request.url.startsWith('https') ? '__Host-lang' : 'lang';
-    response.cookies.set(cookieName, lang, {
-      path: '/',
-      maxAge: 365 * 24 * 60 * 60,
-      sameSite: 'lax',
-      secure: request.url.startsWith('https'),
-    });
-    return response;
-  }
+  // Language from the URL path (/en, /es) — these are real pages now (no
+  // redirect), so CrUX can collect per-language metrics on distinct URLs.
+  const langMatch = pathname.match(/^\/(en|es)\/?$/);
+  const pathLang = langMatch ? langMatch[1] : null;
 
   // Decrypt session safely using edge-compatible jose library
   const session = token ? await decrypt(token) : null;
@@ -45,12 +32,24 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 3. Pass language cookie to server components via x-lang header
-  // Tries __Host-lang (production) first, then lang (development/legacy)
+  // 3. Pass language to server components via x-lang header.
+  // Priority: URL path (/en, /es) > cookie (persisted preference on /).
   const response = NextResponse.next();
   const langCookie = request.cookies.get('__Host-lang')?.value || request.cookies.get('lang')?.value;
-  if (langCookie && VALID_LANGS.has(langCookie)) {
-    response.headers.set('x-lang', langCookie);
+  const lang = pathLang || (langCookie && VALID_LANGS.has(langCookie) ? langCookie : null);
+  if (lang) {
+    response.headers.set('x-lang', lang);
+  }
+
+  // Persist a path-based language choice so a later visit to / defaults to it.
+  if (pathLang) {
+    const cookieName = request.url.startsWith('https') ? '__Host-lang' : 'lang';
+    response.cookies.set(cookieName, pathLang, {
+      path: '/',
+      maxAge: 365 * 24 * 60 * 60,
+      sameSite: 'lax',
+      secure: request.url.startsWith('https'),
+    });
   }
 
   return response;

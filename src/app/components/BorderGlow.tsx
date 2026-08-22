@@ -86,7 +86,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   edgeSensitivity = 0,
   style,
   glowColor = '170 80 50',
-  backgroundColor = '#0a0a0a',
+  backgroundColor = 'rgba(6, 10, 10, 0.62)',
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 2.0,

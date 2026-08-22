@@ -12,10 +12,27 @@
   isolation: isolate;
   display: grid;
   border: 1px solid rgb(255 255 255 / 10%);
-  background: var(--card-bg, #0a0a0a);
+  /* Liquid-glass card: translucent dark tint (darker than the chatbot text
+     bar's white/6) so the molten background glows through, soft backdrop
+     blur, and the same inner top highlight as the chat bar. Blur is modest
+     (10px) because there are hundreds of BorderGlow cards across the
+     marquees — the full 24px chat-bar blur would choke the GPU. */
+  background: var(--card-bg, rgba(6, 10, 10, 0.62));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   overflow: visible;
-  /* Subtle depth shadow — dark enough for #0a0a0a cards, blends on #050505 sections */
-  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%);
+  /* Subtle depth shadow + the chat bar's inset top highlight (liquid edge) */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%), inset 0 1px 0 rgb(255 255 255 / 7%);
+}
+
+/* Lower blur on mobile: marquee tracks animate hundreds of glass cards and
+   each backdrop-filter re-blurs every frame while they move — 6px keeps the
+   liquid look at a fraction of the GPU cost. */
+@media (max-width: 768px) {
+  .border-glow-card {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
 }
 
 .border-glow-card::before,
@@ -75,7 +92,7 @@
 .border-glow-card::before {
   border: 1px solid transparent;
   background:
-    linear-gradient(var(--card-bg, #0a0a0a) 0 100%) padding-box,
+    linear-gradient(var(--card-bg, rgba(6, 10, 10, 0.62)) 0 100%) padding-box,
     linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
     var(--gradient-one, radial-gradient(at 80% 55%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-two, radial-gradient(at 69% 34%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,

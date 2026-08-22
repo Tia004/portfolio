@@ -47,6 +47,10 @@ reference/
 /backup-original-uploads
 .freebuff
 
+# local agent config + throwaway e2e scripts — never commit
+.agents/
+/e2e-chatbot.cjs
+
 # local agent notes — never commit
 /NOTES-RESEND-EMAIL.txt
 prisma

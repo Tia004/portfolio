@@ -228,21 +228,37 @@ async function checkRobots() {
   return true;
 }
 
-// ─── 5. Language Redirects ───────────────────────────────────
+// ─── 5. Language Pages ───────────────────────────────────────
 
-async function checkLangRedirects() {
-  console.log('\n🌐 Language redirects — /en, /es → 307 + cookie');
+async function checkLangPages() {
+  console.log('\n🌐 Language pages — /en, /es → 200 + <html lang> + canonical');
 
   let allOk = true;
 
   for (const lang of ['en', 'es']) {
     try {
       const res = await fetch(`${BASE_URL}/${lang}`, { redirect: 'manual' });
-      if (res.status === 307) {
-        ok(`/${lang} → 307 redirect (correct)`);
+      if (res.status === 200) {
+        ok(`/${lang} → HTTP 200 (real page)`);
       } else {
-        fail(`/${lang} → HTTP ${res.status} (expected 307)`);
+        fail(`/${lang} → HTTP ${res.status} (expected 200)`);
         allOk = false;
+      }
+
+      const html = await res.text();
+      const htmlLang = (html.match(/<html[^>]*\blang="([a-z]+)"/i) || [])[1];
+      if (htmlLang === lang) {
+        ok(`/${lang} <html lang="${lang}">`);
+      } else {
+        fail(`/${lang} <html lang> = "${htmlLang}" (expected "${lang}")`);
+        allOk = false;
+      }
+
+      const canonical = (html.match(/<link[^>]*\brel="canonical"[^>]*\bhref="([^"]*)"/i) || [])[1] || '';
+      if (canonical.includes(`/${lang}`)) {
+        ok(`/${lang} canonical → ${canonical}`);
+      } else {
+        warn(`/${lang} canonical = ${canonical || 'none'}`);
       }
 
       const setCookie = res.headers.get('set-cookie') || '';
@@ -252,7 +268,7 @@ async function checkLangRedirects() {
         warn(`/${lang} does not set language cookie`);
       }
     } catch (e) {
-      fail(`/${lang} redirect check failed: ${e.message}`);
+      fail(`/${lang} language page check failed: ${e.message}`);
       allOk = false;
     }
   }
@@ -281,8 +297,8 @@ async function main() {
   const robotsOk = await checkRobots();
   if (robotsOk) totalPassed++; else totalFailed++;
 
-  const redirectsOk = await checkLangRedirects();
-  if (redirectsOk) totalPassed++; else totalFailed++;
+  const langPagesOk = await checkLangPages();
+  if (langPagesOk) totalPassed++; else totalFailed++;
 
   // Summary
   console.log('\n' + '═'.repeat(50));
