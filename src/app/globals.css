@@ -602,24 +602,13 @@ img {
   background-color: rgba(10, 10, 10, 0.92) !important;
 }
 
-/* Marquees + glass grids: the biggest single lag source on the site.
-   The skills marquee renders ~190 BorderGlow cards, the FAQ rows ~84, the
-   review columns ~16, the pricing grids ~12 — ALL with backdrop-filter:
-   every frame each card re-blurs the ANIMATED molten behind it (and, for the
-   marquees, the other moving cards) — compositor load that makes scrolling
-   the sections jank hard on every device, worst on mobile. The card bg is
-   62% opaque, so the blur of the uniform molten behind is imperceptible:
-   dropping it on ALL viewports keeps the glass look (bg + inset highlight)
-   and removes the per-frame re-blur entirely. The static BorderGlow cards in
-   servizi/progetti (no continuous marquee) keep their blur on desktop. Weak
-   devices also drop blur via .is-low-end. */
-#chisono .border-glow-card,
-#prezzi .border-glow-card,
-#recensioni .border-glow-card,
-#faq .border-glow-card {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-}
+/* BorderGlow cards have NO backdrop-filter anywhere now — the base rule in
+   BorderGlow.css removed it (every card re-blurred the ANIMATED molten behind
+   it each frame; the glass look survives via the darker 0.78 tint). The old
+   section-specific override below (#chisono/#prezzi/#recensioni/#faq →
+   backdrop-filter: none) became redundant — four selectors doing what the
+   base rule already does — and was removed. Weak devices still drop blur on
+   other glass elements via .is-low-end above. */
 
 /* Mobile backdrop-filter cap: every blurred pixel re-samples the frame on
    every scroll, and on phones that pass is the single most expensive compositor
