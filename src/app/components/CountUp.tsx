@@ -36,7 +36,13 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
     if (!el) return;
 
     let alive = true;
-    loadGsap().then((gsap) => {
+    let ctxRevert: (() => void) | null = null;
+
+    const startTween = (g: any) => {
+      // g is the gsap namespace from loadGsap() — using `any` here is safe,
+      // the runtime .context() and .to() are the only calls and they exist
+      // on the lazy-loaded GSAP object.
+      const gsap = g as { context: Function; to: Function };
       if (!alive) return;
       const ctx = gsap.context(() => {
         gsap.to({ val: 0 }, {
@@ -44,24 +50,16 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
           duration: 2.8,
           delay,
           ease: 'power3.out',
-          // Only use ScrollTrigger when ready is undefined (price cards).
-          // When ready is true (hero stats), the tween starts immediately after delay.
-          ...(ready === undefined ? {
-            scrollTrigger: {
-              trigger: el,
-              start: 'top 85%',
-              once: true,
-            },
-          } : {}),
           onUpdate() {
             if (!numRef.current) return;
-            // Throttle DOM writes to every 2nd frame (~30fps): each textContent
-            // write invalidates style → UpdateLayoutTree. Writing every frame
-            // (60fps) for 2.8s × the 5 hero counters was the dominant source of
-            // Style & Layout work after splash (≈590ms real, ~2.4s throttled,
-            // landing exactly on LCP). At 30fps the count is visually identical.
+            // Throttle DOM writes to every 4th frame (~15fps): each textContent
+            // write invalidates style → UpdateLayoutTree. The pricing section
+            // has ~12 concurrent CountUp tweens; writing at 60fps or even 30fps
+            // was the dominant main-thread bottleneck during scroll through
+            // that section. At 15fps the count is still visually smooth for
+            // price numbers (they change slowly).
             frameRef.current++;
-            if (frameRef.current % 2 !== 0) return;
+            if (frameRef.current % 4 !== 0) return;
             const v = this.targets()[0].val as number;
             const clamped = Math.min(Math.round(v), target);
             numRef.current.textContent = clamped.toLocaleString('it-IT');
@@ -74,14 +72,41 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
           },
         });
       });
-      return () => ctx.revert();
-    });
+      ctxRevert = () => ctx.revert();
+    };
 
-    return () => {
+    const cleanup = () => {
       alive = false;
+      ctxRevert?.();
       if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
       if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
     };
+
+    if (ready === true) {
+      // Hero stats: start immediately after delay (no trigger needed)
+      loadGsap().then((gsap) => {
+        if (!alive) return;
+        startTween(gsap);
+      });
+    } else {
+      // Price cards: start when the element enters the viewport (IO instead
+      // of ScrollTrigger — no scroll event overhead, no position polling).
+      const io = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry.isIntersecting || !alive) return;
+          io.disconnect();
+          loadGsap().then((gsap) => {
+            if (!alive) return;
+            startTween(gsap);
+          });
+        },
+        { rootMargin: '250px 0px' }
+      );
+      io.observe(el);
+      return () => { io.disconnect(); cleanup(); };
+    }
+
+    return cleanup;
   }, [target, delay, ready]);
 
   return (

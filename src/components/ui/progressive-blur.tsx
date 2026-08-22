@@ -52,10 +52,15 @@ export function ProgressiveBlur({
     // Direction flip puts the strongest layer (last in blurLevels) at the
     // curtain edge: for a bottom curtain the edge is the bottom (to bottom,
     // 100%), for a top curtain the edge is the top (to top, 100%).
+    // The LAST (edge) layer stays OPAQUE at the container edge so that cards
+    // are immediately blurred at the border — without this the fade-to-
+    // transparent on the last colour-stop left a gap of sharp cards between
+    // the container edge and the start of the blur.
+    const edgeRgba = `rgba(0,0,0,${i === n - 1 ? 1 : 0})`
     const vertical =
       position === "bottom"
-        ? `linear-gradient(to bottom, rgba(0,0,0,0) ${from}%, rgba(0,0,0,1) ${fullA}%, rgba(0,0,0,1) ${fullB}%, rgba(0,0,0,0) ${to}%)`
-        : `linear-gradient(to top, rgba(0,0,0,0) ${from}%, rgba(0,0,0,1) ${fullA}%, rgba(0,0,0,1) ${fullB}%, rgba(0,0,0,0) ${to}%)`
+        ? `linear-gradient(to bottom, rgba(0,0,0,0) ${from}%, rgba(0,0,0,1) ${fullA}%, rgba(0,0,0,1) ${fullB}%, ${edgeRgba} ${to}%)`
+        : `linear-gradient(to top, rgba(0,0,0,0) ${from}%, rgba(0,0,0,1) ${fullA}%, rgba(0,0,0,1) ${fullB}%, ${edgeRgba} ${to}%)`
 
     let maskImage = vertical
     let maskComposite: string | undefined

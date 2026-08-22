@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
+import ProcessTimeline from './ProcessTimeline';
 import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
 import { trackClick } from '@/lib/analytics';
 import { type ChatCategory } from '@/lib/chat-categories';
@@ -3280,6 +3281,22 @@ export default function HomeShell() {
                   </InfiniteSlider>
                 </div>
               </div>
+            </div>
+          </section>
+          </LazySection>
+
+          {/* ============ PROCESSO ============ */}
+          <LazySection rootMargin={400} placeholderHeight={700}>
+          <section id="processo" className="py-10 sm:py-24 px-4">
+            <div className="max-w-7xl mx-auto">
+              <ScrollReveal className="text-center mb-8 sm:mb-16">
+                <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('processo.label', lang)}</p>
+                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('processo.title', lang)}</h2>
+                <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
+                  {t('processo.subtitle', lang)}
+                </p>
+              </ScrollReveal>
+              <ProcessTimeline />
             </div>
           </section>
           </LazySection>

@@ -19,8 +19,8 @@ type InfiniteSliderProps = {
 
 // ── InfiniteSlider ─────────────────────────────────────────────
 //
-//  Pure CSS approach: 4 copies rendered, @keyframes animation
-//  translates by exactly calc(-25% - var(--gap)/4) = one copy + one gap.
+//  Pure CSS approach: 2 copies rendered, @keyframes animation
+//  translates by exactly calc(-50% - var(--gap)/2) = one copy + one gap.
 //  Mathematically guaranteed seamless — no JS measurements needed.
 //
 //  Benefits over the old framer-motion approach:
@@ -100,11 +100,11 @@ const InfiniteSlider = memo(function InfiniteSlider({
       <style>{`
         @keyframes infscroll-h {
           from { transform: translateX(0); }
-          to   { transform: translateX(calc(-25% - var(--gap) / 4)); }
+          to   { transform: translateX(calc(-50% - var(--gap) / 2)); }
         }
         @keyframes infscroll-v {
           from { transform: translateY(0); }
-          to   { transform: translateY(calc(-25% - var(--gap) / 4)); }
+          to   { transform: translateY(calc(-50% - var(--gap) / 2)); }
         }
       `}</style>
 
@@ -122,19 +122,10 @@ const InfiniteSlider = memo(function InfiniteSlider({
           // (reviews) need an explicit hint — their translateY animation is
           // more prone to tearing without a pre-allocated compositor layer.
           willChange: isHorizontal ? 'auto' : 'transform',
-          // Do not promote the track to a compositor layer in visible-overflow
-          // mode: transformed hover cards must be allowed to paint outside its
-          // original layout box without GPU clipping.
-          // The viewport owns clipping; the track must never clip its own
-          // BorderGlow edge-light before it reaches the viewport's bleed.
-          overflow: 'visible',
-          contain: 'none',
         } as React.CSSProperties}
         onMouseEnter={() => { isHoveredRef.current = true; applyPlayState(); }}
         onMouseLeave={() => { isHoveredRef.current = false; applyPlayState(); }}
       >
-        {children}
-        {children}
         {children}
         {children}
       </div>

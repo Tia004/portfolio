@@ -335,21 +335,22 @@ export default function MoltenMetal({
       onReadyRef.current?.();
     }
 
-    // DPR: 1 on mobile (coarse pointer or narrow viewport) — the full-screen
-    // shader needs the pixel savings on phones far more than the extra
-    // resolution; desktop stays capped at 1.5.
-    // Mobile also renders at HALF resolution (the CSS canvas is still 100%,
-    // the buffer is 0.5×): the shader costs ~4× fewer pixels per frame and the
-    // organic molten pattern doesn't need full-res sharpness. Grain (a per-
-    // pixel hash) is dropped on mobile for the same reason.
+    // DPR 1 everywhere — the full-screen shader is the single largest GPU
+    // consumer on the site; halving the buffer from 1.5× cuts pixel work ~55%
+    // with no visible difference on the organic molten pattern (low-frequency
+    // drift doesn't benefit from retina sharpness).
+    // Desktop renders at 0.75× scale (CSS canvas is still 100%, the buffer is
+    // downscaled); mobile stays at 0.5×. Grain is dropped on mobile only (the
+    // per-pixel hash costs more on phones and the lower resolution makes it
+    // noisier).
     let isMobile = false;
     const setSize = () => {
       const rect = container.getBoundingClientRect();
       isMobile =
         (window.matchMedia?.('(pointer: coarse)').matches ?? false) ||
         rect.width < 768;
-      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
-      const scale = isMobile ? 0.5 : 1;
+      const dpr = 1;
+      const scale = isMobile ? 0.5 : 0.75;
       const w = Math.max(1, Math.floor(rect.width * dpr * scale));
       const h = Math.max(1, Math.floor(rect.height * dpr * scale));
       if (canvas.width !== w || canvas.height !== h) {
@@ -389,10 +390,11 @@ export default function MoltenMetal({
     const t0 = performance.now();
 
     const render = (t: number) => {
-      // Mobile FPS cap: render every other rAF (~30fps). The slow molten
-      // drift stays fluid at half the GPU work; desktop keeps 60fps.
+      // FPS cap: render every other rAF (~30fps) on all devices. The slow
+      // molten drift stays fluid at half the GPU work; the per-frame cost
+      // (full-screen shader) is the dominant GPU consumer site-wide.
       frameCount++;
-      if (isMobile && frameCount % 2 === 0) {
+      if (frameCount % 2 === 0) {
         raf = requestAnimationFrame(render);
         return;
       }

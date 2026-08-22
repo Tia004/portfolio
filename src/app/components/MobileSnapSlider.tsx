@@ -316,7 +316,7 @@ export default function MobileSnapSlider({
         ref={trackRef}
         role="region"
         aria-label={ariaLabel}
-        className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default ${trackClassName}`}
+        className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch ${trackClassName}`}
       >
         {children}
       </div>
