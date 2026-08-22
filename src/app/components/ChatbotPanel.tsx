@@ -7,6 +7,7 @@ import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
 import { ArrowExpandDiagonal01Icon, BubbleChatIcon, Cancel01Icon, FilePenIcon, UserIcon } from './icons';
 import type { ChatCategory } from '@/lib/chat-categories';
+import { CHAT_CATEGORY_OPTIONS } from '@/lib/chat-categories';
 
 export interface ChatbotMessage {
   id: number;
@@ -82,17 +83,6 @@ function detectPlainTextSuggestions(text: string, category: ChatCategory, lang: 
   const result = [...byIdx.values()];
   return result.length >= 2 ? result : [];
 }
-
-// Specialization options — 'general' stays the internal default (user typed
-// freely without picking a bubble) but is intentionally NOT offered visually.
-export const CHAT_CATEGORY_OPTIONS: { value: ChatCategory; labelKey: string; exampleKey: string; placeholderKey: string }[] = [
-  { value: 'software-web', labelKey: 'chat.category_software_web', exampleKey: 'chat.example_software_web', placeholderKey: 'chat.placeholder_software_web' },
-  { value: 'design', labelKey: 'chat.category_design', exampleKey: 'chat.example_design', placeholderKey: 'chat.placeholder_design' },
-  { value: 'video', labelKey: 'chat.category_video', exampleKey: 'chat.example_video', placeholderKey: 'chat.placeholder_video' },
-  { value: 'hardware', labelKey: 'chat.category_hardware', exampleKey: 'chat.example_hardware', placeholderKey: 'chat.placeholder_hardware' },
-  { value: 'social', labelKey: 'chat.category_social', exampleKey: 'chat.example_social', placeholderKey: 'chat.placeholder_social' },
-  { value: 'other', labelKey: 'chat.category_other', exampleKey: 'chat.example_other', placeholderKey: 'chat.placeholder_other' },
-];
 
 interface ChatbotPanelProps {
   messages: ChatbotMessage[];
@@ -383,12 +373,11 @@ export default function ChatbotPanel({
             <div
               aria-hidden="true"
               className="pointer-events-none absolute top-0 left-0 right-0 h-14 sm:h-20 z-10"
-              style={{
-                WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
-                maskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
-              }}
             >
-              <ProgressiveBlur position="top" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
+              {/* edgeFade bakes the horizontal dissolve into the layers: a mask
+                  on THIS wrapper would turn it into a backdrop root and the
+                  blur would sample nothing (the old invisible curtain). */}
+              <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
             </div>
           )}
 

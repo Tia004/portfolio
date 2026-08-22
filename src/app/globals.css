@@ -174,17 +174,6 @@ html {
   z-index: 10;
 }
 
-/* Reviews curtains — the top/bottom bands of the two vertical review
-   columns. These are REAL progressive blurs now: HomeShell renders a
-   <ProgressiveBlur> (8 masked backdrop-filter layers, 0.5→64px) inside each
-   band, so cards blur from sharp to fully dissolved as they approach the
-   edge — no flat teal rectangle. This wrapper only dissolves the bands'
-   left/right ends into the molten so they don't end in a straight line. */
-.reviews-curtain-mask-x {
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-}
-
 
 /* Mobile snap tracks (services / prices / projects): the last card aligns
    to the RIGHT edge with the same 12px gutter as the first card, so the end

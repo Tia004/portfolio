@@ -98,9 +98,14 @@ const Dither = dynamic(() => import('./Dither'), { ssr: false, loading: () => nu
 // molten chunk downloads with the initial JS. The splash waits for the shader
 // compile ('tia:molten-ready', bounded) before lifting, so the background is
 // ready the moment the user first scrolls into the transparent sections.
-const MoltenMetal = dynamic(() => import('./MoltenMetal'), { ssr: false, loading: () => null });
+// The chunk import starts at MODULE EVAL (not at React mount): by the time
+// hydration and the splash finish, the shader is already compiled and the
+// splash only exits once MoltenMetal has fired 'tia:molten-ready'. The same
+// promise is handed to next/dynamic, so the component renders from the
+// already-loaded module.
+const moltenChunk = typeof window !== 'undefined' ? import('./MoltenMetal') : null;
+const MoltenMetal = dynamic(() => moltenChunk ?? import('./MoltenMetal'), { ssr: false, loading: () => null });
 import Navbar from './Navbar';
-import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
 import StaggerReveal from './StaggerReveal';
 import CurvedInput from './CurvedInput';
@@ -109,16 +114,23 @@ const FooterAnimation = dynamic(() => import('./FooterAnimation'), {
   ssr: false,
   loading: () => <div className="h-[400px] bg-[rgba(6,10,10,0.4)]" aria-hidden="true" />,
 });
-import LegalModal from './LegalModal';
+
+// Below-fold / on-demand UI: only ever rendered after hydration inside a
+// LazySection (scroll) or behind a state conditional (modal open), so they
+// never participate in SSR. Keeping them in the critical chunk wasted ~80KB
+// of source on the first-load bundle for UI the visitor cannot see yet.
+const ChatbotPanel = dynamic(() => import('./ChatbotPanel'), { ssr: false });
+const FaqScroller = dynamic(() => import('./FaqScroller'), { ssr: false });
+const ProjectModal = dynamic(() => import('./ProjectModal'), { ssr: false });
+const LegalModal = dynamic(() => import('./LegalModal'), { ssr: false });
 import { getLegalDoc, type LegalDoc } from '@/lib/legal-content';
 import BorderGlow from './BorderGlow';
-import ChatbotPanel, { CHAT_CATEGORY_OPTIONS } from './ChatbotPanel';
+import { CHAT_CATEGORY_OPTIONS } from '@/lib/chat-categories';
 import DotGrid from './DotGrid';
 import TooltipContent from './TooltipContent';
 import UrlPreviewCard from './UrlPreviewCard';
 import InlinePreventivoForm from './InlinePreventivoForm';
 import MobileGlowActivator from './MobileGlowActivator';
-import ProjectModal from './ProjectModal';
 import LazySection from './LazySection';
 import TypewriterText from './TypewriterText';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
@@ -205,7 +217,9 @@ function normalizeContactService(value?: string): string | undefined {
   return ALL_OPTIONS.some(option => option.value.toLowerCase() === lower) ? raw : 'Altro';
 }
 
-// CHAT_CATEGORY_OPTIONS now lives in ChatbotPanel (the chatbot UI moved there).
+// CHAT_CATEGORY_OPTIONS lives in @/lib/chat-categories (shared with the
+// dynamically imported ChatbotPanel; keeping it out of that module lets the
+// whole panel leave the critical chunk).
 
 function ServiceSelect({ value, onChange, highlighted }: { value: string; onChange: (v: string) => void; highlighted?: boolean }) {
   const { lang } = useLanguage();
@@ -920,6 +934,20 @@ export default function HomeShell() {
     window.addEventListener('open-legal', cb);
     return () => window.removeEventListener('open-legal', cb);
   }, [lang]);
+
+  // Warm the below-fold dynamic chunks after first paint (well past LCP, so
+  // it never competes with the splash/hero): by the time the visitor scrolls
+  // to the chat or FAQ, or opens a project/legal modal, the chunk is cached
+  // and the component mounts instantly — zero visible loading gap.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      void import('./ChatbotPanel');
+      void import('./FaqScroller');
+      void import('./ProjectModal');
+      void import('./LegalModal');
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, []);
 
   // Cleanup highlight timer on unmount
   useEffect(() => () => {
@@ -2532,7 +2560,7 @@ export default function HomeShell() {
             className=""
             height="4.5rem"
             position="top"
-            blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
+            blurLevels={[2, 6, 14]}
           />
         </div>
         <div
@@ -2546,7 +2574,7 @@ export default function HomeShell() {
             className=""
             height="clamp(6rem, 8vw, 8rem)"
             position="bottom"
-            blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
+            blurLevels={[2, 6, 14]}
           />
         </div>
         <div ref={turnstileContainerRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-px w-px overflow-hidden opacity-0" />
@@ -2686,7 +2714,7 @@ export default function HomeShell() {
               className="z-10"
               height="clamp(5rem, 12vh, 8rem)"
               position="bottom"
-              blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
+              blurLevels={[2, 6, 14]}
             />
 
           </section>
@@ -3215,17 +3243,19 @@ export default function HomeShell() {
 
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5">
-                {/* Real progressive-blur curtains top & bottom — 8 masked
-                    backdrop-filter layers each, so cards blur from sharp to
-                    fully dissolved as they approach the edge (no flat teal
-                    rectangle). The wrapper's horizontal mask still dissolves
-                    the bands' left/right ends into the molten. Static bands,
-                    no per-frame re-sampling. */}
-                <div className="absolute top-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none reviews-curtain-mask-x">
-                  <ProgressiveBlur position="top" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
+                {/* Real progressive-blur curtains top & bottom — 3 masked
+                    backdrop-filter layers each (light: the strongest 14px sits
+                    at the edge, fading to 2px interior), so cards blur from
+                    sharp to dissolved as they approach the edge. The horizontal
+                    dissolve of the bands' ends is baked into the layers via
+                    edgeFade — NEVER on a wrapper (a mask on the wrapper turns
+                    it into a backdrop root and makes the blur sample nothing:
+                    that's why the old curtains looked like nothing). */}
+                <div className="absolute top-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none">
+                  <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none reviews-curtain-mask-x">
-                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
+                <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none">
+                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
                 </div>                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
                   <InfiniteSlider
                     gap={16}

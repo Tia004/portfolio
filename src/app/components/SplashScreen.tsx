@@ -12,7 +12,7 @@ const LETTERS = 'Tia Designs'.split('');
 const LETTER_STAGGER = 0.035;
 const LETTER_DURATION = 0.35;
 const MIN_SPLASH_MS = 750;   // minimum display time for the letter animation (letters land at ~0.70s)
-const MAX_SPLASH_MS = 2000;  // safety net — never block the site forever
+const MAX_SPLASH_MS = 2500;  // safety net — never block the site forever
 const FADE_MS = 180;         // exit fade duration (must match the CSS transition)
 
 function whenPageReady(): Promise<void> {
@@ -70,9 +70,11 @@ function whenImagesLoaded(): Promise<void> {
 // instantly on demand. MoltenMetal sets the window flag and dispatches
 // 'tia:molten-ready' after its shader program is built (loaded + compiled).
 // The cap (MOLTEN_WAIT_MS) guarantees the splash never pins the site open on
-// a very slow connection; with the molten chunk preloaded in the HTML, it is
-// normally ready well before the splash's minimum display time.
-const MOLTEN_WAIT_MS = 1000;
+// a very slow connection; with the molten chunk imported at HomeShell module
+// eval (before hydration) the shader normally compiles well before the
+// splash's minimum display time. 2s covers even slow phones; MAX_SPLASH_MS
+// (2.5s) is the absolute backstop.
+const MOLTEN_WAIT_MS = 2000;
 function whenMoltenReady(): Promise<void> {
   return new Promise((resolve) => {
     if ((window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady) {

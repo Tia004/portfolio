@@ -93,8 +93,6 @@
     var(--gradient-three, radial-gradient(at 8% 6%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-four, radial-gradient(at 41% 38%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-five, radial-gradient(at 86% 85%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-six, radial-gradient(at 82% 18%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) border-box,
-    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-base, linear-gradient(#2dd4bf 0 100%)) border-box;
 
   opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
@@ -125,8 +123,6 @@
     var(--gradient-three, radial-gradient(at 8% 6%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-four, radial-gradient(at 41% 38%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-five, radial-gradient(at 86% 85%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-six, radial-gradient(at 82% 18%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) padding-box,
-    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-base, linear-gradient(#2dd4bf 0 100%)) padding-box;
 
   mask-image:
@@ -171,22 +167,27 @@
 .border-glow-card > .edge-light::before {
   content: "";
   position: absolute;
-  inset: var(--glow-padding);
+  /* Half the glow-padding: the soft diffusion hugs the border instead of
+     flooding the card interior. The beam used to spread ~90px into the card
+     (40px rect + 50px blur) — the "fascio di luce" covering the content.
+     Now the rect sits at 0.5× and the largest blur is 20px, so the glow
+     reaches ~half as deep: still a clear border-glow, no interior flood. */
+  inset: calc(var(--glow-padding) * 0.5);
   border-radius: inherit;
   box-shadow:
     inset 0 0 0 1px var(--glow-color, hsl(170deg 80% 50% / 100%)),
     inset 0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    inset 0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    inset 0 0 6px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    inset 0 0 15px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    inset 0 0 25px 2px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
-    inset 0 0 50px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%)),
+    inset 0 0 2px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    inset 0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    inset 0 0 9px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    inset 0 0 14px 1px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
+    inset 0 0 20px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%)),
     0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    0 0 6px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    0 0 15px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    0 0 25px 2px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
-    0 0 50px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%));
+    0 0 2px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    0 0 9px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    0 0 14px 1px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
+    0 0 20px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%));
 }
 
 /* Blend modes for the visible states only. In every other state the
