@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useLayoutEffect, useRef, useCallback } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { loadGsap } from '@/lib/gsap-lazy';
 import { FOOTER } from '@/lib/animation-theme';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
@@ -111,70 +110,80 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     fitWordmark();
 
     // GSAP setup — isolated in try/catch so a plugin/trigger failure can never
-    // prevent sizing (already done above) or the reveal failsafe below.
-    let ctx: gsap.Context | null = null;
-    try {
-      ctx = gsap.context(() => {
-        // Parallax: content rises + scales up as the footer enters the viewport
-        if (content) {
-          gsap.fromTo(
-            content,
-            { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
+    // prevent sizing (already done above) or the reveal failsafe below. Loaded
+    // lazily (loadGsap): the footer mounts near the bottom, so GSAP is long
+    // since in memory by the time it animates.
+    let ctx: { revert: () => void } | null = null;
+    let alive = true;
+    const stRefresh = () => import('gsap/ScrollTrigger').then((m) => {
+      m.ScrollTrigger.refresh();
+      m.ScrollTrigger.update();
+    });
+    loadGsap().then((gsap) => {
+      if (!alive) return;
+      try {
+        ctx = gsap.context(() => {
+          // Parallax: content rises + scales up as the footer enters the viewport
+          if (content) {
+            gsap.fromTo(
+              content,
+              { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
+              {
+                y: 0,
+                scale: 1,
+                ease: FOOTER.contentParallax.ease,
+                scrollTrigger: {
+                  trigger: section,
+                  start: FOOTER.contentParallax.start,
+                  end: FOOTER.contentParallax.end,
+                  scrub: FOOTER.contentParallax.scrub,
+                },
+              }
+            );
+          }
+
+          // Gradient glow: shift position on scroll
+          gsap.to(glow, {
+            backgroundPosition: '50% 100%',
+            ease: FOOTER.glow.ease,
+            scrollTrigger: {
+              trigger: section,
+              start: FOOTER.glow.start,
+              end: FOOTER.glow.end,
+              scrub: FOOTER.glow.scrub,
+            },
+          });
+
+          // ── Scroll-driven character reveal ──────────────────────
+          // Each character animates from hidden (y:80, opacity:0, rotateX:-15)
+          // to fully visible (y:0, opacity:1, rotateX:0) proportionally to
+          // the scroll position.  Scroll down → characters rise; scroll up →
+          // they sink back.  The stagger distributes each character's progress
+          // across the scroll range for a cascading wave effect.
+          gsap.fromTo(charEls,
+            { y: FOOTER.chars.yOffset, opacity: 0, rotateX: FOOTER.chars.rotateX },
             {
               y: 0,
-              scale: 1,
-              ease: FOOTER.contentParallax.ease,
+              opacity: 1,
+              rotateX: 0,
+              stagger: FOOTER.chars.stagger,
+              ease: FOOTER.chars.ease,
               scrollTrigger: {
                 trigger: section,
-                start: FOOTER.contentParallax.start,
-                end: FOOTER.contentParallax.end,
-                scrub: FOOTER.contentParallax.scrub,
+                start: FOOTER.chars.start,
+                end: FOOTER.chars.end,
+                scrub: FOOTER.chars.scrub,
               },
             }
           );
-        }
 
-        // Gradient glow: shift position on scroll
-        gsap.to(glow, {
-          backgroundPosition: '50% 100%',
-          ease: FOOTER.glow.ease,
-          scrollTrigger: {
-            trigger: section,
-            start: FOOTER.glow.start,
-            end: FOOTER.glow.end,
-            scrub: FOOTER.glow.scrub,
-          },
-        });
-
-        // ── Scroll-driven character reveal ──────────────────────
-        // Each character animates from hidden (y:80, opacity:0, rotateX:-15)
-        // to fully visible (y:0, opacity:1, rotateX:0) proportionally to
-        // the scroll position.  Scroll down → characters rise; scroll up →
-        // they sink back.  The stagger distributes each character's progress
-        // across the scroll range for a cascading wave effect.
-        gsap.fromTo(charEls,
-          { y: FOOTER.chars.yOffset, opacity: 0, rotateX: FOOTER.chars.rotateX },
-          {
-            y: 0,
-            opacity: 1,
-            rotateX: 0,
-            stagger: FOOTER.chars.stagger,
-            ease: FOOTER.chars.ease,
-            scrollTrigger: {
-              trigger: section,
-              start: FOOTER.chars.start,
-              end: FOOTER.chars.end,
-              scrub: FOOTER.chars.scrub,
-            },
-          }
-        );
-
-        // Refresh ScrollTrigger now that the chars are in the DOM
-        refreshScrollTriggers();
-      }, section);
-    } catch (err) {
-      console.error('[footer] GSAP init fallito:', err);
-    }
+          // Refresh ScrollTrigger now that the chars are in the DOM
+          refreshScrollTriggers();
+        }, section);
+      } catch (err) {
+        console.error('[footer] GSAP init fallito:', err);
+      }
+    });
 
     // ── The wordmark must never be missing ────────────────────
     // The chars start at opacity:0 and are revealed by the ScrollTrigger
@@ -208,14 +217,13 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
         // and only force visibility if the scrub genuinely never advances.
         if (!refreshAttempted) {
           refreshAttempted = true;
-          ScrollTrigger.refresh();
-          ScrollTrigger.update();
+          stRefresh();
           requestAnimationFrame(() => {
             const stillStuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
-            if (stillStuck) gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+            if (stillStuck) loadGsap().then((gsap) => gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 }));
           });
         } else {
-          gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 });
+          loadGsap().then((gsap) => gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 }));
         }
       }
     };
@@ -268,8 +276,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
         if (visible && !approachRefreshed) {
           approachRefreshed = true;
           fitWordmark();
-          ScrollTrigger.refresh();
-          ScrollTrigger.update();
+          stRefresh();
         } else if (!visible) {
           approachRefreshed = false;
         }
@@ -294,6 +301,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     window.addEventListener('scroll', onScrollFailsafe, { passive: true });
 
     return () => {
+      alive = false;
       ctx?.revert();
       ro.disconnect();
       approachIO.disconnect();

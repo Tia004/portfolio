@@ -6,6 +6,11 @@ import { reportWebGLContext } from '@/lib/webgl-telemetry';
 export type MoltenMetalColorMode = 'molten' | 'ember' | 'frost';
 
 export interface MoltenMetalProps {
+  /** Fired once, right after the shader program is built (compiled + linked)
+   *  and the first frame is sized — i.e. the background is "loaded" and can
+   *  render on demand the moment the user scrolls into the transparent
+   *  sections. The splash screen waits for this (bounded) before exiting. */
+  onReady?: () => void;
   color1?: string;
   color2?: string;
   color3?: string;
@@ -251,6 +256,7 @@ function buildResources(
 }
 
 export default function MoltenMetal({
+  onReady,
   color1 = '#5227FF',
   color2 = '#FF9FFC',
   color3 = '#FFFFFF',
@@ -272,6 +278,9 @@ export default function MoltenMetal({
   className = '',
 }: MoltenMetalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyFiredRef = useRef(false);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -314,6 +323,17 @@ export default function MoltenMetal({
     };
 
     writeUniforms(ctx, props);
+
+    // Signal "loaded" once — the expensive part (program compile + link) is
+    // done, so the first paint happens instantly when the user scrolls here.
+    // Also sets a window flag before dispatching, so SplashScreen resolves
+    // even if its listener attaches after this event fired.
+    if (!readyFiredRef.current) {
+      readyFiredRef.current = true;
+      (window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady = true;
+      window.dispatchEvent(new Event('tia:molten-ready'));
+      onReadyRef.current?.();
+    }
 
     // DPR: 1 on mobile (coarse pointer or narrow viewport) — the full-screen
     // shader needs the pixel savings on phones far more than the extra

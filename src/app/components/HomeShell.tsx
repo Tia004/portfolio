@@ -4,7 +4,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
-import { gsap } from 'gsap';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
 import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
@@ -95,6 +94,10 @@ import SmoothScrollProvider, { useLenis } from './SmoothScroll';
 // gradient fallback both paint instantly, and the canvas swaps in after
 // hydration without blocking the first paint.
 const Dither = dynamic(() => import('./Dither'), { ssr: false, loading: () => null });
+// The dynamic import starts at mount (first render — no lazy trigger), so the
+// molten chunk downloads with the initial JS. The splash waits for the shader
+// compile ('tia:molten-ready', bounded) before lifting, so the background is
+// ready the moment the user first scrolls into the transparent sections.
 const MoltenMetal = dynamic(() => import('./MoltenMetal'), { ssr: false, loading: () => null });
 import Navbar from './Navbar';
 import FaqScroller from './FaqScroller';
@@ -2318,48 +2321,49 @@ export default function HomeShell() {
   const heroRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
   const heroEntranceStartedRef = useRef(false);
-  const heroEntranceTweenRef = useRef<gsap.core.Tween | null>(null);
+  const heroEntranceAnimRef = useRef<Animation[] | null>(null);
 
   // .hero-anim is painted at opacity:1 from the first paint (it's the LCP
-  // element; the opaque splash covers it until it fades). GSAP moves elements
-  // to the offset + blur in a useLayoutEffect BEFORE the first paint, so the
-  // hero first paints already blurred behind the splash — LCP fires at first
-  // paint instead of after the splash + entrance animation.
-  useLayoutEffect(() => {
-    const elements = heroRef.current?.querySelectorAll<HTMLElement>('.hero-anim');
-    if (!elements?.length) return;
-
-    gsap.set(elements, {
-      y: HERO.yOffset,
-      scale: HERO.scale,
-      filter: `blur(${HERO.blur}px)`,
-    });
-
-    return () => {
-      heroEntranceTweenRef.current?.kill();
-      heroEntranceTweenRef.current = null;
-    };
-  }, []);
+  // element; the opaque splash covers it until it fades). The offset + blur
+  // initial state is applied INLINE in the JSX (see the hero section), so it
+  // is present from the SSR first paint with ZERO JS — no useLayoutEffect, no
+  // gsap import on the critical path. LCP fires at first paint instead of
+  // after the splash + entrance animation.
 
   // Reveal the hero exactly once, immediately after the splash completes.
-  // Only transform/filter animate (opacity stays 1 the whole time), so the
-  // blur eases out as the splash fades — never a flash, never a re-hide.
+  // Uses the native Web Animations API (NOT GSAP): the entrance must not wait
+  // for a lazily-loaded ~122KB animation chunk to download, or LCP explodes on
+  // throttled connections (the h1 stays blurred until GSAP arrives). WAAPI is
+  // built into the browser — zero download. The blur is NOT animated: animating
+  // `filter: blur()` is the most expensive paint in the entrance (every frame
+  // re-blurs the text). It exists only as a STATIC inline state (set in the
+  // JSX from SSR first paint, hidden behind the splash) and is cleared in ONE
+  // frame at entrance start — the splash is fading right now, so the snap is
+  // invisible — then only transform (y/scale) animates.
   useEffect(() => {
     if (!splashDone || heroEntranceStartedRef.current) return;
-    const elements = heroRef.current?.querySelectorAll<HTMLElement>('.hero-anim');
-    if (!elements?.length) return;
+    const elements = Array.from(heroRef.current?.querySelectorAll<HTMLElement>('.hero-anim') ?? []);
+    if (!elements.length) return;
 
     heroEntranceStartedRef.current = true;
-    heroEntranceTweenRef.current = gsap.to(elements, {
-      y: 0,
-      scale: 1,
-      filter: 'blur(0px)',
-      duration: HERO.duration,
-      stagger: HERO.stagger,
-      ease: HERO.ease,
-      delay: HERO.delay,
-      clearProps: 'transform,filter',
-    });
+    // Static blur → gone in a single frame; no blur painting during the tween.
+    elements.forEach((el) => { el.style.filter = 'none'; });
+    // Replicate HERO ease (power4.out ≈ cubic-bezier(0.16,1,0.3,1)) with a
+    // stagger equal to HERO.stagger and the same duration, per element.
+    heroEntranceAnimRef.current = elements.map((el, i) =>
+      el.animate(
+        [
+          { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})` },
+          { transform: 'translateY(0px) scale(1)' },
+        ],
+        {
+          duration: HERO.duration * 1000,
+          delay: HERO.delay * 1000 + i * HERO.stagger * 1000,
+          easing: 'cubic-bezier(0.16,1,0.3,1)',
+          fill: 'forwards',
+        }
+      )
+    );
   }, [splashDone]);
 
   const handleTooltipShow = (text: string, el: HTMLElement) => {
@@ -2619,19 +2623,19 @@ export default function HomeShell() {
                 statement, not a wall of text. Base sizes are tuned for a
                 375px viewport and scale up at sm/md/lg. */}
             <div className="relative z-20 text-left px-5 sm:px-12 md:px-20 lg:px-28 max-w-full sm:max-w-3xl md:max-w-5xl lg:max-w-[90rem] pointer-events-none">
-              <p className="hero-anim mb-2 sm:mb-6">
+              <p className="hero-anim mb-2 sm:mb-6" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
                 <span className="inline-block bg-white/[0.06] backdrop-blur-xl border border-white/[0.10] rounded-2xl px-3 sm:px-5 py-1.5 sm:py-2 text-teal-400/90 text-[10px] sm:text-xs md:text-sm tracking-[0.18em] sm:tracking-[0.2em] uppercase font-semibold">
                   {t('hero.tag', lang)}
                 </span>
               </p>
-              <h1 className="hero-anim max-[374px]:text-[30px] text-[34px] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] sm:leading-[1.05]">
+              <h1 className="hero-anim max-[374px]:text-[30px] text-[34px] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] sm:leading-[1.05]" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
                 {t('hero.line1', lang)}<br />
                 <span className="font-bold text-teal-400"><span className="font-black text-white">{t('hero.line2a', lang)}</span> {t('hero.line2b', lang)} <span className="font-black text-white">{t('hero.line2c', lang)}</span> {t('hero.line2d', lang)}<span className="font-black text-white">{t('hero.line2e', lang)}</span></span>
               </h1>
-              <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative">
+              <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
                 <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none" />                {t('hero.subtitle', lang)}
               </p>
-              <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center">
+              <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
                 <button
                   onClick={() => { scrollToContatti(); trackClick('hero_cta_quote'); }}
                   className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-500 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
@@ -2671,6 +2675,19 @@ export default function HomeShell() {
                 </div>
               </div>
             </div>
+
+            {/* Progressive blur under the hero — the transition into the
+                sections below: the dark dither fades out cleanly (linear
+                mask on .hero-bottom-curtain) and the molten background
+                emerges progressively blurred — no hard line, no radial
+                "tear". Pure masked backdrop-filter layers, static — no
+                per-frame re-sampling. */}
+            <ProgressiveBlur
+              className="z-10"
+              height="clamp(5rem, 12vh, 8rem)"
+              position="bottom"
+              blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]}
+            />
 
           </section>
 
@@ -3198,15 +3215,17 @@ export default function HomeShell() {
 
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5">
-                {/* Fade top & bottom — nested masks dissolve the bands' outer
-                    edge (top for the top band, bottom for the bottom one) AND
-                    their left/right ends into the molten, so the curtains no
-                    longer look "cut" on any side. */}
-                <div className="absolute top-0 left-0 right-0 h-16 z-20 pointer-events-none reviews-curtain-mask-x">
-                  <div className="w-full h-full reviews-curtain-mask-y-top" />
+                {/* Real progressive-blur curtains top & bottom — 8 masked
+                    backdrop-filter layers each, so cards blur from sharp to
+                    fully dissolved as they approach the edge (no flat teal
+                    rectangle). The wrapper's horizontal mask still dissolves
+                    the bands' left/right ends into the molten. Static bands,
+                    no per-frame re-sampling. */}
+                <div className="absolute top-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none reviews-curtain-mask-x">
+                  <ProgressiveBlur position="top" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-16 z-20 pointer-events-none reviews-curtain-mask-x">
-                  <div className="w-full h-full reviews-curtain-mask-y-bottom" />
+                <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none reviews-curtain-mask-x">
+                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
                 </div>                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
                   <InfiniteSlider
                     gap={16}
@@ -3583,7 +3602,7 @@ export default function HomeShell() {
               glowRadius={28}
               glowIntensity={1.4}
               edgeSensitivity={0}
-              backgroundColor="rgba(6, 10, 10, 0.62)"
+              backgroundColor="rgba(6, 10, 10, 0.78)"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >

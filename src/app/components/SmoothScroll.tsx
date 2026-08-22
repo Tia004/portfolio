@@ -1,11 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
-import Lenis from 'lenis';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import type Lenis from 'lenis';
 
 type LenisContextValue = {
   lenis: RefObject<Lenis | null>;
@@ -27,43 +23,83 @@ export default function SmoothScrollProvider({ children }: Props) {
   const lenisRef = sharedLenisRef;
 
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.0,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
-      infinite: false,
-      // Nested scroll containers (chat messages, textareas) scroll NATIVELY,
-      // and when their overscroll chains into the page Lenis syncs its own
-      // position via onNativeScroll — no fight, no up/down jitter, and the
-      // page keeps scrolling when a container hits its boundary (the old
-      // overscroll-contain approach ate the wheel entirely: the page was
-      // stuck at the chatbot).
-      allowNestedScroll: true,
-      // Respect data-lenis-prevent: any element (or ancestor) with this
-      // attribute gets native scroll — used by the ServiceSelect dropdown
-      // and any other overflow-y-auto container that must never chain.
-      prevent: (node) => node.closest('[data-lenis-prevent]') !== null,
-    });
+    // Dynamically import the smooth-scroll + animation runtime (Lenis + GSAP
+    // + ScrollTrigger, ~110KB) instead of importing it statically: the whole
+    // runtime leaves the critical-path bundle and starts downloading only
+    // after the first paint (idle). The splash covers the first ~0.9s anyway,
+    // so deferring the init is invisible to the user — and the module is
+    // already in memory by the time the splash fades and the first scroll
+    // happens. `loadGsap()` caches the promise, so reveal components share
+    // the same module instance.
+    let alive = true;
+    let frameId = 0;
+    let destroy: (() => void) | null = null;
 
-    lenisRef.current = lenis;
+    const init = async () => {
+      if (!alive) return;
+      const [lenisModule, gsapModule, stModule] = await Promise.all([
+        import('lenis'),
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ]);
+      if (!alive) return;
+      const LenisCtor = lenisModule.default ?? lenisModule;
+      const gsap = gsapModule.gsap;
+      const ScrollTrigger = stModule.ScrollTrigger;
+      gsap.registerPlugin(ScrollTrigger);
 
-    // Integrate GSAP ScrollTrigger with Lenis
-    lenis.on('scroll', () => ScrollTrigger.update());
+      const lenis = new LenisCtor({
+        duration: 1.0,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        wheelMultiplier: 1,
+        touchMultiplier: 2,
+        infinite: false,
+        // Nested scroll containers (chat messages, textareas) scroll NATIVELY,
+        // and when their overscroll chains into the page Lenis syncs its own
+        // position via onNativeScroll — no fight, no up/down jitter, and the
+        // page keeps scrolling when a container hits its boundary (the old
+        // overscroll-contain approach ate the wheel entirely: the page was
+        // stuck at the chatbot).
+        allowNestedScroll: true,
+        // Respect data-lenis-prevent: any element (or ancestor) with this
+        // attribute gets native scroll — used by the ServiceSelect dropdown
+        // and any other overflow-y-auto container that must never chain.
+        prevent: (node: Element) => node.closest('[data-lenis-prevent]') !== null,
+      });
 
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
+      lenisRef.current = lenis;
 
-    const frameId = requestAnimationFrame(raf);
+      // Integrate GSAP ScrollTrigger with Lenis
+      lenis.on('scroll', () => ScrollTrigger.update());
+
+      function raf(time: number) {
+        lenis.raf(time);
+        frameId = requestAnimationFrame(raf);
+      }
+
+      frameId = requestAnimationFrame(raf);
+
+      destroy = () => {
+        cancelAnimationFrame(frameId);
+        ScrollTrigger.getAll().forEach(t => t.kill());
+        lenis.destroy();
+        lenisRef.current = null;
+      };
+    };
+
+    // Start immediately on mount — the DYNAMIC import is what keeps Lenis +
+    // GSAP + ScrollTrigger out of the critical-path bundle (they download and
+    // execute in a separate chunk after the first paint). Do NOT defer with
+    // requestIdleCallback: under CPU throttling (Lighthouse lab, low-end
+    // phones) the idle slot may never fire, leaving Lenis/GSAP unloaded and
+    // the hero entrance stuck → LCP explodes. An immediate dynamic import is
+    // already non-blocking for the initial render.
+    init();
 
     return () => {
-      cancelAnimationFrame(frameId);
-      ScrollTrigger.getAll().forEach(t => t.kill());
-      lenis.destroy();
-      lenisRef.current = null;
+      alive = false;
+      destroy?.();
     };
   }, []);
 

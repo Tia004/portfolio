@@ -75,6 +75,12 @@ export default function LazySection({
   }, [isVisible, measuredHeight]);
 
   return (
+    // NOTE: content-visibility:auto was tried here (contain-intrinsic-size
+    // from placeholderHeight) to skip layout of mounted sections far below
+    // the viewport. REVERTED: it applies contain:paint, which CLIPS the
+    // BorderGlow edge-light — intentionally ~29px wider than the card on each
+    // side (the "glow escape"). Measured live: 30/31 cards clipped. The
+    // scroll-frame savings don't justify re-introducing the clipped-glow bug.
     <div ref={ref} className={className}>
       {isVisible ? (
         children

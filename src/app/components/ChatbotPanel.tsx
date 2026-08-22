@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import TiaIcon from './TiaIcon';
+import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
 import { ArrowExpandDiagonal01Icon, BubbleChatIcon, Cancel01Icon, FilePenIcon, UserIcon } from './icons';
@@ -372,27 +373,23 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Curtain — covers messages as they are pushed up. Short and soft on
-              mobile so it never swallows the first visible messages; taller on
-              sm+ where there is more headroom. A molten-tinted dark teal
-              gradient (not flat black) so it blends with the animated
-              background, a horizontal mask that dissolves the left/right
-              edges, and a light backdrop blur (4px) that FADES the messages
-              as they slide under — the "going away slowly" effect. Cost is
-              contained: one small static band (h-12/h-20) samples the
-              backdrop, unlike the ~300 cards that used to blur every frame. */}
+          {/* Curtain — covers messages as they are pushed up. A REAL
+              progressive blur: 8 masked backdrop-filter layers (0.5→64px), so
+              messages dissolve from sharp to fully blurred as they slide
+              under — no flat dark rectangle. The wrapper's horizontal mask
+              dissolves the left/right edges. Static band, no per-frame
+              re-sampling; taller on sm+ where there is more headroom. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 left-0 right-0 h-12 sm:h-20 z-10"
+              className="pointer-events-none absolute top-0 left-0 right-0 h-14 sm:h-20 z-10"
               style={{
-                background: 'linear-gradient(to bottom, rgba(4, 20, 17, 0.92) 0%, rgba(4, 20, 17, 0.55) 55%, transparent 100%)',
-                WebkitBackdropFilter: 'blur(4px)',
-                backdropFilter: 'blur(4px)',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
                 maskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
               }}
-            />
+            >
+              <ProgressiveBlur position="top" height="100%" blurLevels={[0.5, 1, 2, 4, 8, 16, 32, 64]} />
+            </div>
           )}
 
         </div>

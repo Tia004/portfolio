@@ -135,26 +135,17 @@ html {
   mask-image: radial-gradient(ellipse 300% 100% at 100% 50%, black 0%, black 38%, transparent 50%);
 }
 
-/* Hero bottom curtain — the same radial treatment as the marquee curtains,
-   applied to the hero's bottom edge so the dark dither dissolves into the
-   molten background instead of ending with a hard line. The hero's dark base
-   + dither live in one container (.hero-bottom-curtain) that is MASKED away
-   toward the bottom; the section itself is transparent, so below the fade
-   the fixed molten layer shows through and the hero → sections transition
-   becomes seamless. The ellipse is anchored below the bottom edge
-   (at 50% 100%), transparent at the bottom (d = distance from that anchor)
-   and opaque at d ≥ 60% — the fade is tallest in the middle of the hero and
-   shorter at the corners, a curved organic dissolve that matches the molten
-   waves. Content (z-20) sits above the mask and is never faded. */
+/* Hero bottom curtain — the hero's dark base + dither live in this container
+   and are MASKED away toward the bottom so the fixed molten layer shows
+   through below the fade. The old radial ellipse left an organic "tear"
+   (a clipped-mask blob) visible mid-hero — now a clean horizontal fade at the
+   very bottom edge: the dither dissolves evenly into the molten, and the
+   ProgressiveBlur band sitting over the hero's bottom edge blurs that
+   transition (no hard line, no blob). Content (z-20) sits above and is never
+   faded. */
 .hero-bottom-curtain {
-  /* The fade band moved DOWN (toward the hero's bottom edge) and tightened:
-     the dither stays fully visible across almost the whole hero, and the
-     dissolve into the molten happens in a compact band right at the bottom,
-     where the next section begins — the mid-hero "seam" the user saw is
-     gone. Ellipse anchored below the bottom edge (50% 100%): transparent at
-     the very bottom, opaque from ~50% up. */
-  -webkit-mask-image: radial-gradient(ellipse 200% 55% at 50% 100%, transparent 0%, transparent 12%, black 50%, black 100%);
-  mask-image: radial-gradient(ellipse 200% 55% at 50% 100%, transparent 0%, transparent 12%, black 50%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
 }
 
 /* FAQ edge curtains: narrower than the default marquee curtains so an expanded
@@ -183,42 +174,15 @@ html {
   z-index: 10;
 }
 
-/* Reviews curtains — the top/bottom fade bands of the two vertical review
-   columns. The paint alone (solid dark → transparent) leaves hard lines at
-   the band's outer edge and its left/right ends against the molten
-   background — the same "cut" look the marquee curtains used to have. Two
-   nested masks dissolve those edges: the outer wrapper fades the band's
-   left/right ends, the inner layer fades the band's outer edge (top for the
-   top band, bottom for the bottom one), while the paint gradient still
-   handles the fade into the scrolling cards on the inner side.
-
-   The base color is a molten-tinted dark teal (NOT flat black) so the band
-   blends with the animated molten behind it, and the outer-edge mask uses a
-   radial ellipse — the outer edge AND the corners dissolve organically into
-   the background instead of ending in a straight line.
-
-   On top of the paint, a light backdrop blur (4px) now FADES the review
-   cards as they slide under the band — the “going away slowly” effect the
-   user asked for. Cost is contained: only two small static bands (h-16 ≈
-   64px each) sample the backdrop, versus the ~300 marquee cards that used to
-   blur every frame. */
+/* Reviews curtains — the top/bottom bands of the two vertical review
+   columns. These are REAL progressive blurs now: HomeShell renders a
+   <ProgressiveBlur> (8 masked backdrop-filter layers, 0.5→64px) inside each
+   band, so cards blur from sharp to fully dissolved as they approach the
+   edge — no flat teal rectangle. This wrapper only dissolves the bands'
+   left/right ends into the molten so they don't end in a straight line. */
 .reviews-curtain-mask-x {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-}
-.reviews-curtain-mask-y-top {
-  background: radial-gradient(ellipse 220% 260% at 50% 0%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
-}
-.reviews-curtain-mask-y-bottom {
-  background: radial-gradient(ellipse 220% 260% at 50% 100%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
-  mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
 }
 
 

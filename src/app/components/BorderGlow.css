@@ -13,26 +13,17 @@
   display: grid;
   border: 1px solid rgb(255 255 255 / 10%);
   /* Liquid-glass card: translucent dark tint (darker than the chatbot text
-     bar's white/6) so the molten background glows through, soft backdrop
-     blur, and the same inner top highlight as the chat bar. Blur is modest
-     (10px) because there are hundreds of BorderGlow cards across the
-     marquees — the full 24px chat-bar blur would choke the GPU. */
-  background: var(--card-bg, rgba(6, 10, 10, 0.62));
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+     bar's white/6) so the molten background glows through faintly, with the
+     same inner top highlight as the chat bar. NO backdrop-filter: the
+     marquees render ~190 of these cards and every one re-sampled the ANIMATED
+     molten behind it each frame (~16M px of blur per frame — the dominant
+     lag source in the skills/FAQ sections). The dark tint is slightly more
+     opaque (0.78 vs 0.62) to reproduce the softness the blur used to add:
+     same dark-glass look, zero per-frame re-sampling. */
+  background: var(--card-bg, rgba(6, 10, 10, 0.78));
   overflow: visible;
   /* Subtle depth shadow + the chat bar's inset top highlight (liquid edge) */
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%), inset 0 1px 0 rgb(255 255 255 / 7%);
-}
-
-/* Lower blur on mobile: marquee tracks animate hundreds of glass cards and
-   each backdrop-filter re-blurs every frame while they move — 6px keeps the
-   liquid look at a fraction of the GPU cost. */
-@media (max-width: 768px) {
-  .border-glow-card {
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-  }
 }
 
 .border-glow-card::before,
@@ -88,11 +79,14 @@
   transition: opacity 0.15s ease-out;
 }
 
-/* colored mesh-gradient border */
+/* colored mesh-gradient border. The first (padding-box) layer that used to
+   fill the interior with the card background is REMOVED: the conic+radial
+   mask subtracts the center out of ::before, so that layer was painted and
+   masked away every frame — invisible, pure waste. The card's own background
+   already covers the interior. */
 .border-glow-card::before {
   border: 1px solid transparent;
   background:
-    linear-gradient(var(--card-bg, rgba(6, 10, 10, 0.62)) 0 100%) padding-box,
     linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
     var(--gradient-one, radial-gradient(at 80% 55%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-two, radial-gradient(at 69% 34%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,

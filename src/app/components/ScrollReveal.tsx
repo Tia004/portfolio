@@ -1,12 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef, type ReactNode } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { loadGsap } from '@/lib/gsap-lazy';
 import { REVEAL_DEFAULTS } from '@/lib/animation-theme';
 import { refreshScrollTriggers } from '@/lib/scroll';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface ScrollRevealProps {
   children: ReactNode;
@@ -44,6 +41,7 @@ export default function ScrollReveal({
   end = REVEAL_DEFAULTS.end,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const ctxRef = useRef<gsap.Context | null>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -51,7 +49,9 @@ export default function ScrollReveal({
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reducedMotion) {
-      gsap.set(el, { opacity: 1, x: 0, y: 0 });
+      // Set final state directly — no gsap needed for reduced motion.
+      el.style.opacity = '1';
+      el.style.transform = 'translate(0, 0)';
       el.classList.add('revealed');
       return;
     }
@@ -65,32 +65,37 @@ export default function ScrollReveal({
     }, { rootMargin: '400px' });
     io.observe(el);
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        el,
-        { opacity: 0, y: yOffset, x: xOffset },
-        {
-          opacity: 1,
-          y: 0,
-          x: 0,
-          duration,
-          delay,
-          ease: REVEAL_DEFAULTS.ease,
-          onStart: () => {
-            el.style.willChange = 'transform';
-            el.classList.add('revealed');
-          },
-          onComplete: () => {
-            el.style.willChange = 'auto';
-          },
-          scrollTrigger: scrub
-            ? { trigger: el, start, end, scrub: REVEAL_DEFAULTS.scrubAmount }
-            : { trigger: el, start, end, toggleActions: 'play none none none', once: true },
-        }
-      );
-    }, el);
+    let alive = true;
+    loadGsap().then((gsap) => {
+      if (!alive) return;
+      const ctx = gsap.context(() => {
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: yOffset, x: xOffset },
+          {
+            opacity: 1,
+            y: 0,
+            x: 0,
+            duration,
+            delay,
+            ease: REVEAL_DEFAULTS.ease,
+            onStart: () => {
+              el.style.willChange = 'transform';
+              el.classList.add('revealed');
+            },
+            onComplete: () => {
+              el.style.willChange = 'auto';
+            },
+            scrollTrigger: scrub
+              ? { trigger: el, start, end, scrub: REVEAL_DEFAULTS.scrubAmount }
+              : { trigger: el, start, end, toggleActions: 'play none none none', once: true },
+          }
+        );
+      }, el);
+      ctxRef.current = ctx;
+    });
 
-    return () => { ctx.revert(); io.disconnect(); };
+    return () => { alive = false; ctxRef.current?.revert(); io.disconnect(); };
   }, [yOffset, xOffset, duration, delay, scrub, start, end]);
 
   return (

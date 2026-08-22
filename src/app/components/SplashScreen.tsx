@@ -1,21 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
 
 // ── Configuration ──────────────────────────────────────────
 const LETTERS = 'Tia Designs'.split('');
-// Snappier splash: the hero (LCP element) sits BEHIND the opaque splash, so
-// LCP can only be captured once the splash starts fading — every ms the
-// splash stays up is LCP time. Letters drop faster (last letter lands at
-// ~0.7s), the minimum display time drops to 750ms, the fade shortens to
-// 0.18s, and the safety net tightens to 2s. Same visual rhythm, ~600ms
-// less LCP than the original 1.2s splash.
+// Splash is 100% CSS-animated (no GSAP): removing the static `gsap` import
+// from this first-paint component lets the bundler split GSAP + ScrollTrigger
+// (~110KB) out of the critical path. Letters drop with a pure CSS keyframe +
+// per-index animation-delay; the exit is a CSS opacity transition. Same
+// rhythm, zero JS animation runtime on the LCP path.
 const LETTER_STAGGER = 0.035;
-const LETTER_DROP_Y = -120;
 const LETTER_DURATION = 0.35;
 const MIN_SPLASH_MS = 750;   // minimum display time for the letter animation (letters land at ~0.70s)
 const MAX_SPLASH_MS = 2000;  // safety net — never block the site forever
+const FADE_MS = 180;         // exit fade duration (must match the CSS transition)
 
 function whenPageReady(): Promise<void> {
   return new Promise((resolve) => {
@@ -66,35 +64,42 @@ function whenImagesLoaded(): Promise<void> {
   });
 }
 
+// The splash waits (bounded) for the molten-metal background to finish
+// compiling, so the first scroll into the transparent sections below the hero
+// never reveals a blank/black background — the molten is "ready" and renders
+// instantly on demand. MoltenMetal sets the window flag and dispatches
+// 'tia:molten-ready' after its shader program is built (loaded + compiled).
+// The cap (MOLTEN_WAIT_MS) guarantees the splash never pins the site open on
+// a very slow connection; with the molten chunk preloaded in the HTML, it is
+// normally ready well before the splash's minimum display time.
+const MOLTEN_WAIT_MS = 1000;
+function whenMoltenReady(): Promise<void> {
+  return new Promise((resolve) => {
+    if ((window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady) {
+      resolve();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('tia:molten-ready', onReady);
+      resolve();
+    };
+    const onReady = () => finish();
+    window.addEventListener('tia:molten-ready', onReady);
+    window.setTimeout(finish, MOLTEN_WAIT_MS);
+  });
+}
+
 export default function SplashScreen({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
-  const splashRef = useRef<HTMLDivElement>(null);
-  const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [progress, setProgress] = useState(0);
 
   // ── Start everything on mount ────────────────────────────
   useEffect(() => {
     let alive = true;
-
-    // Use gsap.context() to properly kill all tweens on cleanup
-    const ctx = gsap.context(() => {
-      // Letter drop — letters start invisible (opacity:0 in JSX),
-      // set initial position above viewport, then animate down
-      gsap.set(letterRefs.current.filter(Boolean), {
-        y: LETTER_DROP_Y,
-        rotate: -8,
-      });
-
-      gsap.to(letterRefs.current.filter(Boolean), {
-        y: 0,
-        opacity: 1,
-        rotate: 0,
-        duration: LETTER_DURATION,
-        stagger: LETTER_STAGGER,
-        ease: 'back.out(1.4)',
-      });
-    });
 
     // Counter: 0→90% over MIN_SPLASH_MS, then 90→100% when beginExit fires.
     // This way the bar never sits at 100% while still loading — it reflects
@@ -127,19 +132,13 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
       // (~0.18s real, ~0.7s throttled) off LCP. The scroll lock and the DOM
       // removal stay tied to `visible` (fade end), so UX is unchanged.
       window.dispatchEvent(new CustomEvent('splash-complete'));
-      gsap.to(splashRef.current, {
-        opacity: 0,
-        scale: 0.97,
-        duration: 0.18,
-        ease: 'power2.inOut',
-        onComplete: () => {
-          if (alive) setVisible(false);
-        },
-      });
+      window.setTimeout(() => {
+        if (alive) setVisible(false);
+      }, FADE_MS);
     };
 
-    // Wait for page + images, respect min time, enforce max cap
-    Promise.all([whenPageReady(), whenImagesLoaded()]).then(() => {
+    // Wait for page + images + molten background, respect min time, enforce max cap
+    Promise.all([whenPageReady(), whenImagesLoaded(), whenMoltenReady()]).then(() => {
       const elapsed = performance.now() - progressStart;
       const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
       // If resources loaded faster than the min time, wait the difference.
@@ -151,7 +150,6 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
 
     return () => {
       alive = false;
-      ctx.revert();
       clearInterval(counterTimer);
       clearTimeout(maxTimer);
     };
@@ -192,15 +190,20 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
         @keyframes splash-dot-flicker {
           to { mask-position: 50% 50%, 0 50%; }
         }
+        @keyframes splash-letter-drop {
+          from { opacity: 0; transform: translateY(-120px) rotate(-8deg); }
+          to   { opacity: 1; transform: translateY(0) rotate(0deg); }
+        }
       `}</style>
 
       {visible && (
         <div
-          ref={splashRef}
           className="fixed inset-0 z-[99999] overflow-hidden select-none"
           style={{
             pointerEvents: exiting ? 'none' : 'auto',
             background: '#010101',
+            opacity: exiting ? 0 : 1,
+            transition: `opacity ${FADE_MS}ms cubic-bezier(0.45,0,0.55,1)`,
           }}
         >
           {/* ── CSS Dot Pattern — dark teal dots, flicker animation ── */}
@@ -223,7 +226,8 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
 
           {/* Centered content */}
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
-            {/* "Tia Designs" — letter by letter drop */}
+            {/* "Tia Designs" — letter by letter drop (pure CSS keyframes,
+                per-index animation-delay replicates the GSAP stagger) */}
             <h1
               className="flex flex-wrap justify-center gap-[0.02em] text-6xl sm:text-7xl md:text-8xl max-[450px]:text-5xl max-[374px]:text-4xl font-black tracking-tight text-white select-none"
               style={{ fontFamily: 'var(--font-sans), Outfit, sans-serif' }}
@@ -231,9 +235,12 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
               {LETTERS.map((char, i) => (
                 <span
                   key={i}
-                  ref={(el) => { letterRefs.current[i] = el; }}
                   className="inline-block"
-                  style={{ opacity: 0, minWidth: char === ' ' ? '0.3em' : undefined }}
+                  style={{
+                    opacity: 0,
+                    minWidth: char === ' ' ? '0.3em' : undefined,
+                    animation: `splash-letter-drop ${LETTER_DURATION}s cubic-bezier(0.34,1.56,0.64,1) ${i * LETTER_STAGGER}s forwards`,
+                  }}
                 >
                   {char === ' ' ? '\u00A0' : char}
                 </span>

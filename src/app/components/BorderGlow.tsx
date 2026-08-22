@@ -86,7 +86,11 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   edgeSensitivity = 0,
   style,
   glowColor = '170 80 50',
-  backgroundColor = 'rgba(6, 10, 10, 0.62)',
+  // 0.78 (not 0.62): the cards have NO backdrop-filter (see BorderGlow.css —
+  // ~190 marquee cards re-blurring the animated molten each frame was the lag
+  // source), so the tint is slightly more opaque to reproduce the softness
+  // the blur used to add. Same dark-glass look, zero per-frame sampling.
+  backgroundColor = 'rgba(6, 10, 10, 0.78)',
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 2.0,

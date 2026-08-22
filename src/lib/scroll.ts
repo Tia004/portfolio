@@ -1,6 +1,7 @@
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
 // ── Scroll-aware ScrollTrigger.refresh() ────────────────────
+// ScrollTrigger is loaded lazily (loadGsap caches the promise) — this module
+// never imports it statically, so the animation runtime stays out of the
+// critical-path bundle.
 // ScrollTrigger.refresh() recalculates every trigger position. When several
 // elements intersect during ONE fast gesture (ScrollReveal/StaggerReveal fire
 // their IO as the page flies past) each callback called refresh() while Lenis
@@ -13,13 +14,21 @@ if (typeof window !== 'undefined') {
   window.addEventListener('scroll', () => { lastScrollAt = Date.now(); }, { passive: true, capture: true });
 }
 
+let scrollTriggerPromise: Promise<typeof import('gsap/ScrollTrigger')['ScrollTrigger']> | null = null;
+function getScrollTrigger() {
+  if (!scrollTriggerPromise) {
+    scrollTriggerPromise = import('gsap/ScrollTrigger').then((m) => m.ScrollTrigger);
+  }
+  return scrollTriggerPromise;
+}
+
 export function refreshScrollTriggers(): void {
   if (Date.now() - lastScrollAt < 150) return; // gesture in progress — skip
   if (refreshQueued) return;
   refreshQueued = true;
   requestAnimationFrame(() => {
     refreshQueued = false;
-    ScrollTrigger.refresh();
+    getScrollTrigger().then((ScrollTrigger) => ScrollTrigger.refresh());
   });
 }
 

@@ -1,12 +1,9 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { loadGsap } from '@/lib/gsap-lazy';
 import { STAGGER_DEFAULTS } from '@/lib/animation-theme';
 import { refreshScrollTriggers } from '@/lib/scroll';
-
-gsap.registerPlugin(ScrollTrigger);
 
 interface StaggerRevealProps {
   children: ReactNode;
@@ -42,6 +39,7 @@ export default function StaggerReveal({
   ease = STAGGER_DEFAULTS.ease,
 }: StaggerRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const ctxRef = useRef<gsap.Context | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -59,35 +57,40 @@ export default function StaggerReveal({
     const targets = el.children;
     if (targets.length === 0) return;
 
-    const ctx = gsap.context(() => {
-      const targetArray = Array.from(targets) as HTMLElement[];
-      gsap.fromTo(
-        targets,
-        { opacity: 0, y: yOffset },
-        {
-          opacity: 1,
-          y: 0,
-          duration,
-          stagger,
-          ease,
-          onStart: () => {
-            targetArray.forEach((t) => { t.style.willChange = 'transform'; });
-          },
-          onComplete: () => {
-            targetArray.forEach((t) => { t.style.willChange = 'auto'; });
-          },
-          scrollTrigger: {
-            trigger: el,
-            start,
-            end,
-            toggleActions: 'play none none none',
-            once: true,
-          },
-        }
-      );
-    }, el);
+    let alive = true;
+    loadGsap().then((gsap) => {
+      if (!alive) return;
+      const ctx = gsap.context(() => {
+        const targetArray = Array.from(targets) as HTMLElement[];
+        gsap.fromTo(
+          targets,
+          { opacity: 0, y: yOffset },
+          {
+            opacity: 1,
+            y: 0,
+            duration,
+            stagger,
+            ease,
+            onStart: () => {
+              targetArray.forEach((t) => { t.style.willChange = 'transform'; });
+            },
+            onComplete: () => {
+              targetArray.forEach((t) => { t.style.willChange = 'auto'; });
+            },
+            scrollTrigger: {
+              trigger: el,
+              start,
+              end,
+              toggleActions: 'play none none none',
+              once: true,
+            },
+          }
+        );
+      }, el);
+      ctxRef.current = ctx;
+    });
 
-    return () => { ctx.revert(); io.disconnect(); };
+    return () => { alive = false; ctxRef.current?.revert(); io.disconnect(); };
   }, [yOffset, duration, stagger, start, end, ease]);
 
   return (

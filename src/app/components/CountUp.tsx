@@ -1,11 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-// Ensure ScrollTrigger is registered (idempotent)
-gsap.registerPlugin(ScrollTrigger);
+import { loadGsap } from '@/lib/gsap-lazy';
 
 // ── Shared glow style ─────────────────────────────────────────
 
@@ -39,45 +35,50 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
     const el = wrapperRef.current;
     if (!el) return;
 
-    const ctx = gsap.context(() => {
-      gsap.to({ val: 0 }, {
-        val: target,
-        duration: 2.8,
-        delay,
-        ease: 'power3.out',
-        // Only use ScrollTrigger when ready is undefined (price cards).
-        // When ready is true (hero stats), the tween starts immediately after delay.
-        ...(ready === undefined ? {
-          scrollTrigger: {
-            trigger: el,
-            start: 'top 85%',
-            once: true,
+    let alive = true;
+    loadGsap().then((gsap) => {
+      if (!alive) return;
+      const ctx = gsap.context(() => {
+        gsap.to({ val: 0 }, {
+          val: target,
+          duration: 2.8,
+          delay,
+          ease: 'power3.out',
+          // Only use ScrollTrigger when ready is undefined (price cards).
+          // When ready is true (hero stats), the tween starts immediately after delay.
+          ...(ready === undefined ? {
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 85%',
+              once: true,
+            },
+          } : {}),
+          onUpdate() {
+            if (!numRef.current) return;
+            // Throttle DOM writes to every 2nd frame (~30fps): each textContent
+            // write invalidates style → UpdateLayoutTree. Writing every frame
+            // (60fps) for 2.8s × the 5 hero counters was the dominant source of
+            // Style & Layout work after splash (≈590ms real, ~2.4s throttled,
+            // landing exactly on LCP). At 30fps the count is visually identical.
+            frameRef.current++;
+            if (frameRef.current % 2 !== 0) return;
+            const v = this.targets()[0].val as number;
+            const clamped = Math.min(Math.round(v), target);
+            numRef.current.textContent = clamped.toLocaleString('it-IT');
           },
-        } : {}),
-        onUpdate() {
-          if (!numRef.current) return;
-          // Throttle DOM writes to every 2nd frame (~30fps): each textContent
-          // write invalidates style → UpdateLayoutTree. Writing every frame
-          // (60fps) for 2.8s × the 5 hero counters was the dominant source of
-          // Style & Layout work after splash (≈590ms real, ~2.4s throttled,
-          // landing exactly on LCP). At 30fps the count is visually identical.
-          frameRef.current++;
-          if (frameRef.current % 2 !== 0) return;
-          const v = this.targets()[0].val as number;
-          const clamped = Math.min(Math.round(v), target);
-          numRef.current.textContent = clamped.toLocaleString('it-IT');
-        },
-        onComplete() {
-          setGlow(true);
-          setPulse(true);
-          glowTimerRef.current = setTimeout(() => setGlow(false), 600);
-          scaleTimerRef.current = setTimeout(() => setPulse(false), 400);
-        },
+          onComplete() {
+            setGlow(true);
+            setPulse(true);
+            glowTimerRef.current = setTimeout(() => setGlow(false), 600);
+            scaleTimerRef.current = setTimeout(() => setPulse(false), 400);
+          },
+        });
       });
+      return () => ctx.revert();
     });
 
     return () => {
-      ctx.revert();
+      alive = false;
       if (glowTimerRef.current) clearTimeout(glowTimerRef.current);
       if (scaleTimerRef.current) clearTimeout(scaleTimerRef.current);
     };
