@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import PixelTrail from './PixelTrail';
+import dynamic from 'next/dynamic';
+
+// Canvas effect — load it lazily so its eval never blocks the first paint
+// (it only ever renders on fine-pointer devices anyway).
+const PixelTrail = dynamic(() => import('./PixelTrail'), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function PointerCursor() {
   const pathname = usePathname();

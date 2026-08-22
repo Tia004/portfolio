@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useLenis } from './SmoothScroll';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from './LanguageProvider';
@@ -24,7 +25,7 @@ const NAV_ITEMS = [
 
 function Logo() {
   return (
-    <a
+    <Link
       href="/"
       onClick={(e) => {
         // Brand click = hard refresh: resets the SPA (splash, scroll, chat)
@@ -41,7 +42,6 @@ function Logo() {
       <picture>
         <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
         <source srcSet="/TiaDesignsLogo.webp" type="image/webp" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/TiaDesignsLogo.png"
           alt="Tia Designs"
@@ -50,7 +50,7 @@ function Logo() {
           draggable="false"
         />
       </picture>
-    </a>
+    </Link>
   );
 }
 
@@ -63,13 +63,14 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
   // ── Scroll lock + stop Lenis ──
   useEffect(() => {
     const scrollY = window.scrollY;
+    const lenisInstance = lenis.current;
     document.body.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
     // iOS Safari workaround: block rubber-band overscroll
     document.body.style.overscrollBehavior = 'none';
-    lenis.current?.stop();
+    lenisInstance?.stop();
     return () => {
       document.body.style.overflow = '';
       document.body.style.position = '';
@@ -77,10 +78,10 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
       document.body.style.width = '';
       document.body.style.overscrollBehavior = '';
       window.scrollTo(0, scrollY);
-      lenis.current?.scrollTo(scrollY, { immediate: true, force: true });
-      lenis.current?.start();
+      lenisInstance?.scrollTo(scrollY, { immediate: true, force: true });
+      lenisInstance?.start();
     };
-  }, []);
+  }, [lenis]);
 
   // ── Escape key ──
   useEffect(() => {
@@ -234,7 +235,6 @@ export default function Navbar() {
     if (menuOpen) {
       // Clear any pending close timer
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      setClosing(false);
       menuTimerRef.current = setTimeout(() => setMenuVisible(true), 350);
     } else {
       // Clear pending open timer (user closed before 350ms)
@@ -330,7 +330,7 @@ export default function Navbar() {
             {/* Large invisible ::before area makes clicking easy even with pixel trail */}
             <button
               className="relative w-[22px] h-[18px] transition-transform duration-300 z-0 before:absolute before:content-[''] before:inset-[-14px] before:rounded-lg"
-              onClick={() => { const opening = !menuOpen; setMenuOpen(opening); if (opening) playMenuOpenSound(); }}
+              onClick={() => { const opening = !menuOpen; setMenuOpen(opening); if (opening) { setClosing(false); playMenuOpenSound(); } }}
               aria-label={t('nav.menu', lang)}
             >
               <span className={`absolute left-0 top-0 w-full h-[2px] rounded-sm bg-white transition-all duration-300 origin-center ${menuOpen ? 'top-[8px] rotate-45' : 'hover:scale-x-[0.8]'}`} style={{ transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />

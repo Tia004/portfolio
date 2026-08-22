@@ -223,11 +223,14 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
           the body is composited (position:fixed scroll-lock) is the exact
           surface that triggered the Samsung/Android renderer-kill with 24px.
           On mobile the base is bg-black/80 (80% opaque), so the blur behind
-          it is barely visible: 4px gives the same look at a fraction of the
-          GPU cost. The real glass lives on the small panels; sm+ keeps the
-          full 24px blur. Weak devices get all blur removed by .is-low-end. */}
+          it is barely visible — and it is LIVE: it re-samples every frame
+          while the review marquee behind the modal keeps animating, which
+          delays the modal's first paint after the tap (mobile INP). So on
+          mobile the backdrop is a solid dark layer (same look, no per-frame
+          re-blur); sm+ keeps the full 24px blur. Weak devices get all blur
+          removed by .is-low-end anyway. */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
+        className="fixed inset-0 bg-black/80 sm:bg-black/80 sm:backdrop-blur-xl animate-in fade-in duration-300"
         onClick={handleBackdrop}
       />
 

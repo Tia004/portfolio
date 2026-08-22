@@ -315,11 +315,15 @@ export default function MoltenMetal({
 
     writeUniforms(ctx, props);
 
-    // DPR is capped at 1.5 — a full-screen animated shader needs the savings
-    // on high-density phones far more than it needs the extra pixels.
+    // DPR: 1 on mobile (coarse pointer or narrow viewport) — the full-screen
+    // shader needs the pixel savings on phones far more than the extra
+    // resolution; desktop stays capped at 1.5.
     const setSize = () => {
       const rect = container.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const isMobile =
+        (window.matchMedia?.('(pointer: coarse)').matches ?? false) ||
+        rect.width < 768;
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       const w = Math.max(1, Math.floor(rect.width * dpr));
       const h = Math.max(1, Math.floor(rect.height * dpr));
       if (canvas.width !== w || canvas.height !== h) {
@@ -387,7 +391,25 @@ export default function MoltenMetal({
         else tryStart();
       }
     };
-    window.addEventListener('scroll', updateCoverage, { passive: true });
+
+    // Pause while the user is actively scrolling (wheel / touch / programmatic
+    // scroll): the last frame stays frozen and the GPU is freed exactly during
+    // the moments that would otherwise jank. The loop resumes 200ms after the
+    // last scroll input. This is the biggest single win on mobile, where a
+    // full-screen WebGL repaint every frame while scrolling is brutal.
+    let scrollIdleTimer: number | undefined;
+    const onScrollInput = () => {
+      updateCoverage();
+      if (scrollIdleTimer !== undefined) window.clearTimeout(scrollIdleTimer);
+      if (raf !== 0) tryStop();
+      scrollIdleTimer = window.setTimeout(() => {
+        scrollIdleTimer = undefined;
+        tryStart();
+      }, 200);
+    };
+    window.addEventListener('scroll', onScrollInput, { passive: true });
+    window.addEventListener('wheel', onScrollInput, { passive: true });
+    window.addEventListener('touchmove', onScrollInput, { passive: true });
     updateCoverage();
 
     const onVisibility = () => {
@@ -425,8 +447,11 @@ export default function MoltenMetal({
 
     return () => {
       tryStop();
+      if (scrollIdleTimer !== undefined) window.clearTimeout(scrollIdleTimer);
       ro.disconnect();
-      window.removeEventListener('scroll', updateCoverage);
+      window.removeEventListener('scroll', onScrollInput);
+      window.removeEventListener('wheel', onScrollInput);
+      window.removeEventListener('touchmove', onScrollInput);
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mouseleave', onLeave);

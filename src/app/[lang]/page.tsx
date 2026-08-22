@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import HomeShell from '../components/HomeShell';
 import FAQJsonLd from '../components/FAQJsonLd';
+import OrganizationJsonLd from '../components/OrganizationJsonLd';
 import type { Lang } from '@/lib/translations';
 
 const VALID_LANGS = new Set(['en', 'es']);
@@ -14,6 +15,7 @@ export default async function LangPage({ params }: { params: Promise<{ lang: str
   if (!VALID_LANGS.has(lang)) notFound();
   return (
     <>
+      <OrganizationJsonLd lang={lang as Lang} />
       <FAQJsonLd lang={lang as Lang} />
       <HomeShell />
     </>

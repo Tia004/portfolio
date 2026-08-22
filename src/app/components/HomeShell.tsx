@@ -1,7 +1,7 @@
 'use client';
 
 /** @category React e Core */
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
@@ -42,7 +42,6 @@ import {
   DiamondIcon,
   MobileProgramming01Icon,
   ServerStack01Icon,
-  Database01Icon,
   ContainerIcon,
   TerminalIcon,
 
@@ -90,8 +89,13 @@ import {
 
 /** @category Componenti */
 import SmoothScrollProvider, { useLenis } from './SmoothScroll';
-import Dither from './Dither';
-import MoltenMetal from './MoltenMetal';
+// WebGL canvases are the heaviest client chunks (three.js for the dither,
+// ogl for the molten). Loading them with next/dynamic keeps their eval off
+// the critical path: the hero's static texture base and the molten's CSS
+// gradient fallback both paint instantly, and the canvas swaps in after
+// hydration without blocking the first paint.
+const Dither = dynamic(() => import('./Dither'), { ssr: false, loading: () => null });
+const MoltenMetal = dynamic(() => import('./MoltenMetal'), { ssr: false, loading: () => null });
 import Navbar from './Navbar';
 import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
@@ -125,7 +129,7 @@ import { useTooltip } from '@/lib/useTooltip';
 /** @category Dati e Config */
 import { getTooltip } from '@/lib/tooltips';
 import { HERO, STAGGER_BY_SECTION, HERO_COUNTUP_DELAYS, SKILL_TITLE_OFFSET } from '@/lib/animation-theme';
-import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
+import { scrollToElementAfterLayout } from '@/lib/scroll';
 import { isValidContactEmail, isValidContactMessage, isValidContactName } from '@/lib/input-validation';
 import { playChatOpenSound } from '@/lib/menu-sounds';
 
@@ -443,10 +447,14 @@ function TiltCard({ children, className = '' }: { children: React.ReactNode; cla
   // BorderGlow, and PixelTrail mousemove flushes.
   const pendingMoveRef = useRef<{ x: number; y: number } | null>(null);
   const tiltScheduledRef = useRef(false);
+  // Latest paintTilt so the callback can unschedule ITSELF by identity (the
+  // shared ticker dedupes callbacks by function reference). Synced in an
+  // effect — writing a ref during render is what react-hooks/refs rejects.
+  const paintTiltRef = useRef<() => void>(() => {});
 
   const paintTilt = useCallback(() => {
     tiltScheduledRef.current = false;
-    unscheduleTick(paintTilt);
+    unscheduleTick(paintTiltRef.current);
     const pending = pendingMoveRef.current;
     pendingMoveRef.current = null;
     const layout = layoutRef.current;
@@ -464,6 +472,9 @@ function TiltCard({ children, className = '' }: { children: React.ReactNode; cla
       setActive(true);
     }
   }, []);
+  useEffect(() => {
+    paintTiltRef.current = paintTilt;
+  }, [paintTilt]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isVisibleRef.current || !canTiltRef.current) return;
@@ -680,7 +691,8 @@ function PriceCard({
 // ── Subtle notification sound (Web Audio API, no files needed) ──
 function playNotificationSound() {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioCtx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
     const now = ctx.currentTime;
 
     // Soft chime — two overlapping sine tones
@@ -925,6 +937,10 @@ export default function HomeShell() {
     let scrollStoppedTimer: ReturnType<typeof setTimeout> | undefined;
     const isScrollingRef = { current: false };
 
+    // Capture the instance once: the ref may be reassigned between renders,
+    // but within this effect lifetime the instance is stable.
+    const lenisInstance = lenis.current;
+
     // Debounced scroll-stop detector: resets on every 'scroll' event.
     // When scrolling finally stops for 300ms, allow one resize to catch up.
     const onScroll = () => {
@@ -933,18 +949,18 @@ export default function HomeShell() {
       scrollStoppedTimer = setTimeout(() => {
         scrollStoppedTimer = undefined;
         isScrollingRef.current = false;
-        lenis.current?.resize();
+        lenisInstance?.resize();
       }, 300);
     };
 
-    lenis.current?.on('scroll', onScroll);
+    lenisInstance?.on('scroll', onScroll);
 
     const ro = new ResizeObserver(() => {
       if (isScrollingRef.current) return; // never resize mid-scroll
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         resizeTimer = undefined;
-        lenis.current?.resize();
+        lenisInstance?.resize();
       }, 400);
     });
     ro.observe(document.body);
@@ -959,19 +975,19 @@ export default function HomeShell() {
     let mountRaf = 0;
     const onSectionMounted = () => {
       cancelAnimationFrame(mountRaf);
-      mountRaf = requestAnimationFrame(() => lenis.current?.resize());
+      mountRaf = requestAnimationFrame(() => lenisInstance?.resize());
     };
     window.addEventListener('tia:section-mounted', onSectionMounted);
 
     return () => {
-      lenis.current?.off('scroll', onScroll);
+      lenisInstance?.off('scroll', onScroll);
       ro.disconnect();
       if (resizeTimer) clearTimeout(resizeTimer);
       if (scrollStoppedTimer) clearTimeout(scrollStoppedTimer);
       cancelAnimationFrame(mountRaf);
       window.removeEventListener('tia:section-mounted', onSectionMounted);
     };
-  }, []);
+  }, [lenis]);
   const [isMonthly, setIsMonthly] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>('Tutti');
   const [projectsPage, setProjectsPage] = useState(0);
@@ -988,7 +1004,7 @@ export default function HomeShell() {
   // above the keyboard instead.
   const [kbOffset, setKbOffset] = useState(0);
   useEffect(() => {
-    if (!chatOpen) { setKbOffset(0); return; }
+    if (!chatOpen) return;
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
@@ -1020,14 +1036,16 @@ export default function HomeShell() {
   // ── Mobile detection — when docked at the top the CTA shrinks into a
   // small pill that sits in the navbar row (between the logo and the burger)
   // instead of a full-size bar floating at the very top of the viewport. ──
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
+  // useSyncExternalStore keeps the matchMedia subscription outside the render
+  // path (no setState-in-effect, no missing-deps) while staying hydration-safe:
+  // the server snapshot is false, matching the initial SSR HTML.
+  const subscribeIsMobile = useCallback((onStoreChange: () => void) => {
     const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
+    mq.addEventListener('change', onStoreChange);
+    return () => mq.removeEventListener('change', onStoreChange);
   }, []);
+  const getIsMobileSnapshot = useCallback(() => window.matchMedia('(max-width: 767px)').matches, []);
+  const isMobile = useSyncExternalStore(subscribeIsMobile, getIsMobileSnapshot, () => false);
 
   // ── CTA tooltip: always shows on hover (removed localStorage gate) ──
   const [showCtaTooltip] = useState(true);
@@ -1065,15 +1083,15 @@ export default function HomeShell() {
   // disables native scrolling and manages its own virtual scroll.
   const [blurBottomHidden, setBlurBottomHidden] = useState(false);
   useEffect(() => {
+    const lenisInstance = lenis.current;
+    if (!lenisInstance) return;
     const check = () => {
-      const l = lenis.current;
-      if (!l) return;
-      setBlurBottomHidden(l.scroll >= l.limit - 20);
+      setBlurBottomHidden(lenisInstance.scroll >= lenisInstance.limit - 20);
     };
     check();
-    lenis.current?.on('scroll', check);
-    return () => { lenis.current?.off('scroll', check); };
-  }, []);
+    lenisInstance.on('scroll', check);
+    return () => { lenisInstance.off('scroll', check); };
+  }, [lenis]);
 
   // ── Hide CTA with fade-out + slide-down animation ──
   const hideCta = useCallback(() => {
@@ -1081,6 +1099,7 @@ export default function HomeShell() {
     ctaHidingRef.current = true;
     if (ctaTimerRef.current) clearTimeout(ctaTimerRef.current);
     setCtaHiding(true);
+    // eslint-disable-next-line react-hooks/immutability -- timer ref written in a callback and read in effect cleanup is the standard pattern; the rule can't track ref lifetimes across hook boundaries.
     ctaTimerRef.current = setTimeout(() => {
       setCtaVisible(false);
       setCtaHiding(false);
@@ -1172,7 +1191,7 @@ export default function HomeShell() {
   }, []);
 
   const [messages, setMessages] = useState<{ id: number; text: string; sender: 'client' | 'tia' | 'system' }[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping] = useState(false);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const chatWidgetRef = useRef<HTMLDivElement>(null);
   const chatTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1182,18 +1201,47 @@ export default function HomeShell() {
   // Never generate a client-controlled session ID for chat requests.
   const sessionIdRef = useRef<string | null>(null);
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
-  const turnstileMountRef = useRef<Promise<(() => void)> | null>(null);
   const lastPollRef = useRef(0);
 
+  // Turnstile is mounted LAZILY: the script (~130KB + widget work) loads only
+  // when the chatbot section enters the viewport, i.e. the visitor is about to
+  // use the chat. Protected requests still wait on turnstileWidgetReady (the
+  // mount promise is published before the first await), so the first message
+  // is never blocked by the lazy mount.
   useEffect(() => {
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
     if (!siteKey || !turnstileContainerRef.current) return;
     const container = turnstileContainerRef.current;
-    const mountPromise = mountTurnstile(container, siteKey).catch(() => () => undefined);
-    turnstileMountRef.current = mountPromise;
+
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+
+    const mount = () => {
+      if (cancelled || cleanup) return;
+      mountTurnstile(container, siteKey)
+        .then((fn) => { if (!cancelled) cleanup = fn; })
+        .catch(() => () => undefined);
+    };
+
+    const chatSection = document.getElementById('chatbot');
+    if (!chatSection) {
+      mount(); // section not rendered — fall back to eager mount
+    } else {
+      const io = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            mount();
+            io.disconnect();
+          }
+        },
+        { rootMargin: '150px 0px 0px 0px' }
+      );
+      io.observe(chatSection);
+    }
+
     return () => {
-      mountPromise.then(cleanup => cleanup()).catch(() => undefined);
-      turnstileMountRef.current = null;
+      cancelled = true;
+      cleanup?.();
     };
   }, []);
 
@@ -1417,7 +1465,7 @@ export default function HomeShell() {
   // for 30 minutes. Persisted in sessionStorage so a reload can't bypass it. ──
   const OFFTOPIC_BLOCK_MS = 30 * 60 * 1000;
   const [chatBlockedUntil, setChatBlockedUntil] = useState(0);
-  const [offtopicStrikes, setOfftopicStrikes] = useState(0);
+  const [, setOfftopicStrikes] = useState(0);
   const offtopicStrikesRef = useRef(0);
   // Details collected by the small in-chat form stay in the conversation until
   // the AI finishes the quote. They must not trigger a page jump on their own.
@@ -1455,6 +1503,7 @@ export default function HomeShell() {
       const strikesRaw = sessionStorage.getItem('tia_bot_offtopic_strikes');
       const strikes = strikesRaw ? Number(strikesRaw) : 0;
       if (until > Date.now()) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sessionStorage restore on mount (TTL-guarded); nothing to subscribe to, so useSyncExternalStore doesn't apply.
         setChatBlockedUntil(until);
         setOfftopicStrikes(strikes);
         offtopicStrikesRef.current = strikes;
@@ -1481,6 +1530,7 @@ export default function HomeShell() {
         return;
       }
       // Restore full conversation — max last 20 messages to bound state size
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sessionStorage restore on mount (chatRestoredRef-guarded); no subscription exists, useSyncExternalStore doesn't apply.
       setBotMessages(data.messages.slice(-20));
       setChatStarted(true);
       if (data.category && CHAT_CATEGORY_OPTIONS.some(o => o.value === data.category)) {
@@ -1509,6 +1559,7 @@ export default function HomeShell() {
     return () => clearTimeout(id);
   }, [chatBlockedUntil, clearChatBlock]);
 
+  // eslint-disable-next-line react-hooks/purity -- expiry check must re-evaluate on every render; Date.now() is the only correct source for "is the 30-min block still active".
   const chatBlocked = chatBlockedUntil > Date.now();
 
   // Save chat whenever messages change (debounced by rAF)
@@ -1592,6 +1643,7 @@ export default function HomeShell() {
     const text = (inputOverride ?? botInput).trim();
     if (!text) return;
     // Off-topic block: after 3 strikes the visitor cannot send anything for 30 min.
+    // eslint-disable-next-line react-hooks/purity -- live expiry check at send time (a closure value would be stale between renders); inherently time-dependent.
     if (chatBlockedUntil > Date.now()) return;
     // Any real message (text or a chip) counts as "passing the welcome": the
     // teal halo dims from here on (specializations stay in the welcome
@@ -1637,7 +1689,7 @@ export default function HomeShell() {
       if (!res.ok || !res.body) {
         const body = await res.text().catch(() => '');
         // Try to extract error from SSE body, fallback to generic message
-        let errMsg = t('bot.error_server', lang);
+        const errMsg = t('bot.error_server', lang);
         // Never surface raw API/server text: it can contain internal
         // implementation details. Keep the visitor-facing error localized.
         try {
@@ -1909,6 +1961,7 @@ export default function HomeShell() {
 
       quoteEmailSentRef.current = quoteKey;
       sessionStorage.setItem(storageKey, '1');
+      // eslint-disable-next-line react-hooks/immutability -- draft ref written after the async send and read by later renders; its lifetime spans hook boundaries, which the rule can't model.
       quoteDraftRef.current = { ...prefill, name, email, service, message: finalQuote };
       setBotMessages(prev => prev.map(message => message.id === messageId ? { ...message, approvalState: 'approved' } : message));
       scrollToContatti({ name, email, service, message: finalQuote }, true);
@@ -1952,7 +2005,7 @@ export default function HomeShell() {
     const handleClickOutside = (e: MouseEvent) => {
       if (chatWidgetRef.current && !chatWidgetRef.current.contains(e.target as Node)) {
         setChatClosing(true);
-        setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300);
+        setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -1979,7 +2032,7 @@ export default function HomeShell() {
 
       es.onmessage = (e) => {
         try {
-          const incoming = JSON.parse(e.data);
+          const incoming = JSON.parse(e.data) as Array<{ id: number; text: string }>;
           if (!Array.isArray(incoming) || incoming.length === 0) return;
           lastPollRef.current = Date.now();
           setMessages(prev => {
@@ -1987,9 +2040,9 @@ export default function HomeShell() {
             // read source switches between stores after an outage (ids may
             // briefly differ on the same message). Text + id is unique enough.
             const existingKeys = new Set(prev.map(m => `${m.id}|${m.text}`));
-            const newMsgs = incoming.filter((m: any) => !existingKeys.has(`${m.id}|${m.text}`));
+            const newMsgs = incoming.filter((m) => !existingKeys.has(`${m.id}|${m.text}`));
             if (newMsgs.length === 0) return prev;
-            return [...prev, ...newMsgs.map((m: any) => ({ id: m.id, text: m.text, sender: 'tia' as const }))];
+            return [...prev, ...newMsgs.map((m) => ({ id: m.id, text: m.text, sender: 'tia' as const }))];
           });
         } catch {
           // Ignore parse errors
@@ -2361,7 +2414,6 @@ export default function HomeShell() {
                   <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
                 </>
               )}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 // The .png originals were removed from the repo/R2 — the
                 // picture <source> list already serves avif/webp, and this
@@ -3114,9 +3166,16 @@ export default function HomeShell() {
 
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5">
-                {/* Fade top & bottom */}
-                <div className="absolute top-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-[#060a0a] via-[#060a0a]/80 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 h-16 z-20 pointer-events-none bg-gradient-to-b from-transparent via-[#060a0a]/80 to-[#060a0a]" />                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
+                {/* Fade top & bottom — nested masks dissolve the bands' outer
+                    edge (top for the top band, bottom for the bottom one) AND
+                    their left/right ends into the molten, so the curtains no
+                    longer look "cut" on any side. */}
+                <div className="absolute top-0 left-0 right-0 h-16 z-20 pointer-events-none reviews-curtain-mask-x">
+                  <div className="w-full h-full reviews-curtain-mask-y-top" />
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 h-16 z-20 pointer-events-none reviews-curtain-mask-x">
+                  <div className="w-full h-full reviews-curtain-mask-y-bottom" />
+                </div>                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
                   <InfiniteSlider
                     gap={16}
                     duration={45}
@@ -3507,7 +3566,7 @@ export default function HomeShell() {
                   <span className="flex-1 text-center text-xs font-medium text-neutral-300 tracking-wide">{t('chat.title', lang)}</span>
                   {/* Close button */}
                   <button
-                    onClick={() => { setChatClosing(true); setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300); }}
+                    onClick={() => { setChatClosing(true); setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300); }}
                     className="w-6 h-6 rounded-md hover:bg-white/[0.06] flex items-center justify-center transition-colors text-neutral-500 hover:text-white shrink-0"
                     aria-label="Chiudi chat"
                   >
@@ -3616,7 +3675,7 @@ export default function HomeShell() {
             onClick={() => {
               if (chatOpen) {
                 setChatClosing(true);
-                setTimeout(() => { setChatOpen(false); setChatClosing(false); }, 300);
+                setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300);
               } else {
                 playChatOpenSound();
                 setChatOpen(true);

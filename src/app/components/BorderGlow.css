@@ -112,7 +112,14 @@
       transparent calc((var(--cone-spread) + 15) * 1%),
       transparent calc((100 - var(--cone-spread) - 15) * 1%),
       black calc((100 - var(--cone-spread)) * 1%)
-    );
+    ),
+    /* Punch the interior out of the cone: with the glass card background the
+       wedge's center→border path would otherwise shine through the card as a
+       "light beam from the center". Subtracting a center ellipse leaves only
+       the arc hugging the border — the border-glow look of the old opaque
+       cards — while the glass stays fully transparent in the middle. */
+    radial-gradient(ellipse at 50% 50%, black 70%, transparent 90%);
+  mask-composite: subtract;
 }
 
 /* colored mesh-gradient background fill near edges */
@@ -130,7 +137,7 @@
 
   mask-image:
     linear-gradient(to bottom, black, black),
-    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+    radial-gradient(ellipse at 50% 50%, black 60%, transparent 80%),
     radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
     radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
     radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
@@ -199,14 +206,16 @@
       black calc(var(--cone-spread) * 1%),
       transparent calc((var(--cone-spread) + 15) * 1%),
       transparent 100%
-    );
+    ),
+    radial-gradient(ellipse at 50% 50%, black 70%, transparent 90%);
+  mask-composite: subtract;
 }
 /* Align the inner soft fill with the single beam too — the default fill had
    two dark wedges 180° apart matching the old dual-arc mask. */
 .border-glow-single::after {
   mask-image:
     linear-gradient(to bottom, black, black),
-    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+    radial-gradient(ellipse at 50% 50%, black 60%, transparent 80%),
     radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
     radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
     radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),

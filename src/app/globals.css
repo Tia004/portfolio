@@ -177,6 +177,29 @@ html {
   z-index: 10;
 }
 
+/* Reviews curtains — the top/bottom fade bands of the two vertical review
+   columns. The paint alone (solid dark → transparent) leaves hard lines at
+   the band's outer edge and its left/right ends against the molten
+   background — the same "cut" look the marquee curtains used to have. Two
+   nested masks dissolve those edges: the outer wrapper fades the band's
+   left/right ends, the inner layer fades the band's outer edge (top for the
+   top band, bottom for the bottom one), while the paint gradient still
+   handles the fade into the scrolling cards on the inner side. */
+.reviews-curtain-mask-x {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+}
+.reviews-curtain-mask-y-top {
+  background: linear-gradient(to bottom, #060a0a 0%, rgba(6, 10, 10, 0.8) 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
+}
+.reviews-curtain-mask-y-bottom {
+  background: linear-gradient(to top, #060a0a 0%, rgba(6, 10, 10, 0.8) 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
+  mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
+}
+
 
 /* Mobile snap tracks (services / prices / projects): the last card aligns
    to the RIGHT edge with the same 12px gutter as the first card, so the end
@@ -592,6 +615,47 @@ img {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   background-color: rgba(10, 10, 10, 0.92) !important;
+}
+
+/* Mobile INP: the recensioni + FAQ marquees animate ~100 BorderGlow cards,
+   each with its own backdrop-filter. Every frame each card re-blurs the
+   molten layer behind it (and the other moving cards) — compositor load that
+   delays the frame painted right after any tap in these sections. The card
+   bg is 62% opaque, so the 6px blur of the uniform molten behind is
+   imperceptible: dropping it on mobile keeps the glass look and removes the
+   per-frame re-blur. Weak devices already drop all blur via .is-low-end. */
+@media (max-width: 768px) {
+  #recensioni .border-glow-card,
+  #faq .border-glow-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Mobile backdrop-filter cap: every blurred pixel re-samples the frame on
+   every scroll, and on phones that pass is the single most expensive compositor
+   cost (Style & Layout in Lighthouse). The glass look survives — the radii are
+   just capped so the GPU work collapses; truly weak devices already drop the
+   blur entirely via .is-low-end above. The full-viewport overlays (menu,
+   modals, chat fullscreen) already use blur-sm on mobile. */
+@media (max-width: 767px) {
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .backdrop-blur-xl {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .backdrop-blur-lg {
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  .backdrop-blur-md {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
 }
 
 /* Disable canvas-based cursor effect on low-end devices */
