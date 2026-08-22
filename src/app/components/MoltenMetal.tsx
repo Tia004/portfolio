@@ -318,20 +318,27 @@ export default function MoltenMetal({
     // DPR: 1 on mobile (coarse pointer or narrow viewport) — the full-screen
     // shader needs the pixel savings on phones far more than the extra
     // resolution; desktop stays capped at 1.5.
+    // Mobile also renders at HALF resolution (the CSS canvas is still 100%,
+    // the buffer is 0.5×): the shader costs ~4× fewer pixels per frame and the
+    // organic molten pattern doesn't need full-res sharpness. Grain (a per-
+    // pixel hash) is dropped on mobile for the same reason.
+    let isMobile = false;
     const setSize = () => {
       const rect = container.getBoundingClientRect();
-      const isMobile =
+      isMobile =
         (window.matchMedia?.('(pointer: coarse)').matches ?? false) ||
         rect.width < 768;
       const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
-      const w = Math.max(1, Math.floor(rect.width * dpr));
-      const h = Math.max(1, Math.floor(rect.height * dpr));
+      const scale = isMobile ? 0.5 : 1;
+      const w = Math.max(1, Math.floor(rect.width * dpr * scale));
+      const h = Math.max(1, Math.floor(rect.height * dpr * scale));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
       }
       gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       gl.uniform2f(ctx.uniforms.iResolution, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.uniform1f(ctx.uniforms.uGrain, isMobile ? 0 : (props.grain ? 1 : 0));
     };
     const ro = new ResizeObserver(setSize);
     ro.observe(container);
@@ -358,9 +365,17 @@ export default function MoltenMetal({
     let pageVisible = !document.hidden;
     let covered = false;
     let contextLost = false;
+    let frameCount = 0;
     const t0 = performance.now();
 
     const render = (t: number) => {
+      // Mobile FPS cap: render every other rAF (~30fps). The slow molten
+      // drift stays fluid at half the GPU work; desktop keeps 60fps.
+      frameCount++;
+      if (isMobile && frameCount % 2 === 0) {
+        raf = requestAnimationFrame(render);
+        return;
+      }
       gl.uniform1f(ctx.uniforms.iTime, (t - t0) * 0.001);
       currentMouse[0] += 0.05 * (targetMouse[0] - currentMouse[0]);
       currentMouse[1] += 0.05 * (targetMouse[1] - currentMouse[1]);

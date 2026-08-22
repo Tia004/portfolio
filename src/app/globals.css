@@ -147,8 +147,14 @@ html {
    shorter at the corners, a curved organic dissolve that matches the molten
    waves. Content (z-20) sits above the mask and is never faded. */
 .hero-bottom-curtain {
-  -webkit-mask-image: radial-gradient(ellipse 160% 45% at 50% 100%, transparent 0%, transparent 25%, black 60%, black 100%);
-  mask-image: radial-gradient(ellipse 160% 45% at 50% 100%, transparent 0%, transparent 25%, black 60%, black 100%);
+  /* The fade band moved DOWN (toward the hero's bottom edge) and tightened:
+     the dither stays fully visible across almost the whole hero, and the
+     dissolve into the molten happens in a compact band right at the bottom,
+     where the next section begins — the mid-hero "seam" the user saw is
+     gone. Ellipse anchored below the bottom edge (50% 100%): transparent at
+     the very bottom, opaque from ~50% up. */
+  -webkit-mask-image: radial-gradient(ellipse 200% 55% at 50% 100%, transparent 0%, transparent 12%, black 50%, black 100%);
+  mask-image: radial-gradient(ellipse 200% 55% at 50% 100%, transparent 0%, transparent 12%, black 50%, black 100%);
 }
 
 /* FAQ edge curtains: narrower than the default marquee curtains so an expanded
@@ -184,20 +190,26 @@ html {
    nested masks dissolve those edges: the outer wrapper fades the band's
    left/right ends, the inner layer fades the band's outer edge (top for the
    top band, bottom for the bottom one), while the paint gradient still
-   handles the fade into the scrolling cards on the inner side. */
+   handles the fade into the scrolling cards on the inner side.
+
+   The base color is a molten-tinted dark teal (NOT flat black) so the band
+   blends with the animated molten behind it, and the outer-edge mask uses a
+   radial ellipse — the outer edge AND the corners dissolve organically into
+   the background instead of ending in a straight line. Pure paint: no
+   backdrop-filter, zero per-frame cost. */
 .reviews-curtain-mask-x {
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
 }
 .reviews-curtain-mask-y-top {
-  background: linear-gradient(to bottom, #060a0a 0%, rgba(6, 10, 10, 0.8) 50%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, black 30%, black 100%);
+  background: radial-gradient(ellipse 220% 260% at 50% 0%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
 }
 .reviews-curtain-mask-y-bottom {
-  background: linear-gradient(to top, #060a0a 0%, rgba(6, 10, 10, 0.8) 50%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
-  mask-image: linear-gradient(to top, transparent 0%, black 30%, black 100%);
+  background: radial-gradient(ellipse 220% 260% at 50% 100%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
+  mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
 }
 
 
@@ -617,19 +629,23 @@ img {
   background-color: rgba(10, 10, 10, 0.92) !important;
 }
 
-/* Mobile INP: the recensioni + FAQ marquees animate ~100 BorderGlow cards,
-   each with its own backdrop-filter. Every frame each card re-blurs the
-   molten layer behind it (and the other moving cards) — compositor load that
-   delays the frame painted right after any tap in these sections. The card
-   bg is 62% opaque, so the 6px blur of the uniform molten behind is
-   imperceptible: dropping it on mobile keeps the glass look and removes the
-   per-frame re-blur. Weak devices already drop all blur via .is-low-end. */
-@media (max-width: 768px) {
-  #recensioni .border-glow-card,
-  #faq .border-glow-card {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
+/* Marquees + glass grids: the biggest single lag source on the site.
+   The skills marquee renders ~190 BorderGlow cards, the FAQ rows ~84, the
+   review columns ~16, the pricing grids ~12 — ALL with backdrop-filter:
+   every frame each card re-blurs the ANIMATED molten behind it (and, for the
+   marquees, the other moving cards) — compositor load that makes scrolling
+   the sections jank hard on every device, worst on mobile. The card bg is
+   62% opaque, so the blur of the uniform molten behind is imperceptible:
+   dropping it on ALL viewports keeps the glass look (bg + inset highlight)
+   and removes the per-frame re-blur entirely. The static BorderGlow cards in
+   servizi/progetti (no continuous marquee) keep their blur on desktop. Weak
+   devices also drop blur via .is-low-end. */
+#chisono .border-glow-card,
+#prezzi .border-glow-card,
+#recensioni .border-glow-card,
+#faq .border-glow-card {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Mobile backdrop-filter cap: every blurred pixel re-samples the frame on

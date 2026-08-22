@@ -2306,7 +2306,9 @@ export default function HomeShell() {
     () => getProjects(lang).filter((project) => activeFilter === 'Tutti' || project.category === activeFilter),
     [activeFilter, lang]
   );
-  const projectPageSize = 6;
+  // Desktop shows 3 projects per view (one row) with arrows — 6 (two rows)
+  // didn't fit a 16" screen and lost coherence. Mobile keeps its own slider.
+  const projectPageSize = 3;
   const projectTotalPages = Math.max(1, Math.ceil(filteredProjects.length / projectPageSize));
   const projectPage = Math.min(projectsPage, projectTotalPages - 1);
   const pagedProjects = filteredProjects.slice(projectPage * projectPageSize, (projectPage + 1) * projectPageSize);
@@ -2838,8 +2840,11 @@ export default function HomeShell() {
 
           {/* ============ PROGETTI ============ */}
           <LazySection rootMargin={700} placeholderHeight={600}>
-          <section id="progetti" className="py-10 sm:py-24 px-4" style={{ contain: 'paint style' } as React.CSSProperties}>
-            <div className="max-w-6xl mx-auto">
+          {/* contain: 'paint' would clip the BorderGlow edge-light that paints
+              outside the section bounds — use layout+style only, and let the
+              glow escape. The section is still cheap (LazySection lazy-mounts). */}
+          <section id="progetti" className="py-10 sm:py-24 px-4" style={{ contain: 'layout style' } as React.CSSProperties}>
+            <div className="max-w-7xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('progetti.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('progetti.title', lang)}</h2>
@@ -2879,9 +2884,14 @@ export default function HomeShell() {
                 ))}
               </MobileSnapSlider>
 
-              <StaggerReveal key={`${activeFilter}-${projectsPage}`} stagger={STAGGER_BY_SECTION.progetti} className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* No contentVisibility on the card wrappers: it applies
+                  contain: paint, which clips the BorderGlow edge-light
+                  (28px) that paints outside the card → the glow was cut on
+                  desktop. With only 3 cards per view the lazy benefit is
+                  negligible; the section is already LazySection-lazy. */}
+              <StaggerReveal key={`${activeFilter}-${projectsPage}`} stagger={STAGGER_BY_SECTION.progetti} className="hidden md:grid md:grid-cols-3 gap-7">
                 {pagedProjects.map((project) => (
-                  <div key={project.id} className="cursor-pointer" style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 380px' } as React.CSSProperties} onClick={() => setSelectedProject(project)}>
+                  <div key={project.id} className="cursor-pointer" onClick={() => setSelectedProject(project)}>
                     {renderProjectCard(project)}
                   </div>
                 ))}
@@ -3113,8 +3123,21 @@ export default function HomeShell() {
           {/* h-[100svh] (small viewport) instead of dvh: the mobile URL bar
               show/hide changes dvh and reflows the section mid-scroll — one
               more source of the up/down jitter. svh is stable. */}
-          <section id="chatbot" className="h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 overflow-x-clip">
-            <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
+          <section id="chatbot" className="relative h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 overflow-x-clip">
+            {/* Radial "blur" behind the chat — a STATIC radial-gradient overlay
+                (pure paint, no backdrop-filter): darker at the center and
+                transparent at the edges, so the chat reads as a soft depth
+                pocket against the animated molten without any per-frame
+                re-sampling (which would lag the section). pointer-events-none,
+                sits below the panel content. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0"
+              style={{
+                background: 'radial-gradient(ellipse 85% 75% at 50% 55%, rgba(2, 12, 10, 0.78) 0%, rgba(2, 12, 10, 0.45) 45%, transparent 78%)',
+              }}
+            />
+            <div className="relative z-10 max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
               <div
                 id="chatbot-heading"
                 className="scroll-mt-[9rem] shrink-0"
