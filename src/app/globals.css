@@ -1,7 +1,7 @@
-/* Google Fonts moved to a <link> in layout.tsx <head> (with preconnect) so the
-   fetch starts immediately instead of after this stylesheet parses. With the
-   splash covering the first ~2s, the fonts are ready before the page becomes
-   visible — no visible font swap, no CLS from text reflow. */
+/* Fonts are self-hosted via next/font/google (Outfit + Share Tech Mono) in
+   layout.tsx — the @font-face rules ship with the bundle (font-display: swap)
+   so there is no external Google Fonts request and nothing render-blocking.
+   The splash covers the swap → no visible reflow, no CLS. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -9,8 +9,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: 'Outfit', 'Space Grotesk', sans-serif;
-  --font-mono: 'Share Tech Mono', monospace;
+  --font-sans: var(--font-outfit), 'Space Grotesk', sans-serif;
+  --font-mono: var(--font-share-tech-mono), monospace;
   --teal-primary: rgba(45, 212, 191, 1);
   --teal-glow: rgba(45, 212, 191, 0.15);
   --teal-border: rgba(45, 212, 191, 0.4);

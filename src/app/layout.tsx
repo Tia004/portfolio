@@ -14,6 +14,25 @@ import ScrollbarReveal from "./components/ScrollbarReveal";
 import { cn } from "@/lib/utils";
 import type { Lang } from "@/lib/translations";
 import { LANGS } from "@/lib/translations";
+import { Outfit, Share_Tech_Mono } from "next/font/google";
+
+// Self-hosted fonts (next/font/google): the @font-face rules are emitted at
+// build time with font-display: swap, so there is NO external render-blocking
+// Google Fonts CSS and no third-party request. The first paint never waits on
+// fonts, and the metrics-adjusted fallback keeps CLS at zero during the swap.
+const outfit = Outfit({
+  weight: ["400", "500", "600", "700", "900"],
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const shareTechMono = Share_Tech_Mono({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-share-tech-mono",
+  display: "swap",
+});
 
 // Localized metadata — Google sees the right title/description per language
 export async function generateMetadata(): Promise<Metadata> {
@@ -95,7 +114,7 @@ export default async function RootLayout({
   return (
     <html
       lang={initialLang}
-      className={cn("h-full antialiased bg-[#010101]", "font-sans")}
+      className={cn("h-full antialiased bg-[#010101]", "font-sans", outfit.variable, shareTechMono.variable)}
     >
       <head>
         {/* Dynamic hreflang — tells Google this page exists in 3 languages */}
@@ -105,33 +124,9 @@ export default async function RootLayout({
         <link rel="alternate" hrefLang="x-default" href="https://tiadesigns.it/" />
         {/* Canonical — current language version; matches sitemap hreflang assignments */}
         <link rel="canonical" href={`https://tiadesigns.it${initialLang === 'it' ? '' : `/${initialLang}`}`} />
-        {/* Google Fonts — preconnected and loaded NON-blocking so the first
-            paint (splash) never waits on the Google Fonts CSS. media="print"
-            de-prioritizes the stylesheet; the onload handler flips it to
-            "all" as soon as it arrives. display=swap + the splash cover any
-            reflow, so no CLS. The <noscript> fallback keeps fonts working
-            with JS disabled. */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Only the weights actually used: Outfit 400/500/600/700/900 (the
-            site never uses thin/extralight/light/extrabold), plus Share Tech
-            Mono for font-mono. Space Grotesk and IBM Plex Mono were in the
-            old request but are never referenced — fewer @font-face files means
-            document.fonts.ready resolves sooner, so the splash fades faster. */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap"
-          media="print"
-          onLoad={(e) => {
-            e.currentTarget.media = 'all';
-          }}
-        />
-        <noscript>
-          <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap"
-          />
-        </noscript>
+        {/* Fonts are self-hosted via next/font/google (see the Outfit /
+            Share_Tech_Mono definitions above) — no external Google Fonts
+            <link> here, so nothing render-blocking in the head. */}
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         <LanguageProvider initialLang={initialLang}>
