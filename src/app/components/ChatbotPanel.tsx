@@ -374,16 +374,21 @@ export default function ChatbotPanel({
 
           {/* Curtain — covers messages as they are pushed up. Short and soft on
               mobile so it never swallows the first visible messages; taller on
-              sm+ where there is more headroom. Pure paint (no backdrop-filter):
-              a molten-tinted dark teal instead of flat black so it blends with
-              the animated background, and a horizontal mask that dissolves the
-              left/right edges — no hard "cut" band against the molten. */}
+              sm+ where there is more headroom. A molten-tinted dark teal
+              gradient (not flat black) so it blends with the animated
+              background, a horizontal mask that dissolves the left/right
+              edges, and a light backdrop blur (4px) that FADES the messages
+              as they slide under — the "going away slowly" effect. Cost is
+              contained: one small static band (h-12/h-20) samples the
+              backdrop, unlike the ~300 cards that used to blur every frame. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute top-0 left-0 right-0 h-12 sm:h-20 z-10"
               style={{
                 background: 'linear-gradient(to bottom, rgba(4, 20, 17, 0.92) 0%, rgba(4, 20, 17, 0.55) 55%, transparent 100%)',
+                WebkitBackdropFilter: 'blur(4px)',
+                backdropFilter: 'blur(4px)',
                 WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
                 maskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
               }}

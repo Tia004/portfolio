@@ -2594,6 +2594,14 @@ export default function HomeShell() {
                 green), pixelated via the per-channel 8x8 dither with
                 pixelSize 2. */}
             <div className="absolute inset-0 z-0 hero-bottom-curtain" style={{ background: '#010101' }}>
+            {/* Mount the WebGL Dither only after the splash completes: the
+                splash covers the hero until then, so three.js (a ~230KB chunk)
+                used to download AND execute on the critical path at load,
+                blocking the first paint (the "unused JS" ~900ms). Deferring the
+                mount moves the whole chunk off the LCP/TBT path — the static
+                fallback inside Dither renders instantly and covers the brief
+                transition, so the hero never shows a gap. */}
+            {splashDone && (
             <Dither
               waveColor={[0.16470588235294117, 0.7176470588235294, 0.6235294117647059]}
               waveSpeed={0.07}
@@ -2604,6 +2612,7 @@ export default function HomeShell() {
               enableMouseInteraction={true}
               mouseRadius={0.1}
             />
+            )}
             </div>
 
             {/* Mobile-first sizing: the hero must read as a confident

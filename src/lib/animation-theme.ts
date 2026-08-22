@@ -49,11 +49,11 @@ export const SKILL_TITLE_OFFSET = 'clamp(2rem, 10vw, 8rem)' as const;
 export const HERO = {
   yOffset: -60,        // negative = starts above viewport, descends into place
   scale: 1.04,         // slight zoom-in as it settles
-  blur: 6,             // noticeable entrance blur, clears on arrival (px)
+  blur: 4,             // noticeable entrance blur, clears on arrival (px)
   // Snappy: the hero — the LCP element — must reach its sharp state quickly
-  // after the splash fades. 0.9s → 0.5s, smaller stagger, no leading delay.
-  duration: 0.5,
-  stagger: 0.05,
+  // after the splash fades. 0.9s → 0.5s → 0.35s, smaller stagger, no delay.
+  duration: 0.35,
+  stagger: 0.04,
   ease: 'power4.out',
   delay: 0,
 } as const;

@@ -31,6 +31,7 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
   const scaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [glow, setGlow] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const frameRef = useRef(0);
 
   useEffect(() => {
     if (ready === false) return; // Wait for external trigger (e.g. splash screen)
@@ -55,6 +56,13 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
         } : {}),
         onUpdate() {
           if (!numRef.current) return;
+          // Throttle DOM writes to every 2nd frame (~30fps): each textContent
+          // write invalidates style → UpdateLayoutTree. Writing every frame
+          // (60fps) for 2.8s × the 5 hero counters was the dominant source of
+          // Style & Layout work after splash (≈590ms real, ~2.4s throttled,
+          // landing exactly on LCP). At 30fps the count is visually identical.
+          frameRef.current++;
+          if (frameRef.current % 2 !== 0) return;
           const v = this.targets()[0].val as number;
           const clamped = Math.min(Math.round(v), target);
           numRef.current.textContent = clamped.toLocaleString('it-IT');

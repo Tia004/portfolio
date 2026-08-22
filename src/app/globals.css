@@ -195,19 +195,28 @@ html {
    The base color is a molten-tinted dark teal (NOT flat black) so the band
    blends with the animated molten behind it, and the outer-edge mask uses a
    radial ellipse — the outer edge AND the corners dissolve organically into
-   the background instead of ending in a straight line. Pure paint: no
-   backdrop-filter, zero per-frame cost. */
+   the background instead of ending in a straight line.
+
+   On top of the paint, a light backdrop blur (4px) now FADES the review
+   cards as they slide under the band — the “going away slowly” effect the
+   user asked for. Cost is contained: only two small static bands (h-16 ≈
+   64px each) sample the backdrop, versus the ~300 marquee cards that used to
+   blur every frame. */
 .reviews-curtain-mask-x {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
 }
 .reviews-curtain-mask-y-top {
   background: radial-gradient(ellipse 220% 260% at 50% 0%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 100%);
 }
 .reviews-curtain-mask-y-bottom {
   background: radial-gradient(ellipse 220% 260% at 50% 100%, rgba(4, 20, 17, 0.95) 0%, rgba(4, 20, 17, 0.6) 40%, transparent 72%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   -webkit-mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
   mask-image: linear-gradient(to top, transparent 0%, black 18%, black 100%);
 }

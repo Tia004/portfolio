@@ -5,11 +5,17 @@ import { gsap } from 'gsap';
 
 // ── Configuration ──────────────────────────────────────────
 const LETTERS = 'Tia Designs'.split('');
-const LETTER_STAGGER = 0.06;
+// Snappier splash: the hero (LCP element) sits BEHIND the opaque splash, so
+// LCP can only be captured once the splash starts fading — every ms the
+// splash stays up is LCP time. Letters drop faster (last letter lands at
+// ~0.7s), the minimum display time drops to 750ms, the fade shortens to
+// 0.18s, and the safety net tightens to 2s. Same visual rhythm, ~600ms
+// less LCP than the original 1.2s splash.
+const LETTER_STAGGER = 0.035;
 const LETTER_DROP_Y = -120;
-const LETTER_DURATION = 0.55;
-const MIN_SPLASH_MS = 1200;  // minimum display time for the letter animation
-const MAX_SPLASH_MS = 2600;  // safety net — never block the site forever
+const LETTER_DURATION = 0.35;
+const MIN_SPLASH_MS = 750;   // minimum display time for the letter animation (letters land at ~0.70s)
+const MAX_SPLASH_MS = 2000;  // safety net — never block the site forever
 
 function whenPageReady(): Promise<void> {
   return new Promise((resolve) => {
@@ -18,6 +24,10 @@ function whenPageReady(): Promise<void> {
     // seconds and tank LCP. The hero (the LCP element) is painted at full
     // opacity BEHIND the splash, so LCP is captured at first paint — the
     // splash only needs to cover the font swap to avoid text-reflow CLS.
+    // Fonts are self-hosted via next/font with display:swap + metrics
+    // adjustment (CLS is already ~0.001), so waiting for the FULL font set
+    // on a slow connection only delays beginExit (and thus LCP) for a swap
+    // that happens hidden behind the splash anyway. Cap the wait at 1s.
     const domReady = new Promise<void>((r) => {
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => r(), { once: true });
@@ -28,9 +38,10 @@ function whenPageReady(): Promise<void> {
     const fontsReady = typeof document.fonts !== 'undefined'
       ? document.fonts.ready.then(() => undefined).catch(() => undefined)
       : Promise.resolve(undefined);
+    // Resolve as soon as DOM is ready, with a 1s allowance for fonts — never
+    // let the full font set pin the splash (and LCP) on a slow connection.
     Promise.all([domReady, fontsReady]).then(() => resolve());
-    // Safety: resolve after 3.5s even if fonts hang
-    setTimeout(resolve, 3500);
+    setTimeout(resolve, 1000);
   });
 }
 
@@ -109,16 +120,20 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
       exited = true;
       setProgress(100);  // snap bar to 100% — page is ready
       setExiting(true);
+      // Fire 'splash-complete' at the START of the fade, not the end: the
+      // hero (LCP element) is already painted at opacity 1 behind the splash,
+      // so LCP is captured the instant the splash starts fading. Starting the
+      // hero entrance in parallel with the fade shaves the full fade duration
+      // (~0.18s real, ~0.7s throttled) off LCP. The scroll lock and the DOM
+      // removal stay tied to `visible` (fade end), so UX is unchanged.
+      window.dispatchEvent(new CustomEvent('splash-complete'));
       gsap.to(splashRef.current, {
         opacity: 0,
         scale: 0.97,
-        duration: 0.35,
+        duration: 0.18,
         ease: 'power2.inOut',
         onComplete: () => {
-          if (alive) {
-            setVisible(false);
-            window.dispatchEvent(new CustomEvent('splash-complete'));
-          }
+          if (alive) setVisible(false);
         },
       });
     };
