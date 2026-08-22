@@ -105,10 +105,12 @@ export default async function RootLayout({
         <link rel="alternate" hrefLang="x-default" href="https://tiadesigns.it/" />
         {/* Canonical — current language version; matches sitemap hreflang assignments */}
         <link rel="canonical" href={`https://tiadesigns.it${initialLang === 'it' ? '' : `/${initialLang}`}`} />
-        {/* Google Fonts — preconnected and fetched in parallel with the HTML
-            (previously a CSS @import, discovered only after globals.css parsed).
-            The splash covers the first seconds, so the fonts are swapped in
-            before the page becomes visible → no CLS from text reflow. */}
+        {/* Google Fonts — preconnected and loaded NON-blocking so the first
+            paint (splash) never waits on the Google Fonts CSS. media="print"
+            de-prioritizes the stylesheet; the onload handler flips it to
+            "all" as soon as it arrives. display=swap + the splash cover any
+            reflow, so no CLS. The <noscript> fallback keeps fonts working
+            with JS disabled. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Only the weights actually used: Outfit 400/500/600/700/900 (the
@@ -116,7 +118,20 @@ export default async function RootLayout({
             Mono for font-mono. Space Grotesk and IBM Plex Mono were in the
             old request but are never referenced — fewer @font-face files means
             document.fonts.ready resolves sooner, so the splash fades faster. */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap"
+          media="print"
+          onLoad={(e) => {
+            e.currentTarget.media = 'all';
+          }}
+        />
+        <noscript>
+          <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;900&family=Share+Tech+Mono&display=swap"
+          />
+        </noscript>
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         <LanguageProvider initialLang={initialLang}>
