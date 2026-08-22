@@ -128,6 +128,7 @@ const it: Dict = {
   // Recensioni
   'recensioni.title': 'Cosa dicono i clienti',
   'recensioni.label': 'Testimonianze',
+  'recensioni.view_project': 'Guarda il progetto',
 
   // FAQ
   'faq.title': 'Domande frequenti',
@@ -395,6 +396,7 @@ const en: Dict = {
 
   'recensioni.title': 'What clients say',
   'recensioni.label': 'Testimonials',
+  'recensioni.view_project': 'View project',
 
   'faq.title': 'Frequently asked questions',
   'faq.label': 'Questions?',
@@ -653,6 +655,7 @@ const es: Dict = {
 
   'recensioni.title': 'Qué dicen los clientes',
   'recensioni.label': 'Testimonios',
+  'recensioni.view_project': 'Ver proyecto',
 
   'faq.title': 'Preguntas frecuentes',
   'faq.label': '¿Dudas?',
@@ -871,7 +874,7 @@ export function getFaqs(lang: Lang): FaqEntry[] {
 
 // ── Structured content — BY_LANG arrays for data-driven sections ────
 
-export type Review = { name: string; role: string; text: string; stars: number };
+export type Review = { name: string; role: string; text: string; stars: number; /** id of a related portfolio project, if any — makes the review clickable */ projectId?: string };
 export type ProjectData = {
   id: string;
   title: string;
@@ -902,28 +905,34 @@ export type PricingCategory = { label: string; subtitle: string; tiers: PricingT
 
 const REVIEWS_BY_LANG: Record<Lang, Review[]> = {
   it: [
-    { name: 'Marco R.', role: 'CEO, TechStart', text: 'Tia ha trasformato la nostra presenza online. Design pulito e performante, oltre ogni aspettativa.', stars: 5 },
-    { name: 'Elena B.', role: 'Marketing Director', text: 'Professionista eccezionale. Ha capito subito cosa volevamo e lo ha realizzato alla perfezione.', stars: 5 },
-    { name: 'Luca M.', role: 'Founder, DigitalAgency', text: 'Lavoro di altissima qualità. Ogni dettaglio curato, comunicazione impeccabile.', stars: 5 },
-    { name: 'Sofia G.', role: 'Creative Director', text: 'Un talento raro. Unisce estetica e tecnica in modo magistrale. Consigliatissimo.', stars: 5 },
-    { name: 'Andrea P.', role: 'Startup Founder', text: 'Consegna rapida, codice pulito, design mozzafiato. Cosa volere di più?', stars: 5 },
-    { name: 'Chiara F.', role: 'E-commerce Manager', text: 'Il mio sito vende il doppio da quando Tia lo ha ridisegnato. Numeri alla mano.', stars: 5 },
+    { name: 'Laura Bertoni', role: 'PCS Mantova', text: 'Il nuovo sito di PCS Mantova è moderno, veloce e semplicissimo da navigare. Tia ha curato ogni dettaglio e ha valorizzato al meglio la nostra immagine. Collaborazione impeccabile.', stars: 5, projectId: 'pcs' },
+    { name: 'DestTime', role: 'Content Creator', text: 'Tia ha trasformato la nostra pagina Instagram con post sempre curati e coerenti con il brand. La qualità grafica si vede, e i risultati pure. Super consigliato.', stars: 5, projectId: 'desttime-shaman-king' },
+    { name: 'Gianluca Rigodanza', role: 'Artista', text: 'Le copertine che Tia ha realizzato per me sono di un livello altissimo. Ha capito esattamente cosa volevo comunicare e lo ha trasformato in un\'immagine che mi rappresenta. Un vero professionista.', stars: 5 },
+    { name: 'Ous', role: 'Artista musicale', text: 'La copertina del mio pezzo ha superato ogni aspettativa. Tia ha colto l\'essenza della musica e l\'ha resa immagine, potente e memorabile. Lavoro straordinario.', stars: 5, projectId: 'flussi-di-coscienza' },
+    { name: 'Stefano Golisano', role: 'GSA Hotels', text: 'Il sito di GSA Hotels è elegante e di grande impatto, proprio come volevamo per la nostra struttura. Animazioni fluide e un\'attenzione maniacale ai dettagli. Esperienza impeccabile.', stars: 5, projectId: 'gsa-hotels' },
+    { name: 'Vergilius Nectar', role: 'Brand', text: 'Sito e grafiche coordinati alla perfezione: Tia ha costruito un\'identità visiva completa e coerente che ci rappresenta davvero. Comunicazione chiara e risultati oltre le aspettative.', stars: 5, projectId: 'vergilius' },
+    { name: 'Fiera Millenaria di Gonzaga', role: 'Evento & Comunicazione', text: 'Post e grafiche curatissimi che hanno dato grande visibilità alla Fiera. Tia unisce creatività e puntualità, con uno stile sempre in linea con la tradizione dell\'evento. Ottimo lavoro.', stars: 5 },
+    { name: 'Davide Moretti', role: 'Ingegnere', text: 'Il mio sito da ingegnere è pulito, professionale e perfettamente ottimizzato per i motori di ricerca. Tia ha saputo tradurre il mio lavoro in un progetto raffinato e funzionale. Non potrei essere più soddisfatto.', stars: 5, projectId: 'moretti' },
   ],
   en: [
-    { name: 'Marco R.', role: 'CEO, TechStart', text: 'Tia transformed our online presence. Clean, high-performing design — beyond all expectations.', stars: 5 },
-    { name: 'Elena B.', role: 'Marketing Director', text: 'Exceptional professional. She understood immediately what we wanted and executed it perfectly.', stars: 5 },
-    { name: 'Luca M.', role: 'Founder, DigitalAgency', text: 'Top-quality work. Every detail polished, flawless communication.', stars: 5 },
-    { name: 'Sofia G.', role: 'Creative Director', text: 'A rare talent. Masterfully blends aesthetics and technique. Highly recommended.', stars: 5 },
-    { name: 'Andrea P.', role: 'Startup Founder', text: 'Fast delivery, clean code, stunning design. What more could you ask for?', stars: 5 },
-    { name: 'Chiara F.', role: 'E-commerce Manager', text: 'My store sells twice as much since Tia redesigned it. Numbers don\'t lie.', stars: 5 },
+    { name: 'Laura Bertoni', role: 'PCS Mantova', text: 'PCS Mantova\'s new website is modern, fast and incredibly easy to navigate. Tia took care of every detail and made the most of our image. Flawless collaboration.', stars: 5, projectId: 'pcs' },
+    { name: 'DestTime', role: 'Content Creator', text: 'Tia transformed our Instagram page with posts that are always polished and on-brand. The design quality shows, and so do the results. Highly recommended.', stars: 5, projectId: 'desttime-shaman-king' },
+    { name: 'Gianluca Rigodanza', role: 'Artist', text: 'The covers Tia made for me are on another level. He understood exactly what I wanted to convey and turned it into an image that truly represents me. A real professional.', stars: 5 },
+    { name: 'Ous', role: 'Music Artist', text: 'The cover for my track exceeded every expectation. Tia captured the essence of the music and turned it into a powerful, memorable image. Outstanding work.', stars: 5, projectId: 'flussi-di-coscienza' },
+    { name: 'Stefano Golisano', role: 'GSA Hotels', text: 'The GSA Hotels website is elegant and impactful, exactly what we wanted for our property. Smooth animations and obsessive attention to detail. A flawless experience.', stars: 5, projectId: 'gsa-hotels' },
+    { name: 'Vergilius Nectar', role: 'Brand', text: 'Website and graphics perfectly coordinated: Tia built a complete, consistent visual identity that truly represents us. Clear communication and results beyond expectations.', stars: 5, projectId: 'vergilius' },
+    { name: 'Fiera Millenaria di Gonzaga', role: 'Event & Communication', text: 'Beautifully crafted posts and graphics that gave the Fair great visibility. Tia combines creativity with punctuality, always in line with the event\'s tradition. Great work.', stars: 5 },
+    { name: 'Davide Moretti', role: 'Engineer', text: 'My engineering website is clean, professional and perfectly optimized for search engines. Tia turned my work into a refined, functional project. I couldn\'t be happier.', stars: 5, projectId: 'moretti' },
   ],
   es: [
-    { name: 'Marco R.', role: 'CEO, TechStart', text: 'Tia transformó nuestra presencia online. Diseño limpio y de alto rendimiento, más allá de toda expectativa.', stars: 5 },
-    { name: 'Elena B.', role: 'Marketing Director', text: 'Profesional excepcional. Entendió de inmediato lo que queríamos y lo ejecutó a la perfección.', stars: 5 },
-    { name: 'Luca M.', role: 'Founder, DigitalAgency', text: 'Trabajo de máxima calidad. Cada detalle cuidado, comunicación impecable.', stars: 5 },
-    { name: 'Sofia G.', role: 'Creative Director', text: 'Un talento poco común. Combina magistralmente estética y técnica. Muy recomendado.', stars: 5 },
-    { name: 'Andrea P.', role: 'Startup Founder', text: 'Entrega rápida, código limpio, diseño impresionante. ¿Qué más se puede pedir?', stars: 5 },
-    { name: 'Chiara F.', role: 'E-commerce Manager', text: 'Mi tienda vende el doble desde que Tia la rediseñó. Los números hablan.', stars: 5 },
+    { name: 'Laura Bertoni', role: 'PCS Mantova', text: 'La nueva web de PCS Mantova es moderna, rápida y facilísima de navegar. Tia cuidó cada detalle y puso en valor nuestra imagen. Colaboración impecable.', stars: 5, projectId: 'pcs' },
+    { name: 'DestTime', role: 'Content Creator', text: 'Tia transformó nuestra página de Instagram con publicaciones siempre cuidadas y coherentes con la marca. La calidad gráfica se nota, y los resultados también. Muy recomendado.', stars: 5, projectId: 'desttime-shaman-king' },
+    { name: 'Gianluca Rigodanza', role: 'Artista', text: 'Las portadas que Tia hizo para mí son de otro nivel. Entendió exactamente lo que quería comunicar y lo convirtió en una imagen que me representa. Un verdadero profesional.', stars: 5 },
+    { name: 'Ous', role: 'Artista musical', text: 'La portada de mi tema superó todas las expectativas. Tia captó la esencia de la música y la convirtió en una imagen potente y memorable. Un trabajo extraordinario.', stars: 5, projectId: 'flussi-di-coscienza' },
+    { name: 'Stefano Golisano', role: 'GSA Hotels', text: 'La web de GSA Hotels es elegante y de gran impacto, justo lo que queríamos para nuestro establecimiento. Animaciones fluidas y una atención obsesiva al detalle. Una experiencia impecable.', stars: 5, projectId: 'gsa-hotels' },
+    { name: 'Vergilius Nectar', role: 'Marca', text: 'Web y gráficos perfectamente coordinados: Tia construyó una identidad visual completa y coherente que nos representa de verdad. Comunicación clara y resultados más allá de lo esperado.', stars: 5, projectId: 'vergilius' },
+    { name: 'Fiera Millenaria di Gonzaga', role: 'Evento & Comunicación', text: 'Publicaciones y gráficos muy cuidados que dieron gran visibilidad a la Feria. Tia une creatividad y puntualidad, con un estilo siempre fiel a la tradición del evento. Gran trabajo.', stars: 5 },
+    { name: 'Davide Moretti', role: 'Ingeniero', text: 'Mi web de ingeniero es limpia, profesional y perfectamente optimizada para buscadores. Tia supo convertir mi trabajo en un proyecto refinado y funcional. No podría estar más satisfecho.', stars: 5, projectId: 'moretti' },
   ],
 };
 

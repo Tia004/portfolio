@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
-import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData } from '@/lib/translations';
+import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
 import { trackClick } from '@/lib/analytics';
 import { type ChatCategory } from '@/lib/chat-categories';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
@@ -91,6 +91,7 @@ import {
 /** @category Componenti */
 import SmoothScrollProvider, { useLenis } from './SmoothScroll';
 import Dither from './Dither';
+import MoltenMetal from './MoltenMetal';
 import Navbar from './Navbar';
 import FaqScroller from './FaqScroller';
 import ScrollReveal from './ScrollReveal';
@@ -2212,6 +2213,42 @@ export default function HomeShell() {
 
   const pricing = useMemo(() => isMonthly ? getPricingMonthly(lang) : getPricingOnetime(lang), [isMonthly, lang]);
   const reviews = useMemo(() => getReviews(lang), [lang]);
+  const projectById = useMemo(() => {
+    const map = new Map<string, ProjectData>();
+    for (const project of getProjects(lang)) map.set(project.id, project);
+    return map;
+  }, [lang]);
+
+  // Review card — clickable toward its related project when one exists.
+  const renderReviewCard = (review: Review, key: string) => {
+    const project = review.projectId ? projectById.get(review.projectId) : undefined;
+    return (
+      <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} backgroundColor="#050505" edgeSensitivity={0} className="w-full">
+        <div
+          className={`p-5 sm:p-6 ${project ? 'cursor-pointer' : ''}`}
+          onClick={() => { if (project) setSelectedProject(project); }}
+          role={project ? 'button' : undefined}
+          tabIndex={project ? 0 : undefined}
+          onKeyDown={(event) => { if (project && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setSelectedProject(project); } }}
+        >
+          <div className="flex gap-1 mb-3">
+            {Array.from({ length: review.stars }).map((_, i) => (
+              <svg key={i} aria-hidden="true" className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+            ))}
+          </div>
+          <p className="text-neutral-300 text-sm leading-relaxed mb-3 italic">&ldquo;{review.text}&rdquo;</p>
+          <p className="text-white font-medium text-sm">{review.name}</p>
+          <p className="text-neutral-500 text-xs">{review.role}</p>
+          {project && (
+            <span className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-teal-400 transition-colors">
+              {t('recensioni.view_project', lang)}
+              <TiaIcon icon={ArrowRight01Icon} size={13} strokeWidth={2} />
+            </span>
+          )}
+        </div>
+      </BorderGlow>
+    );
+  };
   const filteredProjects = useMemo(
     () => getProjects(lang).filter((project) => activeFilter === 'Tutti' || project.category === activeFilter),
     [activeFilter, lang]
@@ -2224,6 +2261,7 @@ export default function HomeShell() {
   const previousProjectsLabel = lang === 'it' ? 'Progetti precedenti' : lang === 'es' ? 'Proyectos anteriores' : 'Previous projects';
   const nextProjectsLabel = lang === 'it' ? 'Progetti successivi' : lang === 'es' ? 'Proyectos siguientes' : 'Next projects';
   const heroRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
   const heroEntranceStartedRef = useRef(false);
   const heroEntranceTweenRef = useRef<gsap.core.Tween | null>(null);
 
@@ -2455,7 +2493,33 @@ export default function HomeShell() {
         </div>
         <div ref={turnstileContainerRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-px w-px overflow-hidden opacity-0" />
 
-        <div className="bg-[#010101] text-neutral-200 font-sans">
+          {/* Fixed molten-metal background — visible (and animating) only
+              through the transparent sections below the hero; the hero and the
+              footer keep their own opaque backgrounds and cover it. */}
+          <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none">
+            <MoltenMetal
+              color1="#05bc8e"
+              color2="#0effc1"
+              color3="#ffffff"
+              speed={0.25}
+              scale={5.5}
+              detail={2}
+              glow={2.3}
+              coreSize={0.1}
+              swirl={1.35}
+              fold={-0.26}
+              blackPoint={0.03}
+              brightness={0.3}
+              colorMode="molten"
+              grain
+              grainIntensity={0.06}
+              mouseInteraction={false}
+              mouseStrength={0.15}
+              opacity={1}
+            />
+          </div>
+
+        <div className="relative z-10 text-neutral-200 font-sans">
 
           {/* ============ HERO ============ */}
           {/* Mobile: content starts near the top (items-start + pt-20) with a
@@ -2543,7 +2607,7 @@ export default function HomeShell() {
 
           {/* ============ SERVIZI ============ */}
           <LazySection rootMargin={400} placeholderHeight={800}>
-          <section id="servizi" className="py-10 sm:py-24 px-4 bg-[#010101]">
+          <section id="servizi" className="py-10 sm:py-24 px-4">
             <div className="max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('servizi.label', lang)}</p>
@@ -2708,84 +2772,6 @@ export default function HomeShell() {
           </section>
           </LazySection>
 
-          {/* ============ PREZZI ============ */}
-          <LazySection rootMargin={400} placeholderHeight={900}>
-          <section id="prezzi" className="py-10 sm:py-24 px-4 bg-[#050505]">
-            <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-8 sm:mb-12">
-                <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('prezzi.label', lang)}</p>
-                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('prezzi.title', lang)}</h2>
-                <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
-                  {t('prezzi.subtitle', lang)}
-                </p>
-              </ScrollReveal>
-
-              {/* ── Toggle ── */}
-              <div className="flex justify-center mb-8 sm:mb-16">
-                <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
-                  <button
-                    onClick={() => setIsMonthly(false)}
-                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${!isMonthly ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' : 'text-neutral-400 hover:text-white'
-                      }`}
-                  >
-                    {t('prezzi.onetime', lang)}
-                  </button>
-                  <button
-                    onClick={() => setIsMonthly(true)}
-                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${isMonthly ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' : 'text-neutral-400 hover:text-white'
-                      }`}
-                  >
-                    {t('prezzi.monthly', lang)}
-                  </button>
-                </div>
-              </div>
-
-              {/* ── Data-driven pricing cards ── */}
-              {pricing.map((cat, ci) => (
-                <div key={ci} className={ci < pricing.length - 1 ? 'mb-8 sm:mb-16' : ''}>
-                  <h3 className="text-white text-xl font-semibold mb-2 flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-teal-400" />
-                    {cat.label}
-                  </h3>
-                  <p className="text-neutral-500 text-sm mb-5 sm:mb-8 ml-5">{cat.subtitle}</p>
-                  <ScrollReveal>
-                    <MobileSnapSlider
-                      ariaLabel={`${cat.label} — ${t('prezzi.slider_label', lang)}`}
-                      trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:snap-none"
-                    >
-                    {cat.tiers.map((tier, ti) => (
-                      // No h-full here: in an auto-height flex row a percentage
-                      // height doesn't resolve, so cards kept their natural
-                      // height and looked uneven. Without it the wrapper
-                      // stretches to the tallest card (align-items: stretch)
-                      // and the h-full chain inside resolves → equal heights
-                      // on mobile AND on the desktop grid.
-                      <div key={ti} className="shrink-0 snap-start w-[90%] sm:w-[60%] md:w-auto">
-                      <PriceCard
-                        title={tier.title}
-                        price={tier.price}
-                        priceLabel={tier.priceLabel}
-                        period={tier.period}
-                        popular={tier.popular}
-                        premium={tier.premium}
-                        description={tier.description}
-                        features={tier.features}
-                        delivery={tier.delivery}
-                        hours={tier.hours}
-                        onTooltipShow={handleTooltipShow}
-                        onTooltipHide={handleTooltipHide}
-                        onRequestQuote={(title) => scrollToContatti({ service: title })}
-                      />
-                      </div>
-                    ))}
-                    </MobileSnapSlider>
-                  </ScrollReveal>
-                </div>
-              ))}
-            </div>
-          </section>
-          </LazySection>
-
           {/* ── Tooltip position follows scroll ── */}
           {tooltipInfo && typeof document !== 'undefined' && typeof window !== 'undefined' && createPortal(
             <TooltipContent text={tooltipInfo.text} el={tooltipInfo.el} hiding={tooltipInfo.hiding} />,
@@ -2794,7 +2780,7 @@ export default function HomeShell() {
 
           {/* ============ PROGETTI ============ */}
           <LazySection rootMargin={700} placeholderHeight={600}>
-          <section id="progetti" className="py-10 sm:py-24 px-4 bg-[#050505]" style={{ contain: 'paint style' } as React.CSSProperties}>
+          <section id="progetti" className="py-10 sm:py-24 px-4" style={{ contain: 'paint style' } as React.CSSProperties}>
             <div className="max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('progetti.label', lang)}</p>
@@ -2874,7 +2860,7 @@ export default function HomeShell() {
 
           {/* ============ CHI SONO ============ */}
           <LazySection rootMargin={800} placeholderHeight={1200}>
-          <section id="chisono" className="relative py-10 sm:py-24 px-4 bg-[#010101] overflow-x-clip overflow-y-visible">
+          <section id="chisono" className="relative py-10 sm:py-24 px-4 overflow-x-clip overflow-y-visible">
             {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
                They hide the duplicated skill cards at the marquee edges with a
                smooth fade, and because they're as tall as the section they also
@@ -2889,11 +2875,11 @@ export default function HomeShell() {
             >
               <div
                 className="marquee-edge-curtain marquee-edge-curtain--left"
-                style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.92)' } as React.CSSProperties}
+                style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
               />
               <div
                 className="marquee-edge-curtain marquee-edge-curtain--right"
-                style={{ '--marquee-edge-bg': '#010101', '--marquee-edge-fade': 'rgba(1, 1, 1, 0.92)' } as React.CSSProperties}
+                style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
               />
             </div>
             {/* Content layer above the terminal */}
@@ -3070,7 +3056,7 @@ export default function HomeShell() {
           {/* h-[100svh] (small viewport) instead of dvh: the mobile URL bar
               show/hide changes dvh and reflows the section mid-scroll — one
               more source of the up/down jitter. svh is stable. */}
-          <section id="chatbot" className="h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 bg-[#010101] overflow-x-clip">
+          <section id="chatbot" className="h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 overflow-x-clip">
             <div className="max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
               <div
                 id="chatbot-heading"
@@ -3114,7 +3100,7 @@ export default function HomeShell() {
           {/* ============ RECENSIONI ============ */}
 
           <LazySection rootMargin={400} placeholderHeight={500}>
-          <section id="recensioni" className="py-10 sm:py-24 px-4 bg-[#050505]">
+          <section id="recensioni" className="py-10 sm:py-24 px-4">
             <div className="max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('recensioni.label', lang)}</p>
@@ -3133,20 +3119,7 @@ export default function HomeShell() {
                     direction="vertical"
                     glowBleed={30}
                   >
-                    {reviews.slice(0, 3).map((review, idx) => (
-                      <BorderGlow key={`left-${idx}`} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} backgroundColor="#050505" edgeSensitivity={0} className="w-full">
-                        <div className="p-5 sm:p-6">
-                          <div className="flex gap-1 mb-3">
-                            {Array.from({ length: review.stars }).map((_, i) => (
-                              <svg key={i} aria-hidden="true" className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                            ))}
-                          </div>
-                          <p className="text-neutral-300 text-sm leading-relaxed mb-3 italic">&ldquo;{review.text}&rdquo;</p>
-                          <p className="text-white font-medium text-sm">{review.name}</p>
-                          <p className="text-neutral-500 text-xs">{review.role}</p>
-                        </div>
-                      </BorderGlow>
-                    ))}
+                    {reviews.slice(0, 4).map((review, idx) => renderReviewCard(review, `left-${idx}`))}
                   </InfiniteSlider>
                 </div>
                 {/* ── Right column — scrolls down ── */}                 <div className="overflow-visible hidden md:block py-5 -my-5">
@@ -3158,23 +3131,88 @@ export default function HomeShell() {
                     reverse
                     glowBleed={30}
                   >
-                    {reviews.slice(3, 6).map((review, idx) => (
-                      <BorderGlow key={`right-${idx}`} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} backgroundColor="#050505" edgeSensitivity={0} className="w-full">
-                        <div className="p-5 sm:p-6">
-                          <div className="flex gap-1 mb-3">
-                            {Array.from({ length: review.stars }).map((_, i) => (
-                              <svg key={i} aria-hidden="true" className="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
-                            ))}
-                          </div>
-                          <p className="text-neutral-300 text-sm leading-relaxed mb-3 italic">&ldquo;{review.text}&rdquo;</p>
-                          <p className="text-white font-medium text-sm">{review.name}</p>
-                          <p className="text-neutral-500 text-xs">{review.role}</p>
-                        </div>
-                      </BorderGlow>
-                    ))}
+                    {reviews.slice(4, 8).map((review, idx) => renderReviewCard(review, `right-${idx}`))}
                   </InfiniteSlider>
                 </div>
               </div>
+            </div>
+          </section>
+          </LazySection>
+
+          {/* ============ PREZZI ============ */}
+          <LazySection rootMargin={400} placeholderHeight={900}>
+          <section id="prezzi" className="py-10 sm:py-24 px-4">
+            <div className="max-w-6xl mx-auto">
+              <ScrollReveal className="text-center mb-8 sm:mb-12">
+                <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('prezzi.label', lang)}</p>
+                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('prezzi.title', lang)}</h2>
+                <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
+                  {t('prezzi.subtitle', lang)}
+                </p>
+              </ScrollReveal>
+
+              {/* ── Toggle ── */}
+              <div className="flex justify-center mb-8 sm:mb-16">
+                <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
+                  <button
+                    onClick={() => setIsMonthly(false)}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${!isMonthly ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' : 'text-neutral-400 hover:text-white'
+                      }`}
+                  >
+                    {t('prezzi.onetime', lang)}
+                  </button>
+                  <button
+                    onClick={() => setIsMonthly(true)}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${isMonthly ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20' : 'text-neutral-400 hover:text-white'
+                      }`}
+                  >
+                    {t('prezzi.monthly', lang)}
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Data-driven pricing cards ── */}
+              {pricing.map((cat, ci) => (
+                <div key={ci} className={ci < pricing.length - 1 ? 'mb-8 sm:mb-16' : ''}>
+                  <h3 className="text-white text-xl font-semibold mb-2 flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-teal-400" />
+                    {cat.label}
+                  </h3>
+                  <p className="text-neutral-500 text-sm mb-5 sm:mb-8 ml-5">{cat.subtitle}</p>
+                  <ScrollReveal>
+                    <MobileSnapSlider
+                      ariaLabel={`${cat.label} — ${t('prezzi.slider_label', lang)}`}
+                      trackClassName="flex gap-6 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:overflow-visible md:snap-none"
+                    >
+                    {cat.tiers.map((tier, ti) => (
+                      // No h-full here: in an auto-height flex row a percentage
+                      // height doesn't resolve, so cards kept their natural
+                      // height and looked uneven. Without it the wrapper
+                      // stretches to the tallest card (align-items: stretch)
+                      // and the h-full chain inside resolves → equal heights
+                      // on mobile AND on the desktop grid.
+                      <div key={ti} className="shrink-0 snap-start w-[90%] sm:w-[60%] md:w-auto">
+                      <PriceCard
+                        title={tier.title}
+                        price={tier.price}
+                        priceLabel={tier.priceLabel}
+                        period={tier.period}
+                        popular={tier.popular}
+                        premium={tier.premium}
+                        description={tier.description}
+                        features={tier.features}
+                        delivery={tier.delivery}
+                        hours={tier.hours}
+                        onTooltipShow={handleTooltipShow}
+                        onTooltipHide={handleTooltipHide}
+                        onRequestQuote={(title) => scrollToContatti({ service: title })}
+                      />
+                      </div>
+                    ))}
+                    </MobileSnapSlider>
+                  </ScrollReveal>
+                </div>
+              ))}
             </div>
           </section>
           </LazySection>
@@ -3212,7 +3250,7 @@ export default function HomeShell() {
           {/* ============ CONTATTI ============ */}
           <div id="contatti-anchor" className="h-0 w-0 overflow-hidden" aria-hidden="true" />
           <LazySection rootMargin={400} placeholderHeight={900}>
-          <section id="contatti" className="py-10 sm:py-24 px-4 bg-[#050505]">
+          <section id="contatti" className="py-10 sm:py-24 px-4">
             <div className="max-w-5xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('contatti.label', lang)}</p>
@@ -3388,7 +3426,9 @@ export default function HomeShell() {
           </LazySection>
 
           {/* ============ FOOTER ============ */}
-          <FooterAnimation lang={lang} onOpenLegal={(doc) => setLegalDoc(getLegalDoc(lang, doc) ?? null)} />
+          <div ref={footerRef}>
+            <FooterAnimation lang={lang} onOpenLegal={(doc) => setLegalDoc(getLegalDoc(lang, doc) ?? null)} />
+          </div>
 
           {/* Legal document modal */}
           {legalDoc && <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />}

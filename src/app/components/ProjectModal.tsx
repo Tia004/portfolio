@@ -39,6 +39,9 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
   const [showIndex, setShowIndex] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const panRef = useRef({ dragging: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
   const galleryTouchRef = useRef({ startX: 0, startY: 0 });
 
   const {
@@ -138,6 +141,8 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
   const gallery = project.gallery ?? [];
   const activeGalleryIndex = Math.min(galleryIndex, Math.max(0, gallery.length - 1));
   const hasGallery = gallery.length > 0;
+  const activeMedia = hasGallery ? gallery[activeGalleryIndex] : '';
+  const isActiveImage = !!activeMedia && !activeMedia.toLowerCase().endsWith('.pdf');
 
   // Lock body scroll — use position:fixed instead of overflow:hidden so
   // that native wheel events are not blocked for the modal's scrollable content.
@@ -169,6 +174,39 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
     document.addEventListener('keydown', cb);
     return () => document.removeEventListener('keydown', cb);
   }, [onClose, fullscreen]);
+
+  // Reset zoom/pan whenever the slide or fullscreen state changes.
+  useEffect(() => {
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+  }, [galleryIndex, fullscreen]);
+
+  const zoomIn = useCallback(() => {
+    setZoomScale((scale) => Math.min(4, Math.round((scale + 0.25) * 100) / 100));
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoomScale((scale) => {
+      const next = Math.max(1, Math.round((scale - 0.25) * 100) / 100);
+      if (next === 1) setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  }, []);
+
+  const onPanStart = useCallback((e: React.PointerEvent) => {
+    if (zoomScale <= 1) return;
+    panRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, baseX: panOffset.x, baseY: panOffset.y };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, [zoomScale, panOffset]);
+
+  const onPanMove = useCallback((e: React.PointerEvent) => {
+    if (!panRef.current.dragging) return;
+    setPanOffset({ x: panRef.current.baseX + (e.clientX - panRef.current.startX), y: panRef.current.baseY + (e.clientY - panRef.current.startY) });
+  }, []);
+
+  const onPanEnd = useCallback(() => {
+    panRef.current.dragging = false;
+  }, []);
 
   const handleBackdrop = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -280,7 +318,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                           <PdfCarousel url={image} title={project.title} />
                         ) : (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <picture>
+                          <picture className="flex h-full w-full items-center justify-center">
                             {image.startsWith('/uploads/') && (
                               <>
                                 <source srcSet={image.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
@@ -475,7 +513,14 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
 
               {hasGallery ? (
                 <div className="w-full h-full relative flex items-center justify-center">
-                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                  <div
+                    className="w-full h-full flex items-center justify-center overflow-hidden"
+                    style={{ cursor: isActiveImage && zoomScale > 1 ? 'grab' : 'default' }}
+                    onPointerDown={onPanStart}
+                    onPointerMove={onPanMove}
+                    onPointerUp={onPanEnd}
+                    onPointerLeave={onPanEnd}
+                  >
                     {(() => {
                       const media = gallery[activeGalleryIndex];
                       if (!media) return null;
@@ -483,7 +528,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                         <PdfCarousel url={media} title={project.title} />
                       ) : (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <picture>
+                        <picture className="flex h-full w-full items-center justify-center">
                           {media.startsWith('/uploads/') && (
                             <>
                               <source srcSet={media.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
@@ -493,7 +538,12 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                           <img
                             src={media.replace(/\.(png|jpe?g)$/i, '.webp')}
                             alt={`${project.title}, ${slideLabel} ${activeGalleryIndex + 1}`}
-                            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl shadow-black/60"
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl shadow-black/60 select-none"
+                            style={{
+                              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
+                              transformOrigin: 'center',
+                              transition: panRef.current.dragging ? 'none' : 'transform 0.2s cubic-bezier(0.22,1,0.36,1)',
+                            }}
                             draggable="false"
                           />
                         </picture>
@@ -519,6 +569,30 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                     >
                       <span aria-hidden="true" className="text-3xl leading-none">›</span>
                     </button>
+                  )}
+                  {isActiveImage && (
+                    <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={zoomIn}
+                        disabled={zoomScale >= 4}
+                        aria-label={lang === 'it' ? 'Ingrandisci' : lang === 'es' ? 'Acercar' : 'Zoom in'}
+                        title={lang === 'it' ? 'Ingrandisci' : lang === 'es' ? 'Acercar' : 'Zoom in'}
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/85 hover:text-white border border-white/15 backdrop-blur-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span aria-hidden="true" className="text-2xl leading-none">+</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={zoomOut}
+                        disabled={zoomScale <= 1}
+                        aria-label={lang === 'it' ? 'Riduci zoom' : lang === 'es' ? 'Alejar' : 'Zoom out'}
+                        title={lang === 'it' ? 'Riduci zoom' : lang === 'es' ? 'Alejar' : 'Zoom out'}
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/85 hover:text-white border border-white/15 backdrop-blur-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span aria-hidden="true" className="text-2xl leading-none">−</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : project.url ? (

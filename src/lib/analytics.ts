@@ -10,7 +10,7 @@ let queue: AnalyticsEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface AnalyticsEvent {
-  type: 'pageview' | 'click' | 'scroll_25' | 'scroll_50' | 'scroll_75' | 'scroll_100' | 'cookie_consent';
+  type: 'pageview' | 'click' | 'scroll_25' | 'scroll_50' | 'scroll_75' | 'scroll_100' | 'cookie_consent' | 'webgl_context';
   url: string;
   timestamp: number;
   sessionId: string;
@@ -98,6 +98,15 @@ export function trackCookieConsent(categories: string[]) {
     type: 'cookie_consent',
     url: location.pathname,
     data: { categories },
+  });
+}
+
+/** Track a WebGL context loss/restore diagnostic (GPU/driver/memory snapshot). */
+export function trackWebGLContext(info: Record<string, unknown>) {
+  enqueue({
+    type: 'webgl_context',
+    url: location.pathname,
+    data: info,
   });
 }
 

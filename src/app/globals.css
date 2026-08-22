@@ -122,6 +122,15 @@ html {
   );
 }
 
+/* FAQ edge curtains: narrower than the default marquee curtains so an expanded
+   accordion near the edge stays readable, while still fading the duplicate
+   cards. The component raises their wrapper to z-30 so the curtain sits ABOVE
+   the opened card (the open row is z-20) instead of the card covering it.
+   Mobile keeps the existing 2vw override defined later in this file. */
+.faq-edge-curtain {
+  width: clamp(4rem, 12vw, 12rem);
+}
+
 /* Curtains and tracks share a predictable local stacking context. This keeps
    the fade above moving cards without allowing it to escape as a page-wide
    black layer. The viewport breaks out of any parent max-width so the
@@ -695,4 +704,20 @@ img {
 #faq,
 #contatti {
   scroll-margin-top: 120px;
+}
+/* MoltenMetal fixed background — full-viewport WebGL shader behind the
+   transparent mid-page sections (hero and footer keep their own opaque
+   backgrounds and cover it). The canvas is alpha-blended, so this CSS
+   gradient is the fallback when WebGL2 is unavailable or before the first
+   frame paints — a deep teal-black that reads as the same molten palette. */
+.molten-metal-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 45%, rgba(5, 188, 142, 0.12) 0%, rgba(5, 188, 142, 0) 60%),
+    radial-gradient(ellipse 60% 80% at 82% 18%, rgba(14, 255, 193, 0.07) 0%, rgba(14, 255, 193, 0) 55%),
+    radial-gradient(ellipse 70% 60% at 15% 85%, rgba(5, 188, 142, 0.06) 0%, rgba(5, 188, 142, 0) 55%),
+    #010101;
 }

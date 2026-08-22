@@ -4,6 +4,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
+import { reportWebGLContext } from '@/lib/webgl-telemetry';
 
 // ── Shaders (exact React Bits source) ────────────────────────
 
@@ -340,6 +341,13 @@ export default function Dither({
   // bright static texture below takes over — the hero can never be a black void.
   const [canvasBroken, setCanvasBroken] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // True while the WebGL context is lost (tab backgrounded under GPU memory
+  // pressure, etc.). three.js already skips rendering then; we must also NOT
+  // let the black-output detector declare the canvas "broken" during that
+  // window, or we would permanently replace the dither with the static
+  // fallback (the "TV noise" symptom).
+  const contextLostRef = useRef(false);
+  const brokenRetryTimerRef = useRef<number | undefined>(undefined);
 
   // The WebGL canvas runs on EVERY device — phones included — exactly like
   // the React Bits source this component is copied from (their demos run on
@@ -401,22 +409,32 @@ export default function Dither({
 
     const run = () => {
       if (!alive) return;
-      if (pausedRef.current || document.hidden) {
-        // Can't judge right now (hero away / tab hidden) — reschedule without
-        // counting, and never accumulate a streak from a stale buffer.
+      if (pausedRef.current || document.hidden || contextLostRef.current) {
+        // Can't judge right now (hero away / tab hidden / WebGL context lost)
+        // — reschedule without counting, and never accumulate a streak from a
+        // stale or blank buffer. Counting a lost context as "black" would
+        // replace the dither with the static fallback permanently.
         blackPasses = 0;
         timer = window.setTimeout(run, 800);
         return;
       }
       const verdict = sample();
       if (verdict === null) {
-        // Canvas not mounted/sized yet (slow phone, late mount) — reschedule.
+        // Canvas not mounted/sized yet (slow phone, late mount, or currently
+        // in the fallback state) — reschedule.
         timer = window.setTimeout(run, 800);
         return;
       }
       blackPasses = verdict ? blackPasses + 1 : 0;
       if (blackPasses >= 3) {
+        // Fall back to the static texture, but keep the detector alive and
+        // auto-remount shortly after so a TRANSIENT failure recovers instead
+        // of becoming permanent.
+        blackPasses = 0;
         setCanvasBroken(true);
+        if (brokenRetryTimerRef.current) window.clearTimeout(brokenRetryTimerRef.current);
+        brokenRetryTimerRef.current = window.setTimeout(() => setCanvasBroken(false), 15_000);
+        timer = window.setTimeout(run, 1500);
         return;
       }
       timer = window.setTimeout(run, 1500);
@@ -426,6 +444,10 @@ export default function Dither({
     return () => {
       alive = false;
       if (timer) window.clearTimeout(timer);
+      if (brokenRetryTimerRef.current) {
+        window.clearTimeout(brokenRetryTimerRef.current);
+        brokenRetryTimerRef.current = undefined;
+      }
     };
   }, [glFailed]);
 
@@ -469,6 +491,33 @@ export default function Dither({
           dpr={1}
           frameloop={paused ? 'never' : 'always'}
           gl={{ antialias: true, preserveDrawingBuffer: true }}
+          onCreated={({ gl }) => {
+            // Track context loss so the black-output detector above doesn't
+            // mistake a lost (blank) context for a broken shader. three.js
+            // already preventDefaults the loss event and resumes rendering on
+            // restore; we mirror the state for the detector AND report the
+            // event (console + analytics) so a recurring "TV static" symptom
+            // can be correlated with GPU/driver/memory conditions.
+            const el = gl.domElement;
+            el.addEventListener('webglcontextlost', (e) => {
+              contextLostRef.current = true;
+              reportWebGLContext({
+                source: 'dither',
+                direction: 'lost',
+                gl: gl.getContext(),
+                event: e,
+              });
+            });
+            el.addEventListener('webglcontextrestored', (e) => {
+              contextLostRef.current = false;
+              reportWebGLContext({
+                source: 'dither',
+                direction: 'restored',
+                gl: gl.getContext(),
+                event: e,
+              });
+            });
+          }}
           style={{
             width: '100%',
             height: '100%',

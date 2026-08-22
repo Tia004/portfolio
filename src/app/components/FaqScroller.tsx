@@ -137,7 +137,7 @@ function FaqScrollerMarquee({
 
 export default function FaqScroller({ mainTitle, mainSubtitle, rows }: FaqScrollerProps) {
   return (
-    <section id="faq" className="relative bg-[#050505] px-4 py-16 sm:py-24">
+    <section id="faq" className="relative px-4 py-16 sm:py-24">
       {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
          They hide the duplicated cards at the marquee edges with a smooth
          fade, and because they're as tall as the section they also cover the
@@ -146,16 +146,16 @@ export default function FaqScroller({ mainTitle, mainSubtitle, rows }: FaqScroll
          Two layers instead of two-per-row: less GPU compositing work. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 z-10"
+        className="pointer-events-none absolute inset-y-0 z-30"
         style={{ left: 'calc(-50vw + 50%)', width: '100vw' }}
       >
         <div
-          className="marquee-edge-curtain marquee-edge-curtain--left"
-          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.92)' } as React.CSSProperties}
+          className="marquee-edge-curtain marquee-edge-curtain--left faq-edge-curtain"
+          style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
         />
         <div
-          className="marquee-edge-curtain marquee-edge-curtain--right"
-          style={{ '--marquee-edge-bg': '#050505', '--marquee-edge-fade': 'rgba(5, 5, 5, 0.92)' } as React.CSSProperties}
+          className="marquee-edge-curtain marquee-edge-curtain--right faq-edge-curtain"
+          style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
         />
       </div>
       <div className="mx-auto max-w-6xl">
