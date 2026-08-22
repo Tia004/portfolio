@@ -611,7 +611,7 @@ function PriceCard({
             {delivery.match(/giorni|days|días|24-48h|immediata|immediate|inmediata|1-2 settimane|1-2 weeks|1-2 semanas/i) && (
               <span
                 {...rapidaHandlers}
-                className="ml-2 px-1.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/25 text-[9px] font-semibold uppercase tracking-wider text-teal-400 leading-none"
+                className="ml-2 px-1.5 py-0.5 rounded-full bg-teal-500/15 border border-teal-500/25 text-[9px] font-semibold uppercase tracking-wider text-teal-400 leading-none cursor-help"
               >
                 {t('prezzi.rapid', lang)}
               </span>
