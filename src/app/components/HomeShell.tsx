@@ -2762,7 +2762,7 @@ export default function HomeShell() {
 
           {/* ============ CHI SONO ============ */}
           <LazySection rootMargin={800} placeholderHeight={1200}>
-          <section id="chisono" className="relative py-10 sm:py-24 px-4 overflow-x-clip overflow-y-visible">
+          <section id="chisono" className="relative py-10 sm:py-24 px-4 overflow-y-visible">
             {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
                They hide the duplicated skill cards at the marquee edges with a
                smooth fade, and because they're as tall as the section they also
