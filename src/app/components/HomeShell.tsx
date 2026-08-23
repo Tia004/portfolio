@@ -3022,7 +3022,7 @@ export default function HomeShell() {
               </ScrollReveal>
 
               {/* ── Two-column opposing vertical scrollers ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5 isolate">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
                 {/* Real progressive-blur curtains top & bottom — 3 overlapping
                     backdrop-filter layers each. The strongest 14px layer sits
                     at the edge and the section remains overflow-visible, so the

@@ -331,7 +331,7 @@ export default function MobileSnapSlider({
         data-lenis-prevent={nativeTrack ? '' : undefined}
         data-lenis-prevent-wheel={nativeTrack ? '' : undefined}
         data-lenis-prevent-touch={nativeTrack ? '' : undefined}
-        style={{ touchAction: 'pan-x pan-y' }}
+        style={{ touchAction: 'pan-x pan-y', overscrollBehaviorY: 'auto' }}
         className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default ${trackClassName}`}
       >
         {children}

@@ -13,7 +13,7 @@ const LETTERS = 'Tia Designs'.split('');
 const LETTER_STAGGER = 0.035;
 const LETTER_DURATION = 0.35;
 const MIN_SPLASH_MS = 750;   // minimum display time for the letter animation (letters land at ~0.70s)
-const MAX_SPLASH_MS = 2500;  // safety net — never block the site forever
+const MAX_SPLASH_MS = 3500;  // safety net — never block the site forever
 const FADE_MS = 180;         // exit fade duration (must match the CSS transition)
 
 function whenPageReady(): Promise<void> {
@@ -70,7 +70,9 @@ function whenImagesLoaded(): Promise<void> {
 // sections below the hero never reveals a blank/black background. The chunk is
 // preloaded by molten-preload.ts at client module evaluation. The cap keeps a
 // failed/blocked WebGL device on the CSS fallback instead of freezing the UI.
-const MOLTEN_WAIT_MS = 1800;
+// Increased from 1800ms → 3000ms: the WebGL shader compile + first draw can
+// take 1-2s on slower devices with the full-screen resolution buffer.
+const MOLTEN_WAIT_MS = 3000;
 function whenMoltenReady(): Promise<void> {
   // The module promise starts at client-module evaluation, before HomeShell
   // mounts. Awaiting it here makes the splash functional without making the
