@@ -12,18 +12,10 @@
   isolation: isolate;
   display: grid;
   border: 1px solid rgb(255 255 255 / 10%);
-  /* Liquid-glass card: translucent dark tint (darker than the chatbot text
-     bar's white/6) so the molten background glows through faintly, with the
-     same inner top highlight as the chat bar. NO backdrop-filter: the
-     marquees render ~190 of these cards and every one re-sampled the ANIMATED
-     molten behind it each frame (~16M px of blur per frame — the dominant
-     lag source in the skills/FAQ sections). The dark tint is slightly more
-     opaque (0.78 vs 0.62) to reproduce the softness the blur used to add:
-     same dark-glass look, zero per-frame re-sampling. */
-  background: var(--card-bg, rgba(6, 10, 10, 0.78));
+  background: var(--card-bg, #0a0a0a);
   overflow: visible;
-  /* Subtle depth shadow + the chat bar's inset top highlight (liquid edge) */
-  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%), inset 0 1px 0 rgb(255 255 255 / 7%);
+  /* Subtle depth shadow — dark enough for #0a0a0a cards, blends on #050505 sections */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%);
 }
 
 .border-glow-card::before,
@@ -79,20 +71,19 @@
   transition: opacity 0.15s ease-out;
 }
 
-/* colored mesh-gradient border. The first (padding-box) layer that used to
-   fill the interior with the card background is REMOVED: the conic+radial
-   mask subtracts the center out of ::before, so that layer was painted and
-   masked away every frame — invisible, pure waste. The card's own background
-   already covers the interior. */
+/* colored mesh-gradient border */
 .border-glow-card::before {
   border: 1px solid transparent;
   background:
+    linear-gradient(var(--card-bg, #0a0a0a) 0 100%) padding-box,
     linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
     var(--gradient-one, radial-gradient(at 80% 55%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-two, radial-gradient(at 69% 34%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-three, radial-gradient(at 8% 6%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-four, radial-gradient(at 41% 38%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-five, radial-gradient(at 86% 85%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,
+    var(--gradient-six, radial-gradient(at 82% 18%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) border-box,
+    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-base, linear-gradient(#2dd4bf 0 100%)) border-box;
 
   opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
@@ -104,14 +95,7 @@
       transparent calc((var(--cone-spread) + 15) * 1%),
       transparent calc((100 - var(--cone-spread) - 15) * 1%),
       black calc((100 - var(--cone-spread)) * 1%)
-    ),
-    /* Punch the interior out of the cone: with the glass card background the
-       wedge's center→border path would otherwise shine through the card as a
-       "light beam from the center". Subtracting a center ellipse leaves only
-       the arc hugging the border — the border-glow look of the old opaque
-       cards — while the glass stays fully transparent in the middle. */
-    radial-gradient(ellipse at 50% 50%, black 70%, transparent 90%);
-  mask-composite: subtract;
+    );
 }
 
 /* colored mesh-gradient background fill near edges */
@@ -123,11 +107,13 @@
     var(--gradient-three, radial-gradient(at 8% 6%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-four, radial-gradient(at 41% 38%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-five, radial-gradient(at 86% 85%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) padding-box,
+    var(--gradient-six, radial-gradient(at 82% 18%, hsla(170, 90%, 55%, 1) 0px, transparent 50%)) padding-box,
+    var(--gradient-seven, radial-gradient(at 51% 4%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) padding-box,
     var(--gradient-base, linear-gradient(#2dd4bf 0 100%)) padding-box;
 
   mask-image:
     linear-gradient(to bottom, black, black),
-    radial-gradient(ellipse at 50% 50%, black 60%, transparent 80%),
+    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
     radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
     radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
     radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
@@ -136,83 +122,43 @@
 
   mask-composite: subtract, add, add, add, add, add;
   opacity: calc(var(--fill-opacity, 0.5) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
-  /* mix-blend-mode is NOT set here: it now applies only in the visible states
-     (hover / sweep-active / scroll-glow-active, see below). An unconditional
-     blend mode forces the compositor to give EVERY card's ::after its own
-     compositing group — ~190 cards × 4 copies in the skills marquee = hundreds
-     of blend layers, which prevents the animated track from promoting to a
-     single layer and makes every frame composite them all. The blend only
-     matters when the pseudo is visible, and in those states the marquee is
-     paused (durationOnHover), so the look is identical. */
+  mix-blend-mode: soft-light;
 }
 
-/* outer glow layer — sits slightly outside the card so the halo is visible.
-   The inset shadows diffuse inward (soft glow inside), the outer shadows
-   bleed outside (the border halo the user expects). Shadow blur values are
-   kept low and the spread is zero so corners don't stack up dramatically
-   more light than the sides — the ring looks uniform. */
+/* outer glow layer */
 .border-glow-card > .edge-light {
-  inset: -3px;
+  inset: calc(var(--glow-padding) * -1);
   pointer-events: none;
   z-index: 1;
 
-  /* Wider wedge so the glow arc is always visible even at narrow angles */
   mask-image:
     conic-gradient(
-      from var(--cursor-angle) at center, black 2%, transparent 14%, transparent 86%, black 98%
+      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
     );
 
   opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
-  /* mix-blend-mode (plus-lighter) applies only in the visible states — see the
-     grouped rule below. Same reason as ::after: an unconditional blend would
-     force a compositing group per card and block single-layer track promotion
-     in the marquees. */
+  mix-blend-mode: plus-lighter;
 }
 
 .border-glow-card > .edge-light::before {
   content: "";
   position: absolute;
-  /* The ::before is slightly larger than the card (inset: -3px from the
-     .edge-light which is already -3px → total bleed -6px from card edge).
-     This ensures outer shadows have room to render before hitting the parent
-     stacking context. */
-  inset: 0;
+  inset: var(--glow-padding);
   border-radius: inherit;
-  /* Uniform ring glow — low blur, zero spread, same strength all around.
-     Inset shadows for the soft interior glow; outer shadows for the
-     visible border halo the user expects. */
   box-shadow:
-    /* Inner soft glow — uniform, low blur avoids corner pile-up */
     inset 0 0 0 1px var(--glow-color, hsl(170deg 80% 50% / 100%)),
-    inset 0 0 2px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    inset 0 0 4px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    inset 0 0 8px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    inset 0 0 12px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    /* Outer border halo — visible glow on the edge from outside the card.
-       All have zero spread and moderate blur for uniform intensity on
-       every side (no corner accumulation). */
-    0 0 4px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    0 0 6px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    0 0 8px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    0 0 10px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    0 0 14px 0 var(--glow-color-20, hsl(170deg 80% 50% / 20%));
-}
-
-/* Blend modes for the visible states only. In every other state the
-   pseudo-elements are opacity:0 (invisible), so removing the blend there is
-   visually identical — and it lets the compositor promote the whole marquee
-   track to ONE layer instead of forcing a blend compositing group per card
-   (the marquee jank source in skills/FAQ). When visible, the marquee is
-   paused (durationOnHover), so the blend renders exactly as before. */
-.border-glow-card:hover::after,
-.border-glow-card.sweep-active::after,
-.border-glow-card.scroll-glow-active::after {
-  mix-blend-mode: soft-light;
-}
-.border-glow-card:hover > .edge-light,
-.border-glow-card.sweep-active > .edge-light,
-.border-glow-card.scroll-glow-active > .edge-light {
-  mix-blend-mode: plus-lighter;
+    inset 0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
+    inset 0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    inset 0 0 6px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    inset 0 0 15px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    inset 0 0 25px 2px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
+    inset 0 0 50px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%)),
+    0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
+    0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    0 0 6px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    0 0 15px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    0 0 25px 2px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
+    0 0 50px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%));
 }
 
 /* Override: continuous hover mode — full intensity with fast fade-in */
@@ -236,16 +182,14 @@
       black calc(var(--cone-spread) * 1%),
       transparent calc((var(--cone-spread) + 15) * 1%),
       transparent 100%
-    ),
-    radial-gradient(ellipse at 50% 50%, black 70%, transparent 90%);
-  mask-composite: subtract;
+    );
 }
 /* Align the inner soft fill with the single beam too — the default fill had
    two dark wedges 180° apart matching the old dual-arc mask. */
 .border-glow-single::after {
   mask-image:
     linear-gradient(to bottom, black, black),
-    radial-gradient(ellipse at 50% 50%, black 60%, transparent 80%),
+    radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
     radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
     radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
     radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),

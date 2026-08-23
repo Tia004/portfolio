@@ -46,17 +46,13 @@ function buildGlowVars(glowColor: string, intensity: number): Record<string, str
   return vars;
 }
 
-// 5 radial layers (was 7): the two dropped positions ('82% 18%', '51% 4%')
-// were the weakest accents. During a hover/scroll-glow rotation the whole
-// masked background repaints every frame, so fewer layers = measurably less
-// per-frame paint cost with an indistinguishable mesh look.
-const GRADIENT_POSITIONS = ['80% 55%', '69% 34%', '8% 6%', '41% 38%', '86% 85%'];
-const GRADIENT_KEYS = ['--gradient-one', '--gradient-two', '--gradient-three', '--gradient-four', '--gradient-five'];
-const COLOR_MAP = [0, 1, 2, 0, 1];
+const GRADIENT_POSITIONS = ['80% 55%', '69% 34%', '8% 6%', '41% 38%', '86% 85%', '82% 18%', '51% 4%'];
+const GRADIENT_KEYS = ['--gradient-one', '--gradient-two', '--gradient-three', '--gradient-four', '--gradient-five', '--gradient-six', '--gradient-seven'];
+const COLOR_MAP = [0, 1, 2, 0, 1, 2, 1];
 
 function buildGradientVars(colors: string[]): Record<string, string> {
   const vars: Record<string, string> = {};
-  for (let i = 0; i < GRADIENT_POSITIONS.length; i++) {
+  for (let i = 0; i < 7; i++) {
     const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)];
     vars[GRADIENT_KEYS[i]] = `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
   }
@@ -90,11 +86,7 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   edgeSensitivity = 0,
   style,
   glowColor = '170 80 50',
-  // 0.78 (not 0.62): the cards have NO backdrop-filter (see BorderGlow.css —
-  // ~190 marquee cards re-blurring the animated molten each frame was the lag
-  // source), so the tint is slightly more opaque to reproduce the softness
-  // the blur used to add. Same dark-glass look, zero per-frame sampling.
-  backgroundColor = 'rgba(6, 10, 10, 0.78)',
+  backgroundColor = '#0a0a0a',
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 2.0,
