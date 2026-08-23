@@ -206,7 +206,10 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       // The wordmark must be meaningfully on screen (top above the middle)
       // before we consider it "stuck" — a partially-entering wordmark with a
       // working scrub has partially-revealed chars and must NOT be forced.
-      const onScreen = r.top < window.innerHeight * 0.5 && r.bottom > 0;
+      // More generous: trigger if the footer is anywhere in the viewport
+      // (not just top half). A user who scrolls to the very bottom and
+      // waits should always see the wordmark, even if the trigger is stale.
+      const onScreen = r.top < window.innerHeight && r.bottom > 0;
       if (!onScreen) return;
       const stuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
       if (stuck) {

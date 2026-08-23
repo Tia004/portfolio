@@ -39,9 +39,21 @@ export {
   DiamondIcon,
   MobileProgramming01Icon,
   ServerStack01Icon,
+  ServerStack02Icon,
+  ServerStack03Icon,
   Database01Icon,
+  Database02Icon,
+  DatabaseIcon,
+  SqlIcon,
   ContainerIcon,
   TerminalIcon,
+  CloudIcon,
+  CloudServerIcon,
+  ApiIcon,
+  ApiGatewayIcon,
+  Storage,
+  WebProgrammingIcon,
+  DartIcon,
 } from '@hugeicons/core-free-icons';
 
 /** @category AI & Automazione @since 2026-07-23 */
@@ -96,4 +108,5 @@ export {
   ExternalLinkIcon,
   Settings01Icon,
   ArrowExpandDiagonal01Icon,
+  PuzzleIcon,
 } from '@hugeicons/core-free-icons';

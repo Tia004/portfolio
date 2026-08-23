@@ -146,53 +146,56 @@
      paused (durationOnHover), so the look is identical. */
 }
 
-/* outer glow layer — sits exactly on the card box (inset: 0), like the
-   ReactBits BorderGlow: the ring hugs the card border, the inset shadows
-   diffuse INSIDE the card and the outer shadows bleed only a few px outside.
-   Previously this was inset: calc(var(--glow-padding) * -1) (-40px), which
-   drew the glow on an invisible container ~20px away from the card edge. */
+/* outer glow layer — sits slightly outside the card so the halo is visible.
+   The inset shadows diffuse inward (soft glow inside), the outer shadows
+   bleed outside (the border halo the user expects). Shadow blur values are
+   kept low and the spread is zero so corners don't stack up dramatically
+   more light than the sides — the ring looks uniform. */
 .border-glow-card > .edge-light {
-  inset: 0;
+  inset: -3px;
   pointer-events: none;
   z-index: 1;
 
+  /* Wider wedge so the glow arc is always visible even at narrow angles */
   mask-image:
     conic-gradient(
-      from var(--cursor-angle) at center, black 2.5%, transparent 10%, transparent 90%, black 97.5%
+      from var(--cursor-angle) at center, black 2%, transparent 14%, transparent 86%, black 98%
     );
 
   opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
   /* mix-blend-mode (plus-lighter) applies only in the visible states — see the
      grouped rule below. Same reason as ::after: an unconditional blend would
      force a compositing group per card and block single-layer track promotion
-     in the marquees (~190 cards × 4 copies). */
+     in the marquees. */
 }
 
 .border-glow-card > .edge-light::before {
   content: "";
   position: absolute;
-  /* Ring exactly on the card border (inset: 0): the 1px line sits on the
-     edge, the inset shadows diffuse inward (glow inside the card) and the
-     outer shadows bleed just a few px outside — the ReactBits look. */
+  /* The ::before is slightly larger than the card (inset: -3px from the
+     .edge-light which is already -3px → total bleed -6px from card edge).
+     This ensures outer shadows have room to render before hitting the parent
+     stacking context. */
   inset: 0;
   border-radius: inherit;
+  /* Uniform ring glow — low blur, zero spread, same strength all around.
+     Inset shadows for the soft interior glow; outer shadows for the
+     visible border halo the user expects. */
   box-shadow:
+    /* Inner soft glow — uniform, low blur avoids corner pile-up */
     inset 0 0 0 1px var(--glow-color, hsl(170deg 80% 50% / 100%)),
-    inset 0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    inset 0 0 2px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    inset 0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    inset 0 0 9px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    inset 0 0 14px 1px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
-    /* Reduced outer shadows for more consistent corner/side appearance:
-       removed the large 20px blur that varied across corners/sides */
-    0 0 8px 1px var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    0 0 7px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
-    0 0 2px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
-    0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    0 0 7px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%));
+    inset 0 0 2px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
+    inset 0 0 4px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    inset 0 0 8px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    inset 0 0 12px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    /* Outer border halo — visible glow on the edge from outside the card.
+       All have zero spread and moderate blur for uniform intensity on
+       every side (no corner accumulation). */
+    0 0 4px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
+    0 0 6px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    0 0 8px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    0 0 10px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
+    0 0 14px 0 var(--glow-color-20, hsl(170deg 80% 50% / 20%));
 }
 
 /* Blend modes for the visible states only. In every other state the
