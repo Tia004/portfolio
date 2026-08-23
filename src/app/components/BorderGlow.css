@@ -183,13 +183,16 @@
     inset 0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
     inset 0 0 9px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
     inset 0 0 14px 1px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
-    inset 0 0 20px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%)),
+    /* Reduced outer shadows for more consistent corner/side appearance:
+       removed the large 20px blur that varied across corners/sides */
+    0 0 8px 1px var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
+    0 0 3px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
+    0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
+    0 0 7px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
     0 0 1px 0 var(--glow-color-60, hsl(170deg 80% 50% / 60%)),
     0 0 2px 0 var(--glow-color-50, hsl(170deg 80% 50% / 50%)),
     0 0 5px 0 var(--glow-color-40, hsl(170deg 80% 50% / 40%)),
-    0 0 9px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%)),
-    0 0 14px 1px var(--glow-color-20, hsl(170deg 80% 50% / 20%)),
-    0 0 20px 2px var(--glow-color-10, hsl(170deg 80% 50% / 10%));
+    0 0 7px 0 var(--glow-color-30, hsl(170deg 80% 50% / 30%));
 }
 
 /* Blend modes for the visible states only. In every other state the

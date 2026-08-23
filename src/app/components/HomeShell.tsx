@@ -2861,6 +2861,9 @@ export default function HomeShell() {
                     { name: 'PHP', Icon: PhpIcon },
                     { name: 'Ruby', Icon: DiamondIcon },
                     { name: 'Kotlin', Icon: MobileProgramming01Icon },
+                    { name: 'Go', Icon: ServerStack01Icon },
+                    { name: 'Rust', Icon: ContainerIcon },
+                    { name: '.NET', Icon: ThreeDViewIcon },
                   ],
                 },
                 {
