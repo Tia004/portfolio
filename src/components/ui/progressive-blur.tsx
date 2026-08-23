@@ -24,19 +24,17 @@ export function ProgressiveBlur({
   position = "bottom",
   blurLevels = [2, 6, 14],
 }: ProgressiveBlurProps) {
-  const levels = blurLevels.length > 0 ? blurLevels : [2, 6, 14]
+  const levels = blurLevels.length > 0 ? blurLevels : [1, 4, 9, 18]
+  const total = levels.length
   const direction = position === "top" ? "to top" : "to bottom"
 
   const layers = levels.map((blur, index) => {
-    // Each layer fades from transparent → opaque over a broad segment.
-    // Layers overlap heavily: layer 0 fades 0→45%, layer 1 fades 25→78%,
-    // layer 2 fades 55→100%. No banding, no plateaus.
-    const fadeStart = Math.max(0, (index - 0.55) * (100 / levels.length))
-    const fadeEnd = Math.min(100, (index + 1.45) * (100 / levels.length))
-    const maskEnd = index === levels.length - 1
-      ? "rgba(0,0,0,1) 100%"
-      : `rgba(0,0,0,0) ${fadeEnd}%`
-    const verticalMask = `linear-gradient(${direction}, rgba(0,0,0,0) ${fadeStart}%, rgba(0,0,0,1) ${fadeEnd}%, ${maskEnd})`
+    // Each layer starts transparent, ramps to opaque over its zone, then
+    // stays opaque for the rest of the curtain (toward the edge). The zones
+    // overlap so the dissolve is truly continuous.
+    const zoneStart = Math.max(0, (index - 0.6) / total * 100)
+    const opaqueAt = Math.min(100, (index + 0.85) / total * 100)
+    const verticalMask = `linear-gradient(${direction}, rgba(0,0,0,0) ${zoneStart}%, rgba(0,0,0,1) ${opaqueAt}%, rgba(0,0,0,1) 100%)`
 
     return (
       <div

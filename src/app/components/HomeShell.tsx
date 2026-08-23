@@ -386,7 +386,6 @@ function PriceCard({
   return (
     <div ref={cardRef} className="h-full">
       <BorderGlow
-        continuousHover
         borderRadius={20}
         glowRadius={35}
         glowIntensity={2.0}
@@ -2340,7 +2339,7 @@ export default function HomeShell() {
             className=""
             height="4.5rem"
             position="top"
-            blurLevels={[2, 6, 14]}
+            blurLevels={[1, 4, 9, 18]}
           />
         </div>
         <div
@@ -2354,7 +2353,7 @@ export default function HomeShell() {
             className=""
             height="clamp(6rem, 8vw, 8rem)"
             position="bottom"
-            blurLevels={[2, 6, 14]}
+            blurLevels={[1, 4, 9, 18]}
           />
         </div>
         <div ref={turnstileContainerRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-px w-px overflow-hidden opacity-0" />
@@ -2494,7 +2493,7 @@ export default function HomeShell() {
               className="z-10"
               height="clamp(5rem, 12vh, 8rem)"
               position="bottom"
-              blurLevels={[2, 6, 14]}
+              blurLevels={[1, 4, 9, 18]}
             />
 
           </section>
@@ -3023,20 +3022,15 @@ export default function HomeShell() {
 
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
-                {/* Real progressive-blur curtains top & bottom — 3 overlapping
-                    backdrop-filter layers each. The strongest 14px layer sits
-                    at the edge and the section remains overflow-visible, so the
-                    transition dissolves into Molten without a hard black clip. */}
-                {/* Simple gradient fade curtains top & bottom — same style as the
-                    marquee side curtains: a CSS linear-gradient that fades from
-                    the section background into transparent. No backdrop-filter,
-                    no ProgressiveBlur — just clean fade, never clipped. */}
-                <div aria-hidden="true" className="pointer-events-none absolute -top-px left-0 right-0 h-20 sm:h-28 z-20"
-                  style={{ background: 'linear-gradient(to bottom, rgba(6,10,10,0.94) 0%, rgba(6,10,10,0.78) 35%, transparent 100%)' }}
-                />
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-px left-0 right-0 h-20 sm:h-28 z-20"
-                  style={{ background: 'linear-gradient(to top, rgba(6,10,10,0.94) 0%, rgba(6,10,10,0.78) 35%, transparent 100%)' }}
-                />
+                {/* Progressive blur curtains top & bottom — the container extends
+                    past the section edges so backdrop-filter can sample the Molten
+                    beyond the visible area. No more hard clip. */}
+                <div aria-hidden="true" className="pointer-events-none absolute -top-[3rem] left-0 right-0 h-[8rem] sm:h-[10rem] z-20">
+                  <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} />
+                </div>
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-[3rem] left-0 right-0 h-[8rem] sm:h-[10rem] z-20">
+                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[1, 4, 9, 18]} />
+                </div>
                 {/* ── Left column — scrolls up ── */}
                 <div className="relative min-h-0 overflow-hidden py-5 -my-5">
                   <InfiniteSlider
