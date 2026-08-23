@@ -1,178 +1,242 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLanguage } from './LanguageProvider';
+import TiaIcon from './TiaIcon';
+import BorderGlow from './BorderGlow';
+import DotGrid from './DotGrid';
+import { DotGridCard, TiltCard } from './InteractiveCard';
+import {
+  ArrowRight01Icon,
+  BubbleChatIcon,
+  CheckmarkCircle01Icon,
+  CodeIcon,
+  FilePenIcon,
+  FigmaIcon,
+} from './icons';
 import { t } from '@/lib/translations';
 
-interface TimelineStep {
-  number: number;
-  titleKey: string;
-  descKey: string;
-}
+const STEPS = [
+  { number: 1, titleKey: 'processo.step1_title', descKey: 'processo.step1_desc', icon: BubbleChatIcon },
+  { number: 2, titleKey: 'processo.step2_title', descKey: 'processo.step2_desc', icon: FilePenIcon },
+  { number: 3, titleKey: 'processo.step3_title', descKey: 'processo.step3_desc', icon: FigmaIcon },
+  { number: 4, titleKey: 'processo.step4_title', descKey: 'processo.step4_desc', icon: CodeIcon },
+  { number: 5, titleKey: 'processo.step5_title', descKey: 'processo.step5_desc', icon: CheckmarkCircle01Icon },
+  { number: 6, titleKey: 'processo.step6_title', descKey: 'processo.step6_desc', icon: ArrowRight01Icon },
+] as const;
 
-const STEPS: TimelineStep[] = [
-  { number: 1, titleKey: 'processo.step1_title', descKey: 'processo.step1_desc' },
-  { number: 2, titleKey: 'processo.step2_title', descKey: 'processo.step2_desc' },
-  { number: 3, titleKey: 'processo.step3_title', descKey: 'processo.step3_desc' },
-  { number: 4, titleKey: 'processo.step4_title', descKey: 'processo.step4_desc' },
-  { number: 5, titleKey: 'processo.step5_title', descKey: 'processo.step5_desc' },
-  { number: 6, titleKey: 'processo.step6_title', descKey: 'processo.step6_desc' },
-];
+type TimelineStep = (typeof STEPS)[number];
+
+function ProcessStepCard({
+  step,
+  lang,
+  mobileActive,
+}: {
+  step: TimelineStep;
+  lang: 'it' | 'en' | 'es';
+  mobileActive: boolean;
+}) {
+  return (
+    <DotGridCard className="h-full w-full">
+      {(mounted, fadeIn) => (
+        <TiltCard className="h-full w-full">
+          <BorderGlow
+            continuousHover
+            borderRadius={20}
+            glowRadius={30}
+            glowIntensity={2.2}
+            edgeSensitivity={0}
+            className={`process-glow-card group h-full w-full ${mobileActive ? 'scroll-glow-active' : ''}`}
+          >
+            <div className="relative flex h-full min-h-[205px] flex-col justify-between rounded-[20px] p-5">
+              <div className={`pointer-events-none absolute inset-0 overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+                {mounted && (
+                  <DotGrid
+                    dotSize={3}
+                    gap={14}
+                    baseColor="#0a0a0a"
+                    activeColor="#10B981"
+                    proximity={100}
+                    shockRadius={200}
+                    shockStrength={4}
+                    resistance={700}
+                    returnDuration={1.2}
+                  />
+                )}
+              </div>
+              <div className="relative z-10 flex items-center gap-2">
+                <TiaIcon icon={step.icon} size={18} className="text-teal-400" />
+                <span className="text-teal-400 text-sm">0{step.number}</span>
+              </div>
+              <div className="relative z-10">
+                <h3 className="mb-1 text-base font-medium text-white">{t(step.titleKey, lang)}</h3>
+                <p className="text-xs leading-relaxed text-neutral-500">{t(step.descKey, lang)}</p>
+              </div>
+            </div>
+          </BorderGlow>
+        </TiltCard>
+      )}
+    </DotGridCard>
+  );
+}
 
 export default function ProcessTimeline() {
   const { lang } = useLanguage();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [lineProgress, setLineProgress] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [progress, setProgress] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
+  const [nativeTrack, setNativeTrack] = useState(false);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
+
+  const updateTimeline = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+    const scrollLeft = track.scrollLeft;
+    const nextProgress = maxScroll > 1 ? scrollLeft / maxScroll : 1;
+    const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+    let closest = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    track.querySelectorAll<HTMLElement>('[data-timeline-step]').forEach((step, index) => {
+      const rect = step.getBoundingClientRect();
+      const distance = Math.abs(rect.left + rect.width / 2 - center);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closest = index;
+      }
+    });
+
+    setProgress(Math.min(1, Math.max(0, nextProgress)));
+    setActiveStep(closest);
+    setCanPrev(scrollLeft > 8);
+    setCanNext(scrollLeft < maxScroll - 8);
+  }, []);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const media = window.matchMedia('(pointer: coarse)');
+    const sync = () => setNativeTrack(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
-    const onScroll = () => {
-      const rect = container.getBoundingClientRect();
-      const totalHeight = container.scrollHeight;
-
-      // Track which step is closest to viewport center
-      const viewportCenter = window.innerHeight / 2;
-      let bestStep = 0;
-      let bestDist = Infinity;
-      const stepEls = container.querySelectorAll('.timeline-step');
-      stepEls.forEach((el, i) => {
-        const r = el.getBoundingClientRect();
-        const center = r.top + r.height / 2;
-        const dist = Math.abs(center - viewportCenter);
-        if (dist < bestDist) { bestDist = dist; bestStep = i; }
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let raf = 0;
+    const scheduleUpdate = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        updateTimeline();
       });
-      setActiveStep(bestStep);
-
-      // Line progress: how much of the container has passed the viewport center
-      const progress = Math.min(1, Math.max(0,
-        (window.innerHeight / 2 - rect.top) / (totalHeight * 0.85)
-      ));
-      setLineProgress(progress);
     };
+    const resize = new ResizeObserver(scheduleUpdate);
+    resize.observe(track);
+    track.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    scheduleUpdate();
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      track.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('scroll', scheduleUpdate);
+      resize.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [updateTimeline]);
+
+  const move = useCallback((direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    navigator.vibrate?.(12);
+    const first = track.querySelector<HTMLElement>('[data-timeline-step]');
+    const gap = parseFloat(getComputedStyle(track).columnGap || '0') || 0;
+    const amount = (first?.offsetWidth ?? track.clientWidth * 0.8) + gap;
+    track.scrollBy({ left: direction * amount, behavior: 'smooth' });
   }, []);
 
   return (
-    <div ref={containerRef} className="relative max-w-5xl mx-auto py-8 sm:py-16">
-      {/* ── Center SVG Line (desktop only) ── */}
-      <div className="hidden sm:block absolute left-1/2 top-0 bottom-0 -translate-x-px pointer-events-none z-0" style={{ width: '2px' }}>
+    <div className="relative mx-auto w-full max-w-7xl">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[260px] z-0 h-px bg-white/[0.10]">
         <div
-          className="w-full h-full rounded-full"
-          style={{
-            background: `linear-gradient(to bottom,
-              rgba(45,212,191,0.9) 0%,
-              rgba(45,212,191,0.9) ${lineProgress * 100}%,
-              rgba(45,212,191,0.1) ${lineProgress * 100}%,
-              rgba(45,212,191,0.1) 100%)`,
-            transition: 'background 0.3s ease-out',
-          }}
+          className="h-full origin-left bg-teal-400 shadow-[0_0_12px_rgba(45,212,191,0.55)] transition-[width] duration-150 ease-out"
+          style={{ width: `${Math.max(8, progress * 100)}%` }}
         />
       </div>
 
-      {/* ── Mobile line (left) ── */}
       <div
-        className="sm:hidden absolute left-8 top-0 bottom-0 w-px pointer-events-none z-0"
-        style={{
-          background: `linear-gradient(to bottom,
-            rgba(45,212,191,0.9) 0%,
-            rgba(45,212,191,0.9) ${lineProgress * 100}%,
-            rgba(45,212,191,0.08) ${lineProgress * 100}%,
-            rgba(45,212,191,0.08) 100%)`,
-          transition: 'background 0.3s ease-out',
-        }}
-      />
-
-      {/* ── Steps ── */}
-      {STEPS.map((step, i) => {
-        const isLeft = i % 2 === 0;
-        const isActive = i <= activeStep;
-        const isClosest = i === activeStep;
-        const title = t(step.titleKey, lang);
-        const desc = t(step.descKey, lang);
-
-        return (
-          <div
-            key={i}
-            className={`timeline-step relative flex items-start gap-6 sm:gap-0 mb-12 sm:mb-0 last:mb-0 transition-opacity duration-500 sm:min-h-[200px] ${
-              isActive ? 'opacity-100' : 'opacity-30'
-            }`}
-          >
-            {/* ── Mobile: number left, content right ── */}
-            <div className="sm:hidden shrink-0 z-10">
-              <div
-                className={`flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold border-2 transition-all duration-300 ${
-                  isClosest
-                    ? 'bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/30 scale-110'
-                    : isActive
-                      ? 'bg-teal-500/30 border-teal-400/60 text-teal-300'
-                      : 'bg-white/5 border-white/10 text-white/30'
-                }`}
-              >
-                {step.number}
-              </div>
-            </div>
-
-            {/* ── Content card (mobile: full width; desktop: half width, alternating sides) ── */}
-            <div
-              className={`flex-1 sm:absolute sm:top-0 ${
-                isLeft
-                  ? 'sm:left-0 sm:pr-16 sm:text-right'
-                  : 'sm:right-0 sm:pl-16 sm:text-left'
-              }`}
-              style={{ width: 'calc(50% - 40px)' }}
+        ref={trackRef}
+        data-lenis-prevent={nativeTrack ? '' : undefined}
+        data-lenis-prevent-touch={nativeTrack ? '' : undefined}
+        className="relative z-10 flex h-[520px] snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain px-[max(1rem,calc((100vw-80rem)/2))] pb-8 scrollbar-hide"
+        style={{ touchAction: 'pan-x pan-y' }}
+        aria-label={lang === 'it' ? 'Percorso di lavoro' : lang === 'es' ? 'Proceso de trabajo' : 'Work process'}
+      >
+        {STEPS.map((step, index) => {
+          const active = index === activeStep;
+          const above = index % 2 === 0;
+          return (
+            <article
+              key={step.number}
+              data-timeline-step
+              aria-current={active ? 'step' : undefined}
+              className="relative z-10 flex h-full w-[78vw] max-w-[300px] shrink-0 snap-center flex-col justify-between sm:w-[300px] sm:max-w-none"
             >
-              <div
-                className={`p-5 sm:p-6 rounded-2xl border transition-all duration-500 ${
-                  isClosest
-                    ? 'bg-teal-500/[0.08] border-teal-400/40 shadow-[0_0_40px_rgba(45,212,191,0.12)]'
-                    : isActive
-                      ? 'bg-white/[0.04] border-white/[0.08]'
-                      : 'bg-white/[0.02] border-white/[0.04]'
-                }`}
-              >
-                <h3
-                  className={`text-base sm:text-lg font-bold mb-1.5 transition-colors duration-300 ${
-                    isClosest ? 'text-teal-300' : isActive ? 'text-white' : 'text-white/40'
-                  }`}
-                >
-                  {title}
-                </h3>
-                <p
-                  className={`text-sm leading-relaxed transition-colors duration-300 ${
-                    isClosest ? 'text-neutral-300' : isActive ? 'text-neutral-400' : 'text-neutral-600'
-                  }`}
-                >
-                  {desc}
-                </p>
+              <div className={`flex h-[205px] flex-col justify-end ${above ? '' : 'invisible'}`} aria-hidden={!above}>
+                {above && (
+                  <ProcessStepCard step={step} lang={lang} mobileActive={nativeTrack && active} />
+                )}
               </div>
-            </div>
 
-            {/* ── Desktop: number circle in the center ── */}
-            <div className="hidden sm:flex absolute left-1/2 top-6 -translate-x-1/2 z-10">
-              <div
-                className={`flex items-center justify-center w-9 h-9 rounded-full text-sm font-bold border-2 transition-all duration-300 ${
-                  isClosest
-                    ? 'bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/30 scale-110'
-                    : isActive
-                      ? 'bg-teal-500/30 border-teal-400/60 text-teal-300'
-                      : 'bg-white/5 border-white/10 text-white/30'
-                }`}
-              >
-                {step.number}
+              <div className="relative flex h-10 shrink-0 items-center justify-center">
+                <div className={`absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-sm font-bold transition-all duration-300 ${active
+                  ? 'border-teal-300 bg-teal-500 text-white shadow-[0_0_24px_rgba(45,212,191,0.45)]'
+                  : 'border-white/20 bg-[#07110f] text-teal-300'
+                  }`}>
+                  {step.number}
+                </div>
               </div>
-            </div>
 
-            {/* ── Spacer for the empty side (desktop) ── */}
-            <div className="hidden sm:block" style={{ width: 'calc(50% - 40px)' }} />
-          </div>
-        );
-      })}
+              <div className={`flex h-[205px] flex-col justify-start ${above ? 'invisible' : ''}`} aria-hidden={above}>
+                {!above && (
+                  <ProcessStepCard step={step} lang={lang} mobileActive={nativeTrack && active} />
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 px-4 sm:px-0">
+        <span className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-500">
+          {String(activeStep + 1).padStart(2, '0')} / {String(STEPS.length).padStart(2, '0')}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => move(-1)}
+            disabled={!canPrev}
+            aria-label={lang === 'it' ? 'Passo precedente' : lang === 'es' ? 'Paso anterior' : 'Previous step'}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition-colors hover:border-teal-400/50 hover:bg-teal-400/10 disabled:pointer-events-none disabled:opacity-25"
+          >
+            <TiaIcon icon={ArrowRight01Icon} size={17} className="-rotate-180" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => move(1)}
+            disabled={!canNext}
+            aria-label={lang === 'it' ? 'Passo successivo' : lang === 'es' ? 'Paso siguiente' : 'Next step'}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition-colors hover:border-teal-400/50 hover:bg-teal-400/10 disabled:pointer-events-none disabled:opacity-25"
+          >
+            <TiaIcon icon={ArrowRight01Icon} size={17} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -151,11 +151,11 @@ export default function FaqScroller({ mainTitle, mainSubtitle, rows }: FaqScroll
       >
         <div
           className="marquee-edge-curtain marquee-edge-curtain--left faq-edge-curtain"
-          style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
+          style={{ '--marquee-edge-bg': 'rgba(2, 12, 10, 0.34)', '--marquee-edge-fade': 'rgba(2, 12, 10, 0.12)' } as React.CSSProperties}
         />
         <div
           className="marquee-edge-curtain marquee-edge-curtain--right faq-edge-curtain"
-          style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
+          style={{ '--marquee-edge-bg': 'rgba(2, 12, 10, 0.34)', '--marquee-edge-fade': 'rgba(2, 12, 10, 0.12)' } as React.CSSProperties}
         />
       </div>
       <div className="mx-auto max-w-6xl">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useState, useEffect, useRef, useCallback } from 'react';
+import React, { memo, useEffect, useRef, useCallback } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -13,8 +13,6 @@ type InfiniteSliderProps = {
   reverse?: boolean;
   className?: string;
   overflowY?: 'hidden' | 'visible';
-  /** Extra breathing room for BorderGlow halos around moving cards. */
-  glowBleed?: number;
 };
 
 // ── InfiniteSlider ─────────────────────────────────────────────
@@ -39,7 +37,6 @@ const InfiniteSlider = memo(function InfiniteSlider({
   reverse = false,
   className,
   overflowY = 'hidden',
-  glowBleed = 28,
 }: InfiniteSliderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -75,10 +72,10 @@ const InfiniteSlider = memo(function InfiniteSlider({
 
   const isHorizontal = direction === 'horizontal';
   const animName = isHorizontal ? 'infscroll-h' : 'infscroll-v';
-  // Visible marquees already let the glow paint outside the track. Padding is
-  // only needed for clipped viewports (reviews), otherwise it would alter the
-  // track's measured loop distance and create a seam.
-  const effectiveGlowBleed = overflowY === 'hidden' ? glowBleed : 0;
+  // BorderGlow is deliberately contained by the card itself. The old track
+  // padding reserved space for an external halo, which made the glow look as
+  // if it belonged to an invisible container and also changed the marquee's
+  // visual loop bounds.
 
   return (
     <div
@@ -90,10 +87,6 @@ const InfiniteSlider = memo(function InfiniteSlider({
         // create a new horizontal scrollbar for marquee content.
         overflow: overflowY === 'visible' ? 'visible' : 'hidden',
         contain: overflowY === 'visible' ? 'none' : undefined,
-        // Reserve a perimeter for BorderGlow's edge-light. The outer
-        // marquee viewport may still clip its content at the intended edge,
-        // but it no longer cuts the glow at the card's layout bounds.
-        padding: effectiveGlowBleed > 0 ? `${effectiveGlowBleed}px` : undefined,
       }}
     >
       {/* Injected keyframes — one per direction so we don't pollute global scope */}

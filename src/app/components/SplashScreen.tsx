@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { moltenModulePromise } from './molten-preload';
 
 // ── Configuration ──────────────────────────────────────────
 const LETTERS = 'Tia Designs'.split('');
@@ -65,17 +66,16 @@ function whenImagesLoaded(): Promise<void> {
 }
 
 // The splash waits (bounded) for the molten-metal background to finish
-// compiling, so the first scroll into the transparent sections below the hero
-// never reveals a blank/black background — the molten is "ready" and renders
-// instantly on demand. MoltenMetal sets the window flag and dispatches
-// 'tia:molten-ready' after its shader program is built (loaded + compiled).
-// The cap (MOLTEN_WAIT_MS) guarantees the splash never pins the site open on
-// a very slow connection; with the molten chunk imported at HomeShell module
-// eval (before hydration) the shader normally compiles well before the
-// splash's minimum display time. 2s covers even slow phones; MAX_SPLASH_MS
-// (2.5s) is the absolute backstop.
-const MOLTEN_WAIT_MS = 2000;
+// compiling and draw one real frame, so the first scroll into the transparent
+// sections below the hero never reveals a blank/black background. The chunk is
+// preloaded by molten-preload.ts at client module evaluation. The cap keeps a
+// failed/blocked WebGL device on the CSS fallback instead of freezing the UI.
+const MOLTEN_WAIT_MS = 1800;
 function whenMoltenReady(): Promise<void> {
+  // The module promise starts at client-module evaluation, before HomeShell
+  // mounts. Awaiting it here makes the splash functional without making the
+  // first paint wait for unrelated below-fold assets.
+  const moduleReady = moltenModulePromise?.then(() => undefined).catch(() => undefined) ?? Promise.resolve();
   return new Promise((resolve) => {
     if ((window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady) {
       resolve();
@@ -90,6 +90,12 @@ function whenMoltenReady(): Promise<void> {
     };
     const onReady = () => finish();
     window.addEventListener('tia:molten-ready', onReady);
+    moduleReady.then(() => {
+      // The component may still be hydrating after the chunk resolves. The
+      // event/flag path remains authoritative; this only removes an avoidable
+      // delay when the fallback or first draw has already completed.
+      if ((window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady) finish();
+    });
     window.setTimeout(finish, MOLTEN_WAIT_MS);
   });
 }

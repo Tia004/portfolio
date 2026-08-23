@@ -1,7 +1,7 @@
 'use client';
 
 /** @category React e Core */
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import InfiniteSlider from './InfiniteSlider';
@@ -10,6 +10,7 @@ import ProcessTimeline from './ProcessTimeline';
 import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
 import { trackClick } from '@/lib/analytics';
 import { type ChatCategory } from '@/lib/chat-categories';
+import { moltenModulePromise } from './molten-preload';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
 
 /** @category Componente Icone */
@@ -104,8 +105,7 @@ const Dither = dynamic(() => import('./Dither'), { ssr: false, loading: () => nu
 // splash only exits once MoltenMetal has fired 'tia:molten-ready'. The same
 // promise is handed to next/dynamic, so the component renders from the
 // already-loaded module.
-const moltenChunk = typeof window !== 'undefined' ? import('./MoltenMetal') : null;
-const MoltenMetal = dynamic(() => moltenChunk ?? import('./MoltenMetal'), { ssr: false, loading: () => null });
+const MoltenMetal = dynamic(() => moltenModulePromise ?? import('./MoltenMetal'), { ssr: false, loading: () => null });
 import Navbar from './Navbar';
 import ScrollReveal from './ScrollReveal';
 import StaggerReveal from './StaggerReveal';
@@ -128,6 +128,7 @@ import { getLegalDoc, type LegalDoc } from '@/lib/legal-content';
 import BorderGlow from './BorderGlow';
 import { CHAT_CATEGORY_OPTIONS } from '@/lib/chat-categories';
 import DotGrid from './DotGrid';
+import { DotGridCard, TiltCard } from './InteractiveCard';
 import TooltipContent from './TooltipContent';
 import UrlPreviewCard from './UrlPreviewCard';
 import InlinePreventivoForm from './InlinePreventivoForm';
@@ -135,7 +136,6 @@ import MobileGlowActivator from './MobileGlowActivator';
 import LazySection from './LazySection';
 import TypewriterText from './TypewriterText';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
-import { scheduleTick, unscheduleTick } from '@/lib/useSharedTicker';
 import { ensureChatSession, mountTurnstile, secureChatFetch } from '@/lib/chat-client';
 
 
@@ -323,229 +323,8 @@ function ServiceSelect({ value, onChange, highlighted }: { value: string; onChan
 
 // ── Tooltip explanations for technical features ─────────────────
 
-// ── DotGridCard ────────────────────────────────────────────────
-
-/** Wraps a servizi card.
- *
- *  Pre-mounts the DotGrid canvas when the card enters the viewport (IO with
- *  400px rootMargin) so buildGrid runs before the user ever hovers — zero
- *  first-hover delay.  The canvas stays alive while the card is near the
- *  viewport; DotGrid's own IO pauses its rAF loop when off-screen, so the
- *  DOM cost is negligible.
- *
- *  fadeIn (hover-driven) is kept for any CSS transitions the caller may
- *  attach to the grid. */
-function DotGridCard({ children, className = '' }: { children: (mounted: boolean, fadeIn: boolean) => React.ReactNode; className?: string }) {
-  const [viewportMounted, setViewportMounted] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
-  const mounted = viewportMounted || hovered;
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  // Touch devices have no hover: the DotGrid is revealed by the viewport IO
-  // instead, so it lights up while the user slides the services carousel.
-  const touchRef = useRef(false);
-
-  const enter = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setHovered(true);
-    if (!fadeIn) setFadeIn(true);
-  }, [fadeIn]);
-
-  const leave = useCallback(() => {
-    if (touchRef.current) return; // touch: grid stays once revealed
-    setHovered(false);
-    setFadeIn(false);
-    // Only schedule unmount if the card was never primed by the viewport IO.
-    // Once viewportMounted is true the canvas stays alive at idle (DotGrid's
-    // own IO pauses its rAF, so the only cost is DOM memory).
-    if (!viewportMounted) {
-      timerRef.current = setTimeout(() => {
-        setHovered(false);
-        setFadeIn(false);
-      }, 30_000);
-    }
-  }, [viewportMounted]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
-
-  // ── IntersectionObserver: pre-mount canvas when card is near viewport ──
-  useLayoutEffect(() => {
-    if (window.matchMedia('(hover: none)').matches) touchRef.current = true;
-    const el = wrapperRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setViewportMounted(true);
-        // Touch: reveal the grid immediately (no hover to trigger it).
-        if (touchRef.current) setFadeIn(true);
-        io.disconnect(); // fire once — canvas stays alive
-      }
-    }, { rootMargin: '400px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Same LazySection race as BorderGlow: the card may appear under the
-  // mouse. The browser fires :hover CSS but mouseenter does not trigger
-  // (the element appeared — the pointer never "entered" it).
-  // useLayoutEffect runs before paint for zero-frame delay.
-  useLayoutEffect(() => {
-    if (wrapperRef.current?.matches(':hover')) {
-      setHovered(true);
-      setFadeIn(true);
-    }
-  }, []);
-
-  return (
-    <div ref={wrapperRef} onMouseEnter={enter} onMouseLeave={leave} className={`h-full ${className}`}>
-      {children(mounted, fadeIn)}
-    </div>
-  );
-}
-
 // ── CountUp & HeroGlow (extracted to CountUp.tsx) ─────────────
 import { CountUp, HeroGlow } from './CountUp';
-
-// ── TiltCard — effetto 3D al passaggio mouse (DOM diretto, zero re-render) ──
-
-function TiltCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const layoutRef = useRef<HTMLDivElement>(null);
-  const tiltRef = useRef<HTMLDivElement>(null);
-  const canTiltRef = useRef(false);
-  const activeRef = useRef(false);
-  const [active, setActive] = useState(false);
-  // Visibility is tracked in a ref only: it is read by the mousemove handler
-  // but never rendered, so a state update here would re-render the whole tree
-  // every time a card crosses the viewport boundary during scroll (dozens of
-  // times per frame across ~300 skill cards) — pure waste.
-  const isVisibleRef = useRef(false);
-
-  // Keep hover work off touch devices, reduced-motion setups, and devices
-  // where a 3D effect would cost more than it adds.
-  useEffect(() => {
-    const media = window.matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
-    const syncMotionPreference = () => {
-      canTiltRef.current = media.matches;
-      if (!media.matches && tiltRef.current) {
-        tiltRef.current.style.transform = 'none';
-        tiltRef.current.style.willChange = 'auto';
-        activeRef.current = false;
-      }
-    };
-    syncMotionPreference();
-    media.addEventListener('change', syncMotionPreference);
-    return () => media.removeEventListener('change', syncMotionPreference);
-  }, []);
-
-  // Pause mousemove processing when the layout wrapper is off-screen.
-  useEffect(() => {
-    const el = layoutRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        isVisibleRef.current = entry.isIntersecting;
-        if (!entry.isIntersecting && tiltRef.current) {
-          tiltRef.current.style.transform = 'none';
-          tiltRef.current.style.willChange = 'auto';
-          activeRef.current = false;
-        }
-      },
-      { rootMargin: '150px 0px' }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  // Coalesce mousemove into a single rAF paint per frame using the shared
-  // ticker — no per-component rAF, just one shared loop for all tilt cards,
-  // BorderGlow, and PixelTrail mousemove flushes.
-  const pendingMoveRef = useRef<{ x: number; y: number } | null>(null);
-  const tiltScheduledRef = useRef(false);
-  // Latest paintTilt so the callback can unschedule ITSELF by identity (the
-  // shared ticker dedupes callbacks by function reference). Synced in an
-  // effect — writing a ref during render is what react-hooks/refs rejects.
-  const paintTiltRef = useRef<() => void>(() => {});
-
-  const paintTilt = useCallback(() => {
-    tiltScheduledRef.current = false;
-    unscheduleTick(paintTiltRef.current);
-    const pending = pendingMoveRef.current;
-    pendingMoveRef.current = null;
-    const layout = layoutRef.current;
-    const tilt = tiltRef.current;
-    if (!pending || !layout || !tilt || !isVisibleRef.current || !canTiltRef.current) return;
-    // Measure the stable, untransformed wrapper. Measuring the tilted element
-    // itself would introduce feedback/jitter as its bounds change every frame.
-    const rect = layout.getBoundingClientRect();
-    const x = (pending.x - rect.left) / rect.width - 0.5;
-    const y = (pending.y - rect.top) / rect.height - 0.5;
-    tilt.style.willChange = 'transform';
-    tilt.style.transform = `perspective(800px) rotateX(${y * -10}deg) rotateY(${x * 10}deg) scale3d(1.02,1.02,1)`;
-    if (!activeRef.current) {
-      activeRef.current = true;
-      setActive(true);
-    }
-  }, []);
-  useEffect(() => {
-    paintTiltRef.current = paintTilt;
-  }, [paintTilt]);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isVisibleRef.current || !canTiltRef.current) return;
-    pendingMoveRef.current = { x: e.clientX, y: e.clientY };
-    if (!tiltScheduledRef.current) {
-      tiltScheduledRef.current = true;
-      scheduleTick(paintTilt, 'TiltCard');
-    }
-  };
-
-  const handleMouseLeave = () => {
-    pendingMoveRef.current = null;
-    if (tiltScheduledRef.current) {
-      tiltScheduledRef.current = false;
-      unscheduleTick(paintTilt);
-    }
-    if (!tiltRef.current || !canTiltRef.current) return;
-    tiltRef.current.style.transform = 'none';
-    tiltRef.current.style.willChange = 'auto';
-    activeRef.current = false;
-    setActive(false);
-  };
-
-  // Cleanup: unschedule any queued tick on unmount (shared ticker handles
-  // the rAF lifecycle; we just need to untrack our callback).
-  useEffect(() => () => {
-    if (tiltScheduledRef.current) {
-      tiltScheduledRef.current = false;
-      unscheduleTick(paintTilt);
-    }
-  }, [paintTilt]);
-
-  return (
-    <div
-      ref={layoutRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={`relative ${className}`}
-      style={{ zIndex: active ? 10 : 1 }}
-    >
-      <div
-        ref={tiltRef}
-        style={{
-          transition: active ? 'none' : 'transform 0.6s cubic-bezier(0.16,1,0.3,1)',
-          transformStyle: 'preserve-3d',
-          willChange: 'auto',
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
 
 // ── PriceCard ─────────────────────────────────────────────────
 
@@ -2618,7 +2397,7 @@ export default function HomeShell() {
               masked container (.hero-bottom-curtain) whose bottom edge fades
               radially into the molten background — the hero no longer ends
               with a hard line against the sections below. */}
-          <section ref={heroRef} className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center hero-banner-pad pt-20 pb-56 sm:pt-0 sm:pb-0">
+          <section ref={heroRef} data-molten-cover="hero" className="relative min-h-screen w-full overflow-hidden flex items-start sm:items-center hero-banner-pad pt-20 pb-56 sm:pt-0 sm:pb-0">
             {/* The dither: an always-rendered static teal texture guarantees
                 hero contrast on every device; the animated WebGL waves paint
                 over it where supported. It pauses rendering off-screen. */}
@@ -2998,11 +2777,11 @@ export default function HomeShell() {
             >
               <div
                 className="marquee-edge-curtain marquee-edge-curtain--left"
-                style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
+                style={{ '--marquee-edge-bg': 'rgba(2, 12, 10, 0.34)', '--marquee-edge-fade': 'rgba(2, 12, 10, 0.12)' } as React.CSSProperties}
               />
               <div
                 className="marquee-edge-curtain marquee-edge-curtain--right"
-                style={{ '--marquee-edge-bg': 'rgba(3, 7, 7, 0.92)', '--marquee-edge-fade': 'rgba(3, 7, 7, 0.55)' } as React.CSSProperties}
+                style={{ '--marquee-edge-bg': 'rgba(2, 12, 10, 0.34)', '--marquee-edge-fade': 'rgba(2, 12, 10, 0.12)' } as React.CSSProperties}
               />
             </div>
             {/* Content layer above the terminal */}
@@ -3243,39 +3022,38 @@ export default function HomeShell() {
               </ScrollReveal>
 
               {/* ── Two-column opposing vertical scrollers ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5">
-                {/* Real progressive-blur curtains top & bottom — 3 masked
-                    backdrop-filter layers each (light: the strongest 14px sits
-                    at the edge, fading to 2px interior), so cards blur from
-                    sharp to dissolved as they approach the edge. The horizontal
-                    dissolve of the bands' ends is baked into the layers via
-                    edgeFade — NEVER on a wrapper (a mask on the wrapper turns
-                    it into a backdrop root and makes the blur sample nothing:
-                    that's why the old curtains looked like nothing). */}
-                <div className="absolute top-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none">
-                  <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-hidden py-5 isolate">
+                {/* Real progressive-blur curtains top & bottom — 3 overlapping
+                    backdrop-filter layers each. The strongest 14px layer sits
+                    at the edge and the section remains overflow-visible, so the
+                    transition dissolves into Molten without a hard black clip. */}
+                <div className="absolute -top-1 left-0 right-0 h-[calc(4rem+1px)] sm:h-[calc(6rem+1px)] z-20 pointer-events-none">
+                  <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} />
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-16 sm:h-24 z-20 pointer-events-none">
-                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
-                </div>                {/* ── Left column — scrolls up ── */}                 <div className="overflow-visible py-5 -my-5">
+                <div className="absolute -bottom-1 left-0 right-0 h-[calc(4rem+1px)] sm:h-[calc(6rem+1px)] z-20 pointer-events-none">
+                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[2, 6, 14]} />
+                </div>
+                {/* ── Left column — scrolls up ── */}
+                <div className="relative min-h-0 overflow-hidden py-5 -my-5">
                   <InfiniteSlider
                     gap={16}
                     duration={45}
                     durationOnHover={18}
                     direction="vertical"
-                    glowBleed={30}
+                    overflowY="visible"
                   >
                     {reviews.slice(0, 4).map((review, idx) => renderReviewCard(review, `left-${idx}`))}
                   </InfiniteSlider>
                 </div>
-                {/* ── Right column — scrolls down ── */}                 <div className="overflow-visible hidden md:block py-5 -my-5">
+                {/* ── Right column — scrolls down ── */}
+                <div className="relative min-h-0 overflow-hidden hidden md:block py-5 -my-5">
                   <InfiniteSlider
                     gap={16}
                     duration={40}
                     durationOnHover={16}
                     direction="vertical"
                     reverse
-                    glowBleed={30}
+                    overflowY="visible"
                   >
                     {reviews.slice(4, 8).map((review, idx) => renderReviewCard(review, `right-${idx}`))}
                   </InfiniteSlider>
@@ -3598,7 +3376,7 @@ export default function HomeShell() {
           </LazySection>
 
           {/* ============ FOOTER ============ */}
-          <div ref={footerRef}>
+          <div ref={footerRef} data-molten-cover="footer">
             <FooterAnimation lang={lang} onOpenLegal={(doc) => setLegalDoc(getLegalDoc(lang, doc) ?? null)} />
           </div>
 

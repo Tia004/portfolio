@@ -37,6 +37,18 @@ export default function MobileSnapSlider({
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
+  const [nativeTrack, setNativeTrack] = useState(false);
+
+  // Only mobile snap tracks need Lenis to step aside. On desktop the same
+  // element becomes a CSS grid; marking it as a nested scroll container there
+  // makes the wheel appear to stop over the pricing cards.
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setNativeTrack(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const updateArrows = useCallback(() => {
     const el = trackRef.current;
@@ -316,7 +328,11 @@ export default function MobileSnapSlider({
         ref={trackRef}
         role="region"
         aria-label={ariaLabel}
-        className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default data-lenis-prevent data-lenis-prevent-wheel data-lenis-prevent-touch ${trackClassName}`}
+        data-lenis-prevent={nativeTrack ? '' : undefined}
+        data-lenis-prevent-wheel={nativeTrack ? '' : undefined}
+        data-lenis-prevent-touch={nativeTrack ? '' : undefined}
+        style={{ touchAction: 'pan-x pan-y' }}
+        className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default ${trackClassName}`}
       >
         {children}
       </div>

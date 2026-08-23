@@ -61,7 +61,7 @@ export default function MobileGlowActivator({ children }: { children: ReactNode 
     );
 
     // Cards are server-rendered — observe once on mount
-    document.querySelectorAll('.border-glow-card').forEach((el) => {
+    document.querySelectorAll('.border-glow-card:not(.process-glow-card)').forEach((el) => {
       observer.observe(el);
     });
 

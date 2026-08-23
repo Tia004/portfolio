@@ -279,8 +279,11 @@ export default function MoltenMetal({
 }: MoltenMetalProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const onReadyRef = useRef(onReady);
-  onReadyRef.current = onReady;
   const readyFiredRef = useRef(false);
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -292,6 +295,14 @@ export default function MoltenMetal({
     canvas.style.display = 'block';
     container.appendChild(canvas);
 
+    const signalReady = () => {
+      if (readyFiredRef.current) return;
+      readyFiredRef.current = true;
+      (window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady = true;
+      window.dispatchEvent(new Event('tia:molten-ready'));
+      onReadyRef.current?.();
+    };
+
     const gl = canvas.getContext('webgl2', {
       alpha: true,
       premultipliedAlpha: true,
@@ -302,14 +313,19 @@ export default function MoltenMetal({
     }) as WebGL2RenderingContext | null;
 
     if (!gl) {
-      // No WebGL2 — the CSS fallback gradient stays visible.
+      // No WebGL2 — the CSS fallback is already visible. Resolve the splash
+      // immediately instead of waiting for a canvas that can never compile.
       container.removeChild(canvas);
+      signalReady();
       return;
     }
 
     const resources = buildResources(gl);
     if (!resources) {
+      // Shader compilation failed: keep the CSS fallback and do not pin the
+      // loading screen behind an impossible WebGL resource.
       container.removeChild(canvas);
+      signalReady();
       return;
     }
 
@@ -323,17 +339,6 @@ export default function MoltenMetal({
     };
 
     writeUniforms(ctx, props);
-
-    // Signal "loaded" once — the expensive part (program compile + link) is
-    // done, so the first paint happens instantly when the user scrolls here.
-    // Also sets a window flag before dispatching, so SplashScreen resolves
-    // even if its listener attaches after this event fired.
-    if (!readyFiredRef.current) {
-      readyFiredRef.current = true;
-      (window as Window & { __tiaMoltenReady?: boolean }).__tiaMoltenReady = true;
-      window.dispatchEvent(new Event('tia:molten-ready'));
-      onReadyRef.current?.();
-    }
 
     // DPR 1 everywhere — the full-screen shader is the single largest GPU
     // consumer on the site; halving the buffer from 1.5× cuts pixel work ~55%
@@ -364,6 +369,17 @@ export default function MoltenMetal({
     const ro = new ResizeObserver(setSize);
     ro.observe(container);
     setSize();
+
+    // Compile/link alone is not enough: a transparent canvas can still show
+    // through for one frame while its viewport and resolution are unset.
+    // Draw one real frame before resolving the splash so the molten is visible
+    // immediately when the loading screen fades.
+    gl.uniform1f(ctx.uniforms.iTime, 0);
+    gl.uniform2f(ctx.uniforms.uMouse, 0.5, 0.5);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    signalReady();
 
     // Mouse (the shader only uses it when uEnableMouse is true).
     const targetMouse: [number, number] = [0.5, 0.5];
@@ -417,11 +433,17 @@ export default function MoltenMetal({
     };
 
     const updateCoverage = () => {
-      const doc = document.documentElement;
-      const sy = window.scrollY ?? doc.scrollTop ?? 0;
       const vh = window.innerHeight || 1;
-      const docH = doc.scrollHeight;
-      const next = sy < vh * 0.5 || sy > docH - vh * 1.8;
+      // The document is lazy-mounted, so scrollHeight is not a reliable proxy
+      // for whether an opaque section is covering the fixed background. Use the
+      // actual hero/footer boxes instead; the molten runs through all middle
+      // sections and pauses only when the viewport center is inside a cover.
+      const covers = Array.from(document.querySelectorAll<HTMLElement>('[data-molten-cover]'));
+      const center = vh * 0.5;
+      const next = covers.some((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.top <= center && rect.bottom >= center;
+      });
       if (next !== covered) {
         covered = next;
         if (covered) tryStop();

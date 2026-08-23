@@ -57,3 +57,4 @@ prisma
 !prisma/
 !prisma/migrations/
 !prisma/migrations/**GLOW-BLEED-CONFIG.txt
+/GLOW-BLEED-CONFIG.txt

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TiaIcon from './TiaIcon';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { useLanguage } from './LanguageProvider';
@@ -147,10 +147,11 @@ export default function ChatbotPanel({
   // ── Expand tip ──
   // Temporary tooltip pointing at the fullscreen toggle. On desktop it
   // reappears on hover; on mobile it stays while writing until dismissed.
-  const [isTouch, setIsTouch] = useState(false);
+  const [isTouch, setIsTouch] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches,
+  );
   useEffect(() => {
     const mq = window.matchMedia('(hover: none), (pointer: coarse)');
-    setIsTouch(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setIsTouch(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
@@ -185,7 +186,7 @@ export default function ChatbotPanel({
     ta.style.height = 'auto';
     const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 24;
     ta.style.height = `${Math.min(ta.scrollHeight, lineHeight * 3)}px`;
-  }, [input]);
+  }, [input, inputRef]);
 
   const resetTitle = lang === 'it'
     ? 'Avvia una nuova chat — la conversazione corrente verrà eliminata'
@@ -363,21 +364,19 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Curtain — covers messages as they are pushed up. A REAL
-              progressive blur: 8 masked backdrop-filter layers (0.5→64px), so
-              messages dissolve from sharp to fully blurred as they slide
-              under — no flat dark rectangle. The wrapper's horizontal mask
-              dissolves the left/right edges. Static band, no per-frame
-              re-sampling; taller on sm+ where there is more headroom. */}
+          {/* Curtain — covers messages as they are pushed up. Three overlapping
+              backdrop-filter layers create a continuous gradual blur instead
+              of discrete stripes, without a black rectangle or a side clip. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
               className="pointer-events-none absolute top-0 left-0 right-0 h-14 sm:h-20 z-10"
             >
-              {/* edgeFade bakes the horizontal dissolve into the layers: a mask
-                  on THIS wrapper would turn it into a backdrop root and the
-                  blur would sample nothing (the old invisible curtain). */}
-              <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} edgeFade={8} />
+              {/* The curtain spans the full message width. Its overlapping
+                  masks provide the gradual fade; no side mask is applied here,
+                  so the Molten background cannot reveal a sharp strip at the
+                  left or right edge. */}
+              <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} />
             </div>
           )}
 

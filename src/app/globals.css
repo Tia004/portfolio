@@ -98,6 +98,10 @@ html {
   width: clamp(6rem, 20vw, 20rem);
   pointer-events: none;
   background-color: transparent;
+  /* Side curtains need to soften the Molten/card transition too. This is one
+     light filter per section edge, unlike the three-layer top/bottom blur. */
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .marquee-edge-curtain--left {
@@ -109,16 +113,11 @@ html {
     var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
     transparent 100%
   );
-  /* Radial cap instead of a hard rectangle: an ellipse 3× wider than the band
-     and as tall as the section, anchored on the band's outer edge. The black
-     plateau (0→38%) keeps the fade fully opaque across the whole middle band
-     (where the marquee rows live) while the 38→50% ramp fades ONLY the top and
-     bottom ~12% to transparent — the curtain no longer looks "cut" at top/bottom
-     against the molten background, and the corners get a soft rounded falloff.
-     The horizontal fade into the page is still handled by the linear gradient
-     above. */
-  -webkit-mask-image: radial-gradient(ellipse 300% 100% at 0% 50%, black 0%, black 38%, transparent 50%);
-  mask-image: radial-gradient(ellipse 300% 100% at 0% 50%, black 0%, black 38%, transparent 50%);
+  /* A broad vertical fade removes the rectangular cut at the section's top
+     and bottom. The plateau covers the card rows; only the outer 14% dissolves
+     into the Molten background. The horizontal colour fade remains above. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
 }
 
 .marquee-edge-curtain--right {
@@ -130,9 +129,10 @@ html {
     var(--marquee-edge-fade, rgba(1, 1, 1, 0.92)) 70%,
     transparent 100%
   );
-  /* Mirrored radial cap — same ellipse anchored on the band's right edge. */
-  -webkit-mask-image: radial-gradient(ellipse 300% 100% at 100% 50%, black 0%, black 38%, transparent 50%);
-  mask-image: radial-gradient(ellipse 300% 100% at 100% 50%, black 0%, black 38%, transparent 50%);
+  /* Mirrored vertical fade keeps the right curtain soft at both section
+     edges instead of exposing a hard rectangular cap. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
 }
 
 /* Hero bottom curtain — the hero's dark base + dither live in this container
@@ -419,6 +419,12 @@ body:has(nextjs-portal) embed {
 }
 .gradient-blur > div {
   background: transparent !important;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .gradient-blur > div {
+    background: rgba(2, 12, 10, 0.28) !important;
+    opacity: 0.55;
+  }
 }
 img {
   -webkit-user-drag: none;
