@@ -432,12 +432,13 @@ export default function MoltenMetal({
       }
     };
 
+    // Hero/footer coverage pause: the fixed shader pauses ONLY when the
+    // viewport center is inside an opaque cover (hero or footer). This saves
+    // GPU when the molten is invisible anyway. scrollInput is NOT paused —
+    // the molten must animate continuously during scroll; a freeze+restart
+    // on every wheel event reads as a visual glitch.
     const updateCoverage = () => {
       const vh = window.innerHeight || 1;
-      // The document is lazy-mounted, so scrollHeight is not a reliable proxy
-      // for whether an opaque section is covering the fixed background. Use the
-      // actual hero/footer boxes instead; the molten runs through all middle
-      // sections and pauses only when the viewport center is inside a cover.
       const covers = Array.from(document.querySelectorAll<HTMLElement>('[data-molten-cover]'));
       const center = vh * 0.5;
       const next = covers.some((element) => {
@@ -450,25 +451,8 @@ export default function MoltenMetal({
         else tryStart();
       }
     };
-
-    // Pause while the user is actively scrolling (wheel / touch / programmatic
-    // scroll): the last frame stays frozen and the GPU is freed exactly during
-    // the moments that would otherwise jank. The loop resumes 200ms after the
-    // last scroll input. This is the biggest single win on mobile, where a
-    // full-screen WebGL repaint every frame while scrolling is brutal.
-    let scrollIdleTimer: number | undefined;
-    const onScrollInput = () => {
-      updateCoverage();
-      if (scrollIdleTimer !== undefined) window.clearTimeout(scrollIdleTimer);
-      if (raf !== 0) tryStop();
-      scrollIdleTimer = window.setTimeout(() => {
-        scrollIdleTimer = undefined;
-        tryStart();
-      }, 200);
-    };
-    window.addEventListener('scroll', onScrollInput, { passive: true });
-    window.addEventListener('wheel', onScrollInput, { passive: true });
-    window.addEventListener('touchmove', onScrollInput, { passive: true });
+    window.addEventListener('scroll', updateCoverage, { passive: true });
+    window.addEventListener('resize', updateCoverage, { passive: true });
     updateCoverage();
 
     const onVisibility = () => {
@@ -506,11 +490,9 @@ export default function MoltenMetal({
 
     return () => {
       tryStop();
-      if (scrollIdleTimer !== undefined) window.clearTimeout(scrollIdleTimer);
       ro.disconnect();
-      window.removeEventListener('scroll', onScrollInput);
-      window.removeEventListener('wheel', onScrollInput);
-      window.removeEventListener('touchmove', onScrollInput);
+      window.removeEventListener('scroll', updateCoverage);
+      window.removeEventListener('resize', updateCoverage);
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mouseleave', onLeave);

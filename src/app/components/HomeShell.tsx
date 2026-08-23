@@ -3027,14 +3027,16 @@ export default function HomeShell() {
                     backdrop-filter layers each. The strongest 14px layer sits
                     at the edge and the section remains overflow-visible, so the
                     transition dissolves into Molten without a hard black clip. */}
-                {/* Extended above/below the section so the fade has already
-                    begun before the visible area — no hard clip at the edge. */}
-                <div className="absolute -top-[5rem] left-0 right-0 h-[9rem] sm:h-[11rem] z-20 pointer-events-none">
-                  <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} />
-                </div>
-                <div className="absolute -bottom-[5rem] left-0 right-0 h-[9rem] sm:h-[11rem] z-20 pointer-events-none">
-                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[2, 6, 14]} />
-                </div>
+                {/* Simple gradient fade curtains top & bottom — same style as the
+                    marquee side curtains: a CSS linear-gradient that fades from
+                    the section background into transparent. No backdrop-filter,
+                    no ProgressiveBlur — just clean fade, never clipped. */}
+                <div aria-hidden="true" className="pointer-events-none absolute -top-px left-0 right-0 h-20 sm:h-28 z-20"
+                  style={{ background: 'linear-gradient(to bottom, rgba(6,10,10,0.94) 0%, rgba(6,10,10,0.78) 35%, transparent 100%)' }}
+                />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-px left-0 right-0 h-20 sm:h-28 z-20"
+                  style={{ background: 'linear-gradient(to top, rgba(6,10,10,0.94) 0%, rgba(6,10,10,0.78) 35%, transparent 100%)' }}
+                />
                 {/* ── Left column — scrolls up ── */}
                 <div className="relative min-h-0 overflow-hidden py-5 -my-5">
                   <InfiniteSlider

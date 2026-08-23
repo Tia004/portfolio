@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import TiaIcon from './TiaIcon';
-import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
 import { ArrowExpandDiagonal01Icon, BubbleChatIcon, Cancel01Icon, FilePenIcon, UserIcon } from './icons';
@@ -364,20 +363,16 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Curtain — covers messages as they are pushed up. Three overlapping
-              backdrop-filter layers create a continuous gradual blur instead
-              of discrete stripes, without a black rectangle or a side clip. */}
+          {/* Curtain — simple CSS gradient fade (same style as the marquee
+              side curtains). No backdrop-filter, no ProgressiveBlur layers:
+              a linear-gradient from the section background into transparent,
+              never clipped against the Molten background. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-[2.5rem] left-0 right-0 h-[6rem] sm:h-[7.5rem] z-10"
-            >
-              {/* The curtain is shifted upward (-top-[2.5rem], taller) so the
-                  fade starts well above the visible area and reaches full blur
-                  just at the message edge — no hard clip, even on the Molten
-                  background. */}
-              <ProgressiveBlur position="top" height="120%" blurLevels={[2, 6, 14]} />
-            </div>
+              className="pointer-events-none absolute -top-px left-0 right-0 h-16 sm:h-24 z-10"
+              style={{ background: 'linear-gradient(to bottom, rgba(13,13,13,0.94) 0%, rgba(13,13,13,0.70) 40%, transparent 100%)' }}
+            />
           )}
 
         </div>
