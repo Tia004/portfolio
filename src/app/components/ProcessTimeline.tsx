@@ -30,11 +30,9 @@ type TimelineStep = (typeof STEPS)[number];
 
 function ProcessStepCard({
   step,
-  index,
   lang,
 }: {
   step: TimelineStep;
-  index: number;
   lang: 'it' | 'en' | 'es';
 }) {
   return (
@@ -68,11 +66,6 @@ function ProcessStepCard({
                   />
                 )}
               </div>
-
-              {/* Small number badge — top-right, subtle */}
-              <span className="absolute top-3 right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/30 text-[11px] font-bold text-teal-400 leading-none select-none">
-                {index + 1}
-              </span>
 
               <div className="relative z-10 flex flex-col gap-2.5">
                 <TiaIcon icon={step.icon} size={20} className="text-teal-400" />
@@ -166,27 +159,19 @@ export default function ProcessTimeline() {
     pathEl.style.strokeDashoffset = `${len}`;
     pathLengthRef.current = len;
 
-    // Numbered circles at each junction point
+    // Large decorative numbers at each junction — no circle, just transparent text
     nodesG.innerHTML = '';
     pts.forEach((p, i) => {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', `${p.x}`);
-      circle.setAttribute('cy', `${p.y}`);
-      circle.setAttribute('r', '14');
-      circle.setAttribute('fill', '#07110f');
-      circle.setAttribute('stroke', 'rgba(45,212,191,0.5)');
-      circle.setAttribute('stroke-width', '1.5');
-      nodesG.appendChild(circle);
-
       const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       txt.setAttribute('x', `${p.x}`);
       txt.setAttribute('y', `${p.y}`);
-      txt.setAttribute('dy', '0.35em');
+      txt.setAttribute('dy', '0.32em');
       txt.setAttribute('text-anchor', 'middle');
-      txt.setAttribute('fill', '#5eead4');
-      txt.setAttribute('font-size', '12');
-      txt.setAttribute('font-weight', '700');
+      txt.setAttribute('fill', 'rgba(45, 212, 191, 0.35)');
+      txt.setAttribute('font-size', '40');
+      txt.setAttribute('font-weight', '900');
       txt.setAttribute('font-family', 'Outfit, ui-sans-serif, system-ui, sans-serif');
+      txt.setAttribute('letter-spacing', '-0.03em');
       txt.textContent = `${i + 1}`;
       nodesG.appendChild(txt);
     });
@@ -305,7 +290,7 @@ export default function ProcessTimeline() {
         <div className="grid grid-cols-3 gap-5 sm:gap-7 mb-10 sm:mb-12 relative z-20">
           {STEPS.slice(0, 3).map((step, i) => (
             <div key={i}>
-              <ProcessStepCard step={step} index={i} lang={lang} />
+              <ProcessStepCard step={step} lang={lang} />
             </div>
           ))}
         </div>
@@ -314,7 +299,7 @@ export default function ProcessTimeline() {
         <div className="grid grid-cols-3 gap-5 sm:gap-7 relative z-20">
           {STEPS.slice(3, 6).map((step, i) => (
             <div key={i + 3}>
-              <ProcessStepCard step={step} index={i + 3} lang={lang} />
+              <ProcessStepCard step={step} lang={lang} />
             </div>
           ))}
         </div>
@@ -344,7 +329,7 @@ export default function ProcessTimeline() {
                 </div>
               </div>
               <div className="flex-1">
-                <ProcessStepCard step={step} index={i} lang={lang} />
+                <ProcessStepCard step={step} lang={lang} />
               </div>
             </article>
           ))}
