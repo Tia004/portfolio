@@ -70,6 +70,11 @@ export default function SmoothScrollProvider({ children }: Props) {
 
       lenisRef.current = lenis;
 
+      // Notify listeners (HomeShell's resize sync) that the instance exists —
+      // the dynamic import resolves after their effects first ran, so any
+      // instance captured at effect time would have been null forever.
+      window.dispatchEvent(new Event('tia:lenis-ready'));
+
       // Integrate GSAP ScrollTrigger with Lenis
       lenis.on('scroll', () => ScrollTrigger.update());
 

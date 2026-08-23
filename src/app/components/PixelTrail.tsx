@@ -447,6 +447,11 @@ export default function PixelTrail({
       <Canvas
         {...canvasProps}
         frameloop="demand"
+        // DPR 1: the default dpr=[1,2] rendered the fullscreen cursor canvas
+        // at 2× the viewport (4× the pixels) on retina displays. The trail is
+        // a coarse pixel grid — retina sharpness is invisible, the GPU cost
+        // is not.
+        dpr={1}
         gl={{ ...glProps, alpha: true, preserveDrawingBuffer: false }}
         onCreated={({ gl }) => {
           // Keep the cursor canvas transparent even when WebGL is recreated

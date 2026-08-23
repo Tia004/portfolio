@@ -48,34 +48,12 @@ const ClickSpark: React.FC<ClickSparkProps> = ({
   const sparksRef = useRef<Spark[]>([]);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
-  // Resize observer
-  useEffect(() => {
-    if (isMasterPortal || lowEnd) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    if (!parent) return;
-
-    let resizeTimeout: ReturnType<typeof setTimeout>;
-    const resizeCanvas = () => {
-      const { width, height } = parent.getBoundingClientRect();
-      if (canvas.width !== width || canvas.height !== height) {
-        canvas.width = width;
-        canvas.height = height;
-      }
-    };
-    const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(resizeCanvas, 100);
-    };
-    const ro = new ResizeObserver(handleResize);
-    ro.observe(parent);
-    resizeCanvas();
-    return () => {
-      ro.disconnect();
-      clearTimeout(resizeTimeout);
-    };
-  }, [isMasterPortal]);
+  // NOTE: the canvas is FIXED and viewport-sized (see the second resize effect
+  // below, which also caches the 2D context). It used to be sized to the parent
+  // wrapper — i.e. the FULL PAGE height (~12000px). A layer taller than the
+  // GPU max texture size (8192px) cannot be hardware-accelerated, so the whole
+  // page fell back to software compositing: ~4 FPS everywhere, worst in the
+  // sections with many cards (pricing). Viewport-sized = always GPU-friendly.
 
   const easeFunc = useCallback(
     (t: number) => {
@@ -151,17 +129,19 @@ const ClickSpark: React.FC<ClickSparkProps> = ({
     // Otherwise stays scheduled — shared ticker calls us again next frame
   }, []);
 
-  // Cache the canvas 2D context on mount
+  // Cache the canvas 2D context on mount + keep the canvas sized to the
+  // VIEWPORT (it is position:fixed — see the render below). Sizing it to the
+  // parent (full page height, ~12000px) exceeded the GPU max texture size and
+  // forced software compositing for the entire page (~4 FPS).
   useEffect(() => {
     if (isMasterPortal || lowEnd) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     ctxRef.current = canvas.getContext('2d');
     if (!ctxRef.current) return;
-    // Sync canvas dimensions from the parent wrapper
-    const parent = canvas.parentElement!;
     const resizeCanvas = () => {
-      const { width, height } = parent.getBoundingClientRect();
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
@@ -172,11 +152,10 @@ const ClickSpark: React.FC<ClickSparkProps> = ({
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(resizeCanvas, 100);
     };
-    const ro = new ResizeObserver(handleResize);
-    ro.observe(parent);
+    window.addEventListener('resize', handleResize);
     resizeCanvas();
     return () => {
-      ro.disconnect();
+      window.removeEventListener('resize', handleResize);
       clearTimeout(resizeTimeout);
     };
   }, [isMasterPortal, lowEnd]);
@@ -189,9 +168,10 @@ const ClickSpark: React.FC<ClickSparkProps> = ({
     const parent = canvas.parentElement!;
 
     const handleClick = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      // The canvas is fixed at the viewport origin, so client coordinates map
+      // 1:1 — no getBoundingClientRect needed (and no layout read per click).
+      const x = e.clientX;
+      const y = e.clientY;
       const now = performance.now();
 
       const wasEmpty = sparksRef.current.length === 0;
@@ -226,8 +206,10 @@ const ClickSpark: React.FC<ClickSparkProps> = ({
       <canvas
         ref={canvasRef}
         style={{
-          position: 'absolute',
+          position: 'fixed',
           inset: 0,
+          width: '100vw',
+          height: '100vh',
           pointerEvents: 'none',
           zIndex: 99997,
         }}

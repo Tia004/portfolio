@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
+import type Lenis from 'lenis';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
 import ProcessTimeline from './ProcessTimeline';
@@ -747,9 +748,13 @@ export default function HomeShell() {
     let scrollStoppedTimer: ReturnType<typeof setTimeout> | undefined;
     const isScrollingRef = { current: false };
 
-    // Capture the instance once: the ref may be reassigned between renders,
-    // but within this effect lifetime the instance is stable.
-    const lenisInstance = lenis.current;
+    // The Lenis instance is created ASYNC (dynamic import in SmoothScrollProvider),
+    // so lenis.current is almost always null when this effect first runs.
+    // Capturing it once here would leave every resize below as a no-op forever:
+    // the scroll limit would stay stuck at the placeholder height and the page
+    // would stop scrolling past the first lazy-mounted section (pricing).
+    // Instead, resolve the instance lazily and (re)bind as soon as it exists.
+    let bound: Lenis | null = null;
 
     // Debounced scroll-stop detector: resets on every 'scroll' event.
     // When scrolling finally stops for 300ms, allow one resize to catch up.
@@ -759,18 +764,33 @@ export default function HomeShell() {
       scrollStoppedTimer = setTimeout(() => {
         scrollStoppedTimer = undefined;
         isScrollingRef.current = false;
-        lenisInstance?.resize();
+        lenis.current?.resize();
       }, 300);
     };
 
-    lenisInstance?.on('scroll', onScroll);
+    const bindLenis = () => {
+      const inst = lenis.current;
+      if (!inst || inst === bound) return;
+      bound = inst;
+      inst.on('scroll', onScroll);
+      // Sync the limit immediately: sections may have mounted (and grown the
+      // document) while Lenis was still loading.
+      inst.resize();
+    };
+    bindLenis();
+    window.addEventListener('tia:lenis-ready', bindLenis);
+    // Poll fallback in case the ready event fired before this effect ran.
+    const poll = window.setInterval(() => {
+      bindLenis();
+      if (bound) window.clearInterval(poll);
+    }, 500);
 
     const ro = new ResizeObserver(() => {
       if (isScrollingRef.current) return; // never resize mid-scroll
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         resizeTimer = undefined;
-        lenisInstance?.resize();
+        lenis.current?.resize();
       }, 400);
     });
     ro.observe(document.body);
@@ -785,12 +805,14 @@ export default function HomeShell() {
     let mountRaf = 0;
     const onSectionMounted = () => {
       cancelAnimationFrame(mountRaf);
-      mountRaf = requestAnimationFrame(() => lenisInstance?.resize());
+      mountRaf = requestAnimationFrame(() => lenis.current?.resize());
     };
     window.addEventListener('tia:section-mounted', onSectionMounted);
 
     return () => {
-      lenisInstance?.off('scroll', onScroll);
+      bound?.off('scroll', onScroll);
+      window.removeEventListener('tia:lenis-ready', bindLenis);
+      window.clearInterval(poll);
       ro.disconnect();
       if (resizeTimer) clearTimeout(resizeTimer);
       if (scrollStoppedTimer) clearTimeout(scrollStoppedTimer);
