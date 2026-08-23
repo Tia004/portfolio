@@ -233,7 +233,7 @@ export default function ChatbotPanel({
               aria-label={t('chat.new_chat', lang)}
               onMouseEnter={() => setResetTipHover(true)}
               onMouseLeave={() => setResetTipHover(false)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0f0f0f]/85 backdrop-blur-md px-3 py-1.5 text-neutral-500 transition-all hover:border-white/20 hover:bg-[#0f0f0f] hover:text-neutral-300"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] px-3 py-1.5 text-neutral-400 transition-all hover:bg-white/[0.10] hover:text-neutral-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]"
             >
               <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
               <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
@@ -370,13 +370,13 @@ export default function ChatbotPanel({
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 left-0 right-0 h-14 sm:h-20 z-10"
+              className="pointer-events-none absolute -top-[2.5rem] left-0 right-0 h-[6rem] sm:h-[7.5rem] z-10"
             >
-              {/* The curtain spans the full message width. Its overlapping
-                  masks provide the gradual fade; no side mask is applied here,
-                  so the Molten background cannot reveal a sharp strip at the
-                  left or right edge. */}
-              <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} />
+              {/* The curtain is shifted upward (-top-[2.5rem], taller) so the
+                  fade starts well above the visible area and reaches full blur
+                  just at the message edge — no hard clip, even on the Molten
+                  background. */}
+              <ProgressiveBlur position="top" height="120%" blurLevels={[2, 6, 14]} />
             </div>
           )}
 

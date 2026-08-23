@@ -3027,10 +3027,12 @@ export default function HomeShell() {
                     backdrop-filter layers each. The strongest 14px layer sits
                     at the edge and the section remains overflow-visible, so the
                     transition dissolves into Molten without a hard black clip. */}
-                <div className="absolute -top-1 left-0 right-0 h-[calc(4rem+1px)] sm:h-[calc(6rem+1px)] z-20 pointer-events-none">
+                {/* Extended above/below the section so the fade has already
+                    begun before the visible area — no hard clip at the edge. */}
+                <div className="absolute -top-[5rem] left-0 right-0 h-[9rem] sm:h-[11rem] z-20 pointer-events-none">
                   <ProgressiveBlur position="top" height="100%" blurLevels={[2, 6, 14]} />
                 </div>
-                <div className="absolute -bottom-1 left-0 right-0 h-[calc(4rem+1px)] sm:h-[calc(6rem+1px)] z-20 pointer-events-none">
+                <div className="absolute -bottom-[5rem] left-0 right-0 h-[9rem] sm:h-[11rem] z-20 pointer-events-none">
                   <ProgressiveBlur position="bottom" height="100%" blurLevels={[2, 6, 14]} />
                 </div>
                 {/* ── Left column — scrolls up ── */}
