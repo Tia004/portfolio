@@ -17,7 +17,6 @@ import {
 import { t } from '@/lib/translations';
 import { loadGsap } from '@/lib/gsap-lazy';
 
-// ── Work process — general, covers all services ──
 const STEPS = [
   { titleKey: 'processo.step1_title', descKey: 'processo.step1_desc', icon: BubbleChatIcon },
   { titleKey: 'processo.step2_title', descKey: 'processo.step2_desc', icon: FilePenIcon },
@@ -50,7 +49,6 @@ function ProcessStepCard({
             className="group h-full w-full"
           >
             <div className="relative flex h-full flex-col rounded-[20px] p-5 sm:p-6">
-              {/* DotGrid background */}
               <div
                 className={`pointer-events-none absolute inset-0 overflow-hidden rounded-[20px] transition-opacity duration-500 ${
                   fadeIn ? 'opacity-100' : 'opacity-0'
@@ -71,12 +69,11 @@ function ProcessStepCard({
                 )}
               </div>
 
-              {/* Small number badge — top-left, subtle */}
+              {/* Small number badge — top-right, subtle */}
               <span className="absolute top-3 right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-teal-500/15 border border-teal-500/30 text-[11px] font-bold text-teal-400 leading-none select-none">
                 {index + 1}
               </span>
 
-              {/* Content */}
               <div className="relative z-10 flex flex-col gap-2.5">
                 <TiaIcon icon={step.icon} size={20} className="text-teal-400" />
                 <h3 className="text-sm sm:text-base font-semibold text-white leading-snug">
@@ -114,40 +111,51 @@ export default function ProcessTimeline() {
     return () => media.removeEventListener('change', sync);
   }, []);
 
-  // ── Scroll-driven SVG line drawing (desktop) ────────────────
-  const initPath = useCallback(() => {
-    const section = sectionRef.current;
+  // ── Build path by measuring actual card positions ───────────
+  const rebuildPath = useCallback(() => {
+    const svg = svgRef.current;
     const pathEl = pathRef.current;
     const nodesG = nodesRef.current;
-    if (!section || !pathEl || !nodesG) return 0;
+    const section = sectionRef.current;
+    if (!svg || !pathEl || !nodesG || !section) return 0;
 
-    const w = section.clientWidth;
-    const h = section.clientHeight;
+    // Query the 6 grid cells (each is a <div> containing a card)
+    const cells = section.querySelectorAll<HTMLDivElement>('.grid > div');
+    if (cells.length < 6) return 0;
+
+    // Get SVG bounding rect — this is our coordinate system
+    const svgRect = svg.getBoundingClientRect();
+    const w = svgRect.width;
+    const h = svgRect.height;
     if (w === 0 || h === 0) return 0;
 
-    // Grid geometry: 3 columns, 2 rows
-    const cols = 3;
-    const colW = w / cols;
-    // Row centers (approximate): top row cards start at y≈0, bottom row at y≈55%
-    const topCY = h * 0.28;
-    const botCY = h * 0.78;
+    // Set viewBox so SVG coordinates match pixel positions relative to the SVG
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    // PreserveAspectRatio none: coordinates map 1:1 to pixels without scaling
+    svg.setAttribute('preserveAspectRatio', 'none');
 
-    const cx = (i: number) => colW * (i % cols) + colW / 2;
-    const cy = (i: number) => (i < 3 ? topCY : botCY);
-
-    // Connection points
-    const pts = Array.from({ length: 6 }, (_, i) => ({ x: cx(i), y: cy(i) }));
+    // Map each cell's center to SVG-local coordinates
+    const pts: { x: number; y: number }[] = [];
+    cells.forEach((cell) => {
+      const cr = cell.getBoundingClientRect();
+      pts.push({
+        x: cr.left + cr.width / 2 - svgRect.left,
+        y: cr.top + cr.height / 2 - svgRect.top,
+      });
+    });
 
     // Path: 1→2→3  curve-down  4→5→6
     const midY = (pts[2].y + pts[3].y) / 2;
-    const curveRight = pts[2].x + colW * 0.35;
+    // Curve arcs right before coming back left
+    const curveRight = pts[2].x + (pts[3].x - pts[2].x) * 0.5;
 
     const d = [
       `M ${pts[0].x} ${pts[0].y}`,
       `L ${pts[1].x} ${pts[1].y}`,
       `L ${pts[2].x} ${pts[2].y}`,
-      `C ${pts[2].x} ${midY - 8}, ${curveRight} ${midY}, ${curveRight} ${midY + 8}`,
-      `C ${curveRight} ${midY + 16}, ${pts[3].x} ${midY + 24}, ${pts[3].x} ${pts[3].y}`,
+      // Smooth bezier curve: down from card 3, arcs right, ends at card 4
+      `C ${pts[2].x} ${midY - 6}, ${curveRight} ${midY}, ${curveRight} ${midY + 6}`,
+      `C ${curveRight} ${midY + 12}, ${pts[3].x} ${midY + 20}, ${pts[3].x} ${pts[3].y}`,
       `L ${pts[4].x} ${pts[4].y}`,
       `L ${pts[5].x} ${pts[5].y}`,
     ].join(' ');
@@ -158,20 +166,18 @@ export default function ProcessTimeline() {
     pathEl.style.strokeDashoffset = `${len}`;
     pathLengthRef.current = len;
 
-    // Numbered circles at each junction
+    // Numbered circles at each junction point
     nodesG.innerHTML = '';
     pts.forEach((p, i) => {
-      // Outer glow circle
-      const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      glow.setAttribute('cx', `${p.x}`);
-      glow.setAttribute('cy', `${p.y}`);
-      glow.setAttribute('r', '14');
-      glow.setAttribute('fill', '#07110f');
-      glow.setAttribute('stroke', 'rgba(45,212,191,0.5)');
-      glow.setAttribute('stroke-width', '1.5');
-      nodesG.appendChild(glow);
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', `${p.x}`);
+      circle.setAttribute('cy', `${p.y}`);
+      circle.setAttribute('r', '14');
+      circle.setAttribute('fill', '#07110f');
+      circle.setAttribute('stroke', 'rgba(45,212,191,0.5)');
+      circle.setAttribute('stroke-width', '1.5');
+      nodesG.appendChild(circle);
 
-      // Number text
       const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       txt.setAttribute('x', `${p.x}`);
       txt.setAttribute('y', `${p.y}`);
@@ -188,6 +194,7 @@ export default function ProcessTimeline() {
     return len;
   }, []);
 
+  // ── Desktop: init path THEN setup ScrollTrigger ─────────────
   useEffect(() => {
     if (isMobile) return;
     const section = sectionRef.current;
@@ -195,52 +202,58 @@ export default function ProcessTimeline() {
 
     let alive = true;
 
-    // Defer measurement until after layout (lazy section may have just mounted)
-    const scheduleInit = () => {
-      requestAnimationFrame(() => {
+    // Step 1: wait for layout, measure & build path. Retry until success.
+    let attempts = 0;
+    const tryInit = () => {
+      if (!alive) return;
+      const len = rebuildPath();
+      if (len > 0) {
+        // Path ready — now setup ScrollTrigger
+        setupST();
+        return;
+      }
+      attempts++;
+      if (attempts < 10) {
+        requestAnimationFrame(tryInit);
+      }
+    };
+
+    const setupST = () => {
+      loadGsap().then((gsap) => {
         if (!alive) return;
-        const len = initPath();
-        if (len === 0) {
-          // Section might not be laid out yet — retry once
-          requestAnimationFrame(() => {
-            if (!alive) return;
-            initPath();
-          });
-        }
+        const ScrollTrigger = (gsap as unknown as { ScrollTrigger: typeof import('gsap/ScrollTrigger').ScrollTrigger }).ScrollTrigger;
+        if (!ScrollTrigger) return;
+
+        stRef.current = ScrollTrigger.create({
+          trigger: section,
+          start: 'top 60%',
+          end: 'bottom 40%',
+          scrub: 0.6,
+          onUpdate(self: { progress: number }) {
+            const pathEl = pathRef.current;
+            if (!pathEl) return;
+            const offset = pathLengthRef.current * (1 - self.progress);
+            pathEl.style.strokeDashoffset = `${offset}`;
+          },
+        });
       });
     };
-    scheduleInit();
 
+    // Start with one rAF to let DOM settle, then try
+    requestAnimationFrame(tryInit);
+
+    // Rebuild on resize
     const ro = new ResizeObserver(() => {
-      initPath();
+      rebuildPath();
     });
     ro.observe(section);
-
-    loadGsap().then((gsap) => {
-      if (!alive) return;
-      const ScrollTrigger = (gsap as unknown as { ScrollTrigger: typeof import('gsap/ScrollTrigger').ScrollTrigger }).ScrollTrigger;
-      if (!ScrollTrigger) return;
-
-      stRef.current = ScrollTrigger.create({
-        trigger: section,
-        start: 'top 60%',
-        end: 'bottom 40%',
-        scrub: 0.6,
-        onUpdate(self: { progress: number }) {
-          const pathEl = pathRef.current;
-          if (!pathEl) return;
-          const offset = pathLengthRef.current * (1 - self.progress);
-          pathEl.style.strokeDashoffset = `${offset}`;
-        },
-      });
-    });
 
     return () => {
       alive = false;
       stRef.current?.kill();
       ro.disconnect();
     };
-  }, [isMobile, initPath]);
+  }, [isMobile, rebuildPath]);
 
   // Mobile: horizontal scroll progress
   useEffect(() => {
@@ -260,15 +273,15 @@ export default function ProcessTimeline() {
     <div ref={sectionRef} className="relative mx-auto w-full max-w-5xl">
       {/* ── DESKTOP: 2 rows × 3 cards + SVG line ── */}
       <div className="hidden md:block relative py-8">
-        {/* SVG line layer — sized to match section */}
+        {/* SVG sits on top of the cards, sized to the grid container */}
         <svg
           ref={svgRef}
           aria-hidden="true"
-          className="absolute inset-0 pointer-events-none z-10 overflow-visible"
+          className="absolute inset-0 pointer-events-none z-10"
           style={{ width: '100%', height: '100%' }}
         >
           <defs>
-            <filter id="process-line-glow" x="-30%" y="-30%" width="160%" height="160%">
+            <filter id="process-line-glow" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -276,7 +289,6 @@ export default function ProcessTimeline() {
               </feMerge>
             </filter>
           </defs>
-          {/* The path — d attribute and stroke-dasharray set via JS */}
           <path
             ref={pathRef}
             fill="none"
@@ -286,7 +298,6 @@ export default function ProcessTimeline() {
             strokeLinejoin="round"
             filter="url(#process-line-glow)"
           />
-          {/* Numbered junction circles — created via JS */}
           <g ref={nodesRef} />
         </svg>
 
@@ -309,7 +320,7 @@ export default function ProcessTimeline() {
         </div>
       </div>
 
-      {/* ── MOBILE: Horizontal scrollable timeline ── */}
+      {/* ── MOBILE ── */}
       <div className="md:hidden relative">
         <div
           aria-hidden="true"
@@ -327,7 +338,6 @@ export default function ProcessTimeline() {
               key={i}
               className="relative z-10 flex shrink-0 snap-center flex-col w-[78vw] max-w-[280px]"
             >
-              {/* Numbered dot on the line */}
               <div className="flex items-center justify-center py-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#07110f] border-2 border-teal-400/50 text-[11px] font-bold text-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.3)]">
                   {i + 1}
