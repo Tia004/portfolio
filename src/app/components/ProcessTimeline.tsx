@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useLanguage } from './LanguageProvider';
 import TiaIcon from './TiaIcon';
 import BorderGlow from './BorderGlow';
@@ -84,16 +84,57 @@ function ProcessStepCard({
   );
 }
 
+/* ── SVG path: percentage-based so it adapts to any container size ───
+   The path connects the 6 card centers in a 3×2 grid:
+     [1] ─ [2] ─ [3]
+                   │
+     [4] ─ [5] ─ [6]
+
+   ViewBox is 0 0 100 100, the path uses percent coords.
+   Card centers are at these percentages:
+   Row 1 (y ~ 24%): col 1=16.5%, col 2=50%, col 3=83.5%
+   Row 2 (y ~ 73%): col 1=16.5%, col 2=50%, col 3=83.5%
+
+   The numbers float near each center. */
+const PATH_D = (() => {
+  // Row 1
+  const r1y = 24;
+  const r2y = 73;
+  const c1x = 16.5;
+  const c2x = 50;
+  const c3x = 83.5;
+  // Curve control points — arc down from card 3 to card 4
+  const midY = (r1y + r2y) / 2;
+  // Arc right then come back
+  const arcX = c3x + 8;
+
+  return [
+    `M ${c1x} ${r1y}`,
+    `L ${c2x} ${r1y}`,
+    `L ${c3x} ${r1y}`,
+    `C ${c3x} ${midY - 5}, ${arcX} ${midY}, ${arcX} ${midY + 5}`,
+    `C ${arcX} ${midY + 10}, ${c3x} ${midY + 15}, ${c3x} ${r2y}`,
+    `L ${c2x} ${r2y}`,
+    `L ${c1x} ${r2y}`,
+  ].join(' ');
+})();
+
+const NUMBER_POSITIONS = [
+  { x: 16.5, y: 21 },
+  { x: 50,   y: 21 },
+  { x: 83.5, y: 21 },
+  { x: 83.5, y: 77 },
+  { x: 50,   y: 77 },
+  { x: 16.5, y: 77 },
+];
+
 export default function ProcessTimeline() {
   const { lang } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
-  const nodesRef = useRef<SVGGElement>(null);
   const mobileTrackRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileProgress, setMobileProgress] = useState(0);
-  const pathLengthRef = useRef(0);
   const stRef = useRef<import('gsap/ScrollTrigger').ScrollTrigger | undefined>(undefined);
 
   useEffect(() => {
@@ -104,141 +145,71 @@ export default function ProcessTimeline() {
     return () => media.removeEventListener('change', sync);
   }, []);
 
-  // ── Build path by measuring actual card positions ───────────
-  const rebuildPath = useCallback(() => {
-    const svg = svgRef.current;
-    const pathEl = pathRef.current;
-    const nodesG = nodesRef.current;
-    const section = sectionRef.current;
-    if (!svg || !pathEl || !nodesG || !section) return 0;
-
-    // Query the 6 grid cells (each is a <div> containing a card)
-    const cells = section.querySelectorAll<HTMLDivElement>('.grid > div');
-    if (cells.length < 6) return 0;
-
-    // Get SVG bounding rect — this is our coordinate system
-    const svgRect = svg.getBoundingClientRect();
-    const w = svgRect.width;
-    const h = svgRect.height;
-    if (w === 0 || h === 0) return 0;
-
-    // Set viewBox so SVG coordinates match pixel positions relative to the SVG
-    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    // PreserveAspectRatio none: coordinates map 1:1 to pixels without scaling
-    svg.setAttribute('preserveAspectRatio', 'none');
-
-    // Map each cell's center to SVG-local coordinates
-    const pts: { x: number; y: number }[] = [];
-    cells.forEach((cell) => {
-      const cr = cell.getBoundingClientRect();
-      pts.push({
-        x: cr.left + cr.width / 2 - svgRect.left,
-        y: cr.top + cr.height / 2 - svgRect.top,
-      });
-    });
-
-    // Path: 1→2→3  curve-down  4→5→6
-    const midY = (pts[2].y + pts[3].y) / 2;
-    // Curve arcs right before coming back left
-    const curveRight = pts[2].x + (pts[3].x - pts[2].x) * 0.5;
-
-    const d = [
-      `M ${pts[0].x} ${pts[0].y}`,
-      `L ${pts[1].x} ${pts[1].y}`,
-      `L ${pts[2].x} ${pts[2].y}`,
-      // Smooth bezier curve: down from card 3, arcs right, ends at card 4
-      `C ${pts[2].x} ${midY - 6}, ${curveRight} ${midY}, ${curveRight} ${midY + 6}`,
-      `C ${curveRight} ${midY + 12}, ${pts[3].x} ${midY + 20}, ${pts[3].x} ${pts[3].y}`,
-      `L ${pts[4].x} ${pts[4].y}`,
-      `L ${pts[5].x} ${pts[5].y}`,
-    ].join(' ');
-
-    pathEl.setAttribute('d', d);
-    const len = pathEl.getTotalLength();
-    pathEl.style.strokeDasharray = `${len}`;
-    pathEl.style.strokeDashoffset = `${len}`;
-    pathLengthRef.current = len;
-
-    // Large decorative numbers at each junction — no circle, just transparent text
-    nodesG.innerHTML = '';
-    pts.forEach((p, i) => {
-      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      txt.setAttribute('x', `${p.x}`);
-      txt.setAttribute('y', `${p.y}`);
-      txt.setAttribute('dy', '0.32em');
-      txt.setAttribute('text-anchor', 'middle');
-      txt.setAttribute('fill', 'rgba(45, 212, 191, 0.35)');
-      txt.setAttribute('font-size', '40');
-      txt.setAttribute('font-weight', '900');
-      txt.setAttribute('font-family', 'Outfit, ui-sans-serif, system-ui, sans-serif');
-      txt.setAttribute('letter-spacing', '-0.03em');
-      txt.textContent = `${i + 1}`;
-      nodesG.appendChild(txt);
-    });
-
-    return len;
-  }, []);
-
-  // ── Desktop: init path THEN setup ScrollTrigger ─────────────
-  useEffect(() => {
+  // ── Desktop: measure & setup ScrollTrigger ─────────────
+  useLayoutEffect(() => {
     if (isMobile) return;
     const section = sectionRef.current;
-    if (!section) return;
+    const pathEl = pathRef.current;
+    if (!section || !pathEl) return;
 
     let alive = true;
 
-    // Step 1: wait for layout, measure & build path. Retry until success.
-    let attempts = 0;
-    const tryInit = () => {
+    const setup = () => {
       if (!alive) return;
-      const len = rebuildPath();
-      if (len > 0) {
-        // Path ready — now setup ScrollTrigger
-        setupST();
+      const len = pathEl.getTotalLength();
+      if (len === 0) {
+        // Path not yet measurable — retry next frame
+        requestAnimationFrame(setup);
         return;
       }
-      attempts++;
-      if (attempts < 10) {
-        requestAnimationFrame(tryInit);
-      }
-    };
+      pathEl.style.strokeDasharray = `${len}`;
+      pathEl.style.strokeDashoffset = `${len}`;
 
-    const setupST = () => {
       loadGsap().then((gsap) => {
         if (!alive) return;
-        const ScrollTrigger = (gsap as unknown as { ScrollTrigger: typeof import('gsap/ScrollTrigger').ScrollTrigger }).ScrollTrigger;
+        const stModule = gsap as unknown as { ScrollTrigger: typeof import('gsap/ScrollTrigger').ScrollTrigger };
+        const ScrollTrigger = stModule.ScrollTrigger;
         if (!ScrollTrigger) return;
 
+        stRef.current?.kill();
         stRef.current = ScrollTrigger.create({
           trigger: section,
-          start: 'top 60%',
-          end: 'bottom 40%',
+          start: 'top 65%',
+          end: 'bottom 35%',
           scrub: 0.6,
           onUpdate(self: { progress: number }) {
-            const pathEl = pathRef.current;
             if (!pathEl) return;
-            const offset = pathLengthRef.current * (1 - self.progress);
+            const offset = len * (1 - self.progress);
             pathEl.style.strokeDashoffset = `${offset}`;
           },
         });
       });
     };
 
-    // Start with one rAF to let DOM settle, then try
-    requestAnimationFrame(tryInit);
+    // Double rAF: let layout settle after LazySection mount
+    requestAnimationFrame(() => requestAnimationFrame(setup));
 
     // Rebuild on resize
-    const ro = new ResizeObserver(() => {
-      rebuildPath();
-    });
-    ro.observe(section);
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const newLen = pathEl.getTotalLength();
+        if (newLen > 0) {
+          pathEl.style.strokeDasharray = `${newLen}`;
+        }
+      }, 200);
+    };
+    window.addEventListener('resize', onResize);
 
     return () => {
       alive = false;
       stRef.current?.kill();
-      ro.disconnect();
+      stRef.current = undefined;
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', onResize);
     };
-  }, [isMobile, rebuildPath]);
+  }, [isMobile]);
 
   // Mobile: horizontal scroll progress
   useEffect(() => {
@@ -258,36 +229,57 @@ export default function ProcessTimeline() {
     <div ref={sectionRef} className="relative mx-auto w-full max-w-5xl">
       {/* ── DESKTOP: 2 rows × 3 cards + SVG line ── */}
       <div className="hidden md:block relative py-8">
-        {/* SVG sits on top of the cards, sized to the grid container */}
+        {/* SVG covers the full grid, viewBox is percentage-based (0-100).
+            The path uses the same percentage coords, so it adapts to ANY
+            container size without measuring DOM rects. */}
         <svg
-          ref={svgRef}
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none z-10"
-          style={{ width: '100%', height: '100%' }}
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
         >
           <defs>
             <filter id="process-line-glow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
           </defs>
+          {/* The path — dasharray + dashoffset set by JS for scroll drawing */}
           <path
             ref={pathRef}
+            d={PATH_D}
             fill="none"
-            stroke="rgba(45, 212, 191, 0.5)"
-            strokeWidth="2"
+            stroke="rgba(45, 212, 191, 0.6)"
+            strokeWidth="0.45"
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#process-line-glow)"
+            vectorEffect="non-scaling-stroke"
           />
-          <g ref={nodesRef} />
+          {/* Large decorative numbers */}
+          {NUMBER_POSITIONS.map((p, i) => (
+            <text
+              key={i}
+              x={p.x}
+              y={p.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="rgba(45, 212, 191, 0.3)"
+              fontSize="6"
+              fontWeight="900"
+              fontFamily="Outfit, ui-sans-serif, system-ui, sans-serif"
+              letterSpacing="-0.03em"
+            >
+              {i + 1}
+            </text>
+          ))}
         </svg>
 
         {/* Row 1 */}
-        <div className="grid grid-cols-3 gap-5 sm:gap-7 mb-10 sm:mb-12 relative z-20">
+        <div className="grid grid-cols-3 gap-5 sm:gap-7 mb-14 sm:mb-16 relative z-20">
           {STEPS.slice(0, 3).map((step, i) => (
             <div key={i}>
               <ProcessStepCard step={step} lang={lang} />
@@ -317,7 +309,10 @@ export default function ProcessTimeline() {
           />
         </div>
 
-        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pb-6 -mx-4">
+        <div
+          ref={mobileTrackRef}
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pb-6 -mx-4"
+        >
           {STEPS.map((step, i) => (
             <article
               key={i}
