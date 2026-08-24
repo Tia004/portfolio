@@ -211,6 +211,7 @@ const CurvedInput = ({
       className={`curved-btn ${className}`.trim()}
       style={{ width: `${width}px`, maxWidth: '100%', position: 'relative' }}
       onClick={onClick}
+      aria-label={label}
       role="button"
       tabIndex={0}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}

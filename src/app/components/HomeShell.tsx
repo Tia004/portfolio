@@ -2477,7 +2477,7 @@ export default function HomeShell() {
               <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
                 <button
                   onClick={() => { scrollToContatti(); trackClick('hero_cta_quote'); }}
-                  className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-500 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
+                  className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-600 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-500 transition-all shadow-xl shadow-teal-600/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"
                 >
                   <TiaIcon icon={FilePenIcon} size={17} strokeWidth={2} />
                   {t('hero.cta_quote', lang)}
