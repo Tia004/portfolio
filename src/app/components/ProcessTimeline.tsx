@@ -46,7 +46,7 @@ function ProcessStepCard({
             edgeSensitivity={0}
             className="group h-full w-full"
           >
-            <div className="relative flex h-full flex-col rounded-[20px] p-5 sm:p-6">
+            <div className="relative flex h-full flex-col rounded-[20px] p-5 sm:p-6 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
               <div
                 className={`pointer-events-none absolute inset-0 overflow-hidden rounded-[20px] transition-opacity duration-500 ${
                   fadeIn ? 'opacity-100' : 'opacity-0'

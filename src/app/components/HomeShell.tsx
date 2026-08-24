@@ -404,7 +404,7 @@ function PriceCard({
         edgeSensitivity={0}
         className={`h-full [&_.border-glow-inner]:h-full ${premium ? 'border-teal-400/15' : ''}`}
       >
-        <div className={`p-5 sm:p-8 flex flex-col h-full rounded-[20px] relative ${premium ? 'bg-gradient-to-b from-teal-500/[0.06] to-transparent' : ''}`}>
+        <div className={`p-5 sm:p-8 flex flex-col h-full rounded-[20px] relative bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] ${premium ? 'bg-gradient-to-b from-teal-500/[0.06] to-transparent' : ''}`}>
           {popular && (
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full z-10">
               {t('prezzi.popular', lang)}
@@ -2121,7 +2121,7 @@ export default function HomeShell() {
     return (
       <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
         <div
-          className={`p-5 sm:p-6 ${project ? 'cursor-pointer' : ''}`}
+          className={`p-5 sm:p-6 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px] ${project ? 'cursor-pointer' : ''}`}
           onClick={() => { if (project) setSelectedProject(project); }}
           role={project ? 'button' : undefined}
           tabIndex={project ? 0 : undefined}
@@ -2247,7 +2247,7 @@ export default function HomeShell() {
   //    filtered projects in a row) and the desktop paginated grid. ──
   const renderProjectCard = (project: ProjectData) => (
     <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group h-full">
-      <div className="bg-white/[0.03] rounded-[20px] h-full flex flex-col overflow-hidden">
+      <div className="bg-[#081410] rounded-[20px] h-full flex flex-col overflow-hidden backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
         <div className="relative aspect-video w-full bg-white/[0.02] p-2.5 sm:p-3">
           <div className="w-full h-full overflow-hidden rounded-xl">
             <picture>
@@ -2553,7 +2553,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={WebDesign01Icon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.design_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-base font-medium mb-1">{t('servizi.brand', lang)}</h3>
@@ -2569,7 +2569,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={ColorsIcon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.design_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-base font-medium mb-1">{t('servizi.graphic', lang)}</h3>
@@ -2585,7 +2585,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[420px] relative z-10">
+                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[420px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={CodeIcon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.webdev_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-lg sm:text-xl font-medium mb-2">{t('servizi.webdev', lang)}</h3>
@@ -2602,7 +2602,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={PaintBoardIcon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.design_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-lg sm:text-xl font-medium mb-2">{t('servizi.uiux', lang)}</h3>
@@ -2619,7 +2619,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[200px] relative z-10">
+                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] lg:min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={MobileProgramming01Icon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.software_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-lg sm:text-xl font-medium mb-2">{t('servizi.software', lang)}</h3>
@@ -2636,7 +2636,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={Video01Icon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.video_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-base font-medium mb-1">{t('servizi.video_content', lang)}</h3>
@@ -2652,7 +2652,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={Motion01Icon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.video_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-base font-medium mb-1">{t('servizi.video_post', lang)}</h3>
@@ -2668,7 +2668,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={RepairIcon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.hardware_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-lg sm:text-xl font-medium mb-2">{t('servizi.hardware', lang)}</h3>
@@ -2684,7 +2684,7 @@ export default function HomeShell() {
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                     </div>
-                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10">
+                    <div className="p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] relative z-10 bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] rounded-[20px]">
                       <div className="flex items-center gap-2"><TiaIcon icon={BubbleChatIcon} size={18} className="text-teal-400" /><span className="text-teal-400 text-sm">{t('servizi.social_cat', lang)}</span></div>
                       <div>
                         <h3 className="text-white text-lg sm:text-xl font-medium mb-2">{t('servizi.social', lang)}</h3>
@@ -2972,7 +2972,7 @@ export default function HomeShell() {
                                 edgeSensitivity={0}
                                 className="shrink-0 group"
                               >
-                                <div className="bg-white/[0.04] rounded-2xl px-5 py-3 flex items-center gap-3 flex-shrink-0 transition-colors duration-300 group-hover:bg-white/[0.08] cursor-default">
+                                <div className="bg-[#081410] rounded-2xl px-5 py-3 flex items-center gap-3 flex-shrink-0 transition-colors duration-300 group-hover:bg-white/[0.08] cursor-default backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                                   <TiaIcon icon={skill.Icon} size={18} className="text-teal-400" />
                                   <span className="text-neutral-300 text-sm font-medium whitespace-nowrap group-hover:text-white transition-colors">{skill.name}</span>
                                 </div>
@@ -3471,7 +3471,7 @@ export default function HomeShell() {
               glowRadius={28}
               glowIntensity={1.4}
               edgeSensitivity={0}
-              backgroundColor="rgba(6, 10, 10, 0.78)"
+              backgroundColor="#081410"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >
@@ -3479,9 +3479,9 @@ export default function HomeShell() {
                   title-bar background to the rounded-2xl corners. The BorderGlow
                   lives on the parent card's pseudo-elements + .edge-light, which
                   are siblings — clipping this child never touches the glow. */}
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[rgba(6,10,10,0.62)] rounded-2xl overflow-hidden flex flex-col">
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#081410] rounded-2xl overflow-hidden flex flex-col backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
                 {/* Title bar */}
-                <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
+                <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#081410]/90 backdrop-blur-xl select-none">
                   {/* Centered title */}
                   <span className="flex-1 text-center text-xs font-medium text-neutral-300 tracking-wide">{t('chat.title', lang)}</span>
                   {/* Close button */}
@@ -3508,7 +3508,7 @@ export default function HomeShell() {
                       // Neutral system notice (e.g. delivery failure) — centered,
                       // dim, clearly not a message from either side.
                       <div key={msg.id} className="flex justify-center">
-                        <span className="max-w-[85%] rounded-full bg-white/[0.04] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-500">{msg.text}</span>
+                        <span className="max-w-[85%] rounded-full bg-[#081410] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-500">{msg.text}</span>
                       </div>
                     ) : (
                     <div
@@ -3523,7 +3523,7 @@ export default function HomeShell() {
                       <div
                         className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'client'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
-                          : 'bg-white/[0.04] text-white rounded-2xl rounded-bl-sm'
+                          : 'bg-[#081410] text-white rounded-2xl rounded-bl-sm'
                           }`}
                       >
                         {linkifyChatText(msg.text, msg.sender === 'client')}
@@ -3543,7 +3543,7 @@ export default function HomeShell() {
                       <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0">
                         <TiaIcon icon={BubbleChatIcon} size={12} className="text-teal-400" />
                       </div>
-                      <div className="bg-white/[0.04] rounded-2xl rounded-bl-sm px-4 py-3">
+                      <div className="bg-[#081410] rounded-2xl rounded-bl-sm px-4 py-3">
                         <div className="flex gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -3568,7 +3568,7 @@ export default function HomeShell() {
                       placeholder={t('chat.placeholder', lang)}
                       rows={1}
                       autoFocus={!isMobile}
-                      className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
+                      className="flex-1 bg-[#081410] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -3602,7 +3602,7 @@ export default function HomeShell() {
                 logAnalytics('chat_open');
               }
             }}
-            className={`relative p-4 text-white rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#0f0f0f] scale-0 opacity-0 pointer-events-none' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-500/15'
+            className={`relative p-4 text-white rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#0f0f0f] scale-0 opacity-0 pointer-events-none' : 'bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] border border-teal-400/25 hover:border-teal-400/40 shadow-teal-500/15'
               }`}
             aria-label={chatOpen ? 'Chiudi chat' : 'Apri chat'}
           >

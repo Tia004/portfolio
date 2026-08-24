@@ -52,7 +52,7 @@ function FaqCard({
         borderRadius={20}
         glowRadius={30}
         glowIntensity={2}
-        backgroundColor="rgba(6, 10, 10, 0.62)"
+        backgroundColor="#081410"
         className="h-fit w-[min(360px,calc(100vw_-_2rem))] self-start"
         edgeSensitivity={0}
       >

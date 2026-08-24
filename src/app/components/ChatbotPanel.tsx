@@ -208,7 +208,7 @@ export default function ChatbotPanel({
           title={t(option.labelKey, lang)}
           disabled={chatBlocked}
           onClick={() => onSelectCategory(option.value)}
-          className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 transition-all touch-manipulation hover:border-teal-400/40 hover:bg-teal-400/[0.06] hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="animate-pop-in shrink-0 rounded-full border border-white/[0.08] bg-[#081410] px-4 py-2 text-xs sm:text-sm font-medium text-neutral-300 transition-all touch-manipulation hover:border-teal-400/40 hover:bg-teal-400/[0.06] hover:text-teal-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {t(option.labelKey, lang)}
         </button>
@@ -233,7 +233,7 @@ export default function ChatbotPanel({
               aria-label={t('chat.new_chat', lang)}
               onMouseEnter={() => setResetTipHover(true)}
               onMouseLeave={() => setResetTipHover(false)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] px-3 py-1.5 text-neutral-400 transition-all hover:bg-white/[0.10] hover:text-neutral-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#081410] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] px-3 py-1.5 text-neutral-400 transition-all hover:bg-[#0e1c18] hover:text-neutral-200 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]"
             >
               <TiaIcon icon={FilePenIcon} size={14} strokeWidth={1.8} />
               <span className="text-xs font-medium">{t('chat.new_chat', lang)}</span>
@@ -306,7 +306,7 @@ export default function ChatbotPanel({
                         )}
                         <div className={`max-w-[80%] px-4 py-3 text-sm sm:text-base leading-relaxed break-words min-w-0 ${msg.sender === 'user'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
-                          : 'bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm'
+                          : 'bg-[#081410] text-neutral-200 rounded-2xl rounded-bl-sm'
                           }`}
                         >
                           {msg.sender === 'bot' && msg.text
@@ -338,7 +338,7 @@ export default function ChatbotPanel({
                             isStale ? (
                               <span
                                 key={idx}
-                                className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs sm:text-sm text-neutral-600 cursor-default"
+                                className="shrink-0 rounded-full border border-white/[0.06] bg-[#081410] px-3 py-1.5 text-xs sm:text-sm text-neutral-600 cursor-default"
                               >
                                 {sugg}
                               </span>
@@ -398,7 +398,7 @@ export default function ChatbotPanel({
               opacity: chatStarted ? 0.22 : 0.55,
             }}
           />
-          <div className="relative z-10 flex items-center gap-2 rounded-full bg-white/[0.06] p-2 sm:p-2.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] transition-all duration-500 focus-within:bg-white/[0.09] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+          <div className="relative z-10 flex items-center gap-2 rounded-full bg-[#081410] p-2 sm:p-2.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)] transition-all duration-500 focus-within:bg-[#0e1c18] focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
             {/* Expand tip — temporary; hover on desktop, focus + X on mobile */}
             {(showTip || tipHover || (isTouch && tipFocused && !tipDismissed)) && (
               <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 z-20 w-max max-w-[240px]">
@@ -491,7 +491,7 @@ export default function ChatbotPanel({
           {/* The extended bar — same translucent surface, inner sheen and teal
               halo as the compact input, just larger. Gives the feel that the
               compact bar itself grew to fill the screen. */}
-          <div className="relative mx-auto flex w-full max-w-2xl flex-1 min-h-0 flex-col rounded-3xl bg-white/[0.06] p-4 sm:p-5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
+          <div className="relative mx-auto flex w-full max-w-2xl flex-1 min-h-0 flex-col rounded-3xl bg-[#081410] p-4 sm:p-5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]">
             {/* Teal halo echoing the compact bar's glow */}
             <div
               aria-hidden="true"
