@@ -341,12 +341,13 @@ export default function MoltenMetal({
     writeUniforms(ctx, props);
 
     // DPR 1 everywhere — the full-screen shader is the single largest GPU
-    // consumer on the site; halving the buffer from 1.5× cuts pixel work ~55%
-    // with no visible difference on the organic molten pattern (low-frequency
-    // drift doesn't benefit from retina sharpness).
-    // Desktop renders at 0.75× scale (CSS canvas is still 100%, the buffer is
-    // downscaled); mobile stays at 0.5×. Grain is dropped on mobile only (the
-    // per-pixel hash costs more on phones and the lower resolution makes it
+    // consumer on the site. The 0.75×/0.5× downscale was tried as a perf lever
+    // but aliased: the shader's thin diagonal filaments (the 1/length(sin,cos)
+    // spikes in the domain warp) became chunky oblique watermark lines when
+    // the buffer was stretched back to 100% CSS size. Full 1.0× matches the
+    // reactbits reference; the 30fps cap + DPR 1 still keep GPU work well
+    // below the original DPR 1.5 @ 60fps. Grain is dropped on mobile only (the
+    // per-pixel hash costs more on phones and the lower screen makes it
     // noisier).
     let isMobile = false;
     const setSize = () => {
@@ -355,7 +356,7 @@ export default function MoltenMetal({
         (window.matchMedia?.('(pointer: coarse)').matches ?? false) ||
         rect.width < 768;
       const dpr = 1;
-      const scale = isMobile ? 0.5 : 0.75;
+      const scale = 1;
       const w = Math.max(1, Math.floor(rect.width * dpr * scale));
       const h = Math.max(1, Math.floor(rect.height * dpr * scale));
       if (canvas.width !== w || canvas.height !== h) {
