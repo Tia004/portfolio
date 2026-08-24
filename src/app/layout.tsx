@@ -129,6 +129,13 @@ export default async function RootLayout({
             <link> here, so nothing render-blocking in the head. */}
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[99999] focus:rounded-xl focus:bg-teal-600 focus:px-6 focus:py-3 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none"
+        >
+          Salta al contenuto
+        </a>
+        <div id="main-content" />
         <LanguageProvider initialLang={initialLang}>
           <SplashScreen>
             <ClickSpark

@@ -6,6 +6,7 @@ import { FOOTER } from '@/lib/animation-theme';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
 import { CHAT_CATEGORY_OPTIONS, type ChatCategory } from '@/lib/chat-categories';
+import LanguageSwitcher from './LanguageSwitcher';
 import { useLenis } from './SmoothScroll';
 import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 
@@ -371,6 +372,8 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
             <span>{t('footer.location', lang)}</span>
             <span className="w-1 h-1 rounded-full bg-neutral-500" />
             <span>{t('footer.timezone', lang)}</span>
+            <span className="w-1 h-1 rounded-full bg-neutral-500" />
+            <LanguageSwitcher variant="clean" />
           </div>
         </div>
       </div>

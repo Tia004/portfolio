@@ -125,7 +125,7 @@ const it: Dict = {
   // Chi sono
   'chisono.title': 'Tia Chinaglia',
   'chisono.label': 'Chi sono',
-  'chisono.bio': 'Costruisco ecosistemi digitali completi, unendo architetture software solide a flussi di lavoro iper-automatizzati tramite AI, LLM, n8n e Claude Code. Complemento lo sviluppo con un\'esperienza IT hands-on e competenze avanzate in UI/UX e produzione visiva.',
+  'chisono.bio': 'Libero professionista con sede a Mantova, opero in tutta Italia e all\'estero. Nessun template, nessun compromesso: ogni progetto è costruito su misura, dal design allo sviluppo, con le tecnologie più adatte al caso specifico. Credo nella trasparenza totale e nella comunicazione diretta — per questo garantisco risposte rapide, preventivi chiari e aggiornamenti costanti in ogni fase del lavoro. Unisco competenze tecniche avanzate a una forte sensibilità estetica, portando ogni progetto dal concept iniziale fino alla pubblicazione.',
 
   // Skills section titles
   'chisono.skills_design': 'Design',
@@ -421,7 +421,7 @@ const en: Dict = {
 
   'chisono.title': 'Tia Chinaglia',
   'chisono.label': 'About',
-  'chisono.bio': 'I build complete digital ecosystems, combining solid software architectures with hyper-automated workflows via AI, LLMs, n8n, and Claude Code. I complement development with hands-on IT experience and advanced UI/UX and visual production skills.',
+  'chisono.bio': 'Independent professional based in Mantova, Italy, working with clients across Europe. No templates, no compromises: every project is custom-built, from design to development, using the technology stack that best fits the specific case. I believe in total transparency and direct communication — that means fast responses, clear quotes, and constant updates at every stage. I combine advanced technical skills with a strong aesthetic sense, taking every project from initial concept to final launch.',
 
   'chisono.skills_design': 'Design',
   'chisono.skills_webdev': 'Web Development',
@@ -705,7 +705,7 @@ const es: Dict = {
 
   'chisono.title': 'Tia Chinaglia',
   'chisono.label': 'Sobre mí',
-  'chisono.bio': 'Construyo ecosistemas digitales completos, uniendo arquitecturas de software sólidas con flujos de trabajo hiper-automatizados mediante IA, LLMs, n8n y Claude Code. Complemento el desarrollo con experiencia IT hands-on y competencias avanzadas en UI/UX y producción visual.',
+  'chisono.bio': 'Profesional independiente con base en Mantua, Italia, colaborando con clientes en toda Europa. Sin plantillas, sin compromisos: cada proyecto se construye a medida, desde el diseño hasta el desarrollo, con las tecnologías más adecuadas para cada caso. Creo en la transparencia total y la comunicación directa — por eso garantizo respuestas rápidas, presupuestos claros y actualizaciones constantes en cada fase. Combino habilidades técnicas avanzadas con una fuerte sensibilidad estética, llevando cada proyecto desde el concepto inicial hasta su lanzamiento.',
 
   'chisono.skills_design': 'Diseño',
   'chisono.skills_webdev': 'Desarrollo Web',

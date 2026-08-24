@@ -212,6 +212,18 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
+  // Focus trap: move focus inside the modal on open, restore on close
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    const el = containerRef.current;
+    if (el) {
+      const first = el.querySelector<HTMLElement>('button, a, [tabindex]:not([tabindex="-1"])');
+      first?.focus();
+    }
+    return () => { previousFocusRef.current?.focus(); };
+  }, []);
+
   const modal = (
     <div
       className="fixed inset-0 z-[10010] flex items-center justify-center p-3 sm:p-5 md:p-8"

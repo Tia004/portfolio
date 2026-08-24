@@ -29,9 +29,10 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
     scrollOffset: 16,
   });
 
-  // Lock body scroll + stop Lenis entirely so native wheel events reach the modal content
+  // Lock body scroll + focus trap
   useEffect(() => {
     const scrollY = window.scrollY;
+    const prevFocus = document.activeElement as HTMLElement | null;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.width = '100%';
@@ -41,12 +42,19 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
     // native scroll on the content div inside the modal.
     lenis.current?.stop();
 
+    // Focus the close button so keyboard navigation starts inside the modal
+    setTimeout(() => {
+      const closeBtn = document.querySelector<HTMLButtonElement>('[data-legal-close]');
+      closeBtn?.focus();
+    }, 50);
+
     return () => {
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overscrollBehavior = '';
       window.scrollTo(0, scrollY);
+      prevFocus?.focus();
 
       // Restart Lenis when modal closes
       lenis.current?.start();
@@ -92,6 +100,7 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
           </div>
           <button
             onClick={onClose}
+            data-legal-close
             className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-all shrink-0"
             aria-label={t('legal.close', lang)}
           >

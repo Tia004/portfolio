@@ -137,11 +137,20 @@ export default function ChatbotPanel({
   const [composerOpen, setComposerOpen] = useState(false);
   useEffect(() => {
     if (!composerOpen) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setComposerOpen(false);
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Focus the textarea inside the fullscreen composer
+    setTimeout(() => {
+      const ta = document.querySelector<HTMLTextAreaElement>('[data-composer-textarea]');
+      ta?.focus();
+    }, 60);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      prevFocus?.focus();
+    };
   }, [composerOpen]);
 
   // ── Expand tip ──
@@ -508,6 +517,7 @@ export default function ChatbotPanel({
               value={input}
               onChange={(e) => onInputChange(e.target.value)}
               placeholder={t(categoryOption?.placeholderKey ?? 'chat.placeholder_software_web', lang)}
+              data-composer-textarea
               autoFocus
               disabled={chatBlocked}
               className="relative z-10 flex-1 w-full resize-none overflow-y-auto scrollbar-hide bg-transparent text-sm sm:text-base leading-relaxed text-white placeholder-neutral-600 outline-none disabled:cursor-not-allowed disabled:opacity-60"
