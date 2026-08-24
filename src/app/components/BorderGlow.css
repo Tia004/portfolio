@@ -14,8 +14,8 @@
   border: 1px solid rgb(255 255 255 / 10%);
   background: var(--card-bg, #081410);
   overflow: visible;
-  /* Subtle depth shadow — dark enough for #0a0a0a cards, blends on #050505 sections */
-  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%);
+  /* Subtle depth shadow + inner liquid-glass sheen from the chatbot input bar */
+  box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
 .border-glow-card::before,

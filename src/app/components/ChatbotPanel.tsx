@@ -306,7 +306,7 @@ export default function ChatbotPanel({
                         )}
                         <div className={`max-w-[80%] px-4 py-3 text-sm sm:text-base leading-relaxed break-words min-w-0 ${msg.sender === 'user'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
-                          : 'bg-[#081410] text-neutral-200 rounded-2xl rounded-bl-sm'
+                          : 'bg-white/[0.04] text-neutral-200 rounded-2xl rounded-bl-sm'
                           }`}
                         >
                           {msg.sender === 'bot' && msg.text
@@ -338,7 +338,7 @@ export default function ChatbotPanel({
                             isStale ? (
                               <span
                                 key={idx}
-                                className="shrink-0 rounded-full border border-white/[0.06] bg-[#081410] px-3 py-1.5 text-xs sm:text-sm text-neutral-600 cursor-default"
+                                className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs sm:text-sm text-neutral-600 cursor-default"
                               >
                                 {sugg}
                               </span>
