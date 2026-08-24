@@ -920,21 +920,7 @@ export default function HomeShell() {
     return () => io.disconnect();
   }, []);
 
-  // Hide bottom ProgressiveBlur when scrolled to the very bottom — the blur
-  // otherwise covers the footer and modals, making them unreadable.
-  // Must use Lenis scroll position (not window.scrollY) because Lenis
-  // disables native scrolling and manages its own virtual scroll.
-  const [blurBottomHidden, setBlurBottomHidden] = useState(false);
-  useEffect(() => {
-    const lenisInstance = lenis.current;
-    if (!lenisInstance) return;
-    const check = () => {
-      setBlurBottomHidden(lenisInstance.scroll >= lenisInstance.limit - 20);
-    };
-    check();
-    lenisInstance.on('scroll', check);
-    return () => { lenisInstance.off('scroll', check); };
-  }, [lenis]);
+
 
   // ── Hide CTA with fade-out + slide-down animation ──
   const hideCta = useCallback(() => {
@@ -1476,6 +1462,12 @@ export default function HomeShell() {
     }
   };
 
+  // Refs for the footer→chatbot bridge — these will be populated when the
+  // chat functions below are defined. The footer dispatches a CustomEvent
+  // that the effect below handles through the always-fresh refs.
+  const sendBotMessageRef = useRef<((text: string, options?: { quoteDraft?: Record<string, string>; displayUserMessage?: boolean; category?: ChatCategory }) => void) | null>(null);
+  const resetChatRef = useRef<(() => void) | null>(null);
+
   // Chat wheel/touch over the message areas: data-lenis-prevent lets the
   // BROWSER scroll them natively, and overscroll-contain (on the containers)
   // swallows boundary wheel/touch so it NEVER chains into the page. A native
@@ -1738,6 +1730,27 @@ export default function HomeShell() {
       setBotTyping(false);
     });
   };
+
+  // ── Wire the footer→chatbot bridge refs now that sendBotMessage exists ──
+  useEffect(() => { sendBotMessageRef.current = sendBotMessage; });
+  useEffect(() => { resetChatRef.current = resetChat; });
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { category: ChatCategory } | undefined;
+      if (!detail?.category) return;
+      const chatbot = document.getElementById('chatbot');
+      if (chatbot) chatbot.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => {
+        resetChatRef.current?.();
+        sendBotMessageRef.current?.(
+          t(CHAT_CATEGORY_OPTIONS.find(o => o.value === detail.category)?.labelKey ?? 'chat.category_software_web', lang),
+          { category: detail.category, displayUserMessage: false },
+        );
+      }, 500);
+    };
+    window.addEventListener('tia:footer-chat-category', handler);
+    return () => window.removeEventListener('tia:footer-chat-category', handler);
+  }, [lang]);
 
   const approveQuote = async (messageId: number, prefill: Record<string, string>, quote: string) => {
     const name = prefill.name?.trim() ?? '';
@@ -2372,20 +2385,6 @@ export default function HomeShell() {
             className=""
             height="4.5rem"
             position="top"
-            blurLevels={[1, 4, 9, 18]}
-          />
-        </div>
-        <div
-          className="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
-          style={{
-            opacity: blurBottomHidden || chatFullscreen ? 0 : 1,
-            transition: 'opacity 0.35s ease',
-          }}
-        >
-          <ProgressiveBlur
-            className=""
-            height="clamp(6rem, 8vw, 8rem)"
-            position="bottom"
             blurLevels={[1, 4, 9, 18]}
           />
         </div>

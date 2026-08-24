@@ -5,6 +5,7 @@ import { loadGsap } from '@/lib/gsap-lazy';
 import { FOOTER } from '@/lib/animation-theme';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
+import { CHAT_CATEGORY_OPTIONS, type ChatCategory } from '@/lib/chat-categories';
 import { useLenis } from './SmoothScroll';
 import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 
@@ -299,14 +300,21 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
           <div>
             <h4 className="text-white text-sm font-medium mb-4">{t('footer.servizi', lang)}</h4>
             <ul className="space-y-2">
-              {[
-                { key: 'footer.uxui', href: '#servizi' },
-                { key: 'footer.sviluppo_app', href: '#servizi' },
-                { key: 'footer.sviluppo_software', href: '#servizi' },
-                { key: 'footer.video_making', href: '#servizi' },
-                { key: 'footer.consulenza', href: '#servizi' },
-              ].map(({ key, href }) => (
-                <li key={key}><a href={href} onClick={(e) => handleSectionClick(e, href)} className="text-neutral-400 hover:text-white transition-colors text-xs">{t(key, lang)}</a></li>
+              {CHAT_CATEGORY_OPTIONS.map((option) => (
+                <li key={option.value}>
+                  <button
+                    onClick={() => {
+                      const chatbot = document.getElementById('chatbot');
+                      if (chatbot) chatbot.scrollIntoView({ behavior: 'smooth' });
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('tia:footer-chat-category', { detail: { category: option.value as ChatCategory } }));
+                      }, 100);
+                    }}
+                    className="text-neutral-400 hover:text-white transition-colors text-xs"
+                  >
+                    {t(option.labelKey, lang)}
+                  </button>
+                </li>
               ))}
             </ul>
           </div>
@@ -314,7 +322,9 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
             <h4 className="text-white text-sm font-medium mb-4">{t('footer.links', lang)}</h4>
             <ul className="space-y-2">
               {[
+                { key: 'footer.servizi', href: '#servizi' },
                 { key: 'footer.progetti', href: '#progetti' },
+                { key: 'footer.chisono', href: '#chisono' },
                 { key: 'footer.processo', href: '#processo' },
                 { key: 'footer.prezzi', href: '#prezzi' },
                 { key: 'footer.recensioni', href: '#recensioni' },
