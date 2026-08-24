@@ -68,6 +68,22 @@ function ProcessStepCard({
                 )}
               </div>
 
+              {/* Large translucent icon tilted ~5deg counterclockwise, top-left */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute select-none"
+                style={{
+                  left: '6px',
+                  top: '-2px',
+                  fontSize: 'clamp(4.5rem, 9vw, 7rem)',
+                  color: 'rgba(45, 212, 191, 0.05)',
+                  transform: 'rotate(-5deg)',
+                  lineHeight: 1,
+                }}
+              >
+                <TiaIcon icon={step.icon} size="1em" strokeWidth={1.3} />
+              </span>
+
               {/* Large translucent step number behind everything */}
               <span
                 aria-hidden="true"
@@ -83,7 +99,7 @@ function ProcessStepCard({
                   letterSpacing: '-0.04em',
                 }}
               >
-                {stepIndex + 1}
+                {String(stepIndex + 1).padStart(2, '0')}
               </span>
 
               <div className="relative z-10 flex flex-col gap-2.5">
@@ -175,7 +191,7 @@ export default function ProcessTimeline() {
             >
               <div className="flex items-center justify-center py-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#07110f] border-2 border-teal-400/50 text-[11px] font-bold text-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.3)]">
-                  {i + 1}
+                  {String(i + 1).padStart(2, '0')}
                 </div>
               </div>
               <div className="flex-1">
