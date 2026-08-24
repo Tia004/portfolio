@@ -20,29 +20,37 @@ interface PdfCarouselProps {
  * No flash/fade — the measured container width is passed directly to react-pdf
  * so the canvas is rendered at the correct size from the first paint.
  */
+interface PageDims { w: number; h: number }
+
 export default function PdfCarousel({ url, title }: PdfCarouselProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const pdfRef = useRef<any>(null);
 
-  // ── Container measurement — height-based so full page fits ──
+  // ── Container measurement — track both width and height ──
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [pageHeight, setPageHeight] = useState(0);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
-  // Measure container height and pass to Page as `height` — this ensures
-  // the entire page is always visible regardless of aspect ratio.
-  // Portrait/A4 PDFs get cropped when sized by width; height is the
-  // constraining dimension in a tall modal.
+  // Per-page intrinsic dimensions (scale-1 viewport) for "contain" fitting
+  const pageDims = useRef<Map<number, PageDims>>(new Map());
+  const [, triggerRender] = useState(0);
+
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    setPageHeight(el.clientHeight - 32); // 16px padding top + bottom
-    const ro = new ResizeObserver(() => {
+    const pad = 32; // 16px padding top + bottom
+    const update = () => {
       if (wrapperRef.current) {
-        setPageHeight(wrapperRef.current.clientHeight - 32);
+        setContainerSize({
+          w: wrapperRef.current.clientWidth - pad,
+          h: wrapperRef.current.clientHeight - pad,
+        });
       }
-    });
+    };
+    update();
+    const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, [loaded]);
@@ -53,6 +61,7 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
       try {
         const pdf = await pdfjs.getDocument(url).promise;
         if (!cancelled) {
+          pdfRef.current = pdf;
           setNumPages(pdf.numPages);
           setLoaded(true);
         }
@@ -66,13 +75,43 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
 
   const safeIndex = Math.min(pageIndex, Math.max(0, numPages - 1));
 
+  // Fetch per-page viewport on page change for "contain" sizing
+  useEffect(() => {
+    if (!pdfRef.current) return;
+    const pageNum = safeIndex + 1;
+    if (pageDims.current.has(pageNum)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const page = await pdfRef.current.getPage(pageNum);
+        const vp = page.getViewport({ scale: 1 });
+        if (!cancelled) {
+          pageDims.current.set(pageNum, { w: vp.width, h: vp.height });
+          triggerRender((n) => n + 1);
+        }
+      } catch { /* viewport fetch failed — fall through to height-based */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeIndex, loaded]);
+
   const prevPage = useCallback(() => setPageIndex(i => Math.max(0, i - 1)), []);
   const nextPage = useCallback(() => setPageIndex(i => Math.min(numPages - 1, i + 1)), [numPages]);
 
   const dots = useMemo(() => Array.from({ length: numPages }, (_, i) => i), [numPages]);
 
-  // Fallback height before measurement
-  const height = pageHeight > 0 ? pageHeight : Math.min((typeof window !== 'undefined' ? window.innerHeight : 900) * 0.65, 600);
+  // Compute render size that fits the page entirely within the container.
+  // Falls back to height-only when container isn't measured yet or page
+  // viewport hasn't been fetched.
+  const { cw, ch } = { cw: containerSize.w, ch: containerSize.h };
+  const fallbackH = Math.min((typeof window !== 'undefined' ? window.innerHeight : 900) * 0.65, 600);
+  const dims = pageDims.current.get(safeIndex + 1);
+  const renderWidth = (cw > 0 && ch > 0 && dims)
+    ? Math.round(Math.min(cw, ch * (dims.w / dims.h)))
+    : undefined;
+  const renderHeight = (renderWidth == null)
+    ? (ch > 0 ? ch : fallbackH)
+    : undefined;
 
   if (error) {
     return (
@@ -124,7 +163,8 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
           <Page
             key={`page_${safeIndex + 1}`}
             pageNumber={safeIndex + 1}
-            height={height}
+            width={renderWidth}
+            height={renderHeight}
             renderTextLayer={false}
             renderAnnotationLayer={false}
             className="rounded-lg shadow-2xl shadow-black/50"

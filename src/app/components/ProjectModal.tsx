@@ -333,7 +333,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                           <PdfCarousel url={image} title={project.title} />
                         ) : (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <picture className="flex h-full w-full items-center justify-center">
+                          <picture className="flex h-full w-full items-center justify-center min-h-0">
                             {image.startsWith('/uploads/') && (
                               <>
                                 <source srcSet={image.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
@@ -343,7 +343,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                             <img
                               src={image.replace(/\.(png|jpe?g)$/i, '.webp')}
                               alt={`${project.title}, ${slideLabel} ${index + 1}`}
-                              className="max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
+                              className="min-h-0 max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
                               draggable="false"
                               // Only ±1 slides are ever mounted, so eager loading
                               // here == preloading the neighbours: the browser
@@ -543,7 +543,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                         <PdfCarousel url={media} title={project.title} />
                       ) : (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <picture className="flex h-full w-full items-center justify-center">
+                        <picture className="flex h-full w-full items-center justify-center min-h-0">
                           {media.startsWith('/uploads/') && (
                             <>
                               <source srcSet={media.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
@@ -553,7 +553,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                           <img
                             src={media.replace(/\.(png|jpe?g)$/i, '.webp')}
                             alt={`${project.title}, ${slideLabel} ${activeGalleryIndex + 1}`}
-                            className="max-h-full max-w-full object-contain rounded-lg shadow-2xl shadow-black/60 select-none"
+                            className="min-h-0 max-h-full max-w-full object-contain rounded-lg shadow-2xl shadow-black/60 select-none"
                             style={{
                               transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomScale})`,
                               transformOrigin: 'center',
