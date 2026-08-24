@@ -6,16 +6,26 @@ import { FOOTER } from '@/lib/animation-theme';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
 import { useLenis } from './SmoothScroll';
-import { scrollToElementAfterLayout, triggerArrivalGlow, refreshScrollTriggers } from '@/lib/scroll';
+import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 
 /**
  * FooterAnimation — split-text rising wordmark + gradient glow
  * Splits "Tia Designs" into individual <span>s via innerHTML in
- * useLayoutEffect (before paint), then animates each character with
- * GSAP ScrollTrigger as the footer enters the viewport.
- * A reversible one-shot reveal (gsap.to) guarantees the text is never
- * missing if the trigger positions go stale, WITHOUT permanently blocking
- * the scrub (the old CSS class used !important and made it static).
+ * useLayoutEffect (before paint).
+ *
+ * The character reveal is DETERMINISTIC and position-driven: every rAF it
+ * measures the wordmark's REAL position in the viewport and maps it to
+ * progress (top at 95% of the viewport → start, top at 35% → done), then
+ * distributes a left→right cascade across the 11 chars. No cached
+ * ScrollTrigger start/end, no refresh(), no failsafe — the page height
+ * keeps changing while lazy sections mount, which is exactly what broke
+ * the old scrub (stale positions → chars revealed in the wrong order,
+ * flickering between the failsafe and the scrub, or static at progress 1).
+ * Measuring live every frame can never go stale, and the reveal always
+ * plays in order as the user scrolls.
+ *
+ * The gradient glow + content parallax keep their GSAP scrub (subtle; if
+ * positions drift they simply sit at the final state — visually fine).
  */
 export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onOpenLegal?: (doc: string) => void }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -49,13 +59,14 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
       span.className = 'footer-char';
       span.setAttribute('data-footer-char', '');
       span.style.display = 'inline-block';
-      // Start fully hidden — GSAP scrub will reveal proportionally
+      // Start fully hidden — the position-driven reveal shows them
       span.style.opacity = '0';
       span.style.transform = `translateY(${FOOTER.chars.yOffset}px) rotateX(${FOOTER.chars.rotateX}deg)`;
       wordmark.appendChild(span);
     });
 
     const charEls = wordmark.querySelectorAll<HTMLSpanElement>('[data-footer-char]');
+    const charCount = charEls.length;
     const content = contentRef.current;
 
     // ── Fit the wordmark to the full viewport width ────────────
@@ -109,212 +120,142 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
     };
     fitWordmark();
 
-    // GSAP setup — isolated in try/catch so a plugin/trigger failure can never
-    // prevent sizing (already done above) or the reveal failsafe below. Loaded
-    // lazily (loadGsap): the footer mounts near the bottom, so GSAP is long
-    // since in memory by the time it animates.
-    let ctx: { revert: () => void } | null = null;
-    let alive = true;
-    const stRefresh = () => import('gsap/ScrollTrigger').then((m) => {
-      m.ScrollTrigger.refresh();
-      m.ScrollTrigger.update();
-    });
-    loadGsap().then((gsap) => {
-      if (!alive) return;
-      try {
-        ctx = gsap.context(() => {
-          // Parallax: content rises + scales up as the footer enters the viewport
-          if (content) {
-            gsap.fromTo(
-              content,
-              { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
-              {
-                y: 0,
-                scale: 1,
-                ease: FOOTER.contentParallax.ease,
-                scrollTrigger: {
-                  trigger: section,
-                  start: FOOTER.contentParallax.start,
-                  end: FOOTER.contentParallax.end,
-                  scrub: FOOTER.contentParallax.scrub,
-                },
-              }
-            );
-          }
+    // ── Deterministic position-driven character reveal ────────
+    // The wordmark's top edge maps to progress: at 95% of the viewport
+    // height the reveal starts, at 35% it's complete (matches the old
+    // 'top 75%' → 'top 35%' scrub range, plus a small lead-in). Char i
+    // enters in a cascading window so the letters rise left→right.
+    // Measured from getBoundingClientRect() EVERY frame: the page grows
+    // while lazy sections mount, but this never goes stale.
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const STAGGER = FOOTER.chars.stagger; // 0.04
+    const revealStart = 0.95;
+    const revealEnd = 0.35;
+    const cascadeSpan = 1 - STAGGER * (charCount - 1);
+    let lastP = -1;
 
-          // Gradient glow: shift position on scroll
-          gsap.to(glow, {
-            backgroundPosition: '50% 100%',
-            ease: FOOTER.glow.ease,
-            scrollTrigger: {
-              trigger: section,
-              start: FOOTER.glow.start,
-              end: FOOTER.glow.end,
-              scrub: FOOTER.glow.scrub,
-            },
-          });
+    const applyChars = () => {
+      if (charCount === 0) return;
+      const r = wordmark.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      const p = Math.max(0, Math.min(1, (vh * revealStart - r.top) / (vh * (revealStart - revealEnd))));
+      if (p === lastP) return; // no movement — skip the DOM writes
+      lastP = p;
+      for (let i = 0; i < charCount; i++) {
+        const cp = Math.max(0, Math.min(1, (p - i * STAGGER) / cascadeSpan));
+        const c = charEls[i];
+        c.style.opacity = cp.toFixed(3);
+        c.style.transform = `translateY(${(1 - cp) * FOOTER.chars.yOffset}px) rotateX(${(1 - cp) * FOOTER.chars.rotateX}deg)`;
+      }
+    };
 
-          // ── Scroll-driven character reveal ──────────────────────
-          // Each character animates from hidden (y:80, opacity:0, rotateX:-15)
-          // to fully visible (y:0, opacity:1, rotateX:0) proportionally to
-          // the scroll position.  Scroll down → characters rise; scroll up →
-          // they sink back.  The stagger distributes each character's progress
-          // across the scroll range for a cascading wave effect.
-          gsap.fromTo(charEls,
-            { y: FOOTER.chars.yOffset, opacity: 0, rotateX: FOOTER.chars.rotateX },
-            {
-              y: 0,
-              opacity: 1,
-              rotateX: 0,
-              stagger: FOOTER.chars.stagger,
-              ease: FOOTER.chars.ease,
+    // IO gates the rAF loop: runs only while the footer is within ~1.5
+    // viewports below the viewport, idle everywhere else (zero cost at the
+    // top of the page). The loop reads the real position each frame, so it
+    // works even if Lenis/scroll events are momentarily janky.
+    let raf = 0;
+    let inZone = false;
+    const loop = () => {
+      raf = 0;
+      if (!inZone) return;
+      applyChars();
+      raf = requestAnimationFrame(loop);
+    };
+    const startLoop = () => {
+      if (inZone) return;
+      inZone = true;
+      applyChars();
+      if (!raf) raf = requestAnimationFrame(loop);
+    };
+    const stopLoop = () => {
+      inZone = false;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    };
+
+    if (reducedMotion) {
+      charEls.forEach((c) => {
+        c.style.opacity = '1';
+        c.style.transform = 'translateY(0) rotateX(0)';
+      });
+    } else {
+      const approachIO = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) startLoop();
+          else stopLoop();
+        },
+        { rootMargin: '0px 0px 150% 0px', threshold: 0 }
+      );
+      approachIO.observe(section);
+      applyChars();
+
+      // ── Gradient glow + content parallax (GSAP scrub) ─────────
+      // Subtle effects; if their trigger positions drift they simply sit at
+      // the final state — visually indistinguishable from correct.
+      let ctx: { revert: () => void } | null = null;
+      let alive = true;
+      loadGsap().then((gsap) => {
+        if (!alive) return;
+        try {
+          ctx = gsap.context(() => {
+            if (content) {
+              gsap.fromTo(
+                content,
+                { y: FOOTER.contentParallax.yOffset, scale: FOOTER.contentParallax.scale },
+                {
+                  y: 0,
+                  scale: 1,
+                  ease: FOOTER.contentParallax.ease,
+                  scrollTrigger: {
+                    trigger: section,
+                    start: FOOTER.contentParallax.start,
+                    end: FOOTER.contentParallax.end,
+                    scrub: FOOTER.contentParallax.scrub,
+                  },
+                }
+              );
+            }
+
+            gsap.to(glow, {
+              backgroundPosition: '50% 100%',
+              ease: FOOTER.glow.ease,
               scrollTrigger: {
                 trigger: section,
-                start: FOOTER.chars.start,
-                end: FOOTER.chars.end,
-                scrub: FOOTER.chars.scrub,
+                start: FOOTER.glow.start,
+                end: FOOTER.glow.end,
+                scrub: FOOTER.glow.scrub,
               },
-            }
-          );
-
-          // Refresh ScrollTrigger now that the chars are in the DOM
-          refreshScrollTriggers();
-        }, section);
-      } catch (err) {
-        console.error('[footer] GSAP init fallito:', err);
-      }
-    });
-
-    // ── The wordmark must never be missing ────────────────────
-    // The chars start at opacity:0 and are revealed by the ScrollTrigger
-    // scrub. The footer mounts LAST via next/dynamic, and the page height
-    // keeps changing while the lazy sections / fonts / images above settle
-    // — if the trigger positions are stale at that point, the scrub never
-    // advances and "Tia Designs" stays invisible. Protection:
-    //   1) re-measure after the page truly settles (load + fonts + delayed)
-    //      and whenever a lazy section mounts (tia:section-mounted — that's
-    //      the main source of late page-height changes);
-    //   2) if the wordmark is on screen and the chars are STILL fully hidden,
-    //      reveal them with a one-shot, REVERSIBLE gsap.to — NOT a CSS class:
-    //      the class used !important and permanently blocked the scrub, which
-    //      is exactly the "static wordmark" regression. A plain gsap.to is
-    //      overridden the moment the scrub updates, so once the trigger is
-    //      refreshed the scroll-linked reveal resumes.
-    const revealOnce = () => {
-      if (!section || charEls.length === 0) return;
-      const r = wordmark.getBoundingClientRect();
-      // The wordmark must be meaningfully on screen (top above the middle)
-      // before we consider it "stuck" — a partially-entering wordmark with a
-      // working scrub has partially-revealed chars and must NOT be forced.
-      // More generous: trigger if the footer is anywhere in the viewport
-      // (not just top half). A user who scrolls to the very bottom and
-      // waits should always see the wordmark, even if the trigger is stale.
-      const onScreen = r.top < window.innerHeight && r.bottom > 0;
-      if (!onScreen) return;
-      const stuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
-      if (stuck) {
-        // Before declaring the scrub dead, re-measure the trigger positions
-        // once — the page may have grown since mount (lazy sections above),
-        // leaving the trigger range stale and the chars stuck at opacity 0.
-        // A single refresh + update is enough; then re-check after a frame
-        // and only force visibility if the scrub genuinely never advances.
-        if (!refreshAttempted) {
-          refreshAttempted = true;
-          stRefresh();
-          requestAnimationFrame(() => {
-            const stillStuck = Array.from(charEls).every((c) => parseFloat(getComputedStyle(c).opacity) < 0.05);
-            if (stillStuck) loadGsap().then((gsap) => gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 }));
-          });
-        } else {
-          loadGsap().then((gsap) => gsap.to(charEls, { opacity: 1, y: 0, rotateX: 0, duration: 0.4 }));
+            });
+          }, section);
+        } catch (err) {
+          console.error('[footer] GSAP init fallito:', err);
         }
-      }
-    };
-
-
-    let refreshAttempted = false;
-    const refreshOnce = () => {
-      fitWordmark();
-      refreshScrollTriggers();
-      revealOnce();
-    };
-
-    // Refit on any container resize (orientation change on phones) —
-    // rAF-throttled, and re-measures ScrollTrigger after the size settles.
-    let resizeRaf = 0;
-    const onResize = () => {
-      if (resizeRaf) return;
-      resizeRaf = requestAnimationFrame(() => {
-        resizeRaf = 0;
-        refreshOnce();
       });
-    };
-    const ro = new ResizeObserver(onResize);
-    ro.observe(wordmark);
 
-    // Re-measure once everything settles (same late-layout pattern used by
-    // ScrollReveal/StaggerReveal for content-visibility dimension changes).
-    // tia:section-mounted is the BIG one: every lazy section above mounts
-    // while scrolling near it, growing the page and shifting the footer's
-    // trigger positions — refresh right away so the scrub never goes stale.
-    window.addEventListener('load', refreshOnce, { once: true });
-    window.addEventListener('tia:section-mounted', refreshOnce);
-    document.fonts?.ready.then(refreshOnce).catch(() => {});
-    const t1 = window.setTimeout(refreshOnce, 800);
-    const t2 = window.setTimeout(refreshOnce, 2500);
-
-    // ── Fresh trigger positions right before the footer enters ──
-    // The page keeps growing while the lazy sections above mount, so the
-    // positions measured at mount are stale by the time the user reaches the
-    // footer — the scrub sits at progress 1 and the wordmark is visible but
-    // STATIC. refreshScrollTriggers() is scroll-aware and skips during a
-    // gesture, i.e. exactly when the user is scrolling here, so use a direct
-    // refresh instead: the footer approaches only after every section above
-    // has mounted, and a single refresh is a bounded, non-jittering event.
-    // Re-arms when the footer leaves the 1.5-viewport approach zone.
-    let approachRefreshed = false;
-    const approachIO = new IntersectionObserver(
-      (entries) => {
-        const visible = entries[0]?.isIntersecting ?? false;
-        if (visible && !approachRefreshed) {
-          approachRefreshed = true;
+      // Refit on any container resize (orientation change on phones) —
+      // rAF-throttled.
+      let resizeRaf = 0;
+      const onResize = () => {
+        if (resizeRaf) return;
+        resizeRaf = requestAnimationFrame(() => {
+          resizeRaf = 0;
           fitWordmark();
-          stRefresh();
-        } else if (!visible) {
-          approachRefreshed = false;
-        }
-      },
-      { rootMargin: '0px 0px 150% 0px', threshold: 0 }
-    );
-    approachIO.observe(section);
+          applyChars();
+        });
+      };
+      const ro = new ResizeObserver(onResize);
+      ro.observe(wordmark);
 
-    // Scroll-driven failsafe (rAF-throttled): catches a stale trigger even
-    // if the user reaches the footer before any timer has fired. Lenis
-    // scrolls via window.scrollTo, so the native scroll event fires on every
-    // frame — this works whether or not the Lenis instance is ready yet.
-    let rafPending = false;
-    const onScrollFailsafe = () => {
-      if (rafPending) return;
-      rafPending = true;
-      requestAnimationFrame(() => {
-        rafPending = false;
-        revealOnce();
-      });
-    };
-    window.addEventListener('scroll', onScrollFailsafe, { passive: true });
-
-    return () => {
-      alive = false;
-      ctx?.revert();
-      ro.disconnect();
-      approachIO.disconnect();
-      window.removeEventListener('load', refreshOnce);
-      window.removeEventListener('tia:section-mounted', refreshOnce);
-      window.removeEventListener('scroll', onScrollFailsafe);
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      if (resizeRaf) cancelAnimationFrame(resizeRaf);
-    };
+      return () => {
+        alive = false;
+        ctx?.revert();
+        approachIO.disconnect();
+        ro.disconnect();
+        stopLoop();
+      };
+    }
   }, []);
 
   return (
