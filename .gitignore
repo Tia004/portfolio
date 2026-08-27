@@ -51,10 +51,14 @@ reference/
 .agents/
 /e2e-chatbot.cjs
 
-# local agent notes — never commit
+# local agent notes & handoffs — never commit
 /NOTES-RESEND-EMAIL.txt
+/HANDOFF*.md
+*HANDOFF*
+*handoff*
 prisma
 !prisma/
 !prisma/migrations/
 !prisma/migrations/**GLOW-BLEED-CONFIG.txt
 /GLOW-BLEED-CONFIG.txt
+
