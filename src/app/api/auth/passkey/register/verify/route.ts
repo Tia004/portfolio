@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     await createSession(user.id, user.username);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error verifying registration:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }

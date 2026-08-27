@@ -7,7 +7,7 @@ export async function GET() {
       where: { user: { username: 'master' } },
     });
     return NextResponse.json({ initialized: authCount > 0, passkeyCount: authCount });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error checking auth status:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getChallengeCookie, deleteChallengeCookie, createSession } from '@/lib/session';
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
         id: authenticator.credentialID,
         publicKey: new Uint8Array(authenticator.credentialPublicKey),
         counter: Number(authenticator.counter),
-        transports: authenticator.transports ? (authenticator.transports.split(',') as any[]) : undefined,
+        transports: authenticator.transports ? (authenticator.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
       },
       requireUserVerification: false,
     });
@@ -82,8 +83,9 @@ export async function POST(request: NextRequest) {
     await createSession(authenticator.userId, 'master');
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error verifying login:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }
 }
+

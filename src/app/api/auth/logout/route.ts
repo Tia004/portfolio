@@ -5,7 +5,7 @@ export async function POST() {
   try {
     await deleteSession();
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error logging out:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

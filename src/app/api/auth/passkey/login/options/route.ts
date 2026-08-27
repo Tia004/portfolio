@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { setChallengeCookie } from '@/lib/session';
 
@@ -24,9 +25,9 @@ export async function POST(request: NextRequest) {
 
     const options = await generateAuthenticationOptions({
       rpID,
-      allowCredentials: user.authenticators.map((auth: any) => ({
+      allowCredentials: user.authenticators.map((auth) => ({
         id: auth.credentialID,
-        transports: auth.transports ? (auth.transports.split(',') as any[]) : undefined,
+        transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
       })),
       userVerification: 'preferred',
     });
@@ -35,8 +36,9 @@ export async function POST(request: NextRequest) {
     await setChallengeCookie('login_challenge', options.challenge);
 
     return NextResponse.json(options);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating login options:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }
 }
+

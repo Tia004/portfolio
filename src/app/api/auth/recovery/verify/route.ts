@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     await createSession(master.id, master.username);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error verifying recovery code:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }

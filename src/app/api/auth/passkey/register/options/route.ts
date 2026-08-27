@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
+import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { setChallengeCookie, getSession } from '@/lib/session';
 
@@ -38,9 +39,9 @@ export async function POST(request: NextRequest) {
       userName: 'master',
       userDisplayName: 'Master Administrator',
       attestationType: 'none',
-      excludeCredentials: existingUser?.authenticators?.map((auth: any) => ({
+      excludeCredentials: existingUser?.authenticators?.map((auth) => ({
         id: auth.credentialID,
-        transports: auth.transports ? (auth.transports.split(',') as any[]) : undefined,
+        transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
       })) ?? [],
       authenticatorSelection: {
         residentKey: 'preferred',
@@ -53,8 +54,9 @@ export async function POST(request: NextRequest) {
     await setChallengeCookie('reg_user_id', masterUserId);
 
     return NextResponse.json(options);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating registration options:', error);
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }
 }
+
