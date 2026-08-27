@@ -88,6 +88,8 @@ import {
   UserIcon,
   Location01Icon,
   Clock01Icon,
+  HandshakeIcon,
+  Calendar01Icon,
 
   // ─── UI / Azioni ──────────────────────
   CheckmarkCircle01Icon,
@@ -98,6 +100,11 @@ import {
   ArrowRight01Icon,
   Cancel01Icon,
   ExternalLinkIcon,
+  Audit01Icon,
+  GaugeIcon,
+  Globe02Icon,
+  ChatBotIcon,
+  CloudBackupIcon,
 } from './icons';;
 
 /** @category Componenti */
@@ -209,9 +216,35 @@ const SERVICE_GROUPS: { labelKey: string; items: GroupItem[] }[] = [
       { value: 'Altro', labelKey: 'servizi.option_other' },
     ],
   },
+  {
+    labelKey: 'servizi.growth_cat',
+    items: [
+      { value: 'Audit Gratuito', labelKey: 'servizi.option_audit' },
+      { value: 'Performance & Velocità', labelKey: 'servizi.option_perf' },
+      { value: 'Siti Multilingua', labelKey: 'servizi.option_multilingua' },
+      { value: 'Chatbot & AI', labelKey: 'servizi.option_chatbot' },
+      { value: 'Migrazione & Hosting', labelKey: 'servizi.option_migrazione' },
+    ],
+  },
 ];
 
 const ALL_OPTIONS = SERVICE_GROUPS.flatMap(g => g.items);
+
+// ── Services for EXISTING sites — audit, performance, multilingual, AI, migration.
+//    Each card prefills the contact form with its exact ServiceSelect value
+//    (the values above are in SERVICE_GROUPS so normalizeContactService keeps them).
+const GROWTH_SERVICES: {
+  value: string;
+  Icon: typeof Audit01Icon;
+  titleKey: string;
+  descKey: string;
+}[] = [
+  { value: 'Audit Gratuito', Icon: Audit01Icon, titleKey: 'servizi.audit', descKey: 'servizi.audit_desc' },
+  { value: 'Performance & Velocità', Icon: GaugeIcon, titleKey: 'servizi.perf', descKey: 'servizi.perf_desc' },
+  { value: 'Siti Multilingua', Icon: Globe02Icon, titleKey: 'servizi.multilingua', descKey: 'servizi.multilingua_desc' },
+  { value: 'Chatbot & AI', Icon: ChatBotIcon, titleKey: 'servizi.chatbot', descKey: 'servizi.chatbot_desc' },
+  { value: 'Migrazione & Hosting', Icon: CloudBackupIcon, titleKey: 'servizi.migrazione', descKey: 'servizi.migrazione_desc' },
+];
 
 /** Map the AI's natural service wording to an exact ServiceSelect value. */
 function normalizeContactService(value?: string): string | undefined {
@@ -2693,6 +2726,51 @@ export default function HomeShell() {
                   </BorderGlow></TiltCard>)}</DotGridCard>
                 </ScrollReveal>
               </MobileSnapSlider>
+
+              {/* ── Services for EXISTING sites ──
+                  Audit gratuito, performance, multilingua, chatbot AI, migrazione:
+                  interventi mirati su siti già online. Ogni card scrolla al form
+                  contatti con il servizio già preselezionato. Same card language
+                  (BorderGlow) ma senza DotGrid: 5 canvas in più sul mobile
+                  costavano GPU nella sezione servizi, e qui la coerenza del glow
+                  basta a mantenere il look della sezione. */}
+              <div className="mt-14 sm:mt-20">
+                <ScrollReveal className="text-center mb-6 sm:mb-10">
+                  <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-3">{t('servizi.existing_label', lang)}</p>
+                  <h3 className="text-xl sm:text-3xl font-bold tracking-tight text-white">{t('servizi.existing_title', lang)}</h3>
+                  <p className="text-neutral-500 mt-2 text-sm max-w-xl mx-auto leading-relaxed">{t('servizi.existing_subtitle', lang)}</p>
+                </ScrollReveal>
+                <MobileSnapSlider
+                  ariaLabel={t('servizi.existing_title', lang)}
+                  trackClassName="flex gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible md:snap-none"
+                >
+                  {GROWTH_SERVICES.map((service, idx) => (
+                    <div key={service.value} className="shrink-0 snap-start w-[80%] sm:w-[55%] md:w-auto">
+                      <ScrollReveal delay={idx * 0.05} className="h-full">
+                        <button
+                          type="button"
+                          onClick={() => scrollToContatti({ service: service.value })}
+                          className="w-full h-full text-left group"
+                        >
+                          <BorderGlow borderRadius={18} glowRadius={26} glowIntensity={1.8} edgeSensitivity={0} className="h-full">
+                            <div className="p-5 flex flex-col gap-2.5 h-full min-h-[170px]">
+                              <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
+                                <TiaIcon icon={service.Icon} size={18} className="text-teal-400" />
+                              </div>
+                              <h4 className="text-white text-sm font-semibold">{t(service.titleKey, lang)}</h4>
+                              <p className="text-neutral-500 text-xs leading-relaxed flex-1">{t(service.descKey, lang)}</p>
+                              <span className="inline-flex items-center gap-1.5 text-teal-400 text-xs font-medium mt-1">
+                                {t('servizi.ask', lang)}
+                                <TiaIcon icon={ArrowRight01Icon} size={13} className="transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+                              </span>
+                            </div>
+                          </BorderGlow>
+                        </button>
+                      </ScrollReveal>
+                    </div>
+                  ))}
+                </MobileSnapSlider>
+              </div>
             </div>
           </section>
           </LazySection>
@@ -2823,6 +2901,24 @@ export default function HomeShell() {
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
                   {t('chisono.bio', lang)}
                 </p>
+
+                {/* ── Perché un freelance (e non un'agenzia) — 4 punti, chips leggere ── */}
+                <div className="mt-10">
+                  <h3 className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('chisono.why_title', lang)}</h3>
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                    {[
+                      { Icon: HandshakeIcon, key: 'chisono.why_1' },
+                      { Icon: DollarSignIcon, key: 'chisono.why_2' },
+                      { Icon: CheckmarkCircle01Icon, key: 'chisono.why_3' },
+                      { Icon: Clock01Icon, key: 'chisono.why_4' },
+                    ].map((item) => (
+                      <span key={item.key} className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs sm:text-sm text-neutral-300">
+                        <TiaIcon icon={item.Icon} size={14} className="text-teal-400 shrink-0" strokeWidth={2} />
+                        {t(item.key, lang)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </ScrollReveal>
             </div>
 
@@ -3139,7 +3235,7 @@ export default function HomeShell() {
               </ScrollReveal>
 
               {/* ── Toggle ── */}
-              <div className="flex justify-center mb-8 sm:mb-16">
+              <div className="flex justify-center mb-6 sm:mb-10">
                 <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
                   <button
                     onClick={() => setIsMonthly(false)}
@@ -3156,6 +3252,14 @@ export default function HomeShell() {
                     {t('prezzi.monthly', lang)}
                   </button>
                 </div>
+              </div>
+
+              {/* ── Disponibilità del mese — urgenza onesta, niente fake scarcity ── */}
+              <div className="flex justify-center -mt-1 sm:-mt-3 mb-8 sm:mb-12">
+                <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/[0.07] px-3.5 py-1.5 text-[11px] sm:text-xs text-teal-300">
+                  <TiaIcon icon={Calendar01Icon} size={13} className="shrink-0" strokeWidth={2} />
+                  {t('prezzi.slots_note', lang).replace('{month}', new Intl.DateTimeFormat(lang === 'it' ? 'it-IT' : lang === 'es' ? 'es-ES' : 'en-GB', { month: 'long' }).format(new Date()))}
+                </span>
               </div>
 
               {/* ── Data-driven pricing cards ── */}

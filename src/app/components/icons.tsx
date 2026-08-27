@@ -94,6 +94,8 @@ export {
   UserIcon,
   Location01Icon,
   Clock01Icon,
+  HandshakeIcon,
+  Calendar01Icon,
 } from '@hugeicons/core-free-icons';
 
 /** @category UI / Azioni @since 2026-07-23 */
@@ -109,4 +111,10 @@ export {
   Settings01Icon,
   ArrowExpandDiagonal01Icon,
   PuzzleIcon,
+  Audit01Icon,
+  GaugeIcon,
+  Globe02Icon,
+  ChatBotIcon,
+  CloudBackupIcon,
+  Discount01Icon,
 } from '@hugeicons/core-free-icons';

@@ -7,6 +7,8 @@ import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
 import { CHAT_CATEGORY_OPTIONS, type ChatCategory } from '@/lib/chat-categories';
 import LanguageSwitcher from './LanguageSwitcher';
+import TiaIcon from './TiaIcon';
+import { Discount01Icon } from './icons';
 import { useLenis } from './SmoothScroll';
 import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 
@@ -349,6 +351,11 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
 
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-6 sm:pt-8 flex flex-col items-center gap-3">
+          {/* Referral program — a promise, no payments involved: fine before P.IVA */}
+          <p className="inline-flex items-center gap-2 rounded-full border border-teal-400/20 bg-teal-400/[0.06] px-4 py-1.5 text-[11px] sm:text-xs text-teal-300/90">
+            <TiaIcon icon={Discount01Icon} size={13} className="shrink-0" strokeWidth={2} />
+            {t('footer.referral', lang)}
+          </p>
           <p className="text-neutral-500 text-xs">{t('footer.copyright', lang)}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-neutral-500 text-xs">
             {onOpenLegal && (
