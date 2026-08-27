@@ -197,9 +197,6 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
     <>
       {/* ── Keyframes inlined in JSX — available from first paint, no JS-injection flash ── */}
       <style>{`
-        @keyframes splash-dot-flicker {
-          to { mask-position: 50% 50%, 0 50%; }
-        }
         @keyframes splash-letter-drop {
           from { opacity: 0; transform: translateY(-120px) rotate(-8deg); }
           to   { opacity: 1; transform: translateY(0) rotate(0deg); }
@@ -216,23 +213,16 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
             transition: `opacity ${FADE_MS}ms cubic-bezier(0.45,0,0.55,1)`,
           }}
         >
-          {/* ── CSS Dot Pattern — dark teal dots, flicker animation ── */}
+          {/* Clean dark backdrop — a subtle static teal radial glow, NO noise,
+              NO animated dots: the old fractal-noise mask read as a broken
+              "TV-static" dither (white + teal speckles) on first load. The
+              splash must look calm while the page loads underneath. */}
           <div
             className="absolute inset-0"
             style={{
-              background: '#115e59',
-              maskImage: `radial-gradient(circle at 50% 50%, white 2px, transparent 2.5px), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E")`,
-              maskPosition: '50% 50%, 256px 50%',
-              maskSize: '20px 20px, 256px 256px',
-              maskRepeat: 'repeat, repeat',
-              maskComposite: 'intersect',
-              WebkitMaskComposite: 'source-in',
-              animation: 'splash-dot-flicker 20s infinite linear',
+              background: `radial-gradient(ellipse 70% 55% at 50% 45%, rgba(5, 188, 142, 0.10) 0%, rgba(5, 188, 142, 0.03) 45%, transparent 75%)`,
             }}
           />
-
-          {/* Semi-transparent dark overlay */}
-          <div className="absolute inset-0 bg-black/50" />
 
           {/* Centered content */}
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10">

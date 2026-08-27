@@ -39,6 +39,15 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
   const [glow, setGlow] = useState(false);
   const [pulse, setPulse] = useState(false);
 
+  // Every target change (e.g. switching the pricing tabs one-time ↔ monthly)
+  // must restart the count from 0 — never from the previous mode's final
+  // value. Runs BEFORE the counting effect and before any early return, so a
+  // card whose count hasn't started yet (delay < 0) also snaps back to 0
+  // instead of showing the stale number of the other pricing mode.
+  useEffect(() => {
+    if (numRef.current) numRef.current.textContent = '0';
+  }, [target]);
+
   useEffect(() => {
     if (ready === false) return; // Wait for external trigger (e.g. splash screen)
     if (delay < 0) return; // Delay not yet computed — wait for position-based cascade

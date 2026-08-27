@@ -3002,23 +3002,18 @@ export default function HomeShell() {
               show/hide changes dvh and reflows the section mid-scroll — one
               more source of the up/down jitter. svh is stable. */}
           <section id="chatbot" className="relative h-[100svh] flex flex-col px-6 sm:px-4 pt-16 sm:pt-20 pb-6 sm:pb-10 overflow-x-clip">
-            {/* Radial "blur" behind the chat — a STATIC radial-gradient overlay
-                (pure paint, no backdrop-filter): darker at the center and
-                transparent at the edges, so the chat reads as a soft depth
-                pocket against the animated molten without any per-frame
-                re-sampling (which would lag the section). pointer-events-none,
-                sits below the panel content. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-0"
-              style={{
-                background: 'radial-gradient(ellipse 85% 75% at 50% 55%, rgba(2, 12, 10, 0.78) 0%, rgba(2, 12, 10, 0.45) 45%, transparent 78%)',
-              }}
-            />
+            {/* No dark radial overlay here: with the new liquid-metal backdrop,
+                a translucent black pocket made the chatbot section look like a
+                dirty rectangle next to the reviews below it. The chat stays
+                readable on its own (messages + input bar carry their own
+                surfaces). */}
             <div className="relative z-10 max-w-3xl mx-auto w-full flex flex-col flex-1 min-h-0">
+              {/* relative z-20: the heading must paint ABOVE the chat curtain
+                  (which extends above the messages into the heading's space),
+                  so the title + subtitle are never frosted or cut. */}
               <div
                 id="chatbot-heading"
-                className="scroll-mt-[9rem] shrink-0"
+                className="scroll-mt-[9rem] shrink-0 relative z-20"
                 style={{ scrollMarginTop: '9rem' }}
               >
                 {/* Heading kept identical on desktop; on mobile it's compact
@@ -3060,21 +3055,27 @@ export default function HomeShell() {
           <LazySection rootMargin={400} placeholderHeight={500}>
           <section id="recensioni" className="py-10 sm:py-24 px-4">
             <div className="max-w-6xl mx-auto">
-              <ScrollReveal className="text-center mb-8 sm:mb-16">
+              {/* relative z-30: the heading must paint ABOVE the blur curtains
+                  (which extend above the grid into the heading's margin) so the
+                  title is never frosted or cut on mobile. Extra bottom margin
+                  keeps the title + description clear of the halo. */}
+              <ScrollReveal className="text-center mb-14 sm:mb-20 relative z-30">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('recensioni.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('recensioni.title', lang)}</h2>
               </ScrollReveal>
 
               {/* ── Two-column opposing vertical scrollers ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
-                {/* Progressive blur curtains top & bottom — the container extends
-                    past the section edges so backdrop-filter can sample the Molten
-                    beyond the visible area. No more hard clip. */}
-                <div aria-hidden="true" className="pointer-events-none absolute -top-[3rem] left-0 right-0 h-[8rem] sm:h-[10rem] z-20">
-                  <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} />
+                {/* Progressive blur curtains top & bottom — full-viewport width
+                    (w-screen centered on the grid) and SYMMETRIC masks: the
+                    blur peaks in the middle and dissolves to 0 on BOTH sides,
+                    so there is no hard cut above/below/left/right — a true halo
+                    that fades the cards at the section boundary. */}
+                <div aria-hidden="true" className="pointer-events-none absolute -top-[3rem] left-1/2 -translate-x-1/2 w-screen h-[8rem] sm:h-[10rem] z-20">
+                  <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
                 </div>
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-[3rem] left-0 right-0 h-[8rem] sm:h-[10rem] z-20">
-                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[1, 4, 9, 18]} />
+                <div aria-hidden="true" className="pointer-events-none absolute -bottom-[3rem] left-1/2 -translate-x-1/2 w-screen h-[8rem] sm:h-[10rem] z-20">
+                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
                 </div>
                 {/* ── Left column — scrolls up ── */}
                 <div className="relative min-h-0 overflow-hidden py-5 -my-5">

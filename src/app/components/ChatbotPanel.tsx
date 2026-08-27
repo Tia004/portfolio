@@ -234,7 +234,10 @@ export default function ChatbotPanel({
             lets you pick a specialization from the welcome bubbles (the old
             specialization bar is gone). */}
         <div className="mb-2 flex items-center justify-end">
-          <div className="relative">
+          {/* relative z-20: the reset button must paint above the chat curtain
+              (which extends -top-2rem into this header row) so the blur never
+              frosts it. */}
+          <div className="relative z-20">
             <button
               type="button"
               onClick={onReset}
@@ -375,13 +378,19 @@ export default function ChatbotPanel({
 
           {/* Curtain — ProgressiveBlur with backdrop-filter layers. The
               container extends past the top edge so the blur samples the
-              Molten background beyond the messages, never clipped. */}
+              Molten background beyond the messages, never clipped. w-screen +
+              left-1/2 centering spans the FULL viewport (the messages column
+              is max-w-3xl, so a left-0 right-0 curtain would end at the column
+              and show sharp side cuts); the symmetric mask dissolves the blur
+              to 0 on BOTH sides — no hard edge above the messages nor at the
+              section boundary. Sits at z-10: the "Nuova chat" button (z-20)
+              and the section heading (relative z-20 in HomeShell) stay above. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-[2rem] left-0 right-0 h-[6rem] sm:h-[8rem] z-10"
+              className="pointer-events-none absolute -top-[2rem] left-1/2 -translate-x-1/2 w-screen h-[6rem] sm:h-[8rem] z-10"
             >
-              <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} />
+              <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
             </div>
           )}
 

@@ -331,8 +331,16 @@ export default function MobileSnapSlider({
         data-lenis-prevent={nativeTrack ? '' : undefined}
         data-lenis-prevent-wheel={nativeTrack ? '' : undefined}
         data-lenis-prevent-touch={nativeTrack ? '' : undefined}
-        style={{ touchAction: nativeTrack ? 'pan-x' : 'auto', overscrollBehaviorY: 'auto' }}
-        className={`overflow-x-auto overflow-y-hidden py-[35px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default ${trackClassName}`}
+        // pan-x pan-y (NOT pan-x alone): the browser may pan the page
+        // vertically when the gesture starts on the horizontal track — a
+        // pan-x-only value made vertical scroll dead-stop over the slider
+        // cards on mobile. The horizontal track still scrolls natively.
+        style={{ touchAction: nativeTrack ? 'pan-x pan-y' : 'auto', overscrollBehaviorY: 'auto' }}
+        // py-[44px]: the BorderGlow halo (--glow-padding = glowRadius, up to
+        // 35px) extends past the card — 35px of vertical padding clipped it at
+        // the track edge on mobile, visually "cutting" the card's bottom
+        // (glow + CTA button area). 44px clears the bright halo with margin.
+        className={`overflow-x-auto overflow-y-hidden py-[44px] md:py-0 snap-x snap-mandatory overscroll-x-contain scrollbar-hide cursor-grab active:cursor-grabbing md:cursor-default ${trackClassName}`}
       >
         {children}
       </div>

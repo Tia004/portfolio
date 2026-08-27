@@ -404,9 +404,11 @@ export default function MoltenMetal({
     let covered = false;
     let contextLost = false;
     let frameCount = 0;
+    let lastFrameAt = performance.now();
     const t0 = performance.now();
 
     const render = (t: number) => {
+      lastFrameAt = t;
       // FPS cap: render every other rAF (~30fps) on all devices. The slow
       // molten drift stays fluid at half the GPU work; the per-frame cost
       // (full-screen shader) is the dominant GPU consumer site-wide.
@@ -454,7 +456,30 @@ export default function MoltenMetal({
     };
     window.addEventListener('scroll', updateCoverage, { passive: true });
     window.addEventListener('resize', updateCoverage, { passive: true });
+    // Lazy sections mount as the user scrolls, growing the document and
+    // shifting the hero/footer covers — re-evaluate coverage then too, or a
+    // stale `covered=true` could leave the molten paused forever behind the
+    // transparent sections ("the background disappeared").
+    window.addEventListener('tia:section-mounted', updateCoverage);
+    window.addEventListener('tia:force-mount', updateCoverage);
     updateCoverage();
+
+    // Watchdog: if the loop SHOULD be running but hasn't drawn a frame in 3s
+    // (browser quirk killed the rAF chain, a visibilitychange was missed, or a
+    // context-restore rebuild silently failed), force a restart so the molten
+    // can never permanently disappear. Two cheap getBoundingClientRect calls
+    // every 2.5s — negligible.
+    const watchdog = window.setInterval(() => {
+      if (document.hidden || covered || contextLost) return; // intentionally paused
+      if (raf === 0) {
+        tryStart();
+        return;
+      }
+      if (performance.now() - lastFrameAt > 3000) {
+        tryStop();
+        tryStart();
+      }
+    }, 2500);
 
     const onVisibility = () => {
       pageVisible = !document.hidden;
@@ -492,8 +517,11 @@ export default function MoltenMetal({
     return () => {
       tryStop();
       ro.disconnect();
+      window.clearInterval(watchdog);
       window.removeEventListener('scroll', updateCoverage);
       window.removeEventListener('resize', updateCoverage);
+      window.removeEventListener('tia:section-mounted', updateCoverage);
+      window.removeEventListener('tia:force-mount', updateCoverage);
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mouseleave', onLeave);
