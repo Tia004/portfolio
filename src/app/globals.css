@@ -86,6 +86,29 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* ── Lenis Smooth Scroll Integration Rules ── */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+
 /* Marquee edge curtains — explicit CSS keeps the side fade reliable across
    Tailwind builds and browsers. The viewport container breaks out of any
    parent width constraint so the curtains always start from the viewport

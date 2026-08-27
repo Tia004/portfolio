@@ -8,7 +8,7 @@
 // was mid-animation — GSAP writes the scroll position back and Lenis corrects
 // it on the next frame: the classic tiny up/down jitter. This helper skips
 // refresh during an active gesture and batches bursts into a single refresh.
-let refreshQueued = false;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 let lastScrollAt = 0;
 if (typeof window !== 'undefined') {
   window.addEventListener('scroll', () => { lastScrollAt = Date.now(); }, { passive: true, capture: true });
@@ -23,13 +23,14 @@ function getScrollTrigger() {
 }
 
 export function refreshScrollTriggers(): void {
-  if (Date.now() - lastScrollAt < 150) return; // gesture in progress — skip
-  if (refreshQueued) return;
-  refreshQueued = true;
-  requestAnimationFrame(() => {
-    refreshQueued = false;
-    getScrollTrigger().then((ScrollTrigger) => ScrollTrigger.refresh());
-  });
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    if (Date.now() - lastScrollAt < 300) return;
+    getScrollTrigger().then((ScrollTrigger) => {
+      ScrollTrigger.refresh();
+    });
+  }, 350);
 }
 
 export interface SmoothScrollController {
