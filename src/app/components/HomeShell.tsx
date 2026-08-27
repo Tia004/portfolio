@@ -115,6 +115,10 @@ import SmoothScrollProvider, { useLenis } from './SmoothScroll';
 // gradient fallback both paint instantly, and the canvas swaps in after
 // hydration without blocking the first paint.
 const Dither = dynamic(() => import('./Dither'), { ssr: false, loading: () => null });
+// Static teal base for the hero — imported STATICALLY (no three.js inside):
+// it renders instantly at first paint so the hero is never black while the
+// heavy WebGL chunk (Dither) is still deferred/downloading.
+import { StaticDitherTexture } from './DitherStatic';
 // The dynamic import starts at mount (first render — no lazy trigger), so the
 // molten chunk downloads with the initial JS. The splash waits for the shader
 // compile ('tia:molten-ready', bounded) before lifting, so the background is
@@ -935,6 +939,38 @@ export default function HomeShell() {
     window.addEventListener('splash-complete', cb);
     return () => window.removeEventListener('splash-complete', cb);
   }, []);
+
+  // ── WebGL Dither: defer past splash + first idle slot ──
+  // The static teal base (StaticDitherTexture) covers the hero from the very
+  // first paint, so the ~230KB three.js chunk can wait until the main thread
+  // is idle AFTER the splash — it never competes with LCP/TBT (previously it
+  // started downloading the moment the splash lifted, still inside the
+  // throttled load window). requestIdleCallback yields to a timeout on
+  // browsers without it, so the canvas always arrives shortly after.
+  const [ditherReady, setDitherReady] = useState(false);
+  useEffect(() => {
+    if (!splashDone) return;
+    let alive = true;
+    const fire = () => {
+      if (alive) setDitherReady(true);
+    };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(fire, { timeout: 1500 });
+      return () => {
+        alive = false;
+        w.cancelIdleCallback?.(id);
+      };
+    }
+    const t = window.setTimeout(fire, 1200);
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+    };
+  }, [splashDone]);
 
   // Hide BOTH ProgressiveBlur bars while the chatbot section fills the whole
   // screen ("esattamente nel chatbot"): the bottom bar would otherwise frost
@@ -2470,14 +2506,19 @@ export default function HomeShell() {
                 green), pixelated via the per-channel 8x8 dither with
                 pixelSize 2. */}
             <div className="absolute inset-0 z-0 hero-bottom-curtain" style={{ background: '#010101' }}>
-            {/* Mount the WebGL Dither only after the splash completes: the
-                splash covers the hero until then, so three.js (a ~230KB chunk)
+            {/* The static teal base renders UNCONDITIONALLY (tiny CSS/SVG, no
+                three.js): the hero is never black, even while the WebGL chunk
+                is still deferred or downloading. The animated canvas paints
+                over it where supported. */}
+            <StaticDitherTexture />
+            {/* Mount the WebGL Dither only after the splash completes AND the
+                main thread hits its first idle slot: three.js (a ~230KB chunk)
                 used to download AND execute on the critical path at load,
-                blocking the first paint (the "unused JS" ~900ms). Deferring the
-                mount moves the whole chunk off the LCP/TBT path — the static
-                fallback inside Dither renders instantly and covers the brief
-                transition, so the hero never shows a gap. */}
-            {splashDone && (
+                blocking the first paint (the "unused JS" ~900ms). Deferring
+                the mount moves the whole chunk off the LCP/TBT path — the
+                static base covers the hero the entire time, so the WebGL
+                swap-in is invisible. */}
+            {ditherReady && (
             <Dither
               waveColor={[0.16470588235294117, 0.7176470588235294, 0.6235294117647059]}
               waveSpeed={0.07}
