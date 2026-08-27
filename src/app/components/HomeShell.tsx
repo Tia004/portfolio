@@ -3840,8 +3840,7 @@ export default function HomeShell() {
                   data-lenis-prevent
                   data-lenis-prevent-wheel
                   data-lenis-prevent-touch
-                  onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
-                  className={`min-w-0 overflow-hidden transition-all duration-500 ease-out ${callOpen ? 'block opacity-100 max-lg:mt-4' : 'hidden lg:block lg:opacity-0 pointer-events-none'}`}
+                  className={`min-w-0 transition-all duration-500 ease-out ${callOpen ? 'block opacity-100 max-lg:mt-4' : 'hidden lg:block lg:opacity-0 pointer-events-none'}`}
                   style={{
                     visibility: callOpen ? 'visible' : 'hidden',
                     transition: 'opacity 0.4s ease, visibility 0.4s ease',
@@ -3862,7 +3861,7 @@ export default function HomeShell() {
                             type="button"
                             onClick={() => setCallOpen(false)}
                             aria-label={t('contatti.call_close', lang)}
-                            className="w-8 h-8 shrink-0 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors"
+                            className="w-8 h-8 shrink-0 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                           >
                             <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
                           </button>
@@ -3871,12 +3870,13 @@ export default function HomeShell() {
                           data-lenis-prevent
                           data-lenis-prevent-wheel
                           data-lenis-prevent-touch
-                          className="flex-1 rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[480px]"
+                          className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[500px] max-h-[75vh] lg:max-h-none overscroll-contain touch-pan-y"
+                          style={{ WebkitOverflowScrolling: 'touch' }}
                         >
                           <iframe
                             src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                             title={t('contatti.call_title', lang)}
-                            className="w-full h-full border-0 block min-h-[480px]"
+                            className="w-full h-full min-h-[560px] border-0 block"
                             allow="calendar"
                           />
                         </div>
