@@ -3850,21 +3850,36 @@ export default function HomeShell() {
                     <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">
                       <div className="p-4 sm:p-5 h-full flex flex-col min-h-[560px]">
                         <div className="flex items-center gap-3 mb-4 shrink-0">
-                          <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/20 shadow-sm shadow-teal-950/40">
                             <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-teal-400 text-[10px] font-medium uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
-                            <p className="text-white text-sm font-bold leading-tight">{t('contatti.call_title', lang)}</p>
+                            <p className="text-white text-sm font-bold leading-tight truncate">{t('contatti.call_title', lang)}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setCallOpen(false)}
-                            aria-label={t('contatti.call_close', lang)}
-                            className="w-8 h-8 shrink-0 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                          >
-                            <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={`${CAL_COM_BASE_URL}?theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={t('contatti.call_newtab', lang)}
+                              title={t('contatti.call_newtab', lang)}
+                              className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-400/50 text-[11px] sm:text-xs font-medium transition-all duration-300 shadow-sm shadow-teal-950/30 cursor-pointer"
+                            >
+                              <span className="hidden sm:inline">{t('contatti.call_newtab', lang)}</span>
+                              <svg className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => setCallOpen(false)}
+                              aria-label={t('contatti.call_close', lang)}
+                              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
+                            >
+                              <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
+                            </button>
+                          </div>
                         </div>
                         <div
                           data-lenis-prevent

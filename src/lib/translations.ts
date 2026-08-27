@@ -223,6 +223,7 @@ const it: Dict = {
   'contatti.call_button': 'Prenota una call gratuita',
   'contatti.call_button_sub': '30 minuti, senza impegno',
   'contatti.call_close': 'Chiudi',
+  'contatti.call_newtab': 'Apri in nuova scheda',
 
   // Footer
   'footer.desc': 'Designer, sviluppatore app e software, videomaker. Trasformo idee in prodotti digitali completi.',
@@ -550,6 +551,7 @@ const en: Dict = {
   'contatti.call_button': 'Book a free call',
   'contatti.call_button_sub': '30 minutes, no commitment',
   'contatti.call_close': 'Close',
+  'contatti.call_newtab': 'Open in new tab',
 
   'footer.desc': 'Designer, app & software developer, videomaker. I turn ideas into complete digital products.',
   'footer.servizi': 'Services',
@@ -870,6 +872,7 @@ const es: Dict = {
   'contatti.call_button': 'Reserva una llamada gratis',
   'contatti.call_button_sub': '30 minutos, sin compromiso',
   'contatti.call_close': 'Cerrar',
+  'contatti.call_newtab': 'Abrir en nueva pestaña',
 
   'footer.desc': 'Diseñador, desarrollador de apps y software, videomaker. Transformo ideas en productos digitales completos.',
   'footer.servizi': 'Servicios',
