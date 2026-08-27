@@ -77,32 +77,71 @@ export default function LanguageProvider({ children, initialLang }: { children: 
     root.style.setProperty('--lang-banner-h', '0px');
   }, [showBanner]);
 
-  // Geo-detection (Apple-style): the proxy sets a default lang cookie on every
-  // visit, so it can't be used to suppress the banner. Instead: if the visitor
-  // is NOT in Italy and the suggested language differs from the one in use,
-  // show the banner (unless dismissed this session).
+  // Geo-detection (Apple-style): if the visitor is outside Italy and on a
+  // language route that differs from their country's language, show the banner
+  // offering a 1-click switch.
   useEffect(() => {
     if (wasDismissed()) return;
 
-    fetch('https://ipapi.co/json/')
-      .then(r => r.json())
-      .then((data: { country_code?: string; country_name?: string }) => {
-        // QA hook: ?geo=US forces the banner regardless of the real IP,
-        // so the flow can be tested without a VPN (geo is IP-based).
-        const override = new URLSearchParams(window.location.search).get('geo');
-        const code = override || data?.country_code;
-        if (!code) return;
-        const detected = countryToLang(code);
-        // Only suggest outside Italy, and only when it differs from the
-        // language currently in use.
-        if (detected === DEFAULT_LANG || detected === (initialLang || DEFAULT_LANG)) return;
-        const countryName = data.country_name || code;
-        setDetectedCountry(override ? code : countryName);
+    const fetchGeo = async () => {
+      try {
+        const override = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('geo') : null;
+        if (override) {
+          const detected = countryToLang(override);
+          const currentActive = initialLang || lang || DEFAULT_LANG;
+          if (detected !== currentActive) {
+            setDetectedCountry(override);
+            setSelectedLang(detected);
+            setShowBanner(true);
+          }
+          return;
+        }
+
+        let countryCode = '';
+        let countryName = '';
+
+        try {
+          const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) });
+          if (res.ok) {
+            const data = await res.json();
+            countryCode = data?.country_code || '';
+            countryName = data?.country_name || countryCode;
+          }
+        } catch (e) {
+          // fallback
+        }
+
+        if (!countryCode) {
+          try {
+            const res = await fetch('https://api.country.is', { signal: AbortSignal.timeout(3000) });
+            if (res.ok) {
+              const data = await res.json();
+              countryCode = data?.country || '';
+              countryName = countryCode;
+            }
+          } catch (e) {
+            // fallback
+          }
+        }
+
+        if (!countryCode) return;
+        const upper = countryCode.toUpperCase();
+        if (upper === 'IT' || upper === 'SM' || upper === 'VA') return;
+
+        const detected = countryToLang(upper);
+        const currentActive = initialLang || lang || DEFAULT_LANG;
+        if (detected === currentActive) return;
+
+        setDetectedCountry(countryName || countryCode);
         setSelectedLang(detected);
         setShowBanner(true);
-      })
-      .catch(() => {});
-  }, [initialLang]);
+      } catch (e) {
+        // silent
+      }
+    };
+
+    fetchGeo();
+  }, [initialLang, lang]);
 
   const closeBanner = () => {
     setLeaving(true);
