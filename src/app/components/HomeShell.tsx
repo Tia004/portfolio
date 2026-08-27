@@ -388,6 +388,7 @@ function PriceCard({
   delivery,
   hours,
   features,
+  slotsNote,
   onTooltipShow,
   onTooltipHide,
   onRequestQuote,
@@ -402,6 +403,7 @@ function PriceCard({
   delivery: string;
   hours?: string;
   features: string[];
+  slotsNote?: string;
   onTooltipShow: (text: string, el: HTMLElement) => void;
   onTooltipHide: () => void;
   onRequestQuote?: (serviceTitle: string) => void;
@@ -445,6 +447,12 @@ function PriceCard({
           {popular && (
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-teal-600 text-white text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full z-10">
               {t('prezzi.popular', lang)}
+            </span>
+          )}
+          {slotsNote && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/25 bg-teal-400/[0.07] px-2.5 py-1 text-[10px] font-medium text-teal-300 mb-3 w-fit">
+              <TiaIcon icon={Calendar01Icon} size={11} className="shrink-0" strokeWidth={2} />
+              {slotsNote}
             </span>
           )}
           <h4 className={`font-semibold text-base sm:text-lg mb-1 flex items-center gap-2 ${premium ? 'text-teal-300' : 'text-white'}`}>
@@ -3299,15 +3307,9 @@ export default function HomeShell() {
                 </div>
               </div>
 
-              {/* ── Disponibilità del mese — urgenza onesta, niente fake scarcity ── */}
-              <div className="flex justify-center -mt-1 sm:-mt-3 mb-8 sm:mb-12">
-                <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/[0.07] px-3.5 py-1.5 text-[11px] sm:text-xs text-teal-300">
-                  <TiaIcon icon={Calendar01Icon} size={13} className="shrink-0" strokeWidth={2} />
-                  {t('prezzi.slots_note', lang).replace('{month}', new Intl.DateTimeFormat(lang === 'it' ? 'it-IT' : lang === 'es' ? 'es-ES' : 'en-GB', { month: 'long' }).format(new Date()))}
-                </span>
-              </div>
-
-              {/* ── Data-driven pricing cards ── */}
+              {/* ── Data-driven pricing cards ──
+                  Disponibilità del mese direttamente su OGNI card (angolo in
+                  alto a destra) — urgenza onesta, niente fake scarcity. */}
               {pricing.map((cat, ci) => (
                 <div key={ci} className={ci < pricing.length - 1 ? 'mb-8 sm:mb-16' : ''}>
                   <h3 className="text-white text-xl font-semibold mb-2 flex items-center gap-3">
@@ -3339,6 +3341,7 @@ export default function HomeShell() {
                         features={tier.features}
                         delivery={tier.delivery}
                         hours={tier.hours}
+                        slotsNote={t('prezzi.slots_note', lang).replace('{month}', new Intl.DateTimeFormat(lang === 'it' ? 'it-IT' : lang === 'es' ? 'es-ES' : 'en-GB', { month: 'long' }).format(new Date()))}
                         onTooltipShow={handleTooltipShow}
                         onTooltipHide={handleTooltipHide}
                         onRequestQuote={(title) => scrollToContatti({ service: title })}

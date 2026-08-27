@@ -97,15 +97,18 @@ export function CountUp({ target, delay = 0.3, className, prefix, ready }: Count
       return cleanup;
     }
 
-    // Price cards: start when the element enters the viewport (IO instead
-    // of ScrollTrigger — no scroll event overhead, no position polling).
+    // Price cards: start ONLY once the card is actually visible. The old
+    // rootMargin (250px) started the count while the card was still below
+    // the fold — the number was already climbing (or finished) before the
+    // user could see it. With rootMargin 0 the count begins exactly when
+    // the card enters the viewport.
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting || !alive) return;
         io.disconnect();
         start();
       },
-      { rootMargin: '250px 0px' }
+      { rootMargin: '0px' }
     );
     io.observe(el);
     return () => { io.disconnect(); cleanup(); };
