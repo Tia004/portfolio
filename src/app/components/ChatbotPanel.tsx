@@ -270,6 +270,10 @@ export default function ChatbotPanel({
           <div
             ref={messagesRef}
             className="flex-1 min-h-0 relative overflow-y-auto scrollbar-hide"
+            style={messages.length > 0 ? {
+              maskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 92%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 92%, transparent 100%)',
+            } : undefined}
           >
             {messages.length === 0 && !typing ? (
               /* Vertically centered in the space between the "Nuova chat"
@@ -375,26 +379,16 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Curtain — single radial blur layer at PANEL width (the same
-              approach as the reviews section): one backdrop-filter layer with
-              a soft radial-gradient mask instead of four stacked linear bands,
-              so the dissolve is continuous (no discrete blur steps). inset-x-0
-              keeps it inside the max-w-3xl chat column, and the ellipse fades
-              in ALL directions — no sharp side cuts against the molten
-              background. The blur is inline (not a CSS class) on purpose: the
-              CSS optimizer rewrites a class-level backdrop-filter to
-              -webkit-backdrop-filter only, which Chrome ≥141 no longer
-              supports. Sits at z-10: the "Nuova chat" button (z-20) and the
-              section heading (relative z-20 in HomeShell) stay above. */}
+          {/* Soft blur curtain top — identical styling and gradient as the reviews section */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-[3rem] inset-x-0 h-[8rem] sm:h-[10rem] z-10"
+              className="pointer-events-none absolute top-0 inset-x-0 h-20 sm:h-28 z-10"
               style={{
-                backdropFilter: 'blur(18px)',
-                WebkitBackdropFilter: 'blur(18px)',
-                maskImage: 'radial-gradient(120% 110% at 50% 35%, black 0%, black 30%, transparent 85%)',
-                WebkitMaskImage: 'radial-gradient(120% 110% at 50% 35%, black 0%, black 30%, transparent 85%)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                maskImage: 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
               }}
             />
           )}
