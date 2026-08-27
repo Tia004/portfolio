@@ -4,72 +4,72 @@ import { getSession } from '@/lib/session';
 
 export async function GET() {
   try {
-    let count = await prisma.project.count();
-    if (count === 0) {
-      const defaultProjects = [
-        {
-          title: 'GSA Hotels',
-          description: 'Prototipo di sito luxury per struttura ricettiva di alto livello. Design raffinato, animazioni fluide e sistema di prenotazione interattivo.',
-          longDescription: 'Prototipo di sito luxury per struttura ricettiva di alto livello con sistema di prenotazione interattivo e animazioni fluide.',
-          thumbnail: '/uploads/gsahotels.png',
-          projectUrl: 'https://gsa-hotels-demo.vercel.app/',
-          tags: 'Next.js, Tailwind, Animazioni',
-          featured: true,
-          order: 1,
-        },
-        {
-          title: 'Vergilius Nectar',
-          description: 'Landing page per brand emergente. Visual identity curata, storytelling visivo d\'impatto e performance ottimizzate.',
-          longDescription: 'Landing page per brand emergente di bevande naturali.',
-          thumbnail: '/uploads/vergiliusnectar.png',
-          projectUrl: 'https://vergiliusnectar-github-io.vercel.app/',
-          tags: 'React, Branding, UI Design',
-          featured: true,
-          order: 2,
-        },
-        {
-          title: 'Studio Ing. Moretti',
-          description: 'Sito professionale per studio di ingegneria. Design pulito, ottimizzato SEO e performance al top. Online e operativo.',
-          longDescription: 'Sito aziendale e portfolio per studio di ingegneria civile e strutturale.',
-          thumbnail: '/uploads/studioingmoretti.png',
-          projectUrl: 'https://www.studioingmoretti.it/',
-          tags: 'Next.js, SEO, Sito Professionale',
-          featured: true,
-          order: 3,
-        },
-        {
-          title: 'PCS Mantova',
-          description: 'Sito istituzionale per azienda del territorio mantovano. Struttura moderna, navigazione intuitiva e immagine coordinata.',
-          longDescription: 'Sito istituzionale e catalogo servizi per azienda informatica di Mantova.',
-          thumbnail: '/uploads/pcsmantova.png',
-          projectUrl: 'https://pcsmantova-github-io.vercel.app/',
-          tags: 'Next.js, Design, Sviluppo',
-          featured: true,
-          order: 4,
-        },
-        {
-          title: 'Canapa Store',
-          description: 'Concept store per prodotti naturali. Esperienza d\'acquisto fluida con design minimal, palette terrosa e attenzione al dettaglio.',
-          longDescription: 'E-commerce concept store per prodotti naturali biologici.',
-          thumbnail: '/uploads/canapastore.png',
-          projectUrl: 'https://canapa-store.vercel.app/',
-          tags: 'Next.js, E-commerce, UI Design',
-          featured: true,
-          order: 5,
-        },
-        {
-          title: 'Pigg',
-          description: 'Cortometraggio realizzato per l\'Accademia di Belle Arti: la storia di un ragazzo bullizzato che si rimette in piedi da solo dopo che gli è stato affibbiato un nome che non gli appartiene.',
-          longDescription: 'Cortometraggio drammatico d\'autore, regia e montaggio.',
-          thumbnail: '/uploads/pigg-cover.png',
-          projectUrl: 'https://youtu.be/rc6GzCBa2LY',
-          tags: 'Cortometraggio, Montaggio, Color Grading',
-          featured: true,
-          order: 6,
-        },
-      ];
+    const defaultProjects = [
+      {
+        title: 'GSA Hotels',
+        description: 'Prototipo di sito luxury per struttura ricettiva di alto livello. Design raffinato, animazioni fluide e sistema di prenotazione interattivo.',
+        longDescription: 'Prototipo di sito luxury per struttura ricettiva di alto livello con sistema di prenotazione interattivo e animazioni fluide.',
+        thumbnail: '/uploads/gsahotels.png',
+        projectUrl: 'https://gsa-hotels-demo.vercel.app/',
+        tags: 'Next.js, Tailwind, Animazioni',
+        featured: true,
+        order: 1,
+      },
+      {
+        title: 'Vergilius Nectar',
+        description: 'Landing page per brand emergente. Visual identity curata, storytelling visivo d\'impatto e performance ottimizzate.',
+        longDescription: 'Landing page per brand emergente di bevande naturali.',
+        thumbnail: '/uploads/vergiliusnectar.png',
+        projectUrl: 'https://vergiliusnectar-github-io.vercel.app/',
+        tags: 'React, Branding, UI Design',
+        featured: true,
+        order: 2,
+      },
+      {
+        title: 'Studio Ing. Moretti',
+        description: 'Sito professionale per studio di ingegneria. Design pulito, ottimizzato SEO e performance al top. Online e operativo.',
+        longDescription: 'Sito aziendale e portfolio per studio di ingegneria civile e strutturale.',
+        thumbnail: '/uploads/studioingmoretti.png',
+        projectUrl: 'https://www.studioingmoretti.it/',
+        tags: 'Next.js, SEO, Sito Professionale',
+        featured: true,
+        order: 3,
+      },
+      {
+        title: 'PCS Mantova',
+        description: 'Sito istituzionale per azienda del territorio mantovano. Struttura moderna, navigazione intuitiva e immagine coordinata.',
+        longDescription: 'Sito istituzionale e catalogo servizi per azienda informatica di Mantova.',
+        thumbnail: '/uploads/pcsmantova.png',
+        projectUrl: 'https://pcsmantova-github-io.vercel.app/',
+        tags: 'Next.js, Design, Sviluppo',
+        featured: true,
+        order: 4,
+      },
+      {
+        title: 'Canapa Store',
+        description: 'Concept store per prodotti naturali. Esperienza d\'acquisto fluida con design minimal, palette terrosa e attenzione al dettaglio.',
+        longDescription: 'E-commerce concept store per prodotti naturali biologici.',
+        thumbnail: '/uploads/canapastore.png',
+        projectUrl: 'https://canapa-store.vercel.app/',
+        tags: 'Next.js, E-commerce, UI Design',
+        featured: true,
+        order: 5,
+      },
+      {
+        title: 'Pigg',
+        description: 'Cortometraggio realizzato per l\'Accademia di Belle Arti: la storia di un ragazzo bullizzato che si rimette in piedi da solo dopo che gli è stato affibbiato un nome che non gli appartiene.',
+        longDescription: 'Cortometraggio drammatico d\'autore, regia e montaggio.',
+        thumbnail: '/uploads/pigg-cover.png',
+        projectUrl: 'https://youtu.be/rc6GzCBa2LY',
+        tags: 'Cortometraggio, Montaggio, Color Grading',
+        featured: true,
+        order: 6,
+      },
+    ];
 
-      for (const p of defaultProjects) {
+    for (const p of defaultProjects) {
+      const existing = await prisma.project.findFirst({ where: { title: p.title } });
+      if (!existing) {
         await prisma.project.create({ data: p });
       }
     }

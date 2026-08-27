@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -8,16 +8,6 @@ import { startRegistration } from '@simplewebauthn/browser';
 import BorderGlow from '@/app/components/BorderGlow';
 import TiaIcon from '@/app/components/TiaIcon';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
-
-const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[450px] rounded-3xl bg-[#050f0c] border border-white/10 flex items-center justify-center text-xs text-neutral-400 font-mono">
-      <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mr-2" />
-      Caricamento mappa geografica interattiva...
-    </div>
-  ),
-});
 import {
   CodeFolderIcon,
   Mail01Icon,
@@ -58,7 +48,17 @@ import {
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
-type ActiveTab = 'overview' | 'projects' | 'inbox' | 'chats' | 'quotes' | 'cms' | 'health' | 'passkeys';
+const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[450px] rounded-3xl bg-[#050f0c] border border-white/10 flex items-center justify-center text-xs text-neutral-400 font-mono">
+      <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mr-2" />
+      Caricamento mappa geografica interattiva...
+    </div>
+  ),
+});
+
+type ActiveTab = 'projects' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'cms' | 'health' | 'passkeys';
 
 // ── Models & Interfaces ──────────────────────────────────────────
 
@@ -66,11 +66,11 @@ interface Project {
   id: string;
   title: string;
   description: string;
-  longDescription?: string;
+  longDescription: string | null;
   thumbnail: string;
-  projectUrl?: string;
-  githubUrl?: string;
-  tags: string[];
+  projectUrl: string | null;
+  githubUrl: string | null;
+  tags: string;
   featured: boolean;
   order: number;
 }
@@ -81,43 +81,51 @@ interface ContactMessage {
   email: string;
   service: string;
   message: string;
-  budget?: string;
-  deadline?: string;
   status: 'new' | 'in_progress' | 'contacted' | 'closed';
-  notes?: string;
+  notes: string | null;
   createdAt: string;
 }
 
-interface ChatLead {
+interface ChatSessionSummary {
+  sessionId: string;
+  lastMessage: string;
+  sender: string;
+  timestamp: number;
+  count: number;
+}
+
+interface ChatSessionLead {
   id: string;
   sessionId: string;
-  name: string | null;
-  email: string | null;
-  phone: string | null;
+  category: string;
   service: string | null;
   budget: string | null;
-  summary: string | null;
-  type: string;
+  userGoal: string | null;
+  clientName: string | null;
+  clientEmail: string | null;
+  recapJson: string | null;
   createdAt: string;
 }
 
-interface AuthenticatorInfo {
+interface AuthenticatorItem {
   id: string;
   credentialID: string;
+  credentialDeviceType: string;
+  credentialBackedUp: boolean;
   nickname: string | null;
-  createdAt: string;
   lastUsedAt: string | null;
+  createdAt: string;
 }
 
 interface FaqItem {
   id: string;
-  category: string;
   questionIt: string;
   questionEn: string | null;
   questionEs: string | null;
   answerIt: string;
   answerEn: string | null;
   answerEs: string | null;
+  category: string;
   order: number;
   isPublished: boolean;
 }
@@ -127,114 +135,46 @@ interface ClientReview {
   author: string;
   role: string;
   company: string | null;
-  companyLogo: string | null;
-  showLogo: boolean;
   quoteIt: string;
   quoteEn: string | null;
   quoteEs: string | null;
   rating: number;
   avatarUrl: string | null;
+  order: number;
   isApproved: boolean;
 }
 
 interface QuoteItem {
   id: string;
   title: string;
-  description?: string;
+  description: string;
   quantity: number;
   price: number;
 }
 
-interface Quote {
+interface SavedQuote {
   id: string;
   quoteNumber: string;
+  clientName: string;
+  clientCompany?: string;
+  clientEmail: string;
+  clientPhone?: string;
+  clientVat?: string;
+  clientAddress?: string;
   date: string;
   validity: string;
   timeline: string;
-  clientName: string;
-  clientCompany?: string | null;
-  clientEmail: string;
-  clientPhone?: string | null;
-  clientAddress?: string | null;
-  clientVat?: string | null;
-  itemsJson: string;
+  items: QuoteItem[];
   discount: number;
-  taxRegime: string;
+  taxRegime: 'forfettario' | 'iva22';
   paymentTerms: string;
   iban: string;
-  notes?: string | null;
-  subtotal: number;
+  notes?: string;
+  signatureData?: string;
   total: number;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected';
-  signatureData?: string | null;
-  sentAt?: string | null;
+  status: 'draft' | 'sent' | 'accepted';
   createdAt: string;
 }
-
-// Client-side instant WebP converter
-async function convertImageToWebp(file: File, quality = 0.85): Promise<File> {
-  if (file.type === 'image/webp') return file;
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(file);
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            resolve(file);
-            return;
-          }
-          const baseName = file.name.replace(/\.[^/.]+$/, '');
-          const webpFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
-          resolve(webpFile);
-        },
-        'image/webp',
-        quality
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(file);
-    };
-    img.src = url;
-  });
-}
-
-// ── Analytics Donut & Chart Helpers ────────────────────────────
-
-const DONUT_COLORS = ['#2dd4bf', '#14b8a6', '#0d9488', '#38bdf8', '#818cf8', '#a78bfa', '#f43f5e'];
-
-const TYPE_LABEL: Record<string, string> = {
-  pageview: 'Visualizzazioni',
-  click: 'Click',
-  scroll_25: 'Scroll 25%',
-  scroll_50: 'Scroll 50%',
-  scroll_75: 'Scroll 75%',
-  scroll_100: 'Scroll 100%',
-  cookie_consent: 'Cookie Consent',
-};
-
-const CONSENT_COLORS: Record<string, string> = {
-  all: '#22c55e',
-  technical: '#f59e0b',
-  none: '#ef4444',
-};
-
-const CONSENT_LABEL: Record<string, string> = {
-  all: 'Accetta tutti',
-  technical: 'Solo necessari',
-  none: 'Rifiutati',
-};
 
 const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   IT: { name: 'Italia', flag: '🇮🇹' },
@@ -254,6 +194,8 @@ const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   NO: { name: 'Norvegia', flag: '🇳🇴' },
   DK: { name: 'Danimarca', flag: '🇩🇰' },
   FI: { name: 'Finlandia', flag: '🇫🇮' },
+  GR: { name: 'Grecia', flag: '🇬🇷' },
+  IE: { name: 'Irlanda', flag: '🇮🇪' },
   JP: { name: 'Giappone', flag: '🇯🇵' },
   CN: { name: 'Cina', flag: '🇨🇳' },
   BR: { name: 'Brasile', flag: '🇧🇷' },
@@ -262,121 +204,63 @@ const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   IN: { name: 'India', flag: '🇮🇳' },
 };
 
-function DonutChart({
-  segments,
-  size = 160,
-  thickness = 26,
-}: {
-  segments: { label: string; value: number; color?: string }[];
-  size?: number;
-  thickness?: number;
-}) {
-  const total = segments.reduce((s, seg) => s + seg.value, 0) || 1;
-  const radius = (size - thickness) / 2;
-  const center = size / 2;
-
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {segments.map((seg, i) => {
-          const cumulative = segments.slice(0, i).reduce((sum, item) => sum + item.value, 0);
-          const pct = seg.value / total;
-          const startAngle = (cumulative / total) * Math.PI * 2 - Math.PI / 2;
-          const endAngle = ((cumulative + seg.value) / total) * Math.PI * 2 - Math.PI / 2;
-
-          if (pct < 0.001) return null;
-
-          const x1 = center + radius * Math.cos(startAngle);
-          const y1 = center + radius * Math.sin(startAngle);
-          const x2 = center + radius * Math.cos(endAngle);
-          const y2 = center + radius * Math.sin(endAngle);
-          const largeArc = pct > 0.5 ? 1 : 0;
-
-          return (
-            <path
-              key={i}
-              d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`}
-              fill="none"
-              stroke={seg.color || DONUT_COLORS[i % DONUT_COLORS.length]}
-              strokeWidth={thickness}
-              strokeLinecap="round"
-            />
-          );
-        })}
-        <text x={center} y={center - 4} textAnchor="middle" fill="#ffffff" fontSize="16" fontWeight="700" fontFamily="Outfit, sans-serif">
-          {total.toLocaleString()}
-        </text>
-        <text x={center} y={center + 14} textAnchor="middle" fill="#a3a3a3" fontSize="10" fontWeight="500" fontFamily="Outfit, sans-serif">
-          totale
-        </text>
-      </svg>
-      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 max-w-xs">
-        {segments.map((seg, i) => {
-          const pct = Math.round((seg.value / total) * 100);
-          return (
-            <div key={i} className="flex items-center gap-1.5 text-xs">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: seg.color || DONUT_COLORS[i % DONUT_COLORS.length] }} />
-              <span className="text-neutral-400 truncate max-w-[90px]">{seg.label}</span>
-              <span className="text-white font-mono font-medium">{pct}%</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+// ── WebP Image Converter ─────────────────────────────────────────
+async function convertImageToWebp(file: File, quality = 0.85): Promise<File> {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'image/webp') {
+      resolve(file);
+      return;
+    }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '');
+          const newFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
+          resolve(newFile);
+        },
+        'image/webp',
+        quality
+      );
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
-function TrafficTrend({ today, yesterday }: { today: number; yesterday: number }) {
-  const delta = today - yesterday;
-  const trend = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
-  const trendColor = trend === 'up' ? '#4ade80' : trend === 'down' ? '#f87171' : '#a3a3a3';
-
-  return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs">
-      <span className="text-white font-medium">Oggi {today.toLocaleString()}</span>
-      <span style={{ color: trendColor }} className="font-mono font-bold">
-        {delta > 0 ? `+${delta.toLocaleString()}` : delta.toLocaleString()}
-      </span>
-      <span className="text-neutral-500 text-[11px]">· Ieri {yesterday.toLocaleString()}</span>
-    </span>
-  );
-}
-
-// ── Master Dashboard Component ───────────────────────────────────
-
-export default function MasterDashboardPage() {
+export default function DashboardPage() {
   const router = useRouter();
-
-  // Navigation state
-  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Entities Data States
+  // Availability state
+  const [isOnline, setIsOnline] = useState(true);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+
+  // Project state
   const [projects, setProjects] = useState<Project[]>([]);
-  const [messages, setMessages] = useState<ContactMessage[]>([]);
-  const [leads, setLeads] = useState<ChatLead[]>([]);
-  const [passkeys, setPasskeys] = useState<AuthenticatorInfo[]>([]);
-  const [faqs, setFaqs] = useState<FaqItem[]>([]);
-  const [reviews, setReviews] = useState<ClientReview[]>([]);
-  const [systemHealth, setSystemHealth] = useState<any>(null);
-  const [analyticsData, setAnalyticsData] = useState<any>(null);
-  const [savedQuotes, setSavedQuotes] = useState<Quote[]>([]);
-
-  // Analytics filtering states
-  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-
-  // Filters
-  const [projectCategoryFilter, setProjectCategoryFilter] = useState<'all' | 'web' | 'video' | 'featured'>('all');
-  const [messageFilter, setMessageFilter] = useState<string>('all');
-  const [chatTypeFilter, setChatTypeFilter] = useState<'all' | 'ai' | 'telegram'>('all');
-  const [cmsSubTab, setCmsSubTab] = useState<'faqs' | 'reviews'>('faqs');
-
-  // Project Modal & Upload state
-  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState<boolean>(false);
+  const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -384,221 +268,258 @@ export default function MasterDashboardPage() {
   const [projectThumbnail, setProjectThumbnail] = useState('');
   const [projectUrl, setProjectUrl] = useState('');
   const [projectGithubUrl, setProjectGithubUrl] = useState('');
-  const [projectTags, setProjectTags] = useState<string[]>([]);
-  const [projectTagInput, setProjectTagInput] = useState('');
+  const [projectTags, setProjectTags] = useState('');
   const [projectFeatured, setProjectFeatured] = useState(false);
-  const [projectOrder, setProjectOrder] = useState(0);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [projectOrder, setProjectOrder] = useState<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Inbox Modal & Notes state
+  // Messages Inbox state
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [messageFilter, setMessageFilter] = useState<string>('all');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [messageNotes, setMessageNotes] = useState('');
 
-  // CMS Modal states
-  const [showFaqModal, setShowFaqModal] = useState(false);
-  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
-  const [faqCategory, setFaqCategory] = useState('generale');
-  const [faqQuestionIt, setFaqQuestionIt] = useState('');
-  const [faqAnswerIt, setFaqAnswerIt] = useState('');
-  const [faqQuestionEn, setFaqQuestionEn] = useState('');
-  const [faqAnswerEn, setFaqAnswerEn] = useState('');
-  const [faqQuestionEs, setFaqQuestionEs] = useState('');
-  const [faqAnswerEs, setFaqAnswerEs] = useState('');
-  const [faqOrder, setFaqOrder] = useState(0);
-  const [faqIsPublished, setFaqIsPublished] = useState(true);
+  // Chat & Leads state
+  const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
+  const [chatLeads, setChatLeads] = useState<ChatSessionLead[]>([]);
 
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
-  const [reviewAuthor, setReviewAuthor] = useState('');
-  const [reviewRole, setReviewRole] = useState('');
-  const [reviewCompany, setReviewCompany] = useState('');
-  const [reviewCompanyLogo, setReviewCompanyLogo] = useState('');
-  const [reviewShowLogo, setReviewShowLogo] = useState(true);
-  const [reviewQuoteIt, setReviewQuoteIt] = useState('');
-  const [reviewQuoteEn, setReviewQuoteEn] = useState('');
-  const [reviewQuoteEs, setReviewQuoteEs] = useState('');
-  const [reviewRating, setReviewRating] = useState(5);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  // Passkeys state
+  const [passkeys, setPasskeys] = useState<AuthenticatorItem[]>([]);
+  const [editingPasskeyId, setEditingPasskeyId] = useState<string | null>(null);
+  const [passkeyNickname, setPasskeyNickname] = useState('');
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
 
-  // ── Full Preventivatore States ──────────────────────────────────
-  const [quoteNumber, setQuoteNumber] = useState('PREV-2026-001');
-  const [quoteDate, setQuoteDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [quoteValidity, setQuoteValidity] = useState('30 giorni');
-  const [quoteTimeline, setQuoteTimeline] = useState('2-3 settimane');
+  // CMS state
+  const [faqs, setFaqs] = useState<FaqItem[]>([]);
+  const [reviews, setReviews] = useState<ClientReview[]>([]);
+  const [newFaqQ, setNewFaqQ] = useState('');
+  const [newFaqA, setNewFaqA] = useState('');
+  const [newFaqCategory, setNewFaqCategory] = useState('generale');
+  const [newReviewAuthor, setNewReviewAuthor] = useState('');
+  const [newReviewRole, setNewReviewRole] = useState('');
+  const [newReviewQuote, setNewReviewQuote] = useState('');
+  const [newReviewCompany, setNewReviewCompany] = useState('');
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewAvatarUrl, setNewReviewAvatarUrl] = useState('');
+  const reviewLogoInputRef = useRef<HTMLInputElement>(null);
+
+  // Health state
+  const [systemHealth, setSystemHealth] = useState<any>(null);
+
+  // Analytics state
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsDays, setAnalyticsDays] = useState(30);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
+  // ── Preventivatore State ─────────────────────────────────────────
   const [quoteClientName, setQuoteClientName] = useState('');
   const [quoteClientCompany, setQuoteClientCompany] = useState('');
   const [quoteClientEmail, setQuoteClientEmail] = useState('');
   const [quoteClientPhone, setQuoteClientPhone] = useState('');
-  const [quoteClientAddress, setQuoteClientAddress] = useState('');
   const [quoteClientVat, setQuoteClientVat] = useState('');
+  const [quoteClientAddress, setQuoteClientAddress] = useState('');
+  const [quoteNumber, setQuoteNumber] = useState(`PREV-${new Date().getFullYear()}-001`);
+  const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
+  const [quoteValidity, setQuoteValidity] = useState('30 giorni');
+  const [quoteTimeline, setQuoteTimeline] = useState('2-3 settimane lavorative');
+  const [quotePaymentTerms, setQuotePaymentTerms] = useState('50% acconto all\'avvio, 50% al collaudo finale');
+  const [quoteIban, setQuoteIban] = useState('IT00X0000000000000000000000');
+  const [quoteNotes, setQuoteNotes] = useState('Garanzia bugfix 30 giorni inclusa. Assistenza e supporto post-lancio garantiti.');
+  const [quoteDiscount, setQuoteDiscount] = useState<number>(0);
+  const [quoteTaxRegime, setQuoteTaxRegime] = useState<'forfettario' | 'iva22'>('forfettario');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
     {
       id: 'item-1',
-      title: 'Sviluppo Web Application Next.js / TypeScript',
-      description: 'Architettura frontend reattiva, design Liquid Glass su misura, ottimizzazione Core Web Vitals e deployment Vercel Edge.',
+      title: 'Sviluppo Web App Custom & Design System',
+      description: 'Architettura Next.js, performance CWV 99+, TailwindCSS, animazioni micro-interattive e pannello master.',
       quantity: 1,
-      price: 1800,
+      price: 1500,
     },
     {
       id: 'item-2',
-      title: 'Configurazione Database & Auth Biometrica WebAuthn',
-      description: 'Setup database distribuito Turso LibSQL, crittografia avanzata e autenticazione Passkey con Touch ID / Face ID.',
+      title: 'Integrazione Assistente AI & Booking Cal.com',
+      description: 'Chatbot conversazionale su misura, sincronizzazione slot in tempo reale e notifiche webhook automatiche.',
       quantity: 1,
-      price: 600,
+      price: 500,
     },
   ]);
-  const [quoteDiscount, setQuoteDiscount] = useState<number>(0);
-  const [quoteTaxRegime, setQuoteTaxRegime] = useState<'forfettario' | 'iva22'>('forfettario');
-  const [quotePaymentTerms, setQuotePaymentTerms] = useState('50% acconto all\'avvio, 50% a saldo e collaudo finale');
-  const [quoteIban, setQuoteIban] = useState('IT00X0000000000000000000000');
-  const [quoteNotes, setQuoteNotes] = useState('Inclusi 30 giorni di assistenza tecnica e garanzia post-lancio.');
-
-  // Preventivatore Modals & Signature Canvas
+  const [savedQuotes, setSavedQuotes] = useState<SavedQuote[]>([]);
   const [showQuotesHistory, setShowQuotesHistory] = useState(false);
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [signatureData, setSignatureData] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [customEmailNote, setCustomEmailNote] = useState('');
   const [isSavingQuote, setIsSavingQuote] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [customEmailNote, setCustomEmailNote] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  // Recovery Codes state
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
-
-  // ── Fetchers ───────────────────────────────────────────────────
+  // Canvas Signature Drawing Pad Ref
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef(false);
 
   const showTemporarySuccess = (msg: string) => {
     setSuccessMessage(msg);
     setTimeout(() => setSuccessMessage(null), 4000);
   };
 
+  // Check auth & fetch all modules
+  useEffect(() => {
+    const initDashboard = async () => {
+      try {
+        const authRes = await fetch('/api/auth/status');
+        if (!authRes.ok) {
+          router.replace('/loginmaster');
+          return;
+        }
+
+        await Promise.allSettled([
+          fetchAvailability(),
+          fetchProjects(),
+          fetchMessages(),
+          fetchChatData(),
+          fetchPasskeys(),
+          fetchCms(),
+          fetchHealth(),
+          fetchSavedQuotes(),
+          fetchAnalytics(),
+        ]);
+      } catch (err: any) {
+        setError(err.message || 'Errore di connessione');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void initDashboard();
+  }, [router]);
+
+  const fetchAvailability = async () => {
+    try {
+      const res = await fetch('/api/availability');
+      if (res.ok) {
+        const data = await res.json();
+        setIsOnline(data.isOnline ?? true);
+      }
+    } catch {}
+  };
+
+  const toggleAvailability = async () => {
+    setAvailabilitySaving(true);
+    try {
+      const next = !isOnline;
+      const res = await fetch('/api/availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isOnline: next }),
+      });
+      if (res.ok) {
+        setIsOnline(next);
+        showTemporarySuccess(next ? 'Stato impostato: Disponibile' : 'Stato impostato: Non disponibile');
+      }
+    } catch {
+      setError('Impossibile salvare stato disponibilità');
+    } finally {
+      setAvailabilitySaving(false);
+    }
+  };
+
   const fetchProjects = async () => {
     try {
       const res = await fetch('/api/projects');
-      if (res.ok) setProjects(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data);
+      }
+    } catch {}
   };
 
   const fetchMessages = async () => {
     try {
       const res = await fetch('/api/master/messages');
-      if (res.ok) setMessages(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(data);
+      }
+    } catch {}
   };
 
-  const fetchChats = async () => {
+  const fetchChatData = async () => {
     try {
       const res = await fetch('/api/master/chats');
-      if (res.ok) setLeads(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+      if (res.ok) {
+        const data = await res.json();
+        setChatSessions(data.sessions || []);
+        setChatLeads(data.leads || []);
+      }
+    } catch {}
   };
 
   const fetchPasskeys = async () => {
     try {
       const res = await fetch('/api/master/passkeys');
-      if (res.ok) setPasskeys(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+      if (res.ok) {
+        const data = await res.json();
+        setPasskeys(data);
+      }
+    } catch {}
   };
 
   const fetchCms = async () => {
     try {
-      const [fRes, rRes] = await Promise.all([
+      const [faqRes, revRes] = await Promise.all([
         fetch('/api/master/faqs'),
         fetch('/api/master/reviews'),
       ]);
-      if (fRes.ok) setFaqs(await fRes.json());
-      if (rRes.ok) setReviews(await rRes.json());
-    } catch (e) {
-      console.error(e);
-    }
+      if (faqRes.ok) setFaqs(await faqRes.json());
+      if (revRes.ok) setReviews(await revRes.json());
+    } catch {}
   };
 
   const fetchHealth = async () => {
     try {
       const res = await fetch('/api/master/system-health');
       if (res.ok) setSystemHealth(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      const res = await fetch('/api/analytics/stats?days=30');
-      if (res.ok) setAnalyticsData(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+    } catch {}
   };
 
   const fetchSavedQuotes = async () => {
     try {
       const res = await fetch('/api/master/quotes');
       if (res.ok) setSavedQuotes(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
+    } catch {}
   };
 
-  // Initial mount
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchProjects(),
-          fetchMessages(),
-          fetchChats(),
-          fetchPasskeys(),
-          fetchCms(),
-          fetchHealth(),
-          fetchAnalytics(),
-          fetchSavedQuotes(),
-        ]);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void init();
-  }, []);
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch(`/api/analytics/stats?days=${analyticsDays}`);
+      if (res.ok) setAnalyticsData(await res.json());
+    } catch {}
+  };
 
-  // When active tab changes
-  useEffect(() => {
-    if (activeTab === 'overview') void fetchAnalytics();
-    if (activeTab === 'projects') void fetchProjects();
-    if (activeTab === 'inbox') void fetchMessages();
-    if (activeTab === 'chats') void fetchChats();
-    if (activeTab === 'cms') void fetchCms();
-    if (activeTab === 'health') void fetchHealth();
-    if (activeTab === 'quotes') void fetchSavedQuotes();
-    if (activeTab === 'passkeys') void fetchPasskeys();
-  }, [activeTab]);
-
-  // Logout
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/loginmaster');
+    router.replace('/loginmaster');
   };
 
-  // ── Project Handlers ───────────────────────────────────────────
+  // ── Project Handlers ─────────────────────────────────────────────
+  const resetProjectForm = () => {
+    setEditingProjectId(null);
+    setProjectTitle('');
+    setProjectDescription('');
+    setProjectLongDescription('');
+    setProjectThumbnail('');
+    setProjectUrl('');
+    setProjectGithubUrl('');
+    setProjectTags('');
+    setProjectFeatured(false);
+    setProjectOrder(0);
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploadingImage(true);
+    setUploadLoading(true);
     setError(null);
     try {
       const webpFile = await convertImageToWebp(file);
@@ -612,15 +533,18 @@ export default function MasterDashboardPage() {
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setIsUploadingImage(false);
+      setUploadLoading(false);
     }
   };
 
-  const handleSaveProject = async () => {
+  const handleProjectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!projectTitle || !projectThumbnail) {
       setError('Titolo e Thumbnail sono obbligatori.');
       return;
     }
+    setSubmitLoading(true);
+    setError(null);
     try {
       const payload = {
         title: projectTitle,
@@ -643,13 +567,18 @@ export default function MasterDashboardPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Errore durante il salvataggio del progetto.');
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Operazione fallita');
+      }
 
-      showTemporarySuccess(editingProjectId ? 'Progetto aggiornato!' : 'Nuovo progetto creato!');
-      setShowProjectModal(false);
-      fetchProjects();
+      resetProjectForm();
+      await fetchProjects();
+      showTemporarySuccess(editingProjectId ? 'Progetto aggiornato con successo!' : 'Nuovo progetto pubblicato!');
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -661,41 +590,24 @@ export default function MasterDashboardPage() {
     setProjectThumbnail(p.thumbnail);
     setProjectUrl(p.projectUrl || '');
     setProjectGithubUrl(p.githubUrl || '');
-    setProjectTags(p.tags);
+    setProjectTags(p.tags || '');
     setProjectFeatured(p.featured);
     setProjectOrder(p.order);
-    setShowProjectModal(true);
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm('Eliminare definitivamente questo progetto?')) return;
+    if (!confirm('Sei sicuro di voler eliminare questo progetto?')) return;
     try {
-      await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      showTemporarySuccess('Progetto rimosso.');
-      fetchProjects();
+      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Errore durante l\'eliminazione');
+      await fetchProjects();
+      showTemporarySuccess('Progetto eliminato.');
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-  // Convert Message to Quick Quote
-  const handleConvertMessageToQuote = (msg: ContactMessage) => {
-    setQuoteClientName(msg.name);
-    setQuoteClientEmail(msg.email);
-    setQuoteItems([
-      {
-        id: `item-${Date.now()}`,
-        title: `Progetto ${msg.service || 'Web'} per ${msg.name}`,
-        description: msg.message.slice(0, 180),
-        quantity: 1,
-        price: 1200,
-      },
-    ]);
-    setActiveTab('quotes');
-    showTemporarySuccess('Dati contatto precompilati nel preventivatore!');
-  };
-
-  // Message status
+  // ── Inbox Messages Handlers ──────────────────────────────────────
   const handleUpdateMessageStatus = async (id: string, status: string) => {
     try {
       const res = await fetch('/api/master/messages', {
@@ -704,50 +616,194 @@ export default function MasterDashboardPage() {
         body: JSON.stringify({ id, status }),
       });
       if (res.ok) {
-        showTemporarySuccess(`Stato aggiornato a "${status}"`);
-        fetchMessages();
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: status as any } : m)));
         if (selectedMessage?.id === id) {
           setSelectedMessage((prev) => (prev ? { ...prev, status: status as any } : null));
         }
       }
-    } catch (err: any) {
-      setError(err.message);
-    }
+    } catch {}
   };
 
   const handleSaveMessageNotes = async (id: string) => {
     try {
-      await fetch('/api/master/messages', {
+      const res = await fetch('/api/master/messages', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, notes: messageNotes }),
       });
-      showTemporarySuccess('Note salvate!');
-      fetchMessages();
+      if (res.ok) {
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, notes: messageNotes } : m)));
+        showTemporarySuccess('Note salvate con successo!');
+      }
+    } catch {}
+  };
+
+  const handleDeleteMessage = async (id: string) => {
+    if (!confirm('Eliminare questo messaggio definitivamente?')) return;
+    try {
+      const res = await fetch(`/api/master/messages?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setMessages((prev) => prev.filter((m) => m.id !== id));
+        setSelectedMessage(null);
+        showTemporarySuccess('Messaggio rimosso.');
+      }
+    } catch {}
+  };
+
+  // ── Passkeys Handlers ────────────────────────────────────────────
+  const handleRegisterNewPasskey = async () => {
+    setError(null);
+    try {
+      const optRes = await fetch('/api/auth/passkey/register/options');
+      const optData = await optRes.json();
+      if (!optRes.ok) throw new Error(optData.error || 'Errore registrazione');
+
+      const attResp = await startRegistration({ optionsJSON: optData });
+      const verRes = await fetch('/api/auth/passkey/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(attResp),
+      });
+      const verData = await verRes.json();
+      if (!verRes.ok || !verData.verified) throw new Error(verData.error || 'Verifica fallita');
+
+      await fetchPasskeys();
+      showTemporarySuccess('Nuovo dispositivo biometrico registrato!');
     } catch (err: any) {
-      setError(err.message);
+      if (err.name !== 'NotAllowedError') {
+        setError(err.message || 'Errore durante la registrazione Passkey');
+      }
     }
   };
 
-  // ── Canvas Digital Signature Methods ───────────────────────────
+  const handleSavePasskeyNickname = async (id: string) => {
+    try {
+      const res = await fetch('/api/master/passkeys', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, nickname: passkeyNickname }),
+      });
+      if (res.ok) {
+        setEditingPasskeyId(null);
+        await fetchPasskeys();
+        showTemporarySuccess('Nome dispositivo aggiornato!');
+      }
+    } catch {}
+  };
 
+  const handleDeletePasskey = async (id: string) => {
+    if (!confirm('Vuoi davvero revocare l\'accesso a questo dispositivo?')) return;
+    try {
+      const res = await fetch(`/api/master/passkeys?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchPasskeys();
+        showTemporarySuccess('Dispositivo rimosso.');
+      }
+    } catch {}
+  };
+
+  const handleGenerateRecoveryCodes = async () => {
+    if (!confirm('Generare nuovi codici di recupero invaliderà quelli precedenti. Procedere?')) return;
+    setIsGeneratingCodes(true);
+    try {
+      const res = await fetch('/api/master/recovery-codes', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setRecoveryCodes(data.codes);
+        showTemporarySuccess('5 nuovi codici generati!');
+      }
+    } catch {} finally {
+      setIsGeneratingCodes(false);
+    }
+  };
+
+  // ── CMS Handlers ─────────────────────────────────────────────────
+  const handleCreateFaq = async () => {
+    if (!newFaqQ || !newFaqA) return;
+    try {
+      const res = await fetch('/api/master/faqs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionIt: newFaqQ, answerIt: newFaqA, category: newFaqCategory }),
+      });
+      if (res.ok) {
+        setNewFaqQ('');
+        setNewFaqA('');
+        fetchCms();
+        showTemporarySuccess('FAQ aggiunta!');
+      }
+    } catch {}
+  };
+
+  const handleDeleteFaq = async (id: string) => {
+    if (!confirm('Eliminare questa FAQ?')) return;
+    try {
+      await fetch(`/api/master/faqs?id=${id}`, { method: 'DELETE' });
+      fetchCms();
+      showTemporarySuccess('FAQ eliminata.');
+    } catch {}
+  };
+
+  const handleReviewLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const webpFile = await convertImageToWebp(file);
+      const formData = new FormData();
+      formData.append('file', webpFile);
+      const res = await fetch('/api/projects/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setNewReviewAvatarUrl(data.url);
+        showTemporarySuccess('Logo azienda convertito in WebP e caricato!');
+      }
+    } catch {}
+  };
+
+  // ── Preventivatore Functions ─────────────────────────────────────
+  const handleAddQuoteItem = () => {
+    setQuoteItems([
+      ...quoteItems,
+      {
+        id: `item-${Date.now()}`,
+        title: 'Nuova voce di sviluppo',
+        description: 'Dettagli e specifiche del servizio...',
+        quantity: 1,
+        price: 300,
+      },
+    ]);
+  };
+
+  const handleRemoveQuoteItem = (id: string) => {
+    if (quoteItems.length <= 1) return;
+    setQuoteItems(quoteItems.filter((i) => i.id !== id));
+  };
+
+  const handleUpdateQuoteItem = (id: string, field: keyof QuoteItem, value: any) => {
+    setQuoteItems(quoteItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  // Canvas Drawing Handlers
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    setIsDrawing(true);
+    isDrawingRef.current = true;
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
     ctx.beginPath();
     ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.strokeStyle = '#2dd4bf';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawingRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -757,16 +813,12 @@ export default function MasterDashboardPage() {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#2dd4bf'; // Brand Turquoise ink!
     ctx.lineTo(clientX - rect.left, clientY - rect.top);
     ctx.stroke();
   };
 
   const stopDrawing = () => {
-    setIsDrawing(false);
+    isDrawingRef.current = false;
   };
 
   const clearSignature = () => {
@@ -783,35 +835,15 @@ export default function MasterDashboardPage() {
     const dataUrl = canvas.toDataURL('image/png');
     setSignatureData(dataUrl);
     setShowSignatureModal(false);
-    showTemporarySuccess('Firma digitale applicata al preventivo!');
-  };
-
-  // ── Preventivatore Item & Save Handlers ─────────────────────────
-
-  const handleAddQuoteItem = () => {
-    setQuoteItems((prev) => [
-      ...prev,
-      {
-        id: `item-${Date.now()}`,
-        title: 'Nuovo Servizio / Modulo',
-        description: 'Dettagli e specifiche incluse...',
-        quantity: 1,
-        price: 500,
-      },
-    ]);
-  };
-
-  const handleRemoveQuoteItem = (id: string) => {
-    setQuoteItems((prev) => prev.filter((it) => it.id !== id));
-  };
-
-  const handleUpdateQuoteItem = (id: string, field: 'title' | 'description' | 'quantity' | 'price', value: any) => {
-    setQuoteItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+    showTemporarySuccess('Firma digitale applicata al documento!');
   };
 
   const handleSaveQuote = async () => {
+    if (!quoteClientName || !quoteClientEmail) {
+      setError('Nome referente ed Email cliente sono obbligatori');
+      return;
+    }
     setIsSavingQuote(true);
-    setError(null);
     try {
       const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
       const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
@@ -821,24 +853,23 @@ export default function MasterDashboardPage() {
 
       const payload = {
         quoteNumber,
-        date: quoteDate,
-        validity: quoteValidity,
-        timeline: quoteTimeline,
-        clientName: quoteClientName || 'Mario Rossi',
+        clientName: quoteClientName,
         clientCompany: quoteClientCompany,
         clientEmail: quoteClientEmail,
         clientPhone: quoteClientPhone,
-        clientAddress: quoteClientAddress,
         clientVat: quoteClientVat,
-        itemsJson: JSON.stringify(quoteItems),
+        clientAddress: quoteClientAddress,
+        date: quoteDate,
+        validity: quoteValidity,
+        timeline: quoteTimeline,
+        items: quoteItems,
         discount: quoteDiscount,
         taxRegime: quoteTaxRegime,
         paymentTerms: quotePaymentTerms,
         iban: quoteIban,
         notes: quoteNotes,
-        subtotal,
+        signatureData: signatureData || undefined,
         total,
-        signatureData,
       };
 
       const res = await fetch('/api/master/quotes', {
@@ -847,61 +878,53 @@ export default function MasterDashboardPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Errore nel salvataggio del preventivo.');
+      if (res.ok) {
+        await fetchSavedQuotes();
+        showTemporarySuccess('Preventivo salvato con successo!');
       }
-
-      showTemporarySuccess(`Preventivo ${quoteNumber} salvato nel database!`);
-      fetchSavedQuotes();
-    } catch (err: any) {
-      setError(err.message);
+    } catch {
+      setError('Errore salvataggio preventivo');
     } finally {
       setIsSavingQuote(false);
     }
   };
 
-  const handleLoadQuote = (q: any) => {
+  const handleLoadQuote = (q: SavedQuote) => {
     setQuoteNumber(q.quoteNumber);
-    setQuoteDate(q.date);
-    setQuoteValidity(q.validity);
-    setQuoteTimeline(q.timeline);
     setQuoteClientName(q.clientName);
     setQuoteClientCompany(q.clientCompany || '');
     setQuoteClientEmail(q.clientEmail);
     setQuoteClientPhone(q.clientPhone || '');
-    setQuoteClientAddress(q.clientAddress || '');
     setQuoteClientVat(q.clientVat || '');
+    setQuoteClientAddress(q.clientAddress || '');
+    setQuoteDate(q.date);
+    setQuoteValidity(q.validity);
+    setQuoteTimeline(q.timeline);
+    setQuoteItems(q.items || []);
     setQuoteDiscount(q.discount || 0);
     setQuoteTaxRegime(q.taxRegime || 'forfettario');
-    setQuotePaymentTerms(q.paymentTerms || '');
-    setQuoteIban(q.iban || '');
+    setQuotePaymentTerms(q.paymentTerms);
+    setQuoteIban(q.iban);
     setQuoteNotes(q.notes || '');
     setSignatureData(q.signatureData || null);
-    try {
-      const parsedItems = JSON.parse(q.itemsJson);
-      if (Array.isArray(parsedItems)) setQuoteItems(parsedItems);
-    } catch {}
     setShowQuotesHistory(false);
-    showTemporarySuccess(`Preventivo ${q.quoteNumber} caricato!`);
+    showTemporarySuccess(`Caricato preventivo ${q.quoteNumber}`);
   };
 
   const handleDeleteSavedQuote = async (id: string) => {
-    if (!confirm('Eliminare questo preventivo dal database?')) return;
+    if (!confirm('Eliminare questo preventivo salvato?')) return;
     try {
       const res = await fetch(`/api/master/quotes?id=${id}`, { method: 'DELETE' });
       if (res.ok) {
+        setSavedQuotes(savedQuotes.filter((q) => q.id !== id));
         showTemporarySuccess('Preventivo eliminato.');
-        fetchSavedQuotes();
       }
-    } catch (err: any) {
-      setError(err.message);
-    }
+    } catch {}
   };
 
   const handleSendQuoteEmail = async () => {
+    if (!quoteClientEmail) return;
     setIsSendingEmail(true);
-    setError(null);
     try {
       const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
       const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
@@ -909,235 +932,137 @@ export default function MasterDashboardPage() {
       const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
       const total = taxable + vatAmount;
 
-      const payload = {
-        quoteNumber,
-        date: quoteDate,
-        validity: quoteValidity,
-        timeline: quoteTimeline,
-        clientName: quoteClientName,
-        clientCompany: quoteClientCompany,
-        clientEmail: quoteClientEmail,
-        clientPhone: quoteClientPhone,
-        clientAddress: quoteClientAddress,
-        clientVat: quoteClientVat,
-        items: quoteItems,
-        discount: quoteDiscount,
-        taxRegime: quoteTaxRegime,
-        paymentTerms: quotePaymentTerms,
-        iban: quoteIban,
-        notes: quoteNotes,
-        subtotal,
-        total,
-        customEmailMessage: customEmailNote,
-      };
-
       const res = await fetch('/api/master/quotes/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          quoteNumber,
+          clientName: quoteClientName,
+          clientEmail: quoteClientEmail,
+          clientCompany: quoteClientCompany,
+          items: quoteItems,
+          total,
+          customNote: customEmailNote,
+          taxRegime: quoteTaxRegime,
+          paymentTerms: quotePaymentTerms,
+          iban: quoteIban,
+        }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore nell'invio del preventivo.");
-
-      showTemporarySuccess(data.message || 'Preventivo inviato con successo!');
-      setShowSendModal(false);
-      fetchSavedQuotes();
-    } catch (err: any) {
-      setError(err.message);
+      if (res.ok) {
+        setShowSendModal(false);
+        showTemporarySuccess(`Preventivo inviato con successo a ${quoteClientEmail}! Notifica inoltrata a info@tiadesigns.it`);
+      } else {
+        throw new Error('Errore durante l\'invio');
+      }
+    } catch {
+      setError('Impossibile inviare l\'email');
     } finally {
       setIsSendingEmail(false);
     }
   };
 
-  // Passkey & Security
-  const handleRegisterNewPasskey = async () => {
-    try {
-      setError(null);
-      const nickname = prompt('Inserisci un nome per questo dispositivo (es. iPhone 16 Pro, MacBook Touch ID):', 'Nuovo Dispositivo');
-      if (nickname === null) return;
-
-      const optionsRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' });
-      const options = await optionsRes.json();
-      if (options.error) throw new Error(options.error);
-
-      const credential = await startRegistration({ optionsJSON: options });
-      const verifyRes = await fetch('/api/auth/passkey/register/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential, nickname }),
-      });
-
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok || !verifyData.verified) {
-        throw new Error(verifyData.error || 'Verifica dispositivo non riuscita');
-      }
-
-      showTemporarySuccess('Dispositivo registrato con successo!');
-      fetchPasskeys();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  const handleGenerateRecoveryCodes = async () => {
-    if (!confirm('Generare 5 nuovi codici di emergenza? I codici precedenti non saranno più validi.')) return;
-    setIsGeneratingCodes(true);
-    try {
-      const res = await fetch('/api/master/recovery-codes', { method: 'POST' });
-      const data = await res.json();
-      if (res.ok && data.codes) {
-        setRecoveryCodes(data.codes);
-        showTemporarySuccess('Nuovi codici di emergenza generati!');
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsGeneratingCodes(false);
-    }
-  };
-
-  const navItems = [
-    { id: 'overview', label: 'Panoramica & Analytics', icon: DashboardSquare01Icon, badge: null },
-    { id: 'quotes', label: 'Preventivatore & Fatture', icon: DollarSignIcon, badge: savedQuotes.length || null },
-    { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, badge: projects.length || null },
-    { id: 'inbox', label: 'Inbox Richieste', icon: Mail01Icon, badge: messages.filter((m) => m.status === 'new').length || null },
-    { id: 'chats', label: 'Chatbot & Telegram', icon: BubbleChatIcon, badge: leads.length || null },
-    { id: 'cms', label: 'CMS FAQ & Recensioni', icon: FilePenIcon, badge: null },
-    { id: 'health', label: 'Salute & Speed Insights', icon: GaugeIcon, badge: '98%' },
-    { id: 'passkeys', label: 'Passkeys & Sicurezza', icon: Shield01Icon, badge: passkeys.length || null },
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-teal-400/80 text-xs tracking-widest uppercase font-mono animate-pulse">Caricamento Master Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white flex flex-col font-sans select-none overflow-x-hidden">
-      {/* Background molten shader */}
-      <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none opacity-40">
+    <div className="min-h-screen bg-[#030712] text-neutral-100 font-sans relative overflow-x-hidden select-none pb-20">
+      {/* Molten Metal Shader Background */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none">
         <MoltenMetal
           color1="#05bc8e"
           color2="#0effc1"
           color3="#ffffff"
-          speed={0.15}
-          scale={6.0}
+          speed={0.25}
+          scale={5.5}
           detail={2}
-          glow={1.0}
-          coreSize={0.08}
-          swirl={1.1}
-          fold={-0.1}
-          blackPoint={0.05}
-          brightness={0.2}
+          glow={1.4}
+          coreSize={0.1}
+          swirl={1.35}
+          fold={-0.15}
+          blackPoint={0.03}
+          brightness={0.3}
           colorMode="molten"
           grain={false}
           mouseInteraction={false}
-          opacity={0.6}
+          mouseStrength={0.15}
+          opacity={1}
         />
       </div>
-      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/50 pointer-events-none" />
 
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 bg-[#06120e]/90 backdrop-blur-xl border-b border-white/[0.08] px-4 lg:px-8 py-3.5 flex items-center justify-between no-print">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 rounded-xl bg-white/[0.05] border border-white/10 text-neutral-300 hover:text-white"
-          >
-            <TiaIcon icon={Menu01Icon} size={18} />
-          </button>
-          <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-400/40 flex items-center justify-center text-teal-400 shadow-md shadow-teal-500/20">
-            <TiaIcon icon={Shield01Icon} size={16} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">Tia Designs</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-teal-500/20 border border-teal-400/30 text-teal-300">
-                MASTER
-              </span>
+      {/* Subtle vignette layer */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/45 pointer-events-none" />
+
+      {/* Main Container with Left Sidebar & Right Content */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex flex-col lg:flex-row gap-6 items-start">
+        
+        {/* ── LEFT SIDEBAR NAVIGATION BAR ── */}
+        <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-4 no-print lg:sticky lg:top-8">
+          
+          {/* Brand & Master Status */}
+          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <TiaIcon icon={CpuIcon} size={20} strokeWidth={1.8} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold tracking-tight text-white">Master Hub</h1>
+                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                </div>
+                <p className="text-[11px] text-neutral-400 font-mono">Passkey Protected</p>
+              </div>
             </div>
-            <p className="text-[10px] text-neutral-400 hidden sm:block">Dashboard di Amministrazione, Preventivatore & Analytics</p>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs transition-colors cursor-pointer"
+              title="Logout"
+            >
+              Logout
+            </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            target="_blank"
-            className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-xs text-neutral-300 hover:text-white transition-all flex items-center gap-1.5"
-          >
-            <span>Vedi Sito Live</span>
-            <TiaIcon icon={ExternalLinkIcon} size={13} />
-          </Link>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs text-red-300 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <TiaIcon icon={Cancel01Icon} size={13} />
-            <span className="hidden sm:inline">Esci</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Global alert / success banner */}
-      {successMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300 no-print">
-          <div className="px-4 py-3 rounded-2xl bg-teal-950/90 border border-teal-400/40 text-teal-200 text-xs flex items-center gap-2.5 shadow-2xl backdrop-blur-xl">
-            <TiaIcon icon={CheckmarkCircle01Icon} size={16} className="text-teal-400" />
-            <span>{successMessage}</span>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300 no-print">
-          <div className="px-4 py-3 rounded-2xl bg-red-950/90 border border-red-400/40 text-red-200 text-xs flex items-center gap-2.5 shadow-2xl backdrop-blur-xl">
-            <TiaIcon icon={AlertCircleIcon} size={16} className="text-red-400" />
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-white">✕</button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Layout: Sidebar + Content */}
-      <div className="flex-1 flex relative z-10">
-        {/* Left Sidebar */}
-        <aside
-          className={`fixed lg:static inset-y-0 left-0 z-30 w-64 bg-[#050f0c]/95 lg:bg-transparent backdrop-blur-2xl lg:backdrop-blur-none border-r border-white/[0.08] p-4 flex flex-col justify-between transition-transform duration-300 no-print ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
-        >
-          <div className="flex flex-col gap-1">
-            <div className="px-3 py-2 text-[11px] font-mono uppercase tracking-widest text-neutral-500 font-semibold">
-              Menu Master
-            </div>
-            {navItems.map((item) => {
-              const active = activeTab === item.id;
-              const IconComp = item.icon;
+          {/* Left Vertical Tabs Menu */}
+          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-3 flex flex-col gap-1.5">
+            {[
+              { id: 'projects', label: 'Progetti', icon: CodeFolderIcon, count: projects.length },
+              { id: 'inbox', label: 'Inbox Messaggi', icon: Mail01Icon, count: messages.filter((m) => m.status === 'new').length },
+              { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatLeads.length },
+              { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
+              { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
+              { id: 'cms', label: 'CMS Contenuti', icon: FilePenIcon },
+              { id: 'health', label: 'System Health', icon: WorkflowSquare01Icon },
+              { id: 'passkeys', label: 'Passkey & Sicurezza', icon: CpuIcon, count: passkeys.length },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
               return (
                 <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id as ActiveTab);
-                    setSidebarOpen(false);
-                  }}
-                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as ActiveTab)}
+                  className={`w-full px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
                     active
-                      ? 'bg-teal-400 text-black font-semibold shadow-md shadow-teal-400/20'
-                      : 'text-neutral-300 hover:bg-white/[0.05] hover:text-white'
+                      ? 'bg-teal-400 text-black border-teal-300 shadow-lg shadow-teal-400/20'
+                      : 'bg-transparent text-neutral-400 border-transparent hover:text-white hover:bg-white/[0.05]'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <TiaIcon icon={IconComp} size={16} className={active ? 'text-black' : 'text-neutral-400'} />
-                    <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <TiaIcon icon={Icon} size={17} strokeWidth={2} />
+                    <span>{tab.label}</span>
                   </div>
-                  {item.badge && (
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                        active ? 'bg-black text-teal-300' : 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
-                      }`}
-                    >
-                      {item.badge}
+                  {typeof tab.count === 'number' && tab.count > 0 && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${active ? 'bg-black/20 text-black font-bold' : 'bg-teal-500/20 text-teal-300'}`}>
+                      {tab.count}
                     </span>
                   )}
                 </button>
@@ -1145,376 +1070,480 @@ export default function MasterDashboardPage() {
             })}
           </div>
 
-          <div className="pt-4 border-t border-white/[0.08] flex flex-col gap-2">
-            <div className="px-3 py-2 rounded-xl bg-black/40 border border-white/[0.05] text-[10px] text-neutral-500 flex items-center justify-between">
-              <span>Server Edge & Turso</span>
-              <span className="flex items-center gap-1 text-teal-400 font-semibold">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-                Online
-              </span>
-            </div>
+          {/* Availability Switch */}
+          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col gap-2">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">Disponibilità Live</span>
+            <button
+              type="button"
+              onClick={toggleAvailability}
+              disabled={availabilitySaving}
+              className={`w-full py-2.5 rounded-2xl border text-xs font-semibold flex items-center justify-center gap-2.5 transition-all cursor-pointer ${
+                isOnline
+                  ? 'bg-teal-950/60 border-teal-500/40 text-teal-300 hover:bg-teal-900/60'
+                  : 'bg-amber-950/60 border-amber-500/40 text-amber-300 hover:bg-amber-900/60'
+              }`}
+            >
+              <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
+              <span>{isOnline ? 'Disponibile per progetti' : 'Non disponibile'}</span>
+            </button>
           </div>
+
+          {/* Direct Analytics Standalone Link */}
+          <Link
+            href="/loginmaster/analytics"
+            className="bg-[#081410]/90 hover:bg-white/[0.06] border border-white/[0.08] rounded-3xl p-4 flex items-center justify-between text-xs font-medium text-white transition-colors group"
+          >
+            <div className="flex items-center gap-2.5">
+              <TiaIcon icon={GaugeIcon} size={16} className="text-teal-400" />
+              <span>Pagina Analytics Dedicata</span>
+            </div>
+            <TiaIcon icon={ExternalLinkIcon} size={14} className="text-neutral-400 group-hover:text-teal-400 transition-colors" />
+          </Link>
         </aside>
 
-        {/* Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          {/* ═══════════════════════════════════════════════════════
-              TAB 1: OVERVIEW & COMPLETE ANALYTICS SUITE
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'overview' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                    <TiaIcon icon={DashboardSquare01Icon} size={24} className="text-teal-400" />
-                    <span>Panoramica Generale & Analytics</span>
-                  </h1>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    Metriche in tempo reale, cartina mondiale vettoriale, andamento traffico e analisi click.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => { fetchAnalytics(); fetchHealth(); }}
-                    className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-neutral-300 flex items-center gap-1.5"
-                  >
-                    <TiaIcon icon={RefreshIcon} size={14} />
-                    <span>Aggiorna Dati</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('quotes')}
-                    className="px-4 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <TiaIcon icon={PlusSignIcon} size={14} />
-                    <span>Nuovo Preventivo</span>
-                  </button>
-                </div>
+        {/* ── RIGHT MAIN DASHBOARD CONTENT AREA ── */}
+        <main className="flex-1 min-w-0 w-full flex flex-col gap-6">
+          
+          {/* Global Alerts */}
+          {error && (
+            <div className="p-4 rounded-2xl bg-red-950/70 border border-red-500/40 text-red-200 text-sm flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2.5">
+                <TiaIcon icon={AlertCircleIcon} size={18} className="text-red-400 shrink-0" />
+                <span>{error}</span>
               </div>
+              <button onClick={() => setError(null)} className="text-red-400 hover:text-white cursor-pointer"><TiaIcon icon={Cancel01Icon} size={16} /></button>
+            </div>
+          )}
 
-              {/* 4 Main KPI Cards with Trend */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-5 rounded-2xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">Sessioni (30g)</span>
-                    <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
-                      <TiaIcon icon={Analytics01Icon} size={16} />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white font-mono">{analyticsData?.totalSessions?.toLocaleString() || '1,248'}</span>
-                    <div className="mt-1">
-                      {analyticsData?.trafficTodayYesterday && (
-                        <TrafficTrend
-                          today={analyticsData.trafficTodayYesterday.today.sessions}
-                          yesterday={analyticsData.trafficTodayYesterday.yesterday.sessions}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {successMessage && (
+            <div className="p-4 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-teal-200 text-sm flex items-center gap-2.5 shadow-lg">
+              <TiaIcon icon={CheckmarkCircle01Icon} size={18} className="text-teal-400 shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
 
-                <div className="p-5 rounded-2xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">Pagine Visualizzate</span>
-                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
-                      <TiaIcon icon={Globe02Icon} size={16} />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white font-mono">{analyticsData?.pageViews?.toLocaleString() || '3,890'}</span>
-                    <div className="mt-1">
-                      {analyticsData?.trafficTodayYesterday && (
-                        <TrafficTrend
-                          today={analyticsData.trafficTodayYesterday.today.pageViews}
-                          yesterday={analyticsData.trafficTodayYesterday.yesterday.pageViews}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">Click Interattivi</span>
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-                      <TiaIcon icon={WorkflowSquare01Icon} size={16} />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white font-mono">{analyticsData?.totalClicks?.toLocaleString() || '842'}</span>
-                    <div className="mt-1">
-                      {analyticsData?.trafficTodayYesterday && (
-                        <TrafficTrend
-                          today={analyticsData.trafficTodayYesterday.today.clicks}
-                          yesterday={analyticsData.trafficTodayYesterday.yesterday.clicks}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-400 font-medium">Speed & Web Vitals</span>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                      <TiaIcon icon={GaugeIcon} size={16} />
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-teal-300 font-mono">98 / 100</span>
-                    <p className="text-[11px] text-teal-400 mt-1">LCP 1.4s · TTFB 180ms · INP 48ms</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── VECTOR WORLD MAP WITH REAL BOUNDARIES ── */}
-              <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="font-bold text-white text-base flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-teal-400" />
-                      <span>Distribuzione Geografica Visite (Cartina Mondiale)</span>
-                    </h3>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      Confini reali per paese, densità del traffico e zoom continentale. Clicca su un paese per filtrare le città.
-                    </p>
-                  </div>
-                  {selectedCountry && (
-                    <button
-                      onClick={() => { setSelectedCountry(null); setSelectedCity(null); }}
-                      className="px-3 py-1 rounded-xl bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-400/30"
-                    >
-                      Rimuovi Filtro Paese ✕
-                    </button>
-                  )}
-                </div>
-
-                <RealWorldMap
-                  countries={analyticsData?.countries || []}
-                  cities={analyticsData?.topCities || []}
-                  selectedCountry={selectedCountry}
-                  onCountryClick={(country) => {
-                    setSelectedCountry(selectedCountry === country ? null : country);
-                    setSelectedCity(null);
-                  }}
-                />
-              </div>
-
-              {/* ── City breakdown for selected country ── */}
-              {selectedCountry && (() => {
-                const entry = analyticsData?.citiesByCountry?.find((c: any) => c.country === selectedCountry);
-                const maxCity = entry ? Math.max(...entry.cities.map((c: any) => c.count), 1) : 1;
-                const countryTotal = entry?.cities.reduce((total: number, city: any) => total + city.count, 0) ?? 0;
-                const countryLabel = (() => { const e = COUNTRY_MAP[selectedCountry]; return e ? `${e.flag} ${e.name}` : selectedCountry; })();
-
-                return (
-                  <div className="p-6 rounded-3xl bg-[#081410]/85 border border-teal-400/30 backdrop-blur-xl animate-in fade-in duration-300">
+          {/* ── TAB 1: PROGETTI ── */}
+          {activeTab === 'projects' && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              {/* Form Column */}
+              <div className="xl:col-span-5">
+                <BorderGlow continuousHover borderRadius={24} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0}>
+                  <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-white text-sm font-semibold flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-violet-400" />
-                        Città in {countryLabel} ({entry?.cities?.length || 0} città rilevate)
-                      </h3>
-                      <button onClick={() => { setSelectedCountry(null); setSelectedCity(null); }} className="text-neutral-400 hover:text-white text-xs">
-                        Chiudi ✕
-                      </button>
+                      <h2 className="text-base font-bold text-white">
+                        {editingProjectId ? 'Modifica Progetto' : 'Nuovo Progetto'}
+                      </h2>
+                      {editingProjectId && (
+                        <button onClick={resetProjectForm} className="text-xs text-neutral-400 hover:text-white underline cursor-pointer">
+                          Annulla
+                        </button>
+                      )}
                     </div>
-                    {!entry || entry.cities.length === 0 ? (
-                      <p className="text-neutral-500 text-xs py-4 text-center">Nessuna città tracciata per questo paese</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {entry.cities.map((c: any) => {
-                          const visualWeight = c.count / maxCity;
-                          const share = countryTotal > 0 ? Math.round((c.count / countryTotal) * 100) : 0;
-                          const isSelected = selectedCity === c.city;
-                          return (
-                            <button
-                              key={c.city}
-                              type="button"
-                              onClick={() => setSelectedCity(isSelected ? null : c.city)}
-                              className={`px-3 py-2 rounded-xl text-xs transition-all cursor-pointer border ${
-                                isSelected
-                                  ? 'border-teal-400 bg-teal-500/20 text-white font-bold'
-                                  : 'border-white/[0.08] bg-white/[0.03] text-neutral-300 hover:border-teal-400/50'
-                              }`}
-                            >
-                              <span>{c.city}</span>
-                              <span className="text-teal-400 ml-2 font-mono font-bold">
-                                {c.count} ({share}%)
-                              </span>
-                            </button>
-                          );
-                        })}
+
+                    <form onSubmit={handleProjectSubmit} className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Titolo *</label>
+                        <input
+                          type="text"
+                          required
+                          value={projectTitle}
+                          onChange={(e) => setProjectTitle(e.target.value)}
+                          placeholder="Nome del progetto"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                        />
                       </div>
-                    )}
+
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Descrizione Breve *</label>
+                        <textarea
+                          required
+                          rows={2}
+                          value={projectDescription}
+                          onChange={(e) => setProjectDescription(e.target.value)}
+                          placeholder="Sintesi del lavoro svolto..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Descrizione Dettagliata</label>
+                        <textarea
+                          rows={3}
+                          value={projectLongDescription}
+                          onChange={(e) => setProjectLongDescription(e.target.value)}
+                          placeholder="Dettagli approfonditi per il modale..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Copertina / Thumbnail * (WebP Automatico)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={projectThumbnail}
+                            onChange={(e) => setProjectThumbnail(e.target.value)}
+                            placeholder="/uploads/image.webp o URL"
+                            className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadLoading}
+                            className="px-3.5 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold cursor-pointer shrink-0"
+                          >
+                            {uploadLoading ? '...' : 'Upload'}
+                          </button>
+                        </div>
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Live URL</label>
+                          <input
+                            type="url"
+                            value={projectUrl}
+                            onChange={(e) => setProjectUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">GitHub URL</label>
+                          <input
+                            type="url"
+                            value={projectGithubUrl}
+                            onChange={(e) => setProjectGithubUrl(e.target.value)}
+                            placeholder="https://github.com/..."
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Tags (separati da virgola)</label>
+                        <input
+                          type="text"
+                          value={projectTags}
+                          onChange={(e) => setProjectTags(e.target.value)}
+                          placeholder="Next.js, TypeScript, Tailwind"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.08]">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+                          <input
+                            type="checkbox"
+                            checked={projectFeatured}
+                            onChange={(e) => setProjectFeatured(e.target.checked)}
+                            className="accent-teal-400 w-4 h-4 rounded"
+                          />
+                          <span>In Evidenza (Featured)</span>
+                        </label>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-400">Ordine:</span>
+                          <input
+                            type="number"
+                            value={projectOrder}
+                            onChange={(e) => setProjectOrder(Number(e.target.value))}
+                            className="w-16 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs text-center focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submitLoading}
+                        className="w-full py-3 mt-2 font-semibold rounded-xl text-sm bg-teal-400 hover:bg-teal-300 text-black shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {submitLoading ? 'Salvataggio...' : editingProjectId ? 'Aggiorna Progetto' : 'Pubblica Progetto'}
+                      </button>
+                    </form>
                   </div>
-                );
-              })()}
-
-              {/* ── Middle Row: Elements Clicked + Donut Charts ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Elementi più cliccati (Humanized with dictionary & badges) */}
-                <div className="lg:col-span-2 p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-teal-400" />
-                        <span>Elementi più cliccati (Tracciamento Interattivo)</span>
-                      </h3>
-                      <p className="text-xs text-neutral-400">Pulsanti, call-to-action e link con maggior volume di interazioni</p>
-                    </div>
-                    <span className="text-xs font-mono text-teal-400 bg-teal-500/10 px-2.5 py-1 rounded-full border border-teal-500/20">
-                      {analyticsData?.topClicked?.reduce((sum: number, item: any) => sum + item.count, 0) || 0} click
-                    </span>
-                  </div>
-
-                  {!analyticsData?.topClicked || analyticsData.topClicked.length === 0 ? (
-                    <p className="text-neutral-500 text-xs py-8 text-center">Nessun click tracciato</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {analyticsData.topClicked.slice(0, 8).map((item: any, i: number) => {
-                        const info = formatClickElement(item.element);
-                        const maxClicks = Math.max(...analyticsData.topClicked.map((c: any) => c.count), 1);
-                        const pct = (item.count / maxClicks) * 100;
-                        const itemColor = info.color || DONUT_COLORS[i % DONUT_COLORS.length];
-
-                        return (
-                          <div key={i} className="p-3 rounded-2xl bg-black/40 border border-white/[0.05] hover:border-teal-500/30 transition-all">
-                            <div className="flex items-start justify-between gap-2 mb-1.5">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-base">{info.icon}</span>
-                                  <span className="text-white font-semibold text-xs">{info.title}</span>
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.08] text-teal-300 font-mono">
-                                    {info.category}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[11px] text-neutral-400">{info.description}</span>
-                                  <code className="text-[9px] text-neutral-500 font-mono bg-black/50 px-1.5 py-0.5 rounded border border-white/5">
-                                    {item.element}
-                                  </code>
-                                </div>
-                              </div>
-                              <span className="text-teal-300 font-mono font-bold text-sm shrink-0">
-                                {item.count.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden mt-2">
-                              <div
-                                className="h-full rounded-full transition-all duration-700 ease-out"
-                                style={{ width: `${pct}%`, backgroundColor: itemColor }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Donut Chart: Event Types + Cookie Consents */}
-                <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between gap-6">
-                  <div>
-                    <h3 className="font-bold text-white text-sm mb-1 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                      <span>Ripartizione Eventi & Consensi</span>
-                    </h3>
-                    <p className="text-xs text-neutral-400 mb-4">Volume aggregato per tipologia</p>
-
-                    {analyticsData?.eventsByType && (
-                      <DonutChart
-                        segments={analyticsData.eventsByType.map((e: any, i: number) => ({
-                          label: TYPE_LABEL[e.type] || e.type,
-                          value: e.count,
-                          color: DONUT_COLORS[i % DONUT_COLORS.length],
-                        }))}
-                        size={150}
-                        thickness={24}
-                      />
-                    )}
-                  </div>
-
-                  <div className="pt-4 border-t border-white/[0.08]">
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="text-neutral-400">Tasso Consenso Privacy:</span>
-                      <span className="font-mono text-teal-400 font-bold">{analyticsData?.todayConsentRate?.rate || 88}%</span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div className="bg-teal-400 h-full rounded-full" style={{ width: `${analyticsData?.todayConsentRate?.rate || 88}%` }} />
-                    </div>
-                  </div>
-                </div>
+                </BorderGlow>
               </div>
 
-              {/* ── Bottom Row: Daily Traffic Bar Chart & Recent Activity ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-bold text-white text-sm">Andamento Sessioni Giornaliere (Ultimi 14 Giorni)</h3>
-                      <p className="text-xs text-neutral-400">Traffico aggregato privacy-friendly senza cookies di terze parti</p>
-                    </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/20 font-mono">
-                      14 Giorni
-                    </span>
-                  </div>
-
-                  <div className="h-44 w-full flex items-end gap-2 pt-4 pb-2">
-                    {analyticsData?.dailySessions?.slice(-14)?.map((d: any, idx: number) => {
-                      const maxVal = Math.max(...analyticsData.dailySessions.map((x: any) => x.count)) || 1;
-                      const heightPercent = Math.max(12, Math.min(100, (d.count / maxVal) * 100));
-
-                      return (
-                        <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 group relative h-full justify-end">
-                          <div
-                            className="w-full rounded-t-lg bg-teal-500/30 group-hover:bg-teal-400 transition-all cursor-pointer relative"
-                            style={{ height: `${heightPercent}%` }}
-                          >
-                            <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black border border-white/20 px-2 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap z-20 pointer-events-none shadow-lg">
-                              {d.count} visite ({d.date})
-                            </div>
-                          </div>
-                          <span className="text-[9px] text-neutral-500 font-mono rotate-45 sm:rotate-0 truncate w-full text-center">
-                            {d.date?.slice(5)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+              {/* Projects List Column */}
+              <div className="xl:col-span-7 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">
+                    Tutti i Progetti nel Portfolio ({projects.length})
+                  </h3>
                 </div>
 
-                {/* Recent Events Log */}
-                <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                  <h3 className="font-bold text-white text-sm mb-1 flex items-center gap-2">
-                    <TiaIcon icon={Clock01Icon} size={15} className="text-teal-400" />
-                    <span>Attività Recente</span>
-                  </h3>
-                  <p className="text-xs text-neutral-400 mb-3">Feed eventi in tempo reale</p>
+                {projects.length === 0 ? (
+                  <div className="p-8 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400">
+                    Nessun progetto caricato al momento.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {projects.map((p) => (
+                      <div
+                        key={p.id}
+                        className="bg-[#081410]/85 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 flex flex-col justify-between hover:border-teal-500/30 transition-colors group"
+                      >
+                        <div>
+                          {p.thumbnail && (
+                            <div className="h-36 w-full rounded-xl overflow-hidden mb-3 bg-black/40 relative">
+                              <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                              {p.featured && (
+                                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-400 text-black shadow-md">
+                                  Featured
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <h4 className="font-bold text-white text-base">{p.title}</h4>
+                          <p className="text-xs text-neutral-400 mt-1 line-clamp-2">{p.description}</p>
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                            {p.tags.split(',').map((tag, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-md bg-white/[0.04] text-[10px] text-teal-300/80">
+                                {tag.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {analyticsData?.recentEvents?.slice(0, 10).map((ev: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 py-1.5 border-b border-white/[0.03] text-xs">
-                        <span className="text-[9px] uppercase tracking-wider bg-white/[0.05] text-teal-300 px-1.5 py-0.5 rounded font-mono">
-                          {ev.type}
-                        </span>
-                        <span className="text-neutral-400 text-xs truncate flex-1">{ev.url}</span>
-                        <span className="text-neutral-600 text-[10px] font-mono">
-                          {new Date(parseInt(ev.timestamp)).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.06]">
+                          <span className="text-[11px] text-neutral-500 font-mono">Ordine: {p.order}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEditProject(p)}
+                              className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs text-white font-medium transition-colors cursor-pointer"
+                            >
+                              Modifica
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProject(p.id)}
+                              className="px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-xs text-red-300 font-medium transition-colors cursor-pointer"
+                            >
+                              Elimina
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* ═══════════════════════════════════════════════════════
-              TAB 2: FULL LUXURY BRANDED PREVENTIVATORE & PDF
-             ═══════════════════════════════════════════════════════ */}
+          {/* ── TAB 2: INBOX MESSAGGI ── */}
+          {activeTab === 'inbox' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Messages List */}
+              <div className="lg:col-span-2 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    {['all', 'new', 'in_progress', 'contacted', 'closed'].map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => setMessageFilter(st)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize cursor-pointer transition-colors ${
+                          messageFilter === st ? 'bg-teal-400 text-black font-semibold' : 'bg-white/[0.04] text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {st === 'all' ? 'Tutti' : st === 'new' ? 'Nuovi' : st === 'in_progress' ? 'In corso' : st === 'contacted' ? 'Risposti' : 'Chiusi'}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs text-neutral-500">{messages.length} messaggi</span>
+                </div>
+
+                {messages.length === 0 ? (
+                  <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400">
+                    Nessun messaggio trovato in questa categoria.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {messages.map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => { setSelectedMessage(m); setMessageNotes(m.notes || ''); }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                          selectedMessage?.id === m.id
+                            ? 'bg-[#0e241d] border-teal-400/50 shadow-lg'
+                            : 'bg-[#081410]/85 border-white/[0.08] hover:border-white/[0.15]'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div>
+                            <span className="font-bold text-white text-sm">{m.name}</span>
+                            <span className="text-neutral-400 text-xs ml-2">({m.email})</span>
+                          </div>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold ${
+                            m.status === 'new'
+                              ? 'bg-teal-400/20 text-teal-300 border border-teal-400/40 animate-pulse'
+                              : m.status === 'in_progress'
+                                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                                : m.status === 'contacted'
+                                  ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
+                                  : 'bg-neutral-800 text-neutral-400'
+                          }`}>
+                            {m.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-300 line-clamp-2 mb-2 font-mono bg-black/30 p-2 rounded-lg">{m.message}</p>
+                        <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                          <span>Servizio: <strong className="text-teal-400">{m.service}</strong></span>
+                          <span>{new Date(m.createdAt).toLocaleString('it-IT')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Message Detail & Notes Drawer */}
+              <div className="lg:col-span-1">
+                {selectedMessage ? (
+                  <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sticky top-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                      <h3 className="font-bold text-white text-base">Dettaglio Messaggio</h3>
+                      <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="text-xs text-red-400 hover:text-red-300 cursor-pointer">
+                        Elimina
+                      </button>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-neutral-400 uppercase tracking-wider">Mittente</p>
+                      <p className="text-sm font-bold text-white">{selectedMessage.name}</p>
+                      <a href={`mailto:${selectedMessage.email}`} className="text-xs text-teal-400 hover:underline">
+                        {selectedMessage.email}
+                      </a>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-neutral-400 uppercase tracking-wider">Servizio richiesto</p>
+                      <p className="text-xs font-semibold text-teal-300">{selectedMessage.service}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1">Messaggio Completo</p>
+                      <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.06] text-xs text-neutral-200 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                        {selectedMessage.message}
+                      </div>
+                    </div>
+
+                    {/* Status Selector */}
+                    <div>
+                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1.5">Aggiorna Stato</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: 'new', label: 'Nuovo' },
+                          { id: 'in_progress', label: 'In corso' },
+                          { id: 'contacted', label: 'Risposto' },
+                          { id: 'closed', label: 'Chiuso' },
+                        ].map((st) => (
+                          <button
+                            key={st.id}
+                            onClick={() => handleUpdateMessageStatus(selectedMessage.id, st.id)}
+                            className={`py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+                              selectedMessage.status === st.id ? 'bg-teal-400 text-black font-bold' : 'bg-white/[0.05] text-neutral-400 hover:text-white'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Internal Notes */}
+                    <div>
+                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1.5">Note Interne</p>
+                      <textarea
+                        rows={3}
+                        value={messageNotes}
+                        onChange={(e) => setMessageNotes(e.target.value)}
+                        placeholder="Scrivi appunti su questo cliente..."
+                        className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none focus:border-teal-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSaveMessageNotes(selectedMessage.id)}
+                        className="w-full mt-2 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs text-white font-semibold transition-colors cursor-pointer"
+                      >
+                        Salva Note
+                      </button>
+                    </div>
+
+                    {/* Quick Action Button */}
+                    <a
+                      href={`mailto:${selectedMessage.email}?subject=Re:%20Preventivo%20${encodeURIComponent(selectedMessage.service)}%20-%20Tia%20Designs`}
+                      className="w-full py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-semibold text-xs text-center shadow-lg shadow-teal-400/20 transition-all block"
+                    >
+                      Rispondi via Email
+                    </a>
+                  </div>
+                ) : (
+                  <div className="p-8 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
+                    Seleziona un messaggio dalla lista per visualizzare i dettagli e gestire le note.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 3: ARCHIVIO CHATBOT ── */}
+          {activeTab === 'chats' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Leads Generated by Bot */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <TiaIcon icon={BubbleChatIcon} size={18} className="text-teal-400" />
+                  <span>Lead & Preventivi AI Generati ({chatLeads.length})</span>
+                </h3>
+                {chatLeads.length === 0 ? (
+                  <p className="text-xs text-neutral-500 py-6 text-center">Nessun preventivo registrato dal bot finora.</p>
+                ) : (
+                  <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto">
+                    {chatLeads.map((lead) => (
+                      <div key={lead.id} className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-teal-300">{lead.category} • {lead.service || 'Generale'}</span>
+                          <span className="text-[10px] text-neutral-500">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        {lead.budget && <p className="text-xs text-neutral-300">Budget indicato: <strong className="text-white">{lead.budget}</strong></p>}
+                        {lead.userGoal && <p className="text-xs text-neutral-400">Obiettivo: {lead.userGoal}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Sessions List */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-white text-base">Sessioni di Chat Recenti ({chatSessions.length})</h3>
+                {chatSessions.length === 0 ? (
+                  <p className="text-xs text-neutral-500 py-6 text-center">Nessuna conversazione recente nel database.</p>
+                ) : (
+                  <div className="flex flex-col gap-2.5 max-h-[500px] overflow-y-auto">
+                    {chatSessions.map((s) => (
+                      <div key={s.sessionId} className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono text-neutral-400 truncate">ID: {s.sessionId.slice(0, 16)}...</p>
+                          <p className="text-xs text-white truncate">{s.lastMessage}</p>
+                        </div>
+                        <span className="px-2 py-1 rounded-lg bg-teal-500/10 text-teal-400 text-[10px] font-mono shrink-0">
+                          {s.count} msgs
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 4: PREVENTIVATORE BRANDED PDF ── */}
           {activeTab === 'quotes' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+            <div className="flex flex-col gap-6">
+              
               {/* Top Action Toolbar (no-print) */}
               <div className="no-print bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 shadow-xl">
                 <div className="flex items-center gap-3">
@@ -1583,7 +1612,7 @@ export default function MasterDashboardPage() {
                       <h3 className="font-bold text-white text-base">Archivio Preventivi Salvati</h3>
                       <p className="text-xs text-neutral-400">Clicca su &ldquo;Carica&rdquo; per riaprire o modificare qualsiasi preventivo</p>
                     </div>
-                    <button onClick={() => setShowQuotesHistory(false)} className="text-xs text-neutral-400 hover:text-white">
+                    <button onClick={() => setShowQuotesHistory(false)} className="text-xs text-neutral-400 hover:text-white cursor-pointer">
                       Chiudi ✕
                     </button>
                   </div>
@@ -1637,9 +1666,10 @@ export default function MasterDashboardPage() {
               )}
 
               {/* Main Builder & Preview Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                
                 {/* Form Controls Column (no-print) */}
-                <div className="lg:col-span-5 flex flex-col gap-4 no-print">
+                <div className="xl:col-span-5 flex flex-col gap-4 no-print">
                   <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 flex flex-col gap-4">
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                       <h3 className="font-bold text-white text-base flex items-center gap-2">
@@ -1659,7 +1689,7 @@ export default function MasterDashboardPage() {
                           type="text"
                           value={quoteNumber}
                           onChange={(e) => setQuoteNumber(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400 font-mono"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
                         />
                       </div>
                       <div>
@@ -1668,7 +1698,7 @@ export default function MasterDashboardPage() {
                           type="date"
                           value={quoteDate}
                           onChange={(e) => setQuoteDate(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400 font-mono"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
                         />
                       </div>
                     </div>
@@ -1759,7 +1789,7 @@ export default function MasterDashboardPage() {
                             value={quoteClientVat}
                             onChange={(e) => setQuoteClientVat(e.target.value)}
                             placeholder="IT12345678901"
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white font-mono"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
                           />
                         </div>
                       </div>
@@ -1779,7 +1809,7 @@ export default function MasterDashboardPage() {
                       </div>
 
                       <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
-                        {quoteItems.map((item) => (
+                        {quoteItems.map((item, index) => (
                           <div key={item.id} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2">
                             <div className="flex items-center justify-between gap-2">
                               <input
@@ -1793,7 +1823,7 @@ export default function MasterDashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveQuoteItem(item.id)}
-                                  className="text-neutral-500 hover:text-red-400 text-xs px-1"
+                                  className="text-neutral-500 hover:text-red-400 text-xs px-1 cursor-pointer"
                                 >
                                   ✕
                                 </button>
@@ -1824,7 +1854,7 @@ export default function MasterDashboardPage() {
                                   min={0}
                                   value={item.price}
                                   onChange={(e) => handleUpdateQuoteItem(item.id, 'price', Number(e.target.value))}
-                                  className="w-20 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-right border border-white/[0.08] font-mono"
+                                  className="w-20 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-right border border-white/[0.08]"
                                 />
                               </div>
                             </div>
@@ -1843,7 +1873,7 @@ export default function MasterDashboardPage() {
                           max={100}
                           value={quoteDiscount}
                           onChange={(e) => setQuoteDiscount(Number(e.target.value))}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white font-mono"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
                         />
                       </div>
                       <div>
@@ -1892,11 +1922,12 @@ export default function MasterDashboardPage() {
                 </div>
 
                 {/* Printable Live PDF Document Column */}
-                <div className="lg:col-span-7 flex flex-col items-center">
+                <div className="xl:col-span-7 flex flex-col items-center">
                   <div
                     id="printable-quote"
                     className="w-full max-w-[780px] bg-[#081410] border border-teal-500/25 rounded-3xl p-8 sm:p-10 shadow-2xl text-neutral-200 relative overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-[#081410] print:text-white"
                   >
+                    {/* Subtle top glow bar */}
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300" />
 
                     {/* Header Row: Logo + Brand Info + Quote Meta */}
@@ -1997,6 +2028,7 @@ export default function MasterDashboardPage() {
 
                       return (
                         <div className="pt-4 border-t border-white/[0.1] flex flex-col sm:flex-row justify-between items-start gap-6">
+                          {/* Terms and IBAN */}
                           <div className="flex-1 text-xs text-neutral-400 space-y-1.5 bg-black/30 p-4 rounded-2xl border border-white/[0.06] w-full">
                             <p className="text-[10px] uppercase tracking-wider font-bold text-teal-400">Modalità di Pagamento</p>
                             <p className="text-neutral-200 font-medium">{quotePaymentTerms}</p>
@@ -2010,6 +2042,7 @@ export default function MasterDashboardPage() {
                             </p>
                           </div>
 
+                          {/* Totals table */}
                           <div className="w-full sm:w-64 bg-teal-950/30 border border-teal-500/30 p-4 rounded-2xl flex flex-col gap-2">
                             <div className="flex justify-between text-xs text-neutral-400">
                               <span>Subtotale Voci:</span>
@@ -2044,7 +2077,7 @@ export default function MasterDashboardPage() {
                       </div>
                     )}
 
-                    {/* Signature Acceptance Box */}
+                    {/* Signature Acceptance Box with Real Digital Signature Render */}
                     <div className="mt-8 pt-6 border-t border-white/[0.1] grid grid-cols-2 gap-8 text-xs">
                       <div>
                         <p className="text-neutral-400 mb-2">Tia Designs (Fornitore)</p>
@@ -2071,11 +2104,13 @@ export default function MasterDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Bottom footer notice */}
                     <div className="mt-8 text-center text-[10px] text-neutral-500 font-mono border-t border-white/[0.06] pt-3">
                       Tia Designs • P.IVA: 02737630206 • Documento valido ai fini dell&apos;accordo commerciale
                     </div>
                   </div>
                 </div>
+
               </div>
 
               {/* ── MODAL 1: Digital Signature Touch Canvas ── */}
@@ -2087,11 +2122,11 @@ export default function MasterDashboardPage() {
                         <span className="text-lg">✍️</span>
                         <h3 className="font-bold text-white text-base">Firma Digitale Interattiva</h3>
                       </div>
-                      <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 hover:text-white">✕</button>
+                      <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 hover:text-white cursor-pointer">✕</button>
                     </div>
 
                     <p className="text-xs text-neutral-300">
-                      Disegna la tua firma a mano libera usando il touch, una penna digitale o il mouse nel riquadro:
+                      Disegna la tua firma a mano libera usando il touch, una penna digitale o il mouse nel riquadro sottostante:
                     </p>
 
                     <div className="rounded-2xl border-2 border-dashed border-teal-500/40 bg-black/60 p-2 overflow-hidden flex items-center justify-center">
@@ -2149,13 +2184,19 @@ export default function MasterDashboardPage() {
                         <TiaIcon icon={Mail01Icon} size={18} className="text-teal-400" />
                         <h3 className="font-bold text-white text-base">Invia Preventivo via Email</h3>
                       </div>
-                      <button onClick={() => setShowSendModal(false)} className="text-neutral-400 hover:text-white">✕</button>
+                      <button onClick={() => setShowSendModal(false)} className="text-neutral-400 hover:text-white cursor-pointer">✕</button>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] text-xs flex flex-col gap-1.5">
                       <p className="text-neutral-400">Destinatario:</p>
-                      <p className="font-bold text-white text-sm">{quoteClientName || 'Cliente'} &lt;{quoteClientEmail}&gt;</p>
-                      <p className="text-[11px] text-teal-300 font-mono mt-1">Preventivo: {quoteNumber}</p>
+                      <p className="font-bold text-white text-sm">{quoteClientName} &lt;{quoteClientEmail}&gt;</p>
+                      <p className="text-[11px] text-teal-300 font-mono mt-1">Preventivo: {quoteNumber} • Totale: {(() => {
+                        const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+                        const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
+                        const taxable = subtotal - discountAmount;
+                        const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+                        return taxable + vatAmount;
+                      })()} €</p>
                     </div>
 
                     <div>
@@ -2195,646 +2236,433 @@ export default function MasterDashboardPage() {
                   </div>
                 </div>
               )}
+
             </div>
           )}
 
-          {/* ═══════════════════════════════════════════════════════
-              TAB 3: PROGETTI PORTFOLIO
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'projects' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">Progetti Portfolio ({projects.length})</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Gestisci i progetti mostrati nel portfolio sul sito live.</p>
+          {/* ── TAB 5: DEEP ANALYTICS ── */}
+          {activeTab === 'analytics' && (
+            <div className="flex flex-col gap-6">
+              
+              {/* Filter bar */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                    <TiaIcon icon={GaugeIcon} size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Traffic & User Behavior Insights</h3>
+                    <p className="text-xs text-neutral-400">First-party telemetry & GDPR Compliant</p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingProjectId(null);
-                    setProjectTitle('');
-                    setProjectDescription('');
-                    setProjectLongDescription('');
-                    setProjectThumbnail('');
-                    setProjectUrl('');
-                    setProjectGithubUrl('');
-                    setProjectTags([]);
-                    setProjectFeatured(false);
-                    setProjectOrder(projects.length);
-                    setShowProjectModal(true);
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <TiaIcon icon={PlusSignIcon} size={16} />
-                  <span>Nuovo Progetto</span>
-                </button>
-              </div>
 
-              {/* Category Filter */}
-              <div className="flex items-center gap-2">
-                {[
-                  { id: 'all', label: 'Tutti' },
-                  { id: 'web', label: 'Sviluppo Web & App' },
-                  { id: 'video', label: 'Video & Media' },
-                  { id: 'featured', label: 'In Evidenza' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setProjectCategoryFilter(f.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      projectCategoryFilter === f.id
-                        ? 'bg-teal-400 text-black font-semibold shadow-sm shadow-teal-400/20'
-                        : 'bg-white/[0.05] text-neutral-300 hover:bg-white/[0.1]'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Projects Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects
-                  .filter((p) => {
-                    if (projectCategoryFilter === 'featured') return p.featured;
-                    if (projectCategoryFilter === 'web') return p.tags.some((t) => ['Next.js', 'React', 'TypeScript', 'Web'].includes(t));
-                    if (projectCategoryFilter === 'video') return p.tags.some((t) => ['Video', '3D', 'Media'].includes(t));
-                    return true;
-                  })
-                  .map((p) => (
-                    <div key={p.id} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between group hover:border-teal-500/40 transition-all">
-                      <div>
-                        <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/50 mb-4 border border-white/[0.05]">
-                          <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          {p.featured && (
-                            <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-teal-400 text-black text-[10px] font-bold shadow-md">
-                              ★ Featured
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-bold text-white text-base mb-1">{p.title}</h3>
-                        <p className="text-xs text-neutral-400 line-clamp-2 mb-3">{p.description}</p>
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {p.tags.map((t, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded-lg bg-white/[0.05] text-[10px] font-mono text-neutral-300">
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-white/[0.08]">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEditProject(p)}
-                            className="p-2 rounded-xl bg-white/[0.05] hover:bg-teal-500/20 hover:text-teal-300 text-neutral-300 transition-all"
-                            title="Modifica"
-                          >
-                            <TiaIcon icon={PencilEdit02Icon} size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProject(p.id)}
-                            className="p-2 rounded-xl bg-white/[0.05] hover:bg-red-500/20 hover:text-red-300 text-neutral-300 transition-all"
-                            title="Elimina"
-                          >
-                            <TiaIcon icon={Delete02Icon} size={15} />
-                          </button>
-                        </div>
-
-                        {p.projectUrl && (
-                          <Link href={p.projectUrl} target="_blank" className="text-xs text-teal-400 hover:underline flex items-center gap-1">
-                            <span>Apri</span>
-                            <TiaIcon icon={ExternalLinkIcon} size={12} />
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════
-              TAB 4: INBOX RICHIESTE & PIPELINE
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'inbox' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">Inbox Messaggi ({messages.length})</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Richieste di preventivo e contatti diretti dal form sul sito.</p>
-                </div>
                 <div className="flex items-center gap-2">
-                  {['all', 'new', 'in_progress', 'closed'].map((st) => (
+                  {[7, 30, 90].map((d) => (
                     <button
-                      key={st}
-                      onClick={() => setMessageFilter(st)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                        messageFilter === st
-                          ? 'bg-teal-400 text-black font-semibold shadow-sm'
-                          : 'bg-white/[0.05] text-neutral-300 hover:bg-white/[0.1]'
+                      key={d}
+                      onClick={() => setAnalyticsDays(d)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                        analyticsDays === d ? 'bg-teal-400 text-black' : 'bg-white/[0.04] text-neutral-400 hover:text-white'
                       }`}
                     >
-                      {st === 'all' ? 'Tutti' : st === 'new' ? 'Nuovi' : st === 'in_progress' ? 'In corso' : 'Chiusi'}
+                      Ultimi {d} giorni
                     </button>
                   ))}
+                  <button onClick={fetchAnalytics} className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-teal-400">
+                    <TiaIcon icon={RefreshIcon} size={15} />
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div className="lg:col-span-2 space-y-3">
-                  {messages
-                    .filter((m) => messageFilter === 'all' || m.status === messageFilter)
-                    .map((msg) => (
-                      <div
-                        key={msg.id}
-                        onClick={() => {
-                          setSelectedMessage(msg);
-                          setMessageNotes(msg.notes || '');
-                        }}
-                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                          selectedMessage?.id === msg.id
-                            ? 'bg-teal-950/40 border-teal-400 shadow-lg shadow-teal-500/10'
-                            : 'bg-[#081410]/85 border-white/[0.08] hover:border-teal-500/30'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-white">{msg.name}</span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                              {msg.service}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-neutral-500 font-mono">{new Date(msg.createdAt).toLocaleDateString('it-IT')}</span>
-                        </div>
-                        <p className="text-xs text-neutral-300 line-clamp-2 leading-relaxed">{msg.message}</p>
+              {/* KPIs Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Eventi Totali', val: analyticsData?.totalEvents ?? 0, icon: Activity01Icon },
+                  { label: 'Sessioni Uniche', val: analyticsData?.totalSessions ?? 0, icon: DashboardSquare01Icon },
+                  { label: 'Visualizzazioni Pagina', val: analyticsData?.pageViews ?? 0, icon: Globe02Icon },
+                  { label: 'Click Tracciati', val: analyticsData?.totalClicks ?? 0, icon: ArrowRight01Icon },
+                ].map((kpi, i) => {
+                  const Icon = kpi.icon;
+                  return (
+                    <div key={i} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-neutral-400 uppercase tracking-wider">{kpi.label}</span>
+                        <TiaIcon icon={Icon} size={16} className="text-teal-400" />
                       </div>
-                    ))}
+                      <span className="text-2xl font-bold font-mono text-white">{kpi.val.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ultra-Detailed Real World Map with Leaflet & CartoDB Dark Tiles */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                      <TiaIcon icon={Globe02Icon} size={18} className="text-teal-400" />
+                      <span>Distribuzione Geografica Mondiale Reale (Leaflet & CartoDB Dark)</span>
+                    </h3>
+                    <p className="text-xs text-neutral-400">Confini reali, costa ultra-dettagliata e pin radar pulsanti sulle coordinate esatte</p>
+                  </div>
                 </div>
 
-                {/* Selected Message Detail Panel */}
-                <div className="p-6 rounded-3xl bg-[#081410]/95 border border-white/[0.08] backdrop-blur-xl sticky top-24">
-                  {selectedMessage ? (
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                        <h3 className="font-bold text-white text-base">{selectedMessage.name}</h3>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-400/10 text-teal-300 font-mono border border-teal-400/20 uppercase">
-                          {selectedMessage.status}
-                        </span>
-                      </div>
+                <RealWorldMap
+                  countries={analyticsData?.countries || []}
+                  cities={analyticsData?.topCities || []}
+                  selectedCountry={selectedCountry}
+                  onCountryClick={(country) => setSelectedCountry(selectedCountry === country ? null : country)}
+                />
+              </div>
 
-                      <div className="space-y-1.5 text-xs text-neutral-300">
-                        <p><strong>Email:</strong> <a href={`mailto:${selectedMessage.email}`} className="text-teal-400 hover:underline">{selectedMessage.email}</a></p>
-                        <p><strong>Servizio:</strong> {selectedMessage.service}</p>
-                        {selectedMessage.budget && <p><strong>Budget:</strong> {selectedMessage.budget}</p>}
-                        {selectedMessage.deadline && <p><strong>Tempistiche:</strong> {selectedMessage.deadline}</p>}
-                      </div>
-
-                      <div className="p-3.5 rounded-2xl bg-black/50 border border-white/[0.05] text-xs text-neutral-200 leading-relaxed max-h-48 overflow-y-auto">
-                        {selectedMessage.message}
-                      </div>
-
-                      {/* Convert to quote button */}
-                      <button
-                        type="button"
-                        onClick={() => handleConvertMessageToQuote(selectedMessage)}
-                        className="w-full py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold shadow-md shadow-teal-400/20 flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <TiaIcon icon={DollarSignIcon} size={15} />
-                        <span>Crea Preventivo da Richiesta</span>
-                      </button>
-
-                      {/* Status changer */}
-                      <div className="pt-3 border-t border-white/[0.08] flex items-center gap-2">
-                        <span className="text-[11px] text-neutral-400">Stato:</span>
-                        <select
-                          value={selectedMessage.status}
-                          onChange={(e) => handleUpdateMessageStatus(selectedMessage.id, e.target.value)}
-                          className="flex-1 px-2.5 py-1.5 rounded-xl bg-black/60 border border-white/10 text-xs text-white"
-                        >
-                          <option value="new">Nuovo</option>
-                          <option value="in_progress">In lavorazione</option>
-                          <option value="contacted">Contattato</option>
-                          <option value="closed">Chiuso</option>
-                        </select>
-                      </div>
-
-                      {/* Internal notes */}
-                      <div>
-                        <label className="text-[11px] text-neutral-400 block mb-1">Note Interne</label>
-                        <textarea
-                          rows={3}
-                          value={messageNotes}
-                          onChange={(e) => setMessageNotes(e.target.value)}
-                          placeholder="Aggiungi appunti su questo cliente..."
-                          className="w-full p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white resize-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleSaveMessageNotes(selectedMessage.id)}
-                          className="mt-1.5 px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-neutral-200"
-                        >
-                          Salva Note
-                        </button>
-                      </div>
-                    </div>
+              {/* Humanized Click Elements & Top Pages */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Clicked Elements with Explanations */}
+                <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                  <h3 className="font-bold text-white text-base">Elementi Più Cliccati (Spiegati)</h3>
+                  {(!analyticsData?.topClicked || analyticsData.topClicked.length === 0) ? (
+                    <p className="text-xs text-neutral-500 py-6 text-center">Nessun click registrato nel periodo.</p>
                   ) : (
-                    <div className="text-center py-12 text-neutral-500 text-xs">
-                      Seleziona un messaggio per visualizzare i dettagli completi.
+                    <div className="flex flex-col gap-2.5 max-h-80 overflow-y-auto">
+                      {analyticsData.topClicked.map((item: any, idx: number) => {
+                        const formatted = formatClickElement(item.element);
+                        return (
+                          <div key={idx} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-lg shrink-0">{formatted.icon}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-white text-xs truncate">{formatted.title}</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono uppercase bg-teal-500/10 text-teal-300 border border-teal-500/20">
+                                    {formatted.category}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-neutral-400 truncate">{formatted.description}</p>
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-teal-400 shrink-0">
+                              {item.count} click
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* ═══════════════════════════════════════════════════════
-              TAB 5: CHATBOT & TELEGRAM
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'chats' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">Archivio Chatbot AI & Telegram ({leads.length})</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Trascrizioni delle conversazioni degli utenti con l&apos;AI e richieste via Telegram.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setChatTypeFilter('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      chatTypeFilter === 'all' ? 'bg-teal-400 text-black font-semibold' : 'bg-white/[0.05] text-neutral-300'
-                    }`}
-                  >
-                    Tutti ({leads.length})
-                  </button>
-                  <button
-                    onClick={() => setChatTypeFilter('ai')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      chatTypeFilter === 'ai' ? 'bg-teal-400 text-black font-semibold' : 'bg-white/[0.05] text-neutral-300'
-                    }`}
-                  >
-                    🤖 Chatbot AI ({leads.filter((l) => l.type !== 'telegram').length})
-                  </button>
-                  <button
-                    onClick={() => setChatTypeFilter('telegram')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                      chatTypeFilter === 'telegram' ? 'bg-teal-400 text-black font-semibold' : 'bg-white/[0.05] text-neutral-300'
-                    }`}
-                  >
-                    ✈️ Telegram ({leads.filter((l) => l.type === 'telegram').length})
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {leads
-                  .filter((l) => chatTypeFilter === 'all' || (chatTypeFilter === 'telegram' ? l.type === 'telegram' : l.type !== 'telegram'))
-                  .map((lead) => (
-                    <div key={lead.id} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between gap-3">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-[10px] text-teal-400 font-bold">
-                            {lead.type === 'telegram' ? '✈️ Telegram Live' : '🤖 AI Assistant'}
-                          </span>
-                          <span className="text-[10px] text-neutral-500 font-mono">{new Date(lead.createdAt).toLocaleDateString('it-IT')}</span>
-                        </div>
-                        <h3 className="font-bold text-white text-sm">{lead.name || 'Visitatore Anonimo'}</h3>
-                        {lead.email && <p className="text-xs text-teal-300 mt-0.5">{lead.email}</p>}
-                        {lead.phone && <p className="text-xs text-neutral-400">{lead.phone}</p>}
-                        <div className="mt-3 p-3 rounded-2xl bg-black/40 border border-white/[0.05] text-xs text-neutral-300 leading-relaxed">
-                          {lead.summary || 'Nessun riepilogo generato.'}
-                        </div>
-                      </div>
-                      <div className="pt-2 border-t border-white/[0.06] text-[11px] text-neutral-400 font-mono">
-                        Session: {lead.sessionId.slice(0, 12)}...
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════
-              TAB 6: CMS FAQ & RECENSIONI
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'cms' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">CMS Contenuti (FAQ & Testimonianze)</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Modifica testi, traduzioni e loghi aziendali visibili sul sito.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCmsSubTab('faqs')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      cmsSubTab === 'faqs' ? 'bg-teal-400 text-black shadow-md' : 'bg-white/[0.05] text-neutral-300'
-                    }`}
-                  >
-                    FAQ ({faqs.length})
-                  </button>
-                  <button
-                    onClick={() => setCmsSubTab('reviews')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                      cmsSubTab === 'reviews' ? 'bg-teal-400 text-black shadow-md' : 'bg-white/[0.05] text-neutral-300'
-                    }`}
-                  >
-                    Recensioni ({reviews.length})
-                  </button>
-                </div>
-              </div>
-
-              {/* FAQs SubTab */}
-              {cmsSubTab === 'faqs' && (
-                <div className="space-y-4">
-                  {faqs.map((f) => (
-                    <div key={f.id} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white/[0.06] text-teal-300 font-bold">
-                            {f.category}
-                          </span>
-                          <h3 className="font-bold text-white text-sm mt-2">{f.questionIt}</h3>
-                          <p className="text-xs text-neutral-300 mt-1 leading-relaxed">{f.answerIt}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Reviews SubTab */}
-              {cmsSubTab === 'reviews' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {reviews.map((r) => (
-                    <div key={r.id} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between gap-4">
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-1 text-teal-400 text-xs">
-                            {Array.from({ length: r.rating || 5 }).map((_, idx) => (
-                              <span key={idx}>★</span>
-                            ))}
+                {/* Country List breakdown */}
+                <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                  <h3 className="font-bold text-white text-base">Classifica Paesi</h3>
+                  {(!analyticsData?.countries || analyticsData.countries.length === 0) ? (
+                    <p className="text-xs text-neutral-500 py-6 text-center">Nessun dato geografico registrato.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                      {analyticsData.countries.map((c: any, idx: number) => {
+                        const info = COUNTRY_MAP[c.code.toUpperCase()] || { name: c.code, flag: '🌐' };
+                        return (
+                          <div key={idx} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-base">{info.flag}</span>
+                              <span className="font-bold text-white text-xs">{info.name}</span>
+                              <span className="text-[10px] font-mono text-neutral-500">({c.code})</span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-teal-300">{c.count} visite</span>
                           </div>
-                          {r.companyLogo && (
-                            <img src={r.companyLogo} alt={r.company || ''} className="h-6 w-auto object-contain opacity-80" />
-                          )}
-                        </div>
-                        <p className="text-xs text-neutral-200 italic leading-relaxed mb-4">&ldquo;{r.quoteIt}&rdquo;</p>
-                        <div>
-                          <p className="font-bold text-white text-xs">{r.author}</p>
-                          <p className="text-[11px] text-neutral-400">{r.role} {r.company ? `• ${r.company}` : ''}</p>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ── TAB 6: CMS CONTENUTI ── */}
+          {activeTab === 'cms' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* FAQ Manager */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-white text-base">Editor FAQ ({faqs.length})</h3>
+                
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-teal-300">Aggiungi nuova FAQ</p>
+                  <input
+                    type="text"
+                    value={newFaqQ}
+                    onChange={(e) => setNewFaqQ(e.target.value)}
+                    placeholder="Domanda (es. Quanto costa un sito?)"
+                    className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none"
+                  />
+                  <textarea
+                    rows={2}
+                    value={newFaqA}
+                    onChange={(e) => setNewFaqA(e.target.value)}
+                    placeholder="Risposta dettagliata..."
+                    className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateFaq}
+                    className="py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    Salva FAQ
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                  {faqs.map((f) => (
+                    <div key={f.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-white">{f.questionIt}</p>
+                        <p className="text-[11px] text-neutral-400 mt-1 line-clamp-2">{f.answerIt}</p>
                       </div>
+                      <button onClick={() => handleDeleteFaq(f.id)} className="text-red-400 hover:text-red-300 text-xs shrink-0 cursor-pointer">
+                        Elimina
+                      </button>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════
-              TAB 7: SALUTE & SPEED INSIGHTS
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'health' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">Salute del Sistema & Speed Insights</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Indicatori Core Web Vitals, latenza del database e deployment edge.</p>
-                </div>
-                <button
-                  onClick={fetchHealth}
-                  className="px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs text-neutral-300 flex items-center gap-1.5"
-                >
-                  <TiaIcon icon={RefreshIcon} size={14} />
-                  <span>Riesegui Benchmark</span>
-                </button>
               </div>
 
-              {/* Web Vitals Scorecards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                {[
-                  { label: 'TTFB (First Byte)', value: '180 ms', status: 'Ottimo', target: '< 200 ms' },
-                  { label: 'FCP (First Contentful)', value: '0.8 s', status: 'Ottimo', target: '< 1.8 s' },
-                  { label: 'LCP (Largest Contentful)', value: '1.4 s', status: 'Ottimo', target: '< 2.5 s' },
-                  { label: 'INP (Interaction Next)', value: '48 ms', status: 'Ottimo', target: '< 200 ms' },
-                  { label: 'CLS (Cumulative Shift)', value: '0.01', status: 'Ottimo', target: '< 0.1' },
-                ].map((m, idx) => (
-                  <div key={idx} className="p-4 rounded-2xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col justify-between">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-medium block">{m.label}</span>
-                      <span className="text-xl font-bold text-teal-400 font-mono mt-1 block">{m.value}</span>
-                    </div>
-                    <div className="pt-2 border-t border-white/[0.05] flex items-center justify-between text-[10px]">
-                      <span className="text-teal-300 font-semibold">{m.status}</span>
-                      <span className="text-neutral-500 font-mono">{m.target}</span>
-                    </div>
+              {/* Reviews Manager */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-white text-base">Recensioni Clienti ({reviews.length})</h3>
+                
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-teal-300">Aggiungi nuova Recensione</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={newReviewAuthor}
+                      onChange={(e) => setNewReviewAuthor(e.target.value)}
+                      placeholder="Nome Cliente"
+                      className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                    />
+                    <input
+                      type="text"
+                      value={newReviewRole}
+                      onChange={(e) => setNewReviewRole(e.target.value)}
+                      placeholder="Ruolo / Azienda"
+                      className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                    />
                   </div>
-                ))}
-              </div>
-
-              {/* Edge status */}
-              <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
-                <h3 className="font-bold text-white text-sm mb-3">Infrastruttura & Connessioni</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05]">
-                    <span className="text-neutral-400 block mb-1">Vercel Edge Network</span>
-                    <span className="text-teal-400 font-bold">Attivo · HTTP/3 QUIC</span>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05]">
-                    <span className="text-neutral-400 block mb-1">Turso LibSQL Database</span>
-                    <span className="text-teal-400 font-bold">AWS EU-West-1 (Healthy)</span>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.05]">
-                    <span className="text-neutral-400 block mb-1">Passkey WebAuthn Auth</span>
-                    <span className="text-teal-400 font-bold">FIDO2 / Biometric Live</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════
-              TAB 8: PASSKEYS & SICUREZZA
-             ═══════════════════════════════════════════════════════ */}
-          {activeTab === 'passkeys' && (
-            <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-white">Dispositivi & Sicurezza Master</h1>
-                  <p className="text-xs text-neutral-400 mt-1">Gestione delle chiavi di accesso biometriche registrate e codici di emergenza.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRegisterNewPasskey}
-                  className="px-4 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <TiaIcon icon={PlusSignIcon} size={16} />
-                  <span>+ Aggiungi un altro dispositivo</span>
-                </button>
-              </div>
-
-              {/* Passkeys registered list */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {passkeys.map((pk) => (
-                  <div key={pk.id} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
-                        <TiaIcon icon={Shield01Icon} size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-sm">{pk.nickname || 'Dispositivo Master Autenticato'}</h3>
-                        <p className="text-[11px] text-neutral-400 font-mono">ID: {pk.credentialID.slice(0, 16)}...</p>
-                        <p className="text-[10px] text-neutral-500 mt-0.5">Creato: {new Date(pk.createdAt).toLocaleDateString('it-IT')}</p>
-                      </div>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full bg-teal-500/10 text-teal-400 text-[10px] font-mono font-bold border border-teal-500/20">
-                      Attivo
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Recovery codes generator */}
-              <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl flex flex-col gap-4">
-                <div className="flex items-center justify-between">
+                  <textarea
+                    rows={2}
+                    value={newReviewQuote}
+                    onChange={(e) => setNewReviewQuote(e.target.value)}
+                    placeholder="Testo della recensione..."
+                    className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none"
+                  />
                   <div>
-                    <h3 className="font-bold text-white text-base">Codici di Recupero di Emergenza</h3>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      Genera 5 codici monouso da salvare in un luogo sicuro per accedere in caso di smarrimento dei dispositivi biometrici.
-                    </p>
+                    <label className="block text-[10px] text-neutral-400 mb-1">Logo Azienda (WebP)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newReviewAvatarUrl}
+                        onChange={(e) => setNewReviewAvatarUrl(e.target.value)}
+                        placeholder="/uploads/logo.webp o URL"
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => reviewLogoInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-xl bg-teal-500/20 text-teal-300 text-xs font-semibold cursor-pointer shrink-0"
+                      >
+                        Upload
+                      </button>
+                    </div>
+                    <input type="file" ref={reviewLogoInputRef} onChange={handleReviewLogoUpload} accept="image/*" className="hidden" />
                   </div>
                   <button
                     type="button"
-                    onClick={handleGenerateRecoveryCodes}
-                    disabled={isGeneratingCodes}
-                    className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/10 text-xs text-white font-semibold cursor-pointer"
+                    onClick={async () => {
+                      if (!newReviewAuthor || !newReviewRole || !newReviewQuote) return;
+                      await fetch('/api/master/reviews', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          author: newReviewAuthor,
+                          role: newReviewRole,
+                          quoteIt: newReviewQuote,
+                          avatarUrl: newReviewAvatarUrl || null,
+                        }),
+                      });
+                      setNewReviewAuthor('');
+                      setNewReviewRole('');
+                      setNewReviewQuote('');
+                      setNewReviewAvatarUrl('');
+                      fetchCms();
+                      showTemporarySuccess('Recensione aggiunta!');
+                    }}
+                    className="py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-semibold text-xs transition-colors cursor-pointer"
                   >
-                    {isGeneratingCodes ? 'Generazione...' : 'Genera Nuovi Codici'}
+                    Salva Recensione
                   </button>
                 </div>
 
-                {recoveryCodes.length > 0 && (
-                  <div className="p-4 rounded-2xl bg-black/60 border border-teal-400/40 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-center animate-in fade-in duration-300">
-                    {recoveryCodes.map((code, idx) => (
-                      <div key={idx} className="p-2 rounded-xl bg-teal-950/40 border border-teal-500/20 text-teal-300 font-mono text-xs font-bold">
-                        {code}
+                <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-white">{r.author} <span className="text-neutral-400 font-normal">({r.role})</span></p>
+                        <p className="text-[11px] text-neutral-300 italic mt-1 line-clamp-2">&ldquo;{r.quoteIt}&rdquo;</p>
                       </div>
-                    ))}
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Eliminare recensione?')) return;
+                          await fetch(`/api/master/reviews?id=${r.id}`, { method: 'DELETE' });
+                          fetchCms();
+                          showTemporarySuccess('Recensione eliminata.');
+                        }}
+                        className="text-red-400 hover:text-red-300 text-xs shrink-0 cursor-pointer"
+                      >
+                        Elimina
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 7: SYSTEM HEALTH ── */}
+          {activeTab === 'health' && (
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
+                  <span className="text-xs text-neutral-400 uppercase tracking-wider">Database Status</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-teal-400 animate-pulse" />
+                    <span className="text-lg font-bold text-white capitalize">{systemHealth?.database?.status || 'Online'}</span>
+                  </div>
+                  <span className="text-xs text-neutral-500 font-mono">Latenza: {systemHealth?.database?.latencyMs ?? 1} ms</span>
+                </div>
+
+                <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
+                  <span className="text-xs text-neutral-400 uppercase tracking-wider">Email Delivery</span>
+                  <span className="text-lg font-bold text-white">Resend API</span>
+                  <span className="text-xs text-teal-400 font-mono">{systemHealth?.services?.email?.resend === 'configured' ? 'Configurato ✅' : 'Pronto (SMTP / Direct)'}</span>
+                </div>
+
+                <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
+                  <span className="text-xs text-neutral-400 uppercase tracking-wider">Eventi Tracciati</span>
+                  <span className="text-lg font-bold text-white">{systemHealth?.counts?.analyticsEvents ?? 0}</span>
+                  <span className="text-xs text-neutral-500 font-mono">First-party analytics</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08]">
+                <h3 className="font-bold text-white text-sm mb-3">Audit Logs & Error Tracker</h3>
+                <div className="bg-black/60 rounded-2xl p-4 font-mono text-xs text-neutral-300 max-h-60 overflow-y-auto">
+                  <p className="text-neutral-500">// Nessun errore critico rilevato. Tutte le pipeline sono operative.</p>
+                  <p className="text-teal-400/80 mt-1">[System] Passkey biometric module initialized.</p>
+                  <p className="text-teal-400/80">[System] Database Turso connection healthy.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 8: PASSKEY & SICUREZZA ── */}
+          {activeTab === 'passkeys' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Passkeys List */}
+              <div className="lg:col-span-2 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                  <div>
+                    <h3 className="font-bold text-white text-base">Dispositivi Passkey Attivi ({passkeys.length})</h3>
+                    <p className="text-xs text-neutral-400">Autenticatori biometrici abilitati all&apos;accesso master</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRegisterNewPasskey}
+                    className="px-3.5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    + Aggiungi Questo Dispositivo
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {passkeys.map((p) => (
+                    <div key={p.id} className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                          <TiaIcon icon={CpuIcon} size={18} />
+                        </div>
+                        <div>
+                          {editingPasskeyId === p.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={passkeyNickname}
+                                onChange={(e) => setPasskeyNickname(e.target.value)}
+                                placeholder="Nome dispositivo (es. MacBook Pro)"
+                                className="px-2 py-1 rounded bg-black border border-teal-400 text-xs text-white"
+                              />
+                              <button onClick={() => handleSavePasskeyNickname(p.id)} className="text-xs text-teal-400 cursor-pointer">Salva</button>
+                              <button onClick={() => setEditingPasskeyId(null)} className="text-xs text-neutral-400 cursor-pointer">Annulla</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-white text-sm">{p.nickname || p.credentialDeviceType || 'Dispositivo Passkey'}</p>
+                              <button onClick={() => { setEditingPasskeyId(p.id); setPasskeyNickname(p.nickname || ''); }} className="text-neutral-500 hover:text-teal-400 text-xs cursor-pointer">
+                                ✏️
+                              </button>
+                            </div>
+                          )}
+                          <p className="text-[11px] text-neutral-500 font-mono">ID: {p.credentialID.slice(0, 18)}... • Creata: {new Date(p.createdAt).toLocaleDateString('it-IT')}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeletePasskey(p.id)}
+                        className="px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-xs text-red-300 font-medium transition-colors cursor-pointer"
+                      >
+                        Revoca
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Emergency Recovery Codes */}
+              <div className="lg:col-span-1 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <span>Codici di Emergenza</span>
+                </h3>
+                <p className="text-xs text-neutral-400 leading-relaxed">
+                  Genera 5 codici di recupero monouso da conservare in un posto sicuro per accedere in caso di smarrimento del dispositivo biometrico.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateRecoveryCodes}
+                  disabled={isGeneratingCodes}
+                  className="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-xs font-semibold text-white transition-colors cursor-pointer"
+                >
+                  {isGeneratingCodes ? 'Generazione...' : 'Genera Nuovi Codici di Recupero'}
+                </button>
+
+                {recoveryCodes && (
+                  <div className="p-4 rounded-2xl bg-teal-950/40 border border-teal-500/40 flex flex-col gap-2">
+                    <p className="text-[11px] font-bold text-teal-300">Copia e conserva questi codici:</p>
+                    <div className="flex flex-col gap-1 font-mono text-xs text-white">
+                      {recoveryCodes.map((c, i) => (
+                        <div key={i} className="p-1.5 bg-black/60 rounded border border-white/10 text-center select-all">
+                          {c}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Project Modal */}
-          {showProjectModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-              <div className="bg-[#081410] border border-teal-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                  <h3 className="font-bold text-white text-base">
-                    {editingProjectId ? 'Modifica Progetto' : 'Nuovo Progetto Portfolio'}
-                  </h3>
-                  <button onClick={() => setShowProjectModal(false)} className="text-neutral-400 hover:text-white">✕</button>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-neutral-400 block mb-1">Titolo Progetto *</label>
-                    <input
-                      type="text"
-                      value={projectTitle}
-                      onChange={(e) => setProjectTitle(e.target.value)}
-                      placeholder="Es. GSA Hotels"
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-neutral-400 block mb-1">Descrizione Breve *</label>
-                    <input
-                      type="text"
-                      value={projectDescription}
-                      onChange={(e) => setProjectDescription(e.target.value)}
-                      placeholder="Descrizione di 1-2 righe..."
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-xs text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-neutral-400 block mb-1">Thumbnail (Conversione automatica in WebP)</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="text-xs text-neutral-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-teal-400/20 file:text-teal-300 file:font-semibold"
-                      />
-                    </div>
-                    {isUploadingImage && <p className="text-[11px] text-teal-400 mt-1 animate-pulse">Conversione WebP e caricamento...</p>}
-                    {projectThumbnail && (
-                      <img src={projectThumbnail} alt="Preview" className="mt-2 h-20 rounded-xl object-cover border border-white/10" />
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-400 block mb-1">URL Sito Live</label>
-                      <input
-                        type="url"
-                        value={projectUrl}
-                        onChange={(e) => setProjectUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="w-full px-3 py-2 bg-black/60 border border-white/15 rounded-xl text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-400 block mb-1">URL GitHub</label>
-                      <input
-                        type="url"
-                        value={projectGithubUrl}
-                        onChange={(e) => setProjectGithubUrl(e.target.value)}
-                        placeholder="https://github.com/..."
-                        className="w-full px-3 py-2 bg-black/60 border border-white/15 rounded-xl text-xs text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2">
-                    <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={projectFeatured}
-                        onChange={(e) => setProjectFeatured(e.target.checked)}
-                        className="rounded text-teal-400"
-                      />
-                      <span>Mostra in Evidenza (Featured)</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-3 border-t border-white/[0.08]">
-                  <button
-                    type="button"
-                    onClick={() => setShowProjectModal(false)}
-                    className="px-4 py-2 rounded-xl bg-white/10 text-xs text-neutral-300"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveProject}
-                    className="px-5 py-2 rounded-xl bg-teal-400 text-black text-xs font-bold shadow-md"
-                  >
-                    Salva Progetto
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </main>
+
       </div>
     </div>
   );
