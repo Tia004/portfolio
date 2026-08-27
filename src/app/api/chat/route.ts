@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage, getRecentMessages } from '@/lib/chatStore';
+import { addMessage, getRecentMessages, getTiaMessagesSince } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { getAvailability } from '@/lib/availability';
 import {
@@ -33,6 +33,29 @@ async function getLocation(ip: string): Promise<string> {
     return parts.join(', ') || 'sconosciuta';
   } catch {
     return 'sconosciuta';
+  }
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const requestedSessionId = searchParams.get('sessionId');
+    const sessionId = validateChatSession(req, requestedSessionId);
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 401 });
+    }
+
+    const sinceValue = Number(searchParams.get('since') || '0');
+    const since = Number.isFinite(sinceValue) ? Math.max(0, sinceValue) : 0;
+
+    const messages = await getTiaMessagesSince(sessionId, since);
+    return NextResponse.json({ messages }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 });
   }
 }
 

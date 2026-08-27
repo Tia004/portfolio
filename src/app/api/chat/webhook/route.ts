@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { addMessage, closeSession, getRecentMessages, getSystemDiagnostics } from '@/lib/chatStore';
+import { addMessage, closeSession, getLatestActiveSessionId, getRecentMessages, getSystemDiagnostics } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { runTurnstileDiagnostics, sanitizeChatText } from '@/lib/chat-security';
 import { getAvailability, setAvailability } from '@/lib/availability';
@@ -271,37 +271,60 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // We only care about messages that are replies to bot messages
-    if (!msg.reply_to_message?.text) {
-      return NextResponse.json({ ok: true });
+    // Extract sessionId: first try reply-to message (text or caption),
+    // then fallback to the latest active chat session if Tia typed directly.
+    let sessionId: string | null = null;
+    let isDirectFallback = false;
+
+    if (msg.reply_to_message) {
+      const repliedText: string = msg.reply_to_message.text || msg.reply_to_message.caption || '';
+      const sessionMatch = repliedText.match(/🆔\s*([0-9a-f-]{36})/i);
+      if (sessionMatch) {
+        sessionId = sessionMatch[1].trim();
+      }
     }
 
-    // Extract sessionId from the replied-to message
-    const repliedText: string = msg.reply_to_message.text;
-    const sessionMatch = repliedText.match(/🆔\s*(\S+)/);
-    if (!sessionMatch) {
-      return NextResponse.json({ ok: true }); // No session ID found
+    if (!sessionId && senderChatId === configuredChatId) {
+      // Direct message from Tia without quoting a specific message
+      const latest = await getLatestActiveSessionId();
+      if (latest) {
+        sessionId = latest;
+        isDirectFallback = true;
+      }
     }
 
-    const sessionId = sessionMatch[1].trim();
-    if (!/^[0-9a-f-]{36}$/i.test(sessionId)) {
-      return NextResponse.json({ ok: true });
+    if (!sessionId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
+      return NextResponse.json({ ok: true }); // No session to deliver to
     }
+
     const replyText = sanitizeChatText(msg.text, 8_000);
     if (!replyText || isInappropriateChatMessage(replyText)) {
       return NextResponse.json({ ok: true });
     }
 
     // Store the reply as a Tia message in the session.
-    // If all backends (DB, Redis, memory) fail, return 500 so Telegram
-    // will retry the update instead of silently dropping the message.
     try {
       await addMessage(sessionId, {
         text: replyText,
         sender: 'tia',
         timestamp: Date.now(),
       });
-      console.log(`[chat/webhook] Reply stored for session ${sessionId}: "${replyText}"`);
+      console.log(`[chat/webhook] Reply stored for session ${sessionId} (fallback: ${isDirectFallback}): "${replyText}"`);
+
+      // If Tia answered directly without hitting reply, send a quick confirmation receipt
+      const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (isDirectFallback && telegramToken && configuredChatId) {
+        await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: configuredChatId,
+            text: `💬 Risposta inoltrata alla chat attiva (🆔 ${sessionId.slice(0, 8)}…)`,
+            reply_to_message_id: msg.message_id,
+          }),
+          signal: AbortSignal.timeout(5_000),
+        });
+      }
     } catch (err) {
       console.error('[chat/webhook] addMessage failed — all backends exhausted:', err);
       return NextResponse.json({ ok: false, error: 'storage-unavailable' }, { status: 500 });
@@ -310,8 +333,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[chat/webhook] Error:', err);
-    // Non-critical errors (parse failures, missing session, etc.) are OK.
-    // Storage errors are already handled above with a 500 for Telegram retry.
     return NextResponse.json({ ok: true });
   }
 }

@@ -256,6 +256,7 @@ async function persistToStores(
     };
     redisMsgs.push(newMsg);
     await redisSaveMsgs(sessionId, redisMsgs);
+    void redisFetch(`/set/chat:latest_active_session/${encodeURIComponent(sessionId)}?EX=14400`);
     memoryStore.set(sessionId, [...redisMsgs]);
     return;
   }
@@ -346,6 +347,47 @@ export async function getRecentMessages(sessionId: string, limit = 3): Promise<C
   // Memory fallback
   const msgs = memoryStore.get(sessionId) || [];
   return msgs.slice(-limit);
+}
+
+/**
+ * Returns the most recent active chat session ID (within the last 4 hours).
+ * Used when Tia replies directly on Telegram without quoting a message.
+ */
+export async function getLatestActiveSessionId(): Promise<string | null> {
+  // 1. Try Redis first (fastest across serverless instances)
+  if (REDIS_URL && REDIS_TOKEN) {
+    try {
+      const res = await redisFetch('/get/chat:latest_active_session');
+      if (res?.ok) {
+        const data = await res.json() as { result?: string | null };
+        if (data.result && /^[0-9a-f-]{36}$/i.test(data.result)) {
+          return data.result;
+        }
+      }
+    } catch { /* continue to DB */ }
+  }
+
+  // 2. Try Turso DB
+  if (dbAvailable !== false || shouldRetryDb()) {
+    try {
+      const cutoff = BigInt(Date.now() - 4 * 3600 * 1000);
+      const row = await prisma.chatMessage.findFirst({
+        where: { timestamp: { gt: cutoff } },
+        orderBy: { timestamp: 'desc' },
+        select: { sessionId: true },
+      });
+      if (row?.sessionId) {
+        markDbUp();
+        return row.sessionId;
+      }
+    } catch {
+      markDbDown();
+    }
+  }
+
+  // 3. In-memory fallback
+  const keys = Array.from(memoryStore.keys());
+  return keys.length > 0 ? keys[keys.length - 1] : null;
 }
 
 // ── Diagnostics (Telegram /status) ─────────────────────────────

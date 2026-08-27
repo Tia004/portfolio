@@ -53,6 +53,14 @@ export async function GET(req: NextRequest) {
       // Send an initial heartbeat to confirm connection
       controller.enqueue(`event: connected\ndata: {}\n\n`);
 
+      // Immediate check on connection
+      getTiaMessagesSince(sessionId, lastCheck).then((messages) => {
+        if (messages.length > 0) {
+          lastCheck = Date.now();
+          controller.enqueue(`data: ${JSON.stringify(messages)}\n\n`);
+        }
+      }).catch(() => {});
+
       const interval = setInterval(() => {
         const now = Date.now();
         getTiaMessagesSince(sessionId, lastCheck).then((messages) => {
@@ -63,7 +71,7 @@ export async function GET(req: NextRequest) {
         }).catch(() => {
           // DB query failed — skip this tick
         });
-      }, 1500);
+      }, 800);
 
       // Clean up when the client disconnects
       req.signal.addEventListener('abort', () => {

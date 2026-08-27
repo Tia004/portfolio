@@ -2101,46 +2101,63 @@ export default function HomeShell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [chatOpen]);
 
-  // SSE connection for real-time replies from Tia (instead of polling)
+  // SSE connection + fast polling fallback for real-time replies from Tia
   const eventSourceRef = useRef<EventSource | null>(null);
   useEffect(() => {
     if (!chatOpen) return;
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    const handleIncomingMessages = (incoming: Array<{ id: number; text: string }>) => {
+      if (!Array.isArray(incoming) || incoming.length === 0) return;
+      lastPollRef.current = Date.now();
+      let hasNew = false;
+      setMessages(prev => {
+        const existingKeys = new Set(prev.map(m => `${m.id}|${m.text}`));
+        const newMsgs = incoming.filter((m) => !existingKeys.has(`${m.id}|${m.text}`));
+        if (newMsgs.length === 0) return prev;
+        hasNew = true;
+        return [...prev, ...newMsgs.map((m) => ({ id: m.id, text: m.text, sender: 'tia' as const }))];
+      });
+      if (hasNew) {
+        playNotificationSound();
+      }
+    };
 
     // EventSource cannot send a POST body, so it relies on the same secure
     // session cookie/ID pair. The session is bootstrapped before opening it.
     void ensureChatSession().then((sessionId) => {
       if (cancelled) return;
       sessionIdRef.current = sessionId;
-      const es = new EventSource(`/api/chat/stream?sessionId=${encodeURIComponent(sessionId)}&since=${lastPollRef.current}`);
-      eventSourceRef.current = es;
 
-      es.addEventListener('connected', () => {
-        // Connection established — no action needed
-      });
+      // 1. Primary: Server-Sent Events (SSE)
+      try {
+        const es = new EventSource(`/api/chat/stream?sessionId=${encodeURIComponent(sessionId)}&since=${lastPollRef.current}`);
+        eventSourceRef.current = es;
 
-      es.onmessage = (e) => {
+        es.onmessage = (e) => {
+          try {
+            const incoming = JSON.parse(e.data) as Array<{ id: number; text: string }>;
+            handleIncomingMessages(incoming);
+          } catch { /* ignore parse errors */ }
+        };
+
+        es.onerror = () => { /* automatic reconnection */ };
+      } catch { /* fallback to polling */ }
+
+      // 2. Secondary: Fast HTTP polling fallback (every 2.5s) to guarantee zero latency on serverless
+      pollTimer = setInterval(async () => {
+        if (cancelled) return;
         try {
-          const incoming = JSON.parse(e.data) as Array<{ id: number; text: string }>;
-          if (!Array.isArray(incoming) || incoming.length === 0) return;
-          lastPollRef.current = Date.now();
-          setMessages(prev => {
-            // Dedup on (id|text): the id alone is not a reliable key when the
-            // read source switches between stores after an outage (ids may
-            // briefly differ on the same message). Text + id is unique enough.
-            const existingKeys = new Set(prev.map(m => `${m.id}|${m.text}`));
-            const newMsgs = incoming.filter((m) => !existingKeys.has(`${m.id}|${m.text}`));
-            if (newMsgs.length === 0) return prev;
-            return [...prev, ...newMsgs.map((m) => ({ id: m.id, text: m.text, sender: 'tia' as const }))];
-          });
-        } catch {
-          // Ignore parse errors
-        }
-      };
-
-      es.onerror = () => {
-        // Browser will automatically reconnect EventSource on error
-      };
+          const res = await secureChatFetch(`/api/chat?sessionId=${encodeURIComponent(sessionId)}&since=${lastPollRef.current}`);
+          if (res.ok) {
+            const data = await res.json() as { messages?: Array<{ id: number; text: string }> };
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              handleIncomingMessages(data.messages);
+            }
+          }
+        } catch { /* skip tick */ }
+      }, 2500);
     }).catch(() => {
       // The live widget can still be opened; sending will show its normal
       // localized error if session bootstrap is unavailable.
@@ -2148,6 +2165,7 @@ export default function HomeShell() {
 
     return () => {
       cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
     };
