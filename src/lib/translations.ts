@@ -1184,9 +1184,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
   it: [
     {
       label: 'Sviluppo Web', subtitle: 'Siti web, dashboard, e-commerce e applicazioni web su misura.', tiers: [
-        { title: 'Sito Web Professionale', price: '1.200', period: '', description: 'Sito vetrina o landing page responsive', delivery: 'Consegna in 2-3 settimane', features: ['UI/UX design personalizzato', 'Sviluppo Next.js / React', 'Responsive e mobile-first', 'SEO tecnico e performance'] },
-        { title: 'Piattaforma Web', price: '3.500', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o dashboard', delivery: 'Consegna in 4-6 settimane', features: ['Architettura full-stack scalabile', 'Backend e API integrate', 'Autenticazione e database', 'Pannello admin e dashboard', 'Deploy e CI/CD inclusi'] },
-        { title: 'Soluzione Web Enterprise', price: '6500', priceLabel: 'Da €6.500', period: '', premium: true, description: 'Sistemi web complessi, multi-tenant, alta affidabilità', delivery: 'Su misura per te', features: ['Architettura cloud scalabile', 'Multi-tenancy e ruoli avanzati', 'Integrazioni API di terze parti', 'GDPR e compliance inclusi', 'Supporto e manutenzione 6 mesi'] },
+        { title: 'Sito Web Professionale', price: '600', period: '', description: 'Sito vetrina o landing page responsive', delivery: 'Consegna in 2-3 settimane', features: ['UI/UX design personalizzato', 'Sviluppo Next.js / React', 'Responsive e mobile-first', 'SEO tecnico e performance'] },
+        { title: 'Piattaforma Web', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o dashboard', delivery: 'Consegna in 4-6 settimane', features: ['Architettura full-stack scalabile', 'Backend e API integrate', 'Autenticazione e database', 'Pannello admin e dashboard', 'Deploy e CI/CD inclusi'] },
+        { title: 'Soluzione Web Enterprise', price: '3250', priceLabel: 'Da €3.250', period: '', premium: true, description: 'Sistemi web complessi, multi-tenant, alta affidabilità', delivery: 'Su misura per te', features: ['Architettura cloud scalabile', 'Multi-tenancy e ruoli avanzati', 'Integrazioni API di terze parti', 'GDPR e compliance inclusi', 'Supporto e manutenzione 6 mesi'] },
       ]
     },
     {
@@ -1198,9 +1198,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software & App', subtitle: 'Applicazioni mobile, software su misura e sistemi backend.', tiers: [
-        { title: 'MVP o App Mobile', price: '3.800', period: '', description: 'Per startup, PMI o tool interni', delivery: 'Consegna in 4-8 settimane', features: ['Analisi requisiti e architettura', 'Backend e API dedicate', 'Autenticazione e database', 'App mobile'] },
-        { title: 'Piattaforma Scalabile', price: '8000', priceLabel: 'Da €8.000', period: '', popular: true, description: 'Soluzioni enterprise, SaaS, sistemi complessi', delivery: 'Su misura per te', features: ['Architettura modulare e scalabile', 'Ruoli, permessi e multi-tenancy', 'Integrazioni API di terze parti', 'Automazioni e reportistica', 'Supporto e manutenzione inclusi'] },
-        { title: 'Soluzione Enterprise', price: '15000', priceLabel: 'Da €15.000', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA garantito e team dedicato'] },
+        { title: 'MVP o App Mobile', price: '1.900', period: '', description: 'Per startup, PMI o tool interni', delivery: 'Consegna in 4-8 settimane', features: ['Analisi requisiti e architettura', 'Backend e API dedicate', 'Autenticazione e database', 'App mobile'] },
+        { title: 'Piattaforma Scalabile', price: '4000', priceLabel: 'Da €4.000', period: '', popular: true, description: 'Soluzioni enterprise, SaaS, sistemi complessi', delivery: 'Su misura per te', features: ['Architettura modulare e scalabile', 'Ruoli, permessi e multi-tenancy', 'Integrazioni API di terze parti', 'Automazioni e reportistica', 'Supporto e manutenzione inclusi'] },
+        { title: 'Soluzione Enterprise', price: '7500', priceLabel: 'Da €7.500', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA garantito e team dedicato'] },
       ]
     },
     {
@@ -1214,9 +1214,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
   en: [
     {
       label: 'Web Development', subtitle: 'Custom websites, dashboards, e-commerce and web applications.', tiers: [
-        { title: 'Professional Website', price: '1.200', period: '', description: 'Showcase site or responsive landing page', delivery: 'Delivery in 2-3 weeks', features: ['Custom UI/UX design', 'Next.js / React development', 'Responsive and mobile-first', 'Technical SEO and performance'] },
-        { title: 'Web Platform', price: '3.500', period: '', popular: true, description: 'SaaS, marketplace, e-commerce or dashboard', delivery: 'Delivery in 4-6 weeks', features: ['Scalable full-stack architecture', 'Integrated backend and APIs', 'Authentication and database', 'Admin panel and dashboard', 'Deploy and CI/CD included'] },
-        { title: 'Enterprise Web Solution', price: '6500', priceLabel: 'From €6,500', period: '', premium: true, description: 'Complex web systems, multi-tenant, high reliability', delivery: 'Tailored for you', features: ['Scalable cloud architecture', 'Multi-tenancy and advanced roles', 'Third-party API integrations', 'GDPR and compliance included', '6 months support and maintenance'] },
+        { title: 'Professional Website', price: '600', period: '', description: 'Showcase site or responsive landing page', delivery: 'Delivery in 2-3 weeks', features: ['Custom UI/UX design', 'Next.js / React development', 'Responsive and mobile-first', 'Technical SEO and performance'] },
+        { title: 'Web Platform', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce or dashboard', delivery: 'Delivery in 4-6 weeks', features: ['Scalable full-stack architecture', 'Integrated backend and APIs', 'Authentication and database', 'Admin panel and dashboard', 'Deploy and CI/CD included'] },
+        { title: 'Enterprise Web Solution', price: '3250', priceLabel: 'From €3,250', period: '', premium: true, description: 'Complex web systems, multi-tenant, high reliability', delivery: 'Tailored for you', features: ['Scalable cloud architecture', 'Multi-tenancy and advanced roles', 'Third-party API integrations', 'GDPR and compliance included', '6 months support and maintenance'] },
       ]
     },
     {
@@ -1228,9 +1228,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software & Apps', subtitle: 'Mobile applications, custom software and backend systems.', tiers: [
-        { title: 'MVP or Mobile App', price: '3.800', period: '', description: 'For startups, SMEs or internal tools', delivery: 'Delivery in 4-8 weeks', features: ['Requirements analysis and architecture', 'Dedicated backend and APIs', 'Authentication and database', 'Mobile app'] },
-        { title: 'Scalable Platform', price: '8000', priceLabel: 'From €8,000', period: '', popular: true, description: 'Enterprise solutions, SaaS, complex systems', delivery: 'Tailored for you', features: ['Modular and scalable architecture', 'Roles, permissions and multi-tenancy', 'Third-party API integrations', 'Automations and reporting', 'Support and maintenance included'] },
-        { title: 'Enterprise Solution', price: '15000', priceLabel: 'From €15,000', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'Guaranteed SLA and dedicated team'] },
+        { title: 'MVP or Mobile App', price: '1.900', period: '', description: 'For startups, SMEs or internal tools', delivery: 'Delivery in 4-8 weeks', features: ['Requirements analysis and architecture', 'Dedicated backend and APIs', 'Authentication and database', 'Mobile app'] },
+        { title: 'Scalable Platform', price: '4000', priceLabel: 'From €4,000', period: '', popular: true, description: 'Enterprise solutions, SaaS, complex systems', delivery: 'Tailored for you', features: ['Modular and scalable architecture', 'Roles, permissions and multi-tenancy', 'Third-party API integrations', 'Automations and reporting', 'Support and maintenance included'] },
+        { title: 'Enterprise Solution', price: '7500', priceLabel: 'From €7,500', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'Guaranteed SLA and dedicated team'] },
       ]
     },
     {
@@ -1244,9 +1244,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
   es: [
     {
       label: 'Desarrollo Web', subtitle: 'Sitios web, paneles, e-commerce y aplicaciones web a medida.', tiers: [
-        { title: 'Sitio Web Profesional', price: '1.200', period: '', description: 'Sitio vitrina o landing page responsive', delivery: 'Entrega en 2-3 semanas', features: ['Diseño UI/UX personalizado', 'Desarrollo Next.js / React', 'Responsive y mobile-first', 'SEO técnico y rendimiento'] },
-        { title: 'Plataforma Web', price: '3.500', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o panel', delivery: 'Entrega en 4-6 semanas', features: ['Arquitectura full-stack escalable', 'Backend y APIs integradas', 'Autenticación y base de datos', 'Panel de administración', 'Deploy y CI/CD incluidos'] },
-        { title: 'Solución Web Enterprise', price: '6500', priceLabel: 'Desde 6.500 €', period: '', premium: true, description: 'Sistemas web complejos, multi-tenant, alta fiabilidad', delivery: 'A tu medida', features: ['Arquitectura cloud escalable', 'Multi-tenancy y roles avanzados', 'Integraciones API de terceros', 'GDPR y compliance incluidos', '6 meses de soporte y mantenimiento'] },
+        { title: 'Sitio Web Profesional', price: '600', period: '', description: 'Sitio vitrina o landing page responsive', delivery: 'Entrega en 2-3 semanas', features: ['Diseño UI/UX personalizado', 'Desarrollo Next.js / React', 'Responsive y mobile-first', 'SEO técnico y rendimiento'] },
+        { title: 'Plataforma Web', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o panel', delivery: 'Entrega en 4-6 semanas', features: ['Arquitectura full-stack escalable', 'Backend y APIs integradas', 'Autenticación y base de datos', 'Panel de administración', 'Deploy y CI/CD incluidos'] },
+        { title: 'Solución Web Enterprise', price: '3250', priceLabel: 'Desde 3.250 €', period: '', premium: true, description: 'Sistemas web complejos, multi-tenant, alta fiabilidad', delivery: 'A tu medida', features: ['Arquitectura cloud escalable', 'Multi-tenancy y roles avanzados', 'Integraciones API de terceros', 'GDPR y compliance incluidos', '6 meses de soporte y mantenimiento'] },
       ]
     },
     {
@@ -1258,9 +1258,9 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software y Apps', subtitle: 'Aplicaciones móviles, software a medida y sistemas backend.', tiers: [
-        { title: 'MVP o App Móvil', price: '3.800', period: '', description: 'Para startups, PYMEs o herramientas internas', delivery: 'Entrega en 4-8 semanas', features: ['Análisis de requisitos y arquitectura', 'Backend y APIs dedicadas', 'Autenticación y base de datos', 'App móvil'] },
-        { title: 'Plataforma Escalable', price: '8000', priceLabel: 'Desde 8.000 €', period: '', popular: true, description: 'Soluciones enterprise, SaaS, sistemas complejos', delivery: 'A tu medida', features: ['Arquitectura modular y escalable', 'Roles, permisos y multi-tenancy', 'Integraciones API de terceros', 'Automatizaciones y reporting', 'Soporte y mantenimiento incluidos'] },
-        { title: 'Solución Enterprise', price: '15000', priceLabel: 'Desde 15.000 €', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA garantizado y equipo dedicado'] },
+        { title: 'MVP o App Móvil', price: '1.900', period: '', description: 'Para startups, PYMEs o herramientas internas', delivery: 'Entrega en 4-8 semanas', features: ['Análisis de requisitos y arquitectura', 'Backend y APIs dedicadas', 'Autenticación y base de datos', 'App móvil'] },
+        { title: 'Plataforma Escalable', price: '4000', priceLabel: 'Desde 4.000 €', period: '', popular: true, description: 'Soluciones enterprise, SaaS, sistemas complejos', delivery: 'A tu medida', features: ['Arquitectura modular y escalable', 'Roles, permisos y multi-tenancy', 'Integraciones API de terceros', 'Automatizaciones y reporting', 'Soporte y mantenimiento incluidos'] },
+        { title: 'Solución Enterprise', price: '7500', priceLabel: 'Desde 7.500 €', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA garantizado y equipo dedicado'] },
       ]
     },
     {
@@ -1277,9 +1277,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
   it: [
     {
       label: 'Sviluppo Web', subtitle: 'Manutenzione e crescita della tua presenza web.', tiers: [
-        { title: 'Website Care', price: '350', period: '/mese', description: 'Manutenzione e aggiornamenti continui', delivery: 'Attivazione immediata', features: ['Aggiornamenti contenuti illimitati', 'Ottimizzazione performance mensile', 'Backup e sicurezza', '1 revisione design al mese', 'Report mensile'] },
-        { title: 'Web Growth', price: '1.500', period: '/mese', popular: true, description: 'Sviluppo iterativo e miglioramento continuo', delivery: 'Attivazione immediata', features: ['Nuove feature ogni sprint', 'A/B testing e analytics', 'SEO continuativo', 'Iterazioni settimanali', 'Priority support'] },
-        { title: 'Web Partnership', price: '3.000', period: '/mese', premium: true, description: 'Partner web embedded nel team', delivery: 'Inizio immediato', hours: 'Fino a 40h/settimana, flessibili', features: ['Architettura e code review continui', 'Codebase proprietaria e IP tuo', 'CI/CD e monitoraggio proattivo', 'Roadmap co-gestita trimestrale'] },
+        { title: 'Website Care', price: '175', period: '/mese', description: 'Manutenzione e aggiornamenti continui', delivery: 'Attivazione immediata', features: ['Aggiornamenti contenuti illimitati', 'Ottimizzazione performance mensile', 'Backup e sicurezza', '1 revisione design al mese', 'Report mensile'] },
+        { title: 'Web Growth', price: '750', period: '/mese', popular: true, description: 'Sviluppo iterativo e miglioramento continuo', delivery: 'Attivazione immediata', features: ['Nuove feature ogni sprint', 'A/B testing e analytics', 'SEO continuativo', 'Iterazioni settimanali', 'Priority support'] },
+        { title: 'Web Partnership', price: '1.500', period: '/mese', premium: true, description: 'Partner web embedded nel team', delivery: 'Inizio immediato', hours: 'Fino a 40h/settimana, flessibili', features: ['Architettura e code review continui', 'Codebase proprietaria e IP tuo', 'CI/CD e monitoraggio proattivo', 'Roadmap co-gestita trimestrale'] },
       ]
     },
     {
@@ -1291,9 +1291,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software & App', subtitle: 'Team esterno dedicato, mese per mese.', tiers: [
-        { title: 'Dev Part-Time', price: '1.500', period: '/mese', description: 'Sviluppo dedicato su base mensile', delivery: 'Attivazione in 24-48h', hours: 'Fino a 10h/settimana, flessibili', features: ['Code review e documentazione', 'Deploy e CI/CD gestiti', 'Canale Slack dedicato', 'Sprint bisettimanali'] },
-        { title: 'Dev Full-Time', price: '3.500', period: '/mese', popular: true, description: 'Risorse scalabili per progetti complessi', delivery: 'Attivazione in 24-48h', hours: 'Fino a 25h/settimana, flessibili', features: ['Tech lead e architettura inclusi', 'Gestione progetto Agile', 'On-call per emergenze', 'Reportistica avanzata'] },
-        { title: 'Tech Partnership', price: '5.500', period: '/mese', premium: true, description: 'Sviluppatore senior embedded nel tuo team', delivery: 'Inizio immediato', hours: 'Fino a 40h/settimana, flessibili', features: ['Architettura e code review continui', 'Codebase proprietaria e IP tuo', 'CI/CD e monitoraggio proattivo', 'Roadmap co-gestita trimestrale'] },
+        { title: 'Dev Part-Time', price: '750', period: '/mese', description: 'Sviluppo dedicato su base mensile', delivery: 'Attivazione in 24-48h', hours: 'Fino a 10h/settimana, flessibili', features: ['Code review e documentazione', 'Deploy e CI/CD gestiti', 'Canale Slack dedicato', 'Sprint bisettimanali'] },
+        { title: 'Dev Full-Time', price: '1.750', period: '/mese', popular: true, description: 'Risorse scalabili per progetti complessi', delivery: 'Attivazione in 24-48h', hours: 'Fino a 25h/settimana, flessibili', features: ['Tech lead e architettura inclusi', 'Gestione progetto Agile', 'On-call per emergenze', 'Reportistica avanzata'] },
+        { title: 'Tech Partnership', price: '2.750', period: '/mese', premium: true, description: 'Sviluppatore senior embedded nel tuo team', delivery: 'Inizio immediato', hours: 'Fino a 40h/settimana, flessibili', features: ['Architettura e code review continui', 'Codebase proprietaria e IP tuo', 'CI/CD e monitoraggio proattivo', 'Roadmap co-gestita trimestrale'] },
       ]
     },
     {
@@ -1307,9 +1307,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
   en: [
     {
       label: 'Web Development', subtitle: 'Maintenance and growth of your web presence.', tiers: [
-        { title: 'Website Care', price: '350', period: '/month', description: 'Ongoing maintenance and updates', delivery: 'Immediate activation', features: ['Unlimited content updates', 'Monthly performance optimization', 'Backup and security', '1 design revision per month', 'Monthly report'] },
-        { title: 'Web Growth', price: '1.500', period: '/month', popular: true, description: 'Iterative development and continuous improvement', delivery: 'Immediate activation', features: ['New features every sprint', 'A/B testing and analytics', 'Ongoing SEO', 'Weekly iterations', 'Priority support'] },
-        { title: 'Web Partnership', price: '3.000', period: '/month', premium: true, description: 'Web partner embedded in your team', delivery: 'Immediate start', hours: 'Up to 40h/week, flexible', features: ['Continuous architecture and code reviews', 'Proprietary codebase — your IP', 'CI/CD and proactive monitoring', 'Co-managed quarterly roadmap'] },
+        { title: 'Website Care', price: '175', period: '/month', description: 'Ongoing maintenance and updates', delivery: 'Immediate activation', features: ['Unlimited content updates', 'Monthly performance optimization', 'Backup and security', '1 design revision per month', 'Monthly report'] },
+        { title: 'Web Growth', price: '750', period: '/month', popular: true, description: 'Iterative development and continuous improvement', delivery: 'Immediate activation', features: ['New features every sprint', 'A/B testing and analytics', 'Ongoing SEO', 'Weekly iterations', 'Priority support'] },
+        { title: 'Web Partnership', price: '1.500', period: '/month', premium: true, description: 'Web partner embedded in your team', delivery: 'Immediate start', hours: 'Up to 40h/week, flexible', features: ['Continuous architecture and code reviews', 'Proprietary codebase — your IP', 'CI/CD and proactive monitoring', 'Co-managed quarterly roadmap'] },
       ]
     },
     {
@@ -1321,9 +1321,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software & Apps', subtitle: 'Dedicated external team, month by month.', tiers: [
-        { title: 'Dev Part-Time', price: '1.500', period: '/month', description: 'Dedicated monthly development', delivery: 'Activation in 24-48h', hours: 'Up to 10h/week, flexible', features: ['Code review and documentation', 'Managed deploy and CI/CD', 'Dedicated Slack channel', 'Bi-weekly sprints'] },
-        { title: 'Dev Full-Time', price: '3.500', period: '/month', popular: true, description: 'Scalable resources for complex projects', delivery: 'Activation in 24-48h', hours: 'Up to 25h/week, flexible', features: ['Tech lead and architecture included', 'Agile project management', 'On-call for emergencies', 'Advanced reporting'] },
-        { title: 'Tech Partnership', price: '5.500', period: '/month', premium: true, description: 'Senior developer embedded in your team', delivery: 'Immediate start', hours: 'Up to 40h/week, flexible', features: ['Continuous architecture and code reviews', 'Proprietary codebase — your IP', 'CI/CD and proactive monitoring', 'Co-managed quarterly roadmap'] },
+        { title: 'Dev Part-Time', price: '750', period: '/month', description: 'Dedicated monthly development', delivery: 'Activation in 24-48h', hours: 'Up to 10h/week, flexible', features: ['Code review and documentation', 'Managed deploy and CI/CD', 'Dedicated Slack channel', 'Bi-weekly sprints'] },
+        { title: 'Dev Full-Time', price: '1.750', period: '/month', popular: true, description: 'Scalable resources for complex projects', delivery: 'Activation in 24-48h', hours: 'Up to 25h/week, flexible', features: ['Tech lead and architecture included', 'Agile project management', 'On-call for emergencies', 'Advanced reporting'] },
+        { title: 'Tech Partnership', price: '2.750', period: '/month', premium: true, description: 'Senior developer embedded in your team', delivery: 'Immediate start', hours: 'Up to 40h/week, flexible', features: ['Continuous architecture and code reviews', 'Proprietary codebase — your IP', 'CI/CD and proactive monitoring', 'Co-managed quarterly roadmap'] },
       ]
     },
     {
@@ -1337,9 +1337,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
   es: [
     {
       label: 'Desarrollo Web', subtitle: 'Mantenimiento y crecimiento de tu presencia web.', tiers: [
-        { title: 'Website Care', price: '350', period: '/mes', description: 'Mantenimiento y actualizaciones continuas', delivery: 'Activación inmediata', features: ['Actualizaciones de contenido ilimitadas', 'Optimización mensual de rendimiento', 'Backup y seguridad', '1 revisión de diseño al mes', 'Informe mensual'] },
-        { title: 'Web Growth', price: '1.500', period: '/mes', popular: true, description: 'Desarrollo iterativo y mejora continua', delivery: 'Activación inmediata', features: ['Nuevas funcionalidades cada sprint', 'A/B testing y analytics', 'SEO continuo', 'Iteraciones semanales', 'Soporte prioritario'] },
-        { title: 'Web Partnership', price: '3.000', period: '/mes', premium: true, description: 'Socio web integrado en tu equipo', delivery: 'Inicio inmediato', hours: 'Hasta 40h/semana, flexible', features: ['Arquitectura y revisiones de código continuas', 'Código propietario — tu IP', 'CI/CD y monitorización proactiva', 'Roadmap co-gestionado trimestral'] },
+        { title: 'Website Care', price: '175', period: '/mes', description: 'Mantenimiento y actualizaciones continuas', delivery: 'Activación inmediata', features: ['Actualizaciones de contenido ilimitadas', 'Optimización mensual de rendimiento', 'Backup y seguridad', '1 revisión de diseño al mes', 'Informe mensual'] },
+        { title: 'Web Growth', price: '750', period: '/mes', popular: true, description: 'Desarrollo iterativo y mejora continua', delivery: 'Activación inmediata', features: ['Nuevas funcionalidades cada sprint', 'A/B testing y analytics', 'SEO continuo', 'Iteraciones semanales', 'Soporte prioritario'] },
+        { title: 'Web Partnership', price: '1.500', period: '/mes', premium: true, description: 'Socio web integrado en tu equipo', delivery: 'Inicio inmediato', hours: 'Hasta 40h/semana, flexible', features: ['Arquitectura y revisiones de código continuas', 'Código propietario — tu IP', 'CI/CD y monitorización proactiva', 'Roadmap co-gestionado trimestral'] },
       ]
     },
     {
@@ -1351,9 +1351,9 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
     },
     {
       label: 'Software y Apps', subtitle: 'Equipo externo dedicado, mes a mes.', tiers: [
-        { title: 'Dev Part-Time', price: '1.500', period: '/mes', description: 'Desarrollo dedicado mensual', delivery: 'Activación en 24-48h', hours: 'Hasta 10h/semana, flexible', features: ['Code review y documentación', 'Deploy y CI/CD gestionados', 'Canal Slack dedicado', 'Sprints bisemanales'] },
-        { title: 'Dev Full-Time', price: '3.500', period: '/mes', popular: true, description: 'Recursos escalables para proyectos complejos', delivery: 'Activación en 24-48h', hours: 'Hasta 25h/semana, flexible', features: ['Tech lead y arquitectura incluidos', 'Gestión de proyecto Agile', 'Guardia para emergencias', 'Informes avanzados'] },
-        { title: 'Tech Partnership', price: '5.500', period: '/mes', premium: true, description: 'Desarrollador senior integrado en tu equipo', delivery: 'Inicio inmediato', hours: 'Hasta 40h/semana, flexible', features: ['Arquitectura y revisiones de código continuas', 'Código propietario — tu IP', 'CI/CD y monitorización proactiva', 'Roadmap co-gestionado trimestral'] },
+        { title: 'Dev Part-Time', price: '750', period: '/mes', description: 'Desarrollo dedicado mensual', delivery: 'Activación en 24-48h', hours: 'Hasta 10h/semana, flexible', features: ['Code review y documentación', 'Deploy y CI/CD gestionados', 'Canal Slack dedicado', 'Sprints bisemanales'] },
+        { title: 'Dev Full-Time', price: '1.750', period: '/mes', popular: true, description: 'Recursos escalables para proyectos complejos', delivery: 'Activación en 24-48h', hours: 'Hasta 25h/semana, flexible', features: ['Tech lead y arquitectura incluidos', 'Gestión de proyecto Agile', 'Guardia para emergencias', 'Informes avanzados'] },
+        { title: 'Tech Partnership', price: '2.750', period: '/mes', premium: true, description: 'Desarrollador senior integrado en tu equipo', delivery: 'Inicio inmediato', hours: 'Hasta 40h/semana, flexible', features: ['Arquitectura y revisiones de código continuas', 'Código propietario — tu IP', 'CI/CD y monitorización proactiva', 'Roadmap co-gestionado trimestral'] },
       ]
     },
     {

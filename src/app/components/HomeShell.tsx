@@ -549,8 +549,8 @@ function PriceCard({
           <div className="mb-4">
             {price ? (
               <span className={`text-2xl sm:text-4xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
-                <span className="text-neutral-300 text-[11px] font-normal uppercase tracking-[0.15em]" style={{ verticalAlign: 'super' }}>{t('prezzi.from', lang)}</span>
-                <CountUp target={parseInt(price.replace(/[.,]/g, ''), 10)} delay={computedDelay} className="" prefix="€" />
+                <span className="text-neutral-300 text-[11px] font-normal uppercase tracking-[0.15em] mr-1" style={{ verticalAlign: 'super' }}>{t('prezzi.from', lang)}</span>
+                €{price}
               </span>
             ) : (
               <span className={`text-2xl sm:text-3xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
