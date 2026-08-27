@@ -7,8 +7,17 @@ import dynamic from 'next/dynamic';
 import { startRegistration } from '@simplewebauthn/browser';
 import BorderGlow from '@/app/components/BorderGlow';
 import TiaIcon from '@/app/components/TiaIcon';
-import WorldVectorMap from '@/app/components/WorldVectorMap';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
+
+const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[450px] rounded-3xl bg-[#050f0c] border border-white/10 flex items-center justify-center text-xs text-neutral-400 font-mono">
+      <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mr-2" />
+      Caricamento mappa geografica interattiva...
+    </div>
+  ),
+});
 import {
   CodeFolderIcon,
   Mail01Icon,
@@ -1281,8 +1290,9 @@ export default function MasterDashboardPage() {
                   )}
                 </div>
 
-                <WorldVectorMap
+                <RealWorldMap
                   countries={analyticsData?.countries || []}
+                  cities={analyticsData?.topCities || []}
                   selectedCountry={selectedCountry}
                   onCountryClick={(country) => {
                     setSelectedCountry(selectedCountry === country ? null : country);

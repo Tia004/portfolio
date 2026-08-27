@@ -4,8 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import WorldVectorMap from '@/app/components/WorldVectorMap';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
+
+const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[450px] rounded-3xl bg-[#050f0c] border border-white/10 flex items-center justify-center text-xs text-neutral-400 font-mono">
+      <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mr-2" />
+      Caricamento mappa geografica interattiva...
+    </div>
+  ),
+});
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
@@ -873,8 +882,9 @@ export default function AnalyticsDashboard() {
             {stats.countries.length === 0 ? (
               <p className="text-neutral-500 text-sm py-8 text-center">Nessun dato geografico disponibile</p>
             ) : (
-              <WorldVectorMap
+              <RealWorldMap
                 countries={stats.countries}
+                cities={stats.topCities}
                 selectedCountry={selectedCountry}
                 onCountryClick={(country) => {
                   setSelectedCountry(selectedCountry === country ? null : country);
