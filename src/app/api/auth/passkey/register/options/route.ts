@@ -1,14 +1,29 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
-import { setChallengeCookie } from '@/lib/session';
+import { setChallengeCookie, getSession } from '@/lib/session';
+
+function getRpID(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
+  return host.split(':')[0];
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const rpID = url.hostname;
+    const authCount = await prisma.authenticator.count({
+      where: { user: { username: 'master' } },
+    });
 
-    // Use a fixed userID for the master user
+    const session = await getSession();
+
+    // Security Gate: Once initialized (at least 1 passkey exists), only an authenticated admin can register new keys
+    if (authCount > 0 && (!session || session.username !== 'master')) {
+      return NextResponse.json({
+        error: 'Registrazione pubblica disabilitata. Accedi alla dashboard per aggiungere nuovi dispositivi.',
+      }, { status: 403 });
+    }
+
+    const rpID = getRpID(request);
     const masterUserId = 'master-user-id';
 
     const existingUser = await prisma.user.findUnique({
@@ -28,8 +43,8 @@ export async function POST(request: NextRequest) {
         transports: auth.transports ? (auth.transports.split(',') as any[]) : undefined,
       })) ?? [],
       authenticatorSelection: {
-        residentKey: 'required',
-        userVerification: 'required',
+        residentKey: 'preferred',
+        userVerification: 'preferred',
       },
     });
 

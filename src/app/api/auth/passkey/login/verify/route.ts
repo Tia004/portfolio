@@ -3,6 +3,27 @@ import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getChallengeCookie, deleteChallengeCookie, createSession } from '@/lib/session';
 
+function getRpID(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
+  return host.split(':')[0];
+}
+
+function getExpectedOrigins(request: NextRequest): string[] {
+  const originHeader = request.headers.get('origin');
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
+  const proto = request.headers.get('x-forwarded-proto') || (request.url.startsWith('https') ? 'https' : 'http');
+  const origins = new Set<string>();
+  if (originHeader) origins.add(originHeader);
+  origins.add(`${proto}://${host}`);
+  origins.add('https://tiadesigns.it');
+  origins.add('https://www.tiadesigns.it');
+  if (process.env.NODE_ENV !== 'production') {
+    origins.add('http://localhost:3000');
+    origins.add('http://127.0.0.1:3000');
+  }
+  return Array.from(origins);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -10,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const expectedChallenge = await getChallengeCookie('login_challenge');
     if (!expectedChallenge) {
-      return NextResponse.json({ error: 'Login session expired or invalid' }, { status: 400 });
+      return NextResponse.json({ error: 'Sessione di autenticazione scaduta o non valida' }, { status: 400 });
     }
 
     // Fetch the registered authenticator
@@ -19,17 +40,16 @@ export async function POST(request: NextRequest) {
     });
 
     if (!authenticator) {
-      return NextResponse.json({ error: 'Authenticator key not registered' }, { status: 400 });
+      return NextResponse.json({ error: 'Chiave Passkey non registrata' }, { status: 400 });
     }
 
-    const url = new URL(request.url);
-    const rpID = url.hostname;
-    const origin = request.headers.get('origin') || url.origin;
+    const rpID = getRpID(request);
+    const expectedOrigin = getExpectedOrigins(request);
 
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: origin,
+      expectedOrigin,
       expectedRPID: rpID,
       credential: {
         id: authenticator.credentialID,
@@ -37,20 +57,21 @@ export async function POST(request: NextRequest) {
         counter: Number(authenticator.counter),
         transports: authenticator.transports ? (authenticator.transports.split(',') as any[]) : undefined,
       },
-      requireUserVerification: true,
+      requireUserVerification: false,
     });
 
     const { verified, authenticationInfo } = verification;
 
     if (!verified || !authenticationInfo) {
-      return NextResponse.json({ error: 'Passkey authentication failed' }, { status: 400 });
+      return NextResponse.json({ error: 'Autenticazione Passkey non riuscita' }, { status: 400 });
     }
 
-    // Update the counter
+    // Update the counter and lastUsedAt
     await prisma.authenticator.update({
       where: { id: authenticator.id },
       data: {
         counter: BigInt(authenticationInfo.newCounter),
+        lastUsedAt: new Date(),
       },
     });
 

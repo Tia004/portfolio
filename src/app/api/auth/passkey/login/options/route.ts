@@ -3,6 +3,11 @@ import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { setChallengeCookie } from '@/lib/session';
 
+function getRpID(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
+  return host.split(':')[0];
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Fetch master user
@@ -12,11 +17,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user || user.authenticators.length === 0) {
-      return NextResponse.json({ error: 'Master account not initialized' }, { status: 400 });
+      return NextResponse.json({ error: 'Nessuna Passkey registrata. Effettua la prima configurazione.' }, { status: 400 });
     }
 
-    const url = new URL(request.url);
-    const rpID = url.hostname;
+    const rpID = getRpID(request);
 
     const options = await generateAuthenticationOptions({
       rpID,
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest) {
         id: auth.credentialID,
         transports: auth.transports ? (auth.transports.split(',') as any[]) : undefined,
       })),
-      userVerification: 'required',
+      userVerification: 'preferred',
     });
 
     // Save the challenge in the login_challenge cookie

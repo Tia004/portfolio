@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { startRegistration } from '@simplewebauthn/browser';
 import BorderGlow from '@/app/components/BorderGlow';
 import TiaIcon from '@/app/components/TiaIcon';
 import {
@@ -730,6 +731,34 @@ export default function DashboardPage() {
     }
   };
 
+  const handleRegisterNewPasskey = async () => {
+    try {
+      setError(null);
+      const nickname = prompt('Inserisci un nome per questo dispositivo (es. iPhone 16 Pro, MacBook Touch ID):', 'Nuovo Dispositivo');
+      if (nickname === null) return; // annullato dall'utente
+
+      const optionsRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' });
+      const options = await optionsRes.json();
+      if (options.error) throw new Error(options.error);
+
+      const credential = await startRegistration({ optionsJSON: options });
+
+      const verifyRes = await fetch('/api/auth/passkey/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...credential, nickname: nickname.trim() || 'Nuovo Dispositivo' }),
+      });
+      const verifyData = await verifyRes.json();
+      if (verifyData.error) throw new Error(verifyData.error);
+
+      showTemporarySuccess('Dispositivo registrato con successo!');
+      fetchPasskeys();
+    } catch (err: any) {
+      console.error('Registration failed:', err);
+      setError(err.message || 'Registrazione Passkey annullata o non riuscita.');
+    }
+  };
+
   const handleGenerateRecoveryCodes = async () => {
     if (!confirm('Generare nuovi codici di emergenza sostituirà quelli precedenti. Vuoi continuare?')) return;
     try {
@@ -1351,12 +1380,13 @@ export default function DashboardPage() {
                   <h3 className="font-bold text-white text-base">Dispositivi Passkey Attivi ({passkeys.length})</h3>
                   <p className="text-xs text-neutral-400">Autenticatori biometrici abilitati all&apos;accesso master</p>
                 </div>
-                <Link
-                  href="/loginmaster?setup=true"
-                  className="px-3.5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 transition-all"
+                <button
+                  type="button"
+                  onClick={handleRegisterNewPasskey}
+                  className="px-3.5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-semibold shadow-md shadow-teal-400/20 transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  + Aggiungi Dispositivo
-                </Link>
+                  + Aggiungi Questo Dispositivo
+                </button>
               </div>
 
               <div className="flex flex-col gap-3">

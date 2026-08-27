@@ -14,7 +14,8 @@ function LoginMasterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [initialized, setInitialized] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'recovery'>('login');
+  const [recoveryCode, setRecoveryCode] = useState('');
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +27,10 @@ function LoginMasterContent() {
         const res = await fetch('/api/auth/status');
         const data = await res.json();
         setInitialized(data.initialized);
-        const forceSetup = searchParams.get('setup') === 'true' || searchParams.get('register') === 'true';
-        if (!data.initialized || forceSetup) {
+        if (!data.initialized) {
           setMode('register');
+        } else {
+          setMode('login');
         }
       } catch (err) {
         console.error('Failed to check initialization status:', err);
@@ -38,13 +40,12 @@ function LoginMasterContent() {
       }
     }
     checkStatus();
-  }, [searchParams]);
+  }, []);
 
   const handleRegister = async () => {
     setError(null);
     setActionLoading(true);
     try {
-      // 1. Fetch options from backend
       const optionsRes = await fetch('/api/auth/passkey/register/options', {
         method: 'POST',
       });
@@ -54,10 +55,8 @@ function LoginMasterContent() {
         throw new Error(options.error);
       }
 
-      // 2. Open browser biometric prompt (Passkey registration)
       const credential = await startRegistration({ optionsJSON: options });
 
-      // 3. Verify credential response on backend
       const verifyRes = await fetch('/api/auth/passkey/register/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,7 +68,6 @@ function LoginMasterContent() {
         throw new Error(verifyData.error);
       }
 
-      // 4. Success -> Redirect
       router.push('/loginmaster/dashboard');
     } catch (err: any) {
       console.error(err);
@@ -83,7 +81,6 @@ function LoginMasterContent() {
     setError(null);
     setActionLoading(true);
     try {
-      // 1. Fetch options from backend
       const optionsRes = await fetch('/api/auth/passkey/login/options', {
         method: 'POST',
       });
@@ -93,10 +90,8 @@ function LoginMasterContent() {
         throw new Error(options.error);
       }
 
-      // 2. Open browser biometric prompt (Passkey authentication)
       const assertion = await startAuthentication({ optionsJSON: options });
 
-      // 3. Verify assertion on backend
       const verifyRes = await fetch('/api/auth/passkey/login/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,11 +103,36 @@ function LoginMasterContent() {
         throw new Error(verifyData.error);
       }
 
-      // 4. Success -> Redirect
       router.push('/loginmaster/dashboard');
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Accesso Passkey annullato o fallito.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRecoveryLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoveryCode.trim()) {
+      setError('Inserisci un codice di recupero valido');
+      return;
+    }
+    setError(null);
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/auth/recovery/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: recoveryCode.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Codice non valido');
+      }
+      router.push('/loginmaster/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Verifica codice fallita');
     } finally {
       setActionLoading(false);
     }
@@ -185,10 +205,10 @@ function LoginMasterContent() {
 
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold tracking-tight text-white">
-                {mode === 'login' ? 'Master Access' : 'Registrazione Passkey'}
+                {mode === 'login' ? 'Master Access' : mode === 'recovery' ? 'Codice di Emergenza' : 'Configurazione Iniziale Passkey'}
               </h1>
               <p className="text-teal-400 text-[11px] mt-1.5 uppercase tracking-[0.2em] font-semibold">
-                {mode === 'login' ? 'Autenticazione Biometrica' : 'Configurazione Chiave Sicura'}
+                {mode === 'login' ? 'Autenticazione Biometrica' : mode === 'recovery' ? 'Accesso di Ripristino' : 'Chiave Master Principale'}
               </p>
             </div>
 
@@ -199,11 +219,11 @@ function LoginMasterContent() {
               </div>
             )}
 
-            {mode === 'login' ? (
+            {mode === 'login' && (
               /* Login flow layout */
               <div key="login-mode" className="flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-300">
                 <p className="text-neutral-400 text-sm text-center leading-relaxed">
-                  Accedi in modo sicuro al tuo portale di gestione tramite la tua Passkey registrata.
+                  Accedi in modo sicuro al tuo portale tramite Touch ID, Face ID o Windows Hello.
                 </p>
 
                 <button
@@ -221,31 +241,75 @@ function LoginMasterContent() {
                   )}
                 </button>
 
-                <div className="pt-3 border-t border-white/[0.08] text-center">
+                <div className="pt-3 border-t border-white/[0.08] text-center flex flex-col gap-2">
                   <button
                     type="button"
-                    onClick={() => { setError(null); setMode('register'); }}
-                    className="text-xs text-teal-400 hover:text-teal-300 transition-colors underline underline-offset-4 cursor-pointer"
+                    onClick={() => { setError(null); setMode('recovery'); }}
+                    className="text-xs text-neutral-400 hover:text-teal-300 transition-colors underline underline-offset-4 cursor-pointer"
                   >
-                    Nuovo dispositivo o browser? Registra una nuova Passkey
+                    Passkey non disponibile? Usa un Codice di Emergenza
                   </button>
                 </div>
               </div>
-            ) : (
-              /* Setup / Register new Passkey flow layout */
+            )}
+
+            {mode === 'recovery' && (
+              /* Emergency Recovery Code Login */
+              <form key="recovery-mode" onSubmit={handleRecoveryLogin} className="flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-300">
+                <p className="text-neutral-400 text-xs text-center leading-relaxed">
+                  Inserisci uno dei tuoi codici di emergenza generati dalla dashboard per sbloccare l&apos;accesso.
+                </p>
+
+                <div>
+                  <input
+                    type="text"
+                    value={recoveryCode}
+                    onChange={(e) => setRecoveryCode(e.target.value.toUpperCase())}
+                    placeholder="ES. A1B2-C3D4"
+                    className="w-full px-4 py-3 bg-black/60 border border-white/15 focus:border-teal-400 rounded-xl text-center font-mono text-sm tracking-widest text-white placeholder:text-neutral-600 outline-none uppercase"
+                    autoFocus
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={actionLoading || !recoveryCode.trim()}
+                  className="w-full py-3.5 font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 cursor-pointer bg-teal-400 hover:bg-teal-300 text-black shadow-lg shadow-teal-400/25 group"
+                >
+                  {actionLoading ? (
+                    <><TiaIcon icon={LoaderPinwheelIcon} size={18} className="animate-spin" strokeWidth={2} /> Verifica codice...</>
+                  ) : (
+                    <span>Verifica ed Entra</span>
+                  )}
+                </button>
+
+                <div className="pt-3 border-t border-white/[0.08] text-center">
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); setMode('login'); }}
+                    className="text-xs text-neutral-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
+                  >
+                    Torna all&apos;accesso con Passkey
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {mode === 'register' && (
+              /* Setup initial Passkey */
               <div key="register-mode" className="flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-300">
                 <p className="text-neutral-400 text-sm text-center leading-relaxed">
-                  Configura o aggiungi una nuova Passkey per accedere all&apos;amministrazione da questo dispositivo.
+                  Nessuna Passkey configurata nel database. Registra la tua prima chiave master per proteggere il portale.
                 </p>
 
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-xs text-neutral-300 flex flex-col gap-2">
                   <div className="flex gap-2">
                     <span className="text-teal-400 font-bold">1.</span>
-                    <span>Supporta Touch ID, Face ID, Windows Hello o chiavi di sicurezza fisiche.</span>
+                    <span>Usa Touch ID, Face ID o Windows Hello per registrare questo dispositivo.</span>
                   </div>
                   <div className="flex gap-2">
                     <span className="text-teal-400 font-bold">2.</span>
-                    <span>Clicca sul tasto sotto e segui le istruzioni del tuo dispositivo per confermare.</span>
+                    <span>Una volta registrata la prima chiave, la registrazione pubblica verrà disabilitata.</span>
                   </div>
                 </div>
 
@@ -258,23 +322,11 @@ function LoginMasterContent() {
                     <><TiaIcon icon={LoaderPinwheelIcon} size={18} className="animate-spin" strokeWidth={2} /> Registrazione in corso...</>
                   ) : (
                     <>
-                      <span>Registra Passkey Master</span>
+                      <span>Registra Prima Passkey Master</span>
                       <TiaIcon icon={ArrowRight01Icon} size={18} strokeWidth={2} className="transition-transform group-hover:translate-x-1" />
                     </>
                   )}
                 </button>
-
-                {initialized && (
-                  <div className="pt-3 border-t border-white/[0.08] text-center">
-                    <button
-                      type="button"
-                      onClick={() => { setError(null); setMode('login'); }}
-                      className="text-xs text-neutral-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
-                    >
-                      Hai già una passkey configurata? Torna al login
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
