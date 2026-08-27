@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import WorldVectorMap from '@/app/components/WorldVectorMap';
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
@@ -278,186 +279,7 @@ const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   TR: { name: 'Turchia', flag: '🇹🇷' },
 };
 
-// ── Unified SVG World Bubble Map ───────────────────────────────
-
-// European centroids, enlarged inside the unified world viewBox.
-const COUNTRY_POSITIONS: Record<string, { x: number; y: number }> = {
-  IT: { x: 295, y: 240 },  // Italia
-  FR: { x: 200, y: 195 },  // Francia
-  DE: { x: 280, y: 160 },  // Germania
-  GB: { x: 175, y: 135 },  // Regno Unito
-  ES: { x: 140, y: 255 },  // Spagna
-  PT: { x: 100, y: 260 },  // Portogallo
-  CH: { x: 260, y: 210 },  // Svizzera
-  NL: { x: 245, y: 145 },  // Paesi Bassi
-  BE: { x: 230, y: 170 },  // Belgio
-  AT: { x: 310, y: 185 },  // Austria
-  PL: { x: 360, y: 145 },  // Polonia
-  RO: { x: 400, y: 210 },  // Romania
-  SE: { x: 310, y: 70 },   // Svezia
-  NO: { x: 270, y: 55 },   // Norvegia
-  DK: { x: 280, y: 115 },  // Danimarca
-  FI: { x: 370, y: 45 },   // Finlandia
-  CZ: { x: 320, y: 175 },  // Rep. Ceca
-  HU: { x: 350, y: 195 },  // Ungheria
-  GR: { x: 380, y: 275 },  // Grecia
-  IE: { x: 130, y: 130 },  // Irlanda
-  UA: { x: 440, y: 180 },  // Ucraina
-};
-
-// Simplified Europe outline (background silhouette)
-const EUROPE_OUTLINE = 'M120,270 L125,290 L135,295 L160,290 L175,285 L190,275 L200,260 L210,240 L220,220 L230,200 L235,185 L225,170 L215,155 L200,140 L185,130 L170,125 L160,120 L155,105 L160,90 L175,75 L195,65 L215,55 L235,45 L255,40 L280,38 L305,42 L330,50 L350,60 L365,75 L380,90 L395,110 L410,130 L425,150 L440,170 L450,185 L455,200 L445,220 L430,240 L415,255 L400,265 L385,275 L365,280 L340,278 L320,270 L305,265 L295,260 L280,265 L265,275 L245,280 L225,285 L205,290 L185,295 L165,290 L145,280 Z';
-
-// Non-European centroids, normalized into the unified world viewBox.
-const WORLD_POSITIONS: Record<string, { x: number; y: number }> = {
-  US: { x: 60, y: 55 },   // United States
-  CA: { x: 50, y: 45 },   // Canada
-  MX: { x: 55, y: 75 },   // Mexico
-  BR: { x: 110, y: 130 }, // Brazil
-  AR: { x: 105, y: 155 }, // Argentina
-  CO: { x: 100, y: 115 }, // Colombia
-  CL: { x: 100, y: 150 }, // Chile
-  ZA: { x: 210, y: 140 }, // South Africa
-  NG: { x: 185, y: 105 }, // Nigeria
-  KE: { x: 215, y: 115 }, // Kenya
-  EG: { x: 205, y: 85 },  // Egypt
-  IN: { x: 265, y: 90 },  // India
-  PK: { x: 255, y: 80 },  // Pakistan
-  BD: { x: 275, y: 95 },  // Bangladesh
-  CN: { x: 295, y: 70 },  // China
-  JP: { x: 330, y: 60 },  // Japan
-  KR: { x: 320, y: 65 },  // South Korea
-  TW: { x: 310, y: 80 },  // Taiwan
-  TH: { x: 285, y: 100 }, // Thailand
-  VN: { x: 295, y: 95 },  // Vietnam
-  ID: { x: 290, y: 120 }, // Indonesia
-  PH: { x: 305, y: 100 }, // Philippines
-  AU: { x: 305, y: 150 }, // Australia
-  NZ: { x: 340, y: 165 }, // New Zealand
-  AE: { x: 245, y: 85 },  // UAE
-  IL: { x: 225, y: 80 },  // Israel
-  TR: { x: 215, y: 72 },  // Turkey (often straddles Europe/Asia)
-};
-
-function WorldMap({ countries, onCountryClick }: { countries: { code: string; count: number }[]; onCountryClick?: (code: string) => void }) {
-  const maxCount = Math.max(...countries.map(c => c.count), 1);
-  const logMax = Math.log(maxCount + 1);
-  const countryMap = new Map(countries.map(c => [c.code, c.count]));
-  const [tooltip, setTooltip] = useState<{ code: string; count: number; x: number; y: number } | null>(null);
-
-  // Normalize both coordinate sets into one 1000×430 world viewBox.
-  // Europe is deliberately enlarged and centered so it stays the visual focus.
-  const bubbles = [
-    ...Object.entries(COUNTRY_POSITIONS).map(([code, pos]) => {
-      const count = countryMap.get(code) || 0;
-      const logRatio = Math.log(count + 1) / logMax;
-      const r = count > 0 ? 9 + logRatio * 22 : 6;
-      const intensity = count > 0 ? 0.3 + logRatio * 0.7 : 0.08;
-      return { code, x: 360 + pos.x * 0.9, y: 50 + pos.y * 0.9, count, r, intensity, isEurope: true };
-    }),
-    ...Object.entries(WORLD_POSITIONS).map(([code, pos]) => {
-      const count = countryMap.get(code) || 0;
-      const logRatio = Math.log(count + 1) / logMax;
-      const r = count > 0 ? 7 + logRatio * 17 : 4;
-      const intensity = count > 0 ? 0.25 + logRatio * 0.75 : 0.06;
-      return { code, x: 50 + pos.x * 2, y: 55 + pos.y * 1.75, count, r, intensity, isEurope: false };
-    }),
-  ];
-
-  return (
-    <div className="relative">
-      <svg viewBox="0 0 1000 430" className="w-full h-auto" role="img" aria-label="Mappa mondiale delle visite, con Europa in primo piano">
-        {/* Ocean panel and subtle longitude/latitude grid */}
-        <rect x="8" y="8" width="984" height="414" rx="28" fill="#ffffff" fillOpacity={0.015} stroke="#ffffff" strokeOpacity={0.07} strokeWidth={1} />
-        <path d="M28 110H972M28 215H972M28 320H972M180 22V408M360 22V408M540 22V408M720 22V408M900 22V408" fill="none" stroke="#ffffff" strokeOpacity={0.025} strokeWidth={1} strokeDasharray="4 8" />
-
-        {/* Simplified continents: enough context for the bubbles without a heavy map library */}
-        <path d="M62 126L86 88L140 64L205 70L250 105L238 148L195 166L164 150L132 166L92 157Z" fill="#ffffff" fillOpacity={0.045} stroke="#ffffff" strokeOpacity={0.08} />
-        <path d="M228 184L260 198L282 244L270 292L246 344L218 382L196 350L210 300L194 260L205 220Z" fill="#ffffff" fillOpacity={0.045} stroke="#ffffff" strokeOpacity={0.08} />
-        <path d="M405 170L448 148L490 160L526 196L514 250L486 290L452 286L430 250L400 224Z" fill="#ffffff" fillOpacity={0.045} stroke="#ffffff" strokeOpacity={0.08} />
-        <path d="M505 92L568 65L650 70L726 102L800 138L850 186L818 226L758 210L710 232L660 204L604 220L570 180L522 158Z" fill="#ffffff" fillOpacity={0.045} stroke="#ffffff" strokeOpacity={0.08} />
-        <path d="M662 294L720 280L786 296L824 334L790 370L716 365L668 340Z" fill="#ffffff" fillOpacity={0.045} stroke="#ffffff" strokeOpacity={0.08} />
-
-        {/* Enlarged Europe silhouette — visual focal point */}
-        <g transform="translate(360 50) scale(0.9)">
-          <path d={EUROPE_OUTLINE} fill="#2dd4bf" fillOpacity={0.08} stroke="#2dd4bf" strokeOpacity={0.28} strokeWidth={1.2} />
-        </g>
-        <text x="405" y="35" fill="#5eead4" fillOpacity={0.85} fontSize="11" fontWeight="600" letterSpacing="1.5" fontFamily="Outfit, sans-serif">EUROPA · FOCUS</text>
-        <text x="972" y="35" textAnchor="end" fill="#737373" fillOpacity={0.9} fontSize="9" fontFamily="Outfit, sans-serif">scala logaritmica</text>
-
-        {/* Country bubbles */}
-        {bubbles.map(b => (
-          <g
-            key={b.code}
-            onClick={() => onCountryClick?.(b.code)}
-            onMouseEnter={() => {
-              // Store coordinates in the SVG viewBox, not screen pixels. This keeps
-              // the tooltip aligned when the responsive map scales on desktop/mobile.
-              setTooltip({ code: b.code, count: b.count, x: b.x, y: b.y });
-            }}
-            onMouseLeave={() => setTooltip(null)}
-            className="cursor-pointer transition-all duration-300"
-          >
-            {/* Enlarged transparent hit area keeps low-volume extra-European bubbles easy to hover. */}
-            <circle cx={b.x} cy={b.y} r={Math.max(14, b.r + 5)} fill="transparent" pointerEvents="all" />
-            {/* Glow ring for countries with data */}
-            {b.count > 0 && (
-              <circle cx={b.x} cy={b.y} r={b.r + 4} fill="none" stroke={b.isEurope ? '#2dd4bf' : '#818cf8'} strokeOpacity={b.intensity * 0.3} strokeWidth={1}>
-                <animate attributeName="r" values={`${b.r + 4};${b.r + 7};${b.r + 4}`} dur="3s" repeatCount="indefinite" />
-                <animate attributeName="stroke-opacity" values={`${b.intensity * 0.3};${b.intensity * 0.1};${b.intensity * 0.3}`} dur="3s" repeatCount="indefinite" />
-              </circle>
-            )}
-            {/* Main bubble */}
-            <circle
-              cx={b.x}
-              cy={b.y}
-              r={b.r}
-              fill={b.isEurope ? '#2dd4bf' : '#818cf8'}
-              fillOpacity={b.intensity}
-              stroke={b.count > 0 ? (b.isEurope ? '#2dd4bf' : '#818cf8') : '#ffffff'}
-              strokeOpacity={b.count > 0 ? 0.5 : 0.1}
-              strokeWidth={1}
-            />
-            {/* Country code label */}
-            <text
-              x={b.x}
-              y={b.y + 1}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={b.count > 0 ? '#ffffff' : '#525252'}
-              fontSize={b.r > 14 ? 10 : 8}
-              fontWeight={b.count > 0 ? 600 : 400}
-              fontFamily="Outfit, sans-serif"
-            >
-              {b.code}
-            </text>
-          </g>
-        ))}
-      </svg>
-
-      {/* Tooltip */}
-      {tooltip && (() => {
-        const entry = COUNTRY_MAP[tooltip.code];
-        const name = entry ? `${entry.flag} ${entry.name}` : tooltip.code;
-        const left = Math.min(96, Math.max(4, (tooltip.x / 1000) * 100));
-        const top = Math.min(96, Math.max(8, (tooltip.y / 430) * 100));
-        return (
-          <div
-            className="absolute z-50 bg-[#1a1a1a] border border-white/[0.12] rounded-xl px-3 py-2 pointer-events-none shadow-xl shadow-black/60 whitespace-nowrap"
-            style={{
-              left: `${left}%`,
-              top: `${top}%`,
-              transform: 'translate(-50%, calc(-100% - 12px))',
-            }}
-          >
-            <p className="text-white text-xs font-medium">{name}</p>
-            <p className="text-teal-400 text-[11px] font-mono">{tooltip.count.toLocaleString()} visite</p>
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
+// ── Unified SVG World Vector Map ───────────────────────────────
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
@@ -1018,10 +840,11 @@ export default function AnalyticsDashboard() {
             {stats.countries.length === 0 ? (
               <p className="text-neutral-500 text-sm py-8 text-center">Nessun dato geografico disponibile</p>
             ) : (
-              <WorldMap
+              <WorldVectorMap
                 countries={stats.countries}
+                selectedCountry={selectedCountry}
                 onCountryClick={(country) => {
-                  setSelectedCountry(country);
+                  setSelectedCountry(selectedCountry === country ? null : country);
                   setSelectedCity(null);
                 }}
               />

@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { startRegistration } from '@simplewebauthn/browser';
 import BorderGlow from '@/app/components/BorderGlow';
 import TiaIcon from '@/app/components/TiaIcon';
+import WorldVectorMap from '@/app/components/WorldVectorMap';
 import {
   CodeFolderIcon,
   Mail01Icon,
@@ -230,6 +231,7 @@ export default function MasterDashboardPage() {
   const [customWidgets, setCustomWidgets] = useState({
     showKpi: true,
     showTraffic: true,
+    showWorldMap: true,
     showLeads: true,
     showSpeed: true,
     showQuickActions: true,
@@ -1149,6 +1151,26 @@ export default function MasterDashboardPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* World Vector Map - Geographical Traffic Distribution */}
+              {customWidgets.showWorldMap && (
+                <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08] backdrop-blur-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-white text-sm">Distribuzione Geografica Visite (Mappa Mondiale)</h3>
+                      <p className="text-xs text-neutral-400">Cartina vettoriale con confini dei paesi, densità visite e focus Europa</p>
+                    </div>
+                    <Link
+                      href="/loginmaster/analytics"
+                      className="text-xs text-teal-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>Analytics Avanzate</span>
+                      <TiaIcon icon={ArrowRight01Icon} size={12} />
+                    </Link>
+                  </div>
+                  <WorldVectorMap countries={analyticsData?.countries || []} />
                 </div>
               )}
 
@@ -2189,6 +2211,7 @@ export default function MasterDashboardPage() {
               {[
                 { key: 'showKpi', label: 'Metriche KPI Principali (Sessioni, Lead, Speed)' },
                 { key: 'showTraffic', label: 'Grafico Andamento Traffico & Pagine' },
+                { key: 'showWorldMap', label: 'Cartina Geografica Mondiale (Visite per Paese)' },
                 { key: 'showLeads', label: 'Feed Ultime Richieste Ricevute' },
                 { key: 'showSpeed', label: 'Card Vercel Speed & Edge Health' },
               ].map((w) => (
