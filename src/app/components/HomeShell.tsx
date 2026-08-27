@@ -3679,14 +3679,58 @@ export default function HomeShell() {
                     <div className="p-5 flex flex-col h-full">
                       <div className="flex items-center justify-between mb-2 shrink-0">
                         <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider">{t('contatti.message', lang)}</label>
-                        <span className={`text-[11px] font-mono transition-colors ${formMessage.length > 2500 ? 'text-amber-400' : 'text-neutral-500'}`}>
-                          {formMessage.length} / 3000
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {/* Circular Progress Ring */}
+                          <div className="relative w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                            <svg className="w-3.5 h-3.5 -rotate-90" viewBox="0 0 20 20">
+                              <circle cx="10" cy="10" r="7" className="stroke-white/10" strokeWidth="2.5" fill="none" />
+                              <circle
+                                cx="10"
+                                cy="10"
+                                r="7"
+                                className={`transition-all duration-300 ${
+                                  formMessage.length > 2700
+                                    ? 'stroke-red-400'
+                                    : formMessage.length > 2000
+                                      ? 'stroke-amber-400'
+                                      : 'stroke-teal-400'
+                                }`}
+                                strokeWidth="2.5"
+                                strokeDasharray={44}
+                                strokeDashoffset={44 - (44 * Math.min(1, formMessage.length / 3000))}
+                                strokeLinecap="round"
+                                fill="none"
+                              />
+                            </svg>
+                          </div>
+                          <span className={`text-[11px] font-mono transition-colors ${
+                            formMessage.length > 2700
+                              ? 'text-red-400 font-semibold'
+                              : formMessage.length > 2000
+                                ? 'text-amber-400'
+                                : 'text-neutral-500'
+                          }`}>
+                            {formMessage.length} / 3000
+                          </span>
+                        </div>
                       </div>
                       <textarea id="form-message" required maxLength={3000} value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={10}
                         aria-invalid={formValidationErrors.has('message')}
                         className={`w-full flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[220px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
                         placeholder={t('contatti.placeholder_message', lang)} />
+                      {/* Progressive character limit bar */}
+                      <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden mt-2 shrink-0">
+                        <div
+                          className={`h-full transition-all duration-200 rounded-full ${
+                            formMessage.length > 2700
+                              ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                              : formMessage.length > 2000
+                                ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                                : 'bg-teal-400/80'
+                          }`}
+                          style={{ width: `${Math.min(100, (formMessage.length / 3000) * 100)}%` }}
+                        />
+                      </div>
                       {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400 shrink-0">{t('bot.message_required', lang)}</p>}
                     </div>
                   </BorderGlow>
