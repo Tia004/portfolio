@@ -201,7 +201,7 @@ function LoginMasterContent() {
 
             {mode === 'login' ? (
               /* Login flow layout */
-              <div className="flex flex-col gap-5">
+              <div key="login-mode" className="flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-300">
                 <p className="text-neutral-400 text-sm text-center leading-relaxed">
                   Accedi in modo sicuro al tuo portale di gestione tramite la tua Passkey registrata.
                 </p>
@@ -233,7 +233,7 @@ function LoginMasterContent() {
               </div>
             ) : (
               /* Setup / Register new Passkey flow layout */
-              <div className="flex flex-col gap-5">
+              <div key="register-mode" className="flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-300">
                 <p className="text-neutral-400 text-sm text-center leading-relaxed">
                   Configura o aggiungi una nuova Passkey per accedere all&apos;amministrazione da questo dispositivo.
                 </p>

@@ -14,24 +14,8 @@ export default function CookieBanner() {
   const [exiting, setExiting] = useState(false);
   const scrollPosRef = useRef(0);
 
-  // Lock body scroll when visible — use position:fixed instead of overflow:hidden
-  // so that native wheel events are not blocked (Lenis may still intercept them).
-  useEffect(() => {
-    if (visible) {
-      scrollPosRef.current = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollPosRef.current}px`;
-      document.body.style.width = '100%';
-      // iOS Safari workaround: block rubber-band overscroll
-      document.body.style.overscrollBehavior = 'none';
-    } else {
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      document.body.style.overscrollBehavior = '';
-      window.scrollTo(0, scrollPosRef.current);
-    }
-  }, [visible]);
+  // Non-blocking banner — users can freely browse and scroll the page
+  // while the floating consent banner remains accessible at the bottom.
 
   // Allow reopening via global event (from footer link or other triggers)
   useEffect(() => {

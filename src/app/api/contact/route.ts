@@ -245,6 +245,22 @@ export async function POST(req: NextRequest) {
       `,
     };
 
+    // ── Save message to database so it is NEVER lost and visible in dashboard ──
+    try {
+      const { prisma } = await import('@/lib/prisma');
+      await prisma.contactMessage.create({
+        data: {
+          name,
+          email,
+          service: typeof service === 'string' && service.trim() ? service.trim() : 'Generale',
+          message,
+          status: 'new',
+        },
+      });
+    } catch (dbErr) {
+      console.error('Failed to persist contact message in DB:', dbErr);
+    }
+
     let delivered = false;
     if (resend) {
       const { error: sendError } = await resend.emails.send(mailOptions);

@@ -18,15 +18,18 @@ model User {
 }
 
 model Authenticator {
-  id                   String   @id @default(uuid())
-  credentialID         String   @unique
+  id                   String    @id @default(uuid())
+  credentialID         String    @unique
   credentialPublicKey  Bytes
   counter              BigInt
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
+  nickname             String?
+  lastUsedAt           DateTime?
+  createdAt            DateTime  @default(now())
   userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ChatMessage {
@@ -37,6 +40,85 @@ model ChatMessage {
   timestamp BigInt
 
   @@index([sessionId, timestamp])
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  service   String
+  message   String
+  status    String   @default("new") // "new" | "in_progress" | "contacted" | "closed"
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model ChatSessionLead {
+  id          String   @id @default(uuid())
+  sessionId   String   @unique
+  category    String
+  service     String?
+  budget      String?
+  userGoal    String?
+  clientName  String?
+  clientEmail String?
+  recapJson   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+model FaqItem {
+  id          String   @id @default(uuid())
+  questionIt  String
+  questionEn  String?
+  questionEs  String?
+  answerIt    String
+  answerEn    String?
+  answerEs    String?
+  category    String   @default("general")
+  order       Int      @default(0)
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ClientReview {
+  id         String   @id @default(uuid())
+  author     String
+  role       String
+  company    String?
+  quoteIt    String
+  quoteEn    String?
+  quoteEs    String?
+  rating     Int      @default(5)
+  avatarUrl  String?
+  order      Int      @default(0)
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid())
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  level     String   @default("info") // "info" | "warn" | "error"
+  source    String   // "resend" | "cal" | "auth" | "contact" | "api"
+  message   String
+  metadata  String?
+  timestamp DateTime @default(now())
+
+  @@index([level, timestamp])
 }
 
 model AvailabilitySetting {

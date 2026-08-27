@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -699,10 +702,32 @@ export default function AnalyticsDashboard() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#010101] text-neutral-200 font-sans p-6 md:p-10 relative overflow-x-hidden">
-      {/* Ambient glow */}
-      <div className="absolute top-[-10%] right-[-5%] w-[50%] h-[50%] bg-teal-500/[0.03] rounded-full blur-[180px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-teal-500/[0.02] rounded-full blur-[150px] pointer-events-none" />
+    <div className="min-h-screen bg-[#030712] text-neutral-200 font-sans p-6 md:p-10 relative overflow-x-hidden">
+      {/* Molten Metal Shader Background */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none">
+        <MoltenMetal
+          color1="#05bc8e"
+          color2="#0effc1"
+          color3="#ffffff"
+          speed={0.25}
+          scale={5.5}
+          detail={2}
+          glow={1.4}
+          coreSize={0.1}
+          swirl={1.35}
+          fold={-0.15}
+          blackPoint={0.03}
+          brightness={0.3}
+          colorMode="molten"
+          grain={false}
+          mouseInteraction={false}
+          mouseStrength={0.15}
+          opacity={1}
+        />
+      </div>
+
+      {/* Subtle vignette layer */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/45 pointer-events-none" />
 
       <div className="max-w-6xl mx-auto relative z-10">
         {/* ── Header ── */}
