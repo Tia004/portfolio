@@ -169,7 +169,7 @@ export default function DashboardPage() {
   // System Health state
   const [systemHealth, setSystemHealth] = useState<any>(null);
 
-  // Branded Quote Builder state
+  // Branded Quote Builder & History state
   const [quoteNumber, setQuoteNumber] = useState('TD-2026-001');
   const [quoteDate, setQuoteDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [quoteValidity, setQuoteValidity] = useState('30 giorni');
@@ -191,6 +191,21 @@ export default function DashboardPage() {
     { id: '3', title: 'Setup CMS, Form & Dashboard Riservata', description: 'Pannello di controllo contenuti, integrazione form contatti con notifiche e sicurezza WebAuthn.', quantity: 1, price: 350 },
   ]);
 
+  // History & Modal states
+  const [savedQuotes, setSavedQuotes] = useState<any[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [showQuotesHistory, setShowQuotesHistory] = useState(false);
+  const [isSavingQuote, setIsSavingQuote] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [customEmailNote, setCustomEmailNote] = useState('');
+  const [showSendModal, setShowSendModal] = useState(false);
+
+  // Digital Signature states & Canvas ref
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
   const handleAddQuoteItem = () => {
     setQuoteItems(prev => [
       ...prev,
@@ -205,6 +220,62 @@ export default function DashboardPage() {
 
   const handleUpdateQuoteItem = (id: string, field: 'title' | 'description' | 'quantity' | 'price', value: any) => {
     setQuoteItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  // Canvas drawing handlers
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    setIsDrawing(true);
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#2dd4bf'; // Brand Turquoise ink!
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const applySignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setSignatureData(dataUrl);
+    setShowSignatureModal(false);
+    showTemporarySuccess('Firma digitale applicata al preventivo!');
   };
 
   const showTemporarySuccess = (msg: string) => {
@@ -297,6 +368,157 @@ export default function DashboardPage() {
     } catch {}
   };
 
+  const fetchSavedQuotes = async () => {
+    setQuotesLoading(true);
+    try {
+      const res = await fetch('/api/master/quotes');
+      if (res.ok) setSavedQuotes(await res.json());
+    } catch {} finally {
+      setQuotesLoading(false);
+    }
+  };
+
+  const handleSaveQuote = async () => {
+    setIsSavingQuote(true);
+    setError(null);
+    try {
+      const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+      const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
+      const taxable = subtotal - discountAmount;
+      const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+      const total = taxable + vatAmount;
+
+      const payload = {
+        quoteNumber,
+        date: quoteDate,
+        validity: quoteValidity,
+        timeline: quoteTimeline,
+        clientName: quoteClientName,
+        clientCompany: quoteClientCompany,
+        clientEmail: quoteClientEmail,
+        clientPhone: quoteClientPhone,
+        clientAddress: quoteClientAddress,
+        clientVat: quoteClientVat,
+        itemsJson: JSON.stringify(quoteItems),
+        discount: quoteDiscount,
+        taxRegime: quoteTaxRegime,
+        paymentTerms: quotePaymentTerms,
+        iban: quoteIban,
+        notes: quoteNotes,
+        subtotal,
+        total,
+        signatureData,
+      };
+
+      const res = await fetch('/api/master/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Errore nel salvataggio del preventivo.');
+      }
+
+      showTemporarySuccess(`Preventivo ${quoteNumber} salvato nel database!`);
+      fetchSavedQuotes();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingQuote(false);
+    }
+  };
+
+  const handleLoadQuote = (q: any) => {
+    setQuoteNumber(q.quoteNumber);
+    setQuoteDate(q.date);
+    setQuoteValidity(q.validity);
+    setQuoteTimeline(q.timeline);
+    setQuoteClientName(q.clientName);
+    setQuoteClientCompany(q.clientCompany || '');
+    setQuoteClientEmail(q.clientEmail);
+    setQuoteClientPhone(q.clientPhone || '');
+    setQuoteClientAddress(q.clientAddress || '');
+    setQuoteClientVat(q.clientVat || '');
+    setQuoteDiscount(q.discount || 0);
+    setQuoteTaxRegime(q.taxRegime || 'forfettario');
+    setQuotePaymentTerms(q.paymentTerms || '');
+    setQuoteIban(q.iban || '');
+    setQuoteNotes(q.notes || '');
+    setSignatureData(q.signatureData || null);
+    try {
+      const parsedItems = JSON.parse(q.itemsJson);
+      if (Array.isArray(parsedItems)) setQuoteItems(parsedItems);
+    } catch {}
+    setShowQuotesHistory(false);
+    showTemporarySuccess(`Preventivo ${q.quoteNumber} caricato!`);
+  };
+
+  const handleDeleteSavedQuote = async (id: string) => {
+    if (!confirm('Eliminare questo preventivo dal database?')) return;
+    try {
+      const res = await fetch(`/api/master/quotes?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showTemporarySuccess('Preventivo eliminato.');
+        fetchSavedQuotes();
+      }
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleSendQuoteEmail = async () => {
+    setIsSendingEmail(true);
+    setError(null);
+    try {
+      const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+      const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
+      const taxable = subtotal - discountAmount;
+      const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+      const total = taxable + vatAmount;
+
+      const payload = {
+        quoteNumber,
+        date: quoteDate,
+        validity: quoteValidity,
+        timeline: quoteTimeline,
+        clientName: quoteClientName,
+        clientCompany: quoteClientCompany,
+        clientEmail: quoteClientEmail,
+        clientPhone: quoteClientPhone,
+        clientAddress: quoteClientAddress,
+        clientVat: quoteClientVat,
+        items: quoteItems,
+        discount: quoteDiscount,
+        taxRegime: quoteTaxRegime,
+        paymentTerms: quotePaymentTerms,
+        iban: quoteIban,
+        notes: quoteNotes,
+        subtotal,
+        total,
+        customEmailMessage: customEmailNote,
+      };
+
+      const res = await fetch('/api/master/quotes/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore nell\'invio del preventivo.');
+
+      showTemporarySuccess(data.message || 'Preventivo inviato con successo!');
+      setShowSendModal(false);
+      fetchSavedQuotes();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   // Initial mount
   useEffect(() => {
     const init = async () => {
@@ -306,6 +528,7 @@ export default function DashboardPage() {
         fetchAvailability(),
         fetchMessages(),
         fetchPasskeys(),
+        fetchSavedQuotes(),
       ]);
       setLoading(false);
     };
@@ -319,6 +542,7 @@ export default function DashboardPage() {
     if (activeTab === 'passkeys') void fetchPasskeys();
     if (activeTab === 'cms') void fetchCms();
     if (activeTab === 'health') void fetchHealth();
+    if (activeTab === 'quotes') void fetchSavedQuotes();
   }, [activeTab, messageFilter]);
 
   const handleLogout = async () => {
@@ -1373,6 +1597,129 @@ export default function DashboardPage() {
         {/* ── TAB 7: PREVENTIVATORE RAPIDO BRANDED PDF ── */}
         {activeTab === 'quotes' && (
           <div className="flex flex-col gap-6">
+            
+            {/* Top Action Toolbar (no-print) */}
+            <div className="no-print bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowQuotesHistory(!showQuotesHistory)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border ${
+                    showQuotesHistory
+                      ? 'bg-teal-400 text-black border-teal-300 shadow-md shadow-teal-400/20'
+                      : 'bg-white/[0.04] text-white border-white/[0.08] hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <TiaIcon icon={CodeFolderIcon} size={15} />
+                  <span>Storico Preventivi ({savedQuotes.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveQuote}
+                  disabled={isSavingQuote}
+                  className="px-4 py-2.5 rounded-2xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <TiaIcon icon={CheckmarkCircle01Icon} size={15} />
+                  <span>{isSavingQuote ? 'Salvataggio...' : 'Salva nel Database'}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSignatureModal(true)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border ${
+                    signatureData
+                      ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                      : 'bg-white/[0.04] text-white border-white/[0.08] hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <span>✍️</span>
+                  <span>{signatureData ? 'Firma Applicata ✅' : 'Firma a Mano (Canvas)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowSendModal(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold flex items-center gap-2 shadow-lg shadow-teal-400/20 transition-all cursor-pointer"
+                >
+                  <TiaIcon icon={Mail01Icon} size={15} />
+                  <span>Invia al Cliente via Email</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <span>🖨️ Stampa / Salva PDF</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Saved Quotes History Drawer (no-print) */}
+            {showQuotesHistory && (
+              <div className="no-print bg-[#081410]/95 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                  <div>
+                    <h3 className="font-bold text-white text-base">Archivio Preventivi Salvati</h3>
+                    <p className="text-xs text-neutral-400">Clicca su &ldquo;Carica&rdquo; per riaprire o modificare qualsiasi preventivo</p>
+                  </div>
+                  <button onClick={() => setShowQuotesHistory(false)} className="text-xs text-neutral-400 hover:text-white">
+                    Chiudi ✕
+                  </button>
+                </div>
+
+                {savedQuotes.length === 0 ? (
+                  <p className="text-xs text-neutral-500 py-6 text-center">Nessun preventivo salvato nel database.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+                    {savedQuotes.map((q) => (
+                      <div key={q.id} className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col justify-between gap-3 hover:border-teal-500/40 transition-colors">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold text-teal-400">{q.quoteNumber}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold ${
+                              q.status === 'sent'
+                                ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
+                                : q.status === 'accepted'
+                                  ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40'
+                                  : 'bg-neutral-800 text-neutral-400'
+                            }`}>
+                              {q.status}
+                            </span>
+                          </div>
+                          <p className="font-bold text-white text-sm mt-1">{q.clientName}</p>
+                          {q.clientCompany && <p className="text-xs text-neutral-400">{q.clientCompany}</p>}
+                          <p className="text-xs text-teal-300/80 font-mono mt-1">Totale: <strong>{q.total} €</strong></p>
+                          <p className="text-[10px] text-neutral-500 mt-1">Data: {q.date}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+                          <button
+                            type="button"
+                            onClick={() => handleLoadQuote(q)}
+                            className="flex-1 py-1.5 rounded-xl bg-teal-400/20 hover:bg-teal-400/30 text-teal-300 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            Carica
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSavedQuote(q.id)}
+                            className="px-3 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-300 text-xs font-medium transition-colors cursor-pointer"
+                          >
+                            Elimina
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Main Builder & Preview Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
               {/* Form Controls Column (no-print) */}
@@ -1381,7 +1728,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                     <h3 className="font-bold text-white text-base flex items-center gap-2">
                       <TiaIcon icon={DollarSignIcon} size={18} className="text-teal-400" />
-                      <span>Configura Preventivo</span>
+                      <span>Parametri Preventivo</span>
                     </h3>
                     <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
                       Brand Custom
@@ -1436,7 +1783,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Dati Cliente</p>
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] text-neutral-400 mb-1">Nome Referente</label>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Nome Referente *</label>
                         <input
                           type="text"
                           value={quoteClientName}
@@ -1458,7 +1805,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[10px] text-neutral-400 mb-1">Email</label>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Email Cliente *</label>
                         <input
                           type="email"
                           value={quoteClientEmail}
@@ -1625,14 +1972,6 @@ export default function DashboardPage() {
                       className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none"
                     />
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="w-full py-3 mt-1 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer"
-                  >
-                    <span>🖨️ Stampa o Salva PDF Brandizzato</span>
-                  </button>
                 </div>
               </div>
 
@@ -1792,17 +2131,28 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Signature Acceptance Box */}
+                  {/* Signature Acceptance Box with Real Digital Signature Render */}
                   <div className="mt-8 pt-6 border-t border-white/[0.1] grid grid-cols-2 gap-8 text-xs">
                     <div>
-                      <p className="text-neutral-400 mb-8">Tia Designs (Fornitore)</p>
-                      <div className="border-b border-white/[0.2] pb-1">
-                        <span className="font-serif italic text-teal-300 text-sm">Tia Chinaglia</span>
+                      <p className="text-neutral-400 mb-2">Tia Designs (Fornitore)</p>
+                      <div className="border-b border-white/[0.2] pb-1 min-h-[44px] flex items-center justify-between">
+                        {signatureData ? (
+                          <img src={signatureData} alt="Firma Digitale" className="h-10 w-auto object-contain" />
+                        ) : (
+                          <span className="font-serif italic text-teal-300 text-sm">Tia Chinaglia</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowSignatureModal(true)}
+                          className="no-print text-[10px] text-teal-400 hover:text-teal-300 font-sans cursor-pointer underline"
+                        >
+                          {signatureData ? 'Modifica' : '✍️ Firma a mano'}
+                        </button>
                       </div>
                     </div>
                     <div>
-                      <p className="text-neutral-400 mb-8">Firma e Timbro per Accettazione (Cliente)</p>
-                      <div className="border-b border-white/[0.2] pb-1 text-neutral-600">
+                      <p className="text-neutral-400 mb-2">Firma e Timbro per Accettazione (Cliente)</p>
+                      <div className="border-b border-white/[0.2] pb-1 min-h-[44px] flex items-end text-neutral-600">
                         Data: ______ / ______ / 2026
                       </div>
                     </div>
@@ -1816,6 +2166,131 @@ export default function DashboardPage() {
               </div>
 
             </div>
+
+            {/* ── MODAL 1: Digital Signature Touch Canvas ── */}
+            {showSignatureModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                <div className="bg-[#081410] border border-teal-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">✍️</span>
+                      <h3 className="font-bold text-white text-base">Firma Digitale Interattiva</h3>
+                    </div>
+                    <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 hover:text-white">✕</button>
+                  </div>
+
+                  <p className="text-xs text-neutral-300">
+                    Disegna la tua firma a mano libera usando il touch, una penna digitale o il mouse nel riquadro sottostante:
+                  </p>
+
+                  <div className="rounded-2xl border-2 border-dashed border-teal-500/40 bg-black/60 p-2 overflow-hidden flex items-center justify-center">
+                    <canvas
+                      ref={canvasRef}
+                      width={440}
+                      height={180}
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                      onTouchStart={startDrawing}
+                      onTouchMove={draw}
+                      onTouchEnd={stopDrawing}
+                      className="cursor-crosshair w-full h-[180px] touch-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={clearSignature}
+                      className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 transition-colors cursor-pointer"
+                    >
+                      Pulisci Canvas
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowSignatureModal(false)}
+                        className="px-4 py-2 rounded-xl bg-white/[0.06] text-xs text-neutral-400 hover:text-white cursor-pointer"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        type="button"
+                        onClick={applySignature}
+                        className="px-5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold shadow-lg shadow-teal-400/25 transition-all cursor-pointer"
+                      >
+                        Applica Firma
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── MODAL 2: Send Quote Email to Client & Tia ── */}
+            {showSendModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                <div className="bg-[#081410] border border-teal-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                    <div className="flex items-center gap-2">
+                      <TiaIcon icon={Mail01Icon} size={18} className="text-teal-400" />
+                      <h3 className="font-bold text-white text-base">Invia Preventivo via Email</h3>
+                    </div>
+                    <button onClick={() => setShowSendModal(false)} className="text-neutral-400 hover:text-white">✕</button>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] text-xs flex flex-col gap-1.5">
+                    <p className="text-neutral-400">Destinatario:</p>
+                    <p className="font-bold text-white text-sm">{quoteClientName} &lt;{quoteClientEmail}&gt;</p>
+                    <p className="text-[11px] text-teal-300 font-mono mt-1">Preventivo: {quoteNumber} • Totale: {(() => {
+                      const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+                      const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
+                      const taxable = subtotal - discountAmount;
+                      const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+                      return taxable + vatAmount;
+                    })()} €</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-teal-300 mb-1">
+                      Messaggio di Presentazione Personalizzato
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={customEmailNote}
+                      onChange={(e) => setCustomEmailNote(e.target.value)}
+                      placeholder="Scrivi una breve introduzione personalizzata per il cliente..."
+                      className="w-full p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none focus:border-teal-400"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-teal-950/30 border border-teal-500/20 text-[11px] text-teal-300/90 leading-relaxed">
+                    ℹ️ Verrà inviata un&apos;email brandizzata con il riepilogo dettagliato al cliente e una <strong>notifica di conferma immediata</strong> alla tua casella <strong>info@tiadesigns.it</strong>.
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowSendModal(false)}
+                      className="px-4 py-2 rounded-xl bg-white/[0.06] text-xs text-neutral-400 hover:text-white cursor-pointer"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendQuoteEmail}
+                      disabled={isSendingEmail}
+                      className="px-5 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isSendingEmail ? 'Invio in corso...' : 'Conferma e Invia Email'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 

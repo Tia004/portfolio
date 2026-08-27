@@ -155,3 +155,33 @@ model AnalyticsEvent {
   @@index([sessionId, timestamp])
   @@index([timestamp])
 }
+
+model Quote {
+  id            String    @id @default(uuid())
+  quoteNumber   String    @unique
+  date          String
+  validity      String
+  timeline      String
+  clientName    String
+  clientCompany String?
+  clientEmail   String
+  clientPhone   String?
+  clientAddress String?
+  clientVat     String?
+  itemsJson     String
+  discount      Int       @default(0)
+  taxRegime     String    @default("forfettario")
+  paymentTerms  String
+  iban          String
+  notes         String?
+  subtotal      Float
+  total         Float
+  status        String    @default("draft") // "draft" | "sent" | "accepted" | "rejected"
+  signatureData String?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@index([clientEmail])
+}
