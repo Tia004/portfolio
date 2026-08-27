@@ -172,6 +172,14 @@ import { scrollToElementAfterLayout } from '@/lib/scroll';
 import { isValidContactEmail, isValidContactMessage, isValidContactName } from '@/lib/input-validation';
 import { playChatOpenSound } from '@/lib/menu-sounds';
 
+// ── Cal.com intro call — bookable calendar embed ──────────────
+// Replace with your real Cal.com booking URL when ready:
+//   https://cal.com/<username>/<event-slug>?embed=true&theme=dark&cal-lang=<lang>
+// The iframe below is lazy-loaded (only fetched when the contacts section
+// scrolls near), so it never costs anything on the critical path.
+const CAL_COM_BASE_URL = 'https://cal.com/tiadesigns/consulenza';
+const CAL_COM_LANG: Record<string, string> = { it: 'it', en: 'en', es: 'es' };
+
 // ── Custom ServiceSelect (grouped by macro-area) ─────────────
 
 interface GroupItem {
@@ -3572,6 +3580,37 @@ export default function HomeShell() {
                     </div>
                   </BorderGlow>
                 </div>
+              </StaggerReveal>
+
+              {/* ── Cal.com intro call — full-width booking card ──
+                  Same BorderGlow language as the rest of the section; the
+                  iframe is lazy so the booking UI never loads until the user
+                  scrolls here. The URL is built from CAL_COM_BASE_URL with
+                  the current language. */}
+              <StaggerReveal stagger={0.08} className="mt-6">
+                <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
+                  <div className="p-5 sm:p-8">
+                    <div className="flex items-start gap-3 mb-5">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
+                        <TiaIcon icon={Calendar01Icon} size={18} className="text-teal-400" />
+                      </div>
+                      <div>
+                        <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-1">{t('contatti.call_label', lang)}</p>
+                        <h3 className="text-white text-lg sm:text-2xl font-bold tracking-tight">{t('contatti.call_title', lang)}</h3>
+                        <p className="text-neutral-500 mt-1.5 text-sm leading-relaxed max-w-2xl">{t('contatti.call_subtitle', lang)}</p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60">
+                      <iframe
+                        src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                        title={t('contatti.call_title', lang)}
+                        loading="lazy"
+                        className="w-full h-[560px] sm:h-[620px] border-0 block"
+                        allow="calendar"
+                      />
+                    </div>
+                  </div>
+                </BorderGlow>
               </StaggerReveal>
             </div>
           </section>

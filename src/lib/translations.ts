@@ -215,6 +215,9 @@ const it: Dict = {
   'contatti.location': 'Mantova, Italia',
   'contatti.response_time': 'Risposta entro 24h',
   'contatti.vat_invoice': 'P.IVA · Fattura elettronica',
+  'contatti.call_label': 'Call conoscitiva',
+  'contatti.call_title': 'Prenota una call conoscitiva gratuita',
+  'contatti.call_subtitle': 'Parliamo del tuo progetto senza impegno: capisco cosa ti serve, ti do un\'idea dei costi e dei tempi, e decidiamo insieme come procedere.',
 
   // Footer
   'footer.desc': 'Designer, sviluppatore app e software, videomaker. Trasformo idee in prodotti digitali completi.',
@@ -533,6 +536,9 @@ const en: Dict = {
   'contatti.location': 'Mantua, Italy',
   'contatti.response_time': 'Response within 24h',
   'contatti.vat_invoice': 'VAT · Electronic invoice',
+  'contatti.call_label': 'Intro call',
+  'contatti.call_title': 'Book a free intro call',
+  'contatti.call_subtitle': 'Let\'s talk about your project with no commitment: I\'ll understand what you need, give you an idea of costs and timelines, and we\'ll decide together how to proceed.',
 
   'footer.desc': 'Designer, app & software developer, videomaker. I turn ideas into complete digital products.',
   'footer.servizi': 'Services',
@@ -844,6 +850,9 @@ const es: Dict = {
   'contatti.location': 'Mantua, Italia',
   'contatti.response_time': 'Respuesta en 24h',
   'contatti.vat_invoice': 'IVA · Factura electrónica',
+  'contatti.call_label': 'Llamada de consulta',
+  'contatti.call_title': 'Reserva una llamada de consulta gratuita',
+  'contatti.call_subtitle': 'Hablemos de tu proyecto sin compromiso: entiendo qué necesitas, te doy una idea de costes y plazos, y decidimos juntos cómo proceder.',
 
   'footer.desc': 'Diseñador, desarrollador de apps y software, videomaker. Transformo ideas en productos digitales completos.',
   'footer.servizi': 'Servicios',
