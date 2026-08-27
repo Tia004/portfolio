@@ -177,9 +177,17 @@ import { playChatOpenSound } from '@/lib/menu-sounds';
 //   https://cal.com/<username>/<event-slug>?embed=true&theme=dark&cal-lang=<lang>
 // The iframe below is lazy-loaded (only fetched when the contacts section
 // scrolls near), so it never costs anything on the critical path.
-// Configurable via NEXT_PUBLIC_CAL_COM_BASE_URL (Vercel) so the event URL can
-// change without a redeploy; the hardcoded default matches the current event.
-const CAL_COM_BASE_URL = process.env.NEXT_PUBLIC_CAL_COM_BASE_URL ?? 'https://cal.com/tiadesigns/consulenza';
+// Configurable via NEXT_PUBLIC_CAL_COM_URL_IT/EN/ES or NEXT_PUBLIC_CAL_COM_BASE_URL
+// so separate multilingual events on Cal.com (e.g. /consulenza, /consulenza-en, /consulenza-es)
+// load seamlessly with 100% translated titles and descriptions.
+const CAL_COM_URLS: Record<string, string> = {
+  it: process.env.NEXT_PUBLIC_CAL_COM_URL_IT ?? process.env.NEXT_PUBLIC_CAL_COM_BASE_URL ?? 'https://cal.com/tiadesigns/consulenza',
+  en: process.env.NEXT_PUBLIC_CAL_COM_URL_EN ?? 'https://cal.com/tiadesigns/consulenza-en',
+  es: process.env.NEXT_PUBLIC_CAL_COM_URL_ES ?? 'https://cal.com/tiadesigns/consulenza-es',
+};
+function getCalComBaseUrl(l: string): string {
+  return CAL_COM_URLS[l] ?? CAL_COM_URLS.it ?? 'https://cal.com/tiadesigns/consulenza';
+}
 const CAL_COM_LANG: Record<string, string> = { it: 'it', en: 'en', es: 'es' };
 
 // ── Custom ServiceSelect (grouped by macro-area) ─────────────
@@ -3859,7 +3867,7 @@ export default function HomeShell() {
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <a
-                              href={`${CAL_COM_BASE_URL}?theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                              href={`${getCalComBaseUrl(lang)}?theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               aria-label={t('contatti.call_newtab', lang)}
@@ -3890,7 +3898,7 @@ export default function HomeShell() {
                         >
                           <iframe
                             key={lang}
-                            src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                            src={`${getCalComBaseUrl(lang)}?embed=true&theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                             title={t('contatti.call_title', lang)}
                             className="w-full h-full min-h-[560px] border-0 block"
                             allow="calendar"
