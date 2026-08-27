@@ -2,7 +2,13 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import BorderGlow from '@/app/components/BorderGlow';
+import TiaIcon from '@/app/components/TiaIcon';
+import { AlertCircleIcon, ArrowRight01Icon, LoaderPinwheelIcon } from '@/app/components/icons';
+
+const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
 function LoginMasterContent() {
   const router = useRouter();
@@ -116,8 +122,8 @@ function LoginMasterContent() {
     return (
       <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center font-sans">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400 text-sm tracking-wider animate-pulse">Connessione sicura in corso...</p>
+          <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-teal-400/80 text-xs tracking-widest uppercase font-mono animate-pulse">Connessione sicura in corso...</p>
         </div>
       </div>
     );
@@ -125,135 +131,158 @@ function LoginMasterContent() {
 
   return (
     <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center px-4 py-12 relative overflow-hidden font-sans select-none">
-      {/* Background decorative elements */}
-      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-blue-900/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-violet-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+      {/* Molten Metal Shader Background */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none">
+        <MoltenMetal
+          color1="#05bc8e"
+          color2="#0effc1"
+          color3="#ffffff"
+          speed={0.25}
+          scale={5.5}
+          detail={2}
+          glow={1.4}
+          coreSize={0.1}
+          swirl={1.35}
+          fold={-0.15}
+          blackPoint={0.03}
+          brightness={0.3}
+          colorMode="molten"
+          grain={false}
+          mouseInteraction={false}
+          mouseStrength={0.15}
+          opacity={1}
+        />
+      </div>
+
+      {/* Subtle vignette layer */}
+      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/40 pointer-events-none" />
 
       <div className="max-w-md w-full relative z-10">
-        {/* Main Glassmorphic Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl relative">
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#0d1527] border border-white/15 p-4 rounded-2xl shadow-lg">
-            <svg
-              className="w-8 h-8 text-blue-400 animate-pulse"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-          </div>
+        {/* Teal halo behind the liquid-glass card */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 z-0 -translate-x-1/2"
+          style={{
+            top: '-120px',
+            width: 'min(500px, 94%)',
+            height: '220px',
+            background: 'radial-gradient(50% 50% at 50% 50%, rgba(45,212,191,0.4) 0%, rgba(45,212,191,0.12) 55%, transparent 75%)',
+            filter: 'blur(32px)',
+          }}
+        />
 
-          <div className="text-center mt-6 mb-6">
-            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
-              {mode === 'login' ? 'Master Access' : 'Registrazione Passkey'}
-            </h1>
-            <p className="text-gray-400 text-xs mt-2 uppercase tracking-widest font-semibold">
-              {mode === 'login' ? 'Autenticazione Biometrica Richiesta' : 'Configurazione Chiave di Sicurezza'}
-            </p>
-          </div>
-
-          {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-500/20 text-red-200 text-sm flex gap-3 items-center">
-              <svg className="w-5 h-5 flex-shrink-0 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              <span>{error}</span>
+        {/* Liquid Glass Card wrapped with BorderGlow */}
+        <BorderGlow continuousHover borderRadius={24} glowRadius={32} glowIntensity={2.2} edgeSensitivity={0} className="w-full">
+          <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-[24px] p-6 sm:p-8 relative">
+            {/* Top Badge Icon */}
+            <div className="flex justify-center -mt-12 sm:-mt-14 mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-[#06120e] border border-teal-500/30 p-3 shadow-xl shadow-teal-950/50 flex items-center justify-center text-teal-400">
+                <svg className="w-7 h-7 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
             </div>
-          )}
 
-          {mode === 'login' ? (
-            /* Login flow layout */
-            <div className="flex flex-col gap-6">
-              <p className="text-gray-400 text-sm text-center">
-                Accedi in modo sicuro al tuo portale di gestione utilizzando la tua Passkey registrata.
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-bold tracking-tight text-white">
+                {mode === 'login' ? 'Master Access' : 'Registrazione Passkey'}
+              </h1>
+              <p className="text-teal-400 text-[11px] mt-1.5 uppercase tracking-[0.2em] font-semibold">
+                {mode === 'login' ? 'Autenticazione Biometrica' : 'Configurazione Chiave Sicura'}
               </p>
+            </div>
 
-              <button
-                onClick={handleLogin}
-                disabled={actionLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium py-3.5 px-6 rounded-xl transition duration-200 cursor-pointer shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-              >
-                {actionLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <span>Accedi con Passkey</span>
-                    <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </>
-                )}
-              </button>
+            {error && (
+              <div className="mb-6 p-3.5 rounded-xl bg-red-950/50 border border-red-500/30 text-red-200 text-xs flex gap-2.5 items-center">
+                <TiaIcon icon={AlertCircleIcon} size={16} className="text-red-400 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
-              <div className="pt-2 border-t border-white/10 text-center">
+            {mode === 'login' ? (
+              /* Login flow layout */
+              <div className="flex flex-col gap-5">
+                <p className="text-neutral-400 text-sm text-center leading-relaxed">
+                  Accedi in modo sicuro al tuo portale di gestione tramite la tua Passkey registrata.
+                </p>
+
                 <button
-                  type="button"
-                  onClick={() => { setError(null); setMode('register'); }}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-4 cursor-pointer"
+                  onClick={handleLogin}
+                  disabled={actionLoading}
+                  className="w-full py-3.5 font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 cursor-pointer bg-teal-400 hover:bg-teal-300 text-black shadow-lg shadow-teal-400/25 ring-1 ring-teal-400/40 group"
                 >
-                  Nuovo dispositivo o browser? Registra una nuova Passkey
+                  {actionLoading ? (
+                    <><TiaIcon icon={LoaderPinwheelIcon} size={18} className="animate-spin" strokeWidth={2} /> Autenticazione in corso...</>
+                  ) : (
+                    <>
+                      <span>Accedi con Passkey</span>
+                      <TiaIcon icon={ArrowRight01Icon} size={18} strokeWidth={2} className="transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
                 </button>
-              </div>
-            </div>
-          ) : (
-            /* Setup / Register new Passkey flow layout */
-            <div className="flex flex-col gap-6">
-              <p className="text-gray-400 text-sm text-center">
-                Configura o aggiungi una nuova chiave di sicurezza (Passkey) per accedere all&apos;amministrazione di questo portfolio da questo dispositivo.
-              </p>
 
-              <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-xs text-gray-300 flex flex-col gap-2">
-                <div className="flex gap-2">
-                  <span className="text-teal-400 font-bold">1.</span>
-                  <span>Assicurati che il tuo dispositivo supporti l&apos;autenticazione biometrica (Touch ID, Face ID, Windows Hello) o una chiave hardware.</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-teal-400 font-bold">2.</span>
-                  <span>Clicca sul tasto sotto e segui le istruzioni del tuo sistema operativo o browser per completare la registrazione.</span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleRegister}
-                disabled={actionLoading}
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium py-3.5 px-6 rounded-xl transition duration-200 cursor-pointer shadow-lg hover:shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-              >
-                {actionLoading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <span>Registra Passkey Master</span>
-                    <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </>
-                )}
-              </button>
-
-              {initialized && (
-                <div className="pt-2 border-t border-white/10 text-center">
+                <div className="pt-3 border-t border-white/[0.08] text-center">
                   <button
                     type="button"
-                    onClick={() => { setError(null); setMode('login'); }}
-                    className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
+                    onClick={() => { setError(null); setMode('register'); }}
+                    className="text-xs text-teal-400 hover:text-teal-300 transition-colors underline underline-offset-4 cursor-pointer"
                   >
-                    Hai già una passkey configurata? Torna al login
+                    Nuovo dispositivo o browser? Registra una nuova Passkey
                   </button>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            ) : (
+              /* Setup / Register new Passkey flow layout */
+              <div className="flex flex-col gap-5">
+                <p className="text-neutral-400 text-sm text-center leading-relaxed">
+                  Configura o aggiungi una nuova Passkey per accedere all&apos;amministrazione da questo dispositivo.
+                </p>
+
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 text-xs text-neutral-300 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <span className="text-teal-400 font-bold">1.</span>
+                    <span>Supporta Touch ID, Face ID, Windows Hello o chiavi di sicurezza fisiche.</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-teal-400 font-bold">2.</span>
+                    <span>Clicca sul tasto sotto e segui le istruzioni del tuo dispositivo per confermare.</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleRegister}
+                  disabled={actionLoading}
+                  className="w-full py-3.5 font-semibold rounded-xl text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 cursor-pointer bg-teal-400 hover:bg-teal-300 text-black shadow-lg shadow-teal-400/25 ring-1 ring-teal-400/40 group"
+                >
+                  {actionLoading ? (
+                    <><TiaIcon icon={LoaderPinwheelIcon} size={18} className="animate-spin" strokeWidth={2} /> Registrazione in corso...</>
+                  ) : (
+                    <>
+                      <span>Registra Passkey Master</span>
+                      <TiaIcon icon={ArrowRight01Icon} size={18} strokeWidth={2} className="transition-transform group-hover:translate-x-1" />
+                    </>
+                  )}
+                </button>
+
+                {initialized && (
+                  <div className="pt-3 border-t border-white/[0.08] text-center">
+                    <button
+                      type="button"
+                      onClick={() => { setError(null); setMode('login'); }}
+                      className="text-xs text-neutral-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
+                    >
+                      Hai già una passkey configurata? Torna al login
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </BorderGlow>
 
         {/* Footer text */}
-        <p className="text-center text-gray-600 text-xs mt-8 tracking-wider">
-          Progetto Next.js • Protetto da crittografia end-to-end WebAuthn
+        <p className="text-center text-neutral-500 text-xs mt-8 tracking-wider font-mono">
+          Protetto da crittografia end-to-end WebAuthn
         </p>
       </div>
     </div>
@@ -265,8 +294,8 @@ export default function LoginMasterPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center font-sans">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400 text-sm tracking-wider animate-pulse">Caricamento...</p>
+          <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-teal-400/80 text-xs tracking-widest uppercase font-mono animate-pulse">Caricamento...</p>
         </div>
       </div>
     }>
