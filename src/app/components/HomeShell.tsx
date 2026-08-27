@@ -2706,19 +2706,19 @@ export default function HomeShell() {
                 statement, not a wall of text. Base sizes are tuned for a
                 375px viewport and scale up at sm/md/lg. */}
             <div className="relative z-20 text-left px-5 sm:px-12 md:px-20 lg:px-28 max-w-full sm:max-w-3xl md:max-w-5xl lg:max-w-[90rem] pointer-events-none">
-              <p className="hero-anim mb-2 sm:mb-6" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
+              <p className="hero-anim mb-2 sm:mb-6" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
                 <span className="inline-block bg-white/[0.06] backdrop-blur-xl border border-white/[0.10] rounded-2xl px-3 sm:px-5 py-1.5 sm:py-2 text-teal-400/90 text-[10px] sm:text-xs md:text-sm tracking-[0.18em] sm:tracking-[0.2em] uppercase font-semibold">
                   {t('hero.tag', lang)}
                 </span>
               </p>
-              <h1 className="hero-anim max-[374px]:text-[30px] text-[34px] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] sm:leading-[1.05]" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
+              <h1 className="hero-anim max-[374px]:text-[30px] text-[34px] sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] sm:leading-[1.05]" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
                 {t('hero.line1', lang)}<br />
                 <span className="font-bold text-teal-400"><span className="font-black text-white">{t('hero.line2a', lang)}</span> {t('hero.line2b', lang)} <span className="font-black text-white">{t('hero.line2c', lang)}</span> {t('hero.line2d', lang)}<span className="font-black text-white">{t('hero.line2e', lang)}</span></span>
               </h1>
-              <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
+              <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
                 <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none" />                {t('hero.subtitle', lang)}
               </p>
-              <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center" style={{ transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` }}>
+              <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
                 <button
                   onClick={() => { scrollToContatti(); trackClick('hero_cta_quote'); }}
                   className="w-full sm:w-auto px-5 sm:px-9 py-3 sm:py-4 bg-teal-600 text-white rounded-full text-[13px] sm:text-[15px] font-semibold hover:bg-teal-500 transition-all shadow-xl shadow-teal-600/25 pointer-events-auto tracking-wide inline-flex items-center justify-center gap-2 sm:gap-2.5"

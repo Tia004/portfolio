@@ -122,9 +122,9 @@ export default function LanguageProvider({ children, initialLang }: { children: 
     rememberDismissal();
     if (selectedLang !== lang) {
       setLang(selectedLang);
-      // Soft navigation (no splash replay, scroll preserved) to the real
-      // per-language route; the cookie we just set keeps the server in sync.
-      router.push(selectedLang === 'it' ? '/' : `/${selectedLang}`, { scroll: false });
+      const targetUrl = selectedLang === 'it' ? '/' : `/${selectedLang}`;
+      window.location.href = targetUrl;
+      return;
     }
     closeBanner();
   };
