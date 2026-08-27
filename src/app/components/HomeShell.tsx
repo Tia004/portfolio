@@ -3859,7 +3859,7 @@ export default function HomeShell() {
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <a
-                              href={`${CAL_COM_BASE_URL}?theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                              href={`${CAL_COM_BASE_URL}?theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               aria-label={t('contatti.call_newtab', lang)}
@@ -3889,7 +3889,8 @@ export default function HomeShell() {
                           style={{ WebkitOverflowScrolling: 'touch' }}
                         >
                           <iframe
-                            src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                            key={lang}
+                            src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                             title={t('contatti.call_title', lang)}
                             className="w-full h-full min-h-[560px] border-0 block"
                             allow="calendar"
