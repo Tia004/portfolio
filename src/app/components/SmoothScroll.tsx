@@ -63,16 +63,16 @@ export default function SmoothScrollProvider({ children }: Props) {
       // Integrate GSAP ScrollTrigger with Lenis
       lenis.on('scroll', () => ScrollTrigger.update());
 
-      // Sync Lenis RAF with GSAP ticker for ultra-smooth 60/120fps animation loop
-      const tickerCallback = (time: number) => {
-        lenis.raf(time * 1000);
-      };
-
-      gsap.ticker.add(tickerCallback);
-      gsap.ticker.lagSmoothing(0);
+      // Native requestAnimationFrame loop providing synchronized performance.now() timestamps
+      let frameId = 0;
+      function raf(time: number) {
+        lenis.raf(time);
+        frameId = requestAnimationFrame(raf);
+      }
+      frameId = requestAnimationFrame(raf);
 
       destroy = () => {
-        gsap.ticker.remove(tickerCallback);
+        cancelAnimationFrame(frameId);
         ScrollTrigger.getAll().forEach(t => t.kill());
         lenis.destroy();
         lenisRef.current = null;
