@@ -104,18 +104,17 @@ function normalizeFrom(value: string | undefined): { name: string; address: stri
   return { name: 'Tia Designs', address: value.trim() };
 }
 
-/** Build the "chips" row (chosen options) for the email body from details. */
-function buildChipsHtml(details: Record<string, string | number> | undefined): string {
+/** Build the "chips" row (chosen options) for the email body from details with localization. */
+function buildChipsHtml(details: Record<string, string | number> | undefined, lang: 'it' | 'en' | 'es' = 'it'): string {
   if (!details) return '';
-  const order: [string, string][] = [
-    ['service', 'Servizio'],
-    ['type', 'Tipo'],
-    ['budget', 'Budget'],
-    ['pages', 'Pagine'],
-    ['delivery', 'Consegna'],
-  ];
+  const labels: Record<'it' | 'en' | 'es', Record<string, string>> = {
+    it: { service: 'Servizio', type: 'Tipo', budget: 'Budget', pages: 'Pagine', delivery: 'Consegna' },
+    en: { service: 'Service', type: 'Type', budget: 'Budget', pages: 'Pages', delivery: 'Delivery' },
+    es: { service: 'Servicio', type: 'Tipo', budget: 'Presupuesto', pages: 'Páginas', delivery: 'Entrega' },
+  };
+  const order: string[] = ['service', 'type', 'budget', 'pages', 'delivery'];
   const chips: string[] = [];
-  for (const [key, label] of order) {
+  for (const key of order) {
     const value = details[key];
     if (value === undefined || value === null || value === '') continue;
     let text = String(value);
@@ -123,6 +122,7 @@ function buildChipsHtml(details: Record<string, string | number> | undefined): s
       const n = Number(text);
       if (Number.isFinite(n) && n > 0) text = `€${n.toLocaleString('it-IT')}`;
     }
+    const label = labels[lang]?.[key] ?? labels.it[key] ?? key;
     chips.push(`<span style="display:inline-block;background:#0f2725;border:1px solid rgba(45,212,191,0.45);color:#5eead4;border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;margin:0 8px 8px 0;">${escapeHtml(label)}: ${escapeHtml(text)}</span>`);
   }
   if (chips.length === 0) return '';
@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
       service?: unknown;
       source?: unknown;
       details?: unknown;
+      lang?: unknown;
       sessionId?: unknown;
       captchaToken?: unknown;
     };
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, email, message, service, source } = body;
+    const clientLang: 'it' | 'en' | 'es' = body.lang === 'en' || body.lang === 'es' ? body.lang : 'it';
 
     if (typeof name !== 'string' || !isValidContactName(name)) {
       return NextResponse.json({ error: 'Inserisci un nome valido, senza numeri o caratteri speciali.' }, { status: 400 });
@@ -180,10 +182,6 @@ export async function POST(req: NextRequest) {
     // Recipient: where Tia receives the contact emails
     const recipientEmail = process.env.EMAIL_TO || 'info@tiadesigns.it';
 
-    // Sender: the brand address by default. With Resend this requires the
-    // tiadesigns.it domain to be verified; with the Gmail SMTP fallback the
-    // address must be added as a verified "Send mail as" alias in Gmail
-    // (otherwise Gmail rewrites the From header back to EMAIL_USER).
     const sender = normalizeFrom(process.env.EMAIL_FROM);
     const senderEmail = sender.address;
     if (senderEmail === 'onboarding@resend.dev') {
@@ -191,12 +189,6 @@ export async function POST(req: NextRequest) {
         'Le email raggiungono SOLO l\'indirizzo registrato su Resend finché il dominio',
         'tiadesigns.it non è verificato. Verifica il dominio in Resend e imposta',
         'EMAIL_FROM="Tia Designs <info@tiadesigns.it>".');
-    }
-    if (process.env.NODE_ENV === 'production' && process.env.EMAIL_USER && senderEmail !== process.env.EMAIL_USER
-      && senderEmail !== 'info@tiadesigns.it' && senderEmail !== 'onboarding@resend.dev') {
-      console.warn('[contact] Attenzione: Gmail SMTP riscrive il From sull\'account autenticato.',
-        'Per inviare come', senderEmail, 'aggiungilo come alias "Send mail as" nelle impostazioni Gmail',
-        '(Settings → Accounts → Send mail as → add', senderEmail, 'e verifica il codice).');
     }
 
     // Structured details (service, type, budget, pages, delivery) chosen in the
@@ -220,27 +212,30 @@ export async function POST(req: NextRequest) {
     const safeEmail = escapeHtml(email);
     const safeMessage = markdownToHtml(message);
     const safeService = typeof service === 'string' ? escapeHtml(service.slice(0, 120)) : '';
-    const chipsHtml = buildChipsHtml(details);
+    const tiaChipsHtml = buildChipsHtml(details, 'it');
+    const clientChipsHtml = buildChipsHtml(details, clientLang);
 
+    // Email to Tia (ALWAYS formatted in Italian)
     const mailOptions = {
       from: `${sender.name} <${senderEmail}>`,
       to: recipientEmail,
       replyTo: email,
-      subject: `${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} da ${name} - Portfolio`,
+      subject: `${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} da ${name} [${clientLang.toUpperCase()}] - Portfolio`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0a; color: #fff; border-radius: 12px; border: 1px solid #1e293b;">
           <h2 style="color: #2dd4bf; margin-bottom: 20px;">${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} dal Portfolio</h2>
           <div style="background: #111; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-            <p style="margin: 4px 0;"><strong>Nome:</strong> ${safeName}</p>
-            <p style="margin: 4px 0;"><strong>Email:</strong> ${safeEmail}</p>
+            <p style="margin: 4px 0;"><strong>Nome Cliente:</strong> ${safeName}</p>
+            <p style="margin: 4px 0;"><strong>Email Cliente:</strong> ${safeEmail}</p>
+            <p style="margin: 4px 0;"><strong>Lingua Cliente:</strong> ${clientLang.toUpperCase()}</p>
             ${safeService ? `<p style="margin: 4px 0;"><strong>Servizio richiesto:</strong> ${safeService}</p>` : ''}
           </div>
-          ${chipsHtml}
+          ${tiaChipsHtml}
           <div style="background: #111; padding: 16px; border-radius: 8px;">
-            <p style="margin: 4px 0;"><strong>Messaggio:</strong></p>
+            <p style="margin: 4px 0;"><strong>Dettagli & Sintesi Richiesta:</strong></p>
             <div style="margin: 8px 0; line-height: 1.6;">${safeMessage}</div>
           </div>
-          <p style="color: #666; font-size: 12px; margin-top: 20px;">Ricevuto dal portfolio di Tia Designs</p>
+          <p style="color: #666; font-size: 12px; margin-top: 20px;">Ricevuto dal portfolio di Tia Designs (Traduzione automatica per Tia)</p>
         </div>
       `,
     };
@@ -265,8 +260,6 @@ export async function POST(req: NextRequest) {
     if (resend) {
       const { error: sendError } = await resend.emails.send(mailOptions);
       if (sendError) {
-        // Surface Resend's rejection (invalid key, unverified domain, sandbox
-        // recipient restriction) instead of answering "success" silently.
         console.error('Resend invio email fallito:', JSON.stringify(sendError).slice(0, 500));
       } else {
         delivered = true;
@@ -285,25 +278,49 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Send a copy to the client when it's an AI quote ──
+    // ── Send a copy to the client in THEIR language when it's an AI quote ──
     if (source === 'ai-quote') {
+      const clientContent = {
+        it: {
+          subject: `Abbiamo ricevuto la tua richiesta, ${name}! 🎨`,
+          greeting: `Ciao <strong>${safeName}</strong>,`,
+          intro: `Grazie per avermi contattato! Ho ricevuto la tua richiesta e sto già preparando un <strong>preventivo personalizzato</strong> per il tuo progetto.`,
+          recapTitle: `Riepilogo della tua richiesta`,
+          eta: `Riceverai il preventivo dettagliato <strong>entro 24 ore</strong> all'indirizzo <strong>${safeEmail}</strong>. Se hai domande urgenti, puoi rispondere direttamente a questa email.`,
+        },
+        en: {
+          subject: `We received your request, ${name}! 🎨`,
+          greeting: `Hello <strong>${safeName}</strong>,`,
+          intro: `Thank you for reaching out! I have received your request and I am already preparing a <strong>custom quote</strong> for your project.`,
+          recapTitle: `Summary of your request`,
+          eta: `You will receive the detailed quote <strong>within 24 hours</strong> at <strong>${safeEmail}</strong>. If you have any urgent questions, you can reply directly to this email.`,
+        },
+        es: {
+          subject: `¡Hemos recibido tu solicitud, ${name}! 🎨`,
+          greeting: `Hola <strong>${safeName}</strong>,`,
+          intro: `¡Gracias por contactarme! He recibido tu solicitud y ya estoy preparando un <strong>presupuesto personalizado</strong> para tu proyecto.`,
+          recapTitle: `Resumen de tu solicitud`,
+          eta: `Recibirás el presupuesto detallado en un plazo de <strong>24 horas</strong> en <strong>${safeEmail}</strong>. Si tienes alguna duda urgente, puedes responder directamente a este correo.`,
+        },
+      }[clientLang];
+
       const clientHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background: #0a0a0a; color: #e5e7eb; border-radius: 12px; border: 1px solid #1e293b;">
           <h1 style="color: #2dd4bf; margin-bottom: 8px; font-size: 24px;">Tia Designs</h1>
           <p style="color: #9ca3af; font-size: 14px; margin-bottom: 24px;">Design • Sviluppo Web • Video</p>
           <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 3px solid #2dd4bf;">
-            <p style="margin: 0 0 12px 0; font-size: 16px;">Ciao <strong>${safeName}</strong>,</p>
+            <p style="margin: 0 0 12px 0; font-size: 16px;">${clientContent.greeting}</p>
             <p style="margin: 0; line-height: 1.7; font-size: 14px;">
-              Grazie per avermi contattato! Ho ricevuto la tua richiesta e sto già preparando un <strong>preventivo personalizzato</strong> per il tuo progetto.
+              ${clientContent.intro}
             </p>
           </div>
           <div style="background: #111; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="margin: 0 0 10px 0; font-size: 13px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">Riepilogo della tua richiesta</p>
-            ${chipsHtml}
+            <p style="margin: 0 0 10px 0; font-size: 13px; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;">${clientContent.recapTitle}</p>
+            ${clientChipsHtml}
             <div style="line-height: 1.7; font-size: 14px;">${safeMessage}</div>
           </div>
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-            Riceverai il preventivo dettagliato <strong>entro 24 ore</strong> all'indirizzo <strong>${safeEmail}</strong>. Se hai domande urgenti, puoi rispondere direttamente a questa email.
+            ${clientContent.eta}
           </p>
           <div style="border-top: 1px solid #1e293b; padding-top: 16px;">
             <p style="color: #6b7280; font-size: 12px; margin: 0;">
@@ -313,8 +330,6 @@ export async function POST(req: NextRequest) {
         </div>
       `;
 
-      // The recap goes to the client AND to Tia (BCC): Tia must always see
-      // exactly what the client received, at info@tiadesigns.it.
       const clientCopyTo = email;
       const clientCopyBcc = recipientEmail;
       let clientCopyOk = false;
@@ -323,7 +338,7 @@ export async function POST(req: NextRequest) {
           from: `${sender.name} <${senderEmail}>`,
           to: clientCopyTo,
           bcc: clientCopyBcc,
-          subject: `Abbiamo ricevuto la tua richiesta, ${name}! 🎨`,
+          subject: clientContent.subject,
           html: clientHtml,
         });
         if (clientCopyError) {
@@ -337,7 +352,7 @@ export async function POST(req: NextRequest) {
           to: clientCopyTo,
           bcc: clientCopyBcc,
           from: `${sender.name} <${senderEmail}>`,
-          subject: `Abbiamo ricevuto la tua richiesta, ${name}! 🎨`,
+          subject: clientContent.subject,
           html: clientHtml,
         });
       }

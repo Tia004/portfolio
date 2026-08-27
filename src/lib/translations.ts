@@ -224,6 +224,10 @@ const it: Dict = {
   'contatti.call_button_sub': '30 minuti, senza impegno',
   'contatti.call_close': 'Chiudi',
   'contatti.call_newtab': 'Apri in nuova scheda',
+  'contatti.call_loading': 'Carico il calendario…',
+  'contatti.call_failed': 'Non riesco a caricare il calendario.',
+  'contatti.booking_confirmed': 'Prenotazione confermata!',
+  'contatti.booking_confirmed_sub': 'Riceverai a breve l\'email con tutti i dettagli.',
 
   // Footer
   'footer.desc': 'Designer, sviluppatore app e software, videomaker. Trasformo idee in prodotti digitali completi.',
@@ -552,6 +556,10 @@ const en: Dict = {
   'contatti.call_button_sub': '30 minutes, no commitment',
   'contatti.call_close': 'Close',
   'contatti.call_newtab': 'Open in new tab',
+  'contatti.call_loading': 'Loading the calendar…',
+  'contatti.call_failed': 'The calendar could not be loaded.',
+  'contatti.booking_confirmed': 'Booking confirmed!',
+  'contatti.booking_confirmed_sub': 'You\'ll receive an email with all the details shortly.',
 
   'footer.desc': 'Designer, app & software developer, videomaker. I turn ideas into complete digital products.',
   'footer.servizi': 'Services',
@@ -873,6 +881,10 @@ const es: Dict = {
   'contatti.call_button_sub': '30 minutos, sin compromiso',
   'contatti.call_close': 'Cerrar',
   'contatti.call_newtab': 'Abrir en nueva pestaña',
+  'contatti.call_loading': 'Cargando el calendario…',
+  'contatti.call_failed': 'No se pudo cargar el calendario.',
+  'contatti.booking_confirmed': '¡Reserva confirmada!',
+  'contatti.booking_confirmed_sub': 'Recibirás en breve un email con todos los detalles.',
 
   'footer.desc': 'Diseñador, desarrollador de apps y software, videomaker. Transformo ideas en productos digitales completos.',
   'footer.servizi': 'Servicios',

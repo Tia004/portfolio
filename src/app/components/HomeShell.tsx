@@ -190,6 +190,78 @@ function getCalComBaseUrl(l: string): string {
 }
 const CAL_COM_LANG: Record<string, string> = { it: 'it', en: 'en', es: 'es' };
 
+// ── Cal.com embed.js bootstrap (official snippet, typed) ────────────
+// The booking calendar is mounted through the official Cal.com embed API
+// (https://app.cal.com/embed/embed.js) instead of a bare <iframe>: the API
+// exposes JS events ("bookingSuccessful", "linkReady", "linkFailed") that a
+// plain iframe cannot provide, and they power the "booking confirmed" toast.
+// The snippet queues instructions until embed.js loads; the script itself is
+// appended lazily on the FIRST open of the booking panel (zero cost before).
+type CalQueue = unknown[][];
+type CalFn = ((...args: unknown[]) => void) & {
+  loaded?: boolean;
+  q?: CalQueue;
+  ns?: Record<string, CalFn>;
+};
+
+const CAL_EMBED_NS = 'call';
+let calEmbedBootstrapped = false;
+
+/** Bootstrap the official Cal.com embed snippet once and wire its events. */
+function ensureCalEmbed(origin: string): void {
+  if (typeof window === 'undefined') return;
+  const w = window as typeof window & { Cal?: CalFn };
+  if (!w.Cal) {
+    const cal = function (...args: unknown[]) {
+      const c = w.Cal as CalFn;
+      if (!c.loaded) {
+        c.ns = {};
+        c.q = c.q ?? [];
+        const script = document.createElement('script');
+        script.src = 'https://app.cal.com/embed/embed.js';
+        script.async = true;
+        document.head.appendChild(script);
+        c.loaded = true;
+      }
+      if (args[0] === 'init') {
+        const api = function (...innerArgs: unknown[]) {
+          (api.q as CalQueue).push(innerArgs);
+        } as CalFn;
+        api.q = api.q ?? [];
+        const namespace = args[1];
+        if (typeof namespace === 'string') {
+          c.ns![namespace] = c.ns![namespace] ?? api;
+          (c.ns![namespace].q as CalQueue).push(args);
+          c.q!.push(['initNamespace', namespace]);
+        } else {
+          c.q!.push(args);
+        }
+        return;
+      }
+      c.q!.push(args);
+    } as CalFn;
+    w.Cal = cal;
+  }
+  if (!calEmbedBootstrapped) {
+    calEmbedBootstrapped = true;
+    const cal = w.Cal;
+    cal('init', CAL_EMBED_NS, { origin });
+    const ns = cal.ns?.[CAL_EMBED_NS];
+    // Re-emit the embed events as window CustomEvents so any React component
+    // (mobile modal, desktop panel) can react without owning the embed.
+    ns?.('on', { action: 'bookingSuccessful', callback: () => window.dispatchEvent(new CustomEvent('tia:booking-confirmed')) });
+    ns?.('on', { action: 'linkReady', callback: () => window.dispatchEvent(new CustomEvent('tia:cal-link-ready')) });
+    ns?.('on', { action: 'linkFailed', callback: () => window.dispatchEvent(new CustomEvent('tia:cal-link-failed')) });
+  }
+}
+
+/** The queued Cal API for the booking namespace (null until embed.js loads). */
+function getCalNsApi(): CalFn | null {
+  if (typeof window === 'undefined') return null;
+  const ns = (window as typeof window & { Cal?: CalFn }).Cal?.ns?.[CAL_EMBED_NS];
+  return typeof ns === 'function' ? ns : null;
+}
+
 // ── Custom ServiceSelect (grouped by macro-area) ─────────────
 
 interface GroupItem {
@@ -391,6 +463,155 @@ function ServiceSelect({ value, onChange, highlighted }: { value: string; onChan
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Cal.com inline embed host ──────────────────────────────────
+// Mounts the official Cal.com embed into a div (CallBookingCard body) and
+// surfaces loading / failure states. Remounts on language change (key={lang})
+// so the embed reloads with the right locale, same as the old bare iframe.
+function CallEmbedHost() {
+  const { lang } = useLanguage();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let cancelled = false;
+    const markFailed = () => {
+      if (!cancelled) setStatus('failed');
+    };
+    // Safety net: if embed.js/iframe never answers (ad-blocker, offline),
+    // swap the loader for the "open in new tab" fallback instead of spinning.
+    const failTimer = window.setTimeout(() => {
+      if (!cancelled) setStatus((s) => (s === 'loading' ? 'failed' : s));
+    }, 20000);
+    const onReady = () => { if (!cancelled) { window.clearTimeout(failTimer); setStatus('ready'); } };
+    const onFailed = () => { if (!cancelled) { window.clearTimeout(failTimer); setStatus('failed'); } };
+    window.addEventListener('tia:cal-link-ready', onReady);
+    window.addEventListener('tia:cal-link-failed', onFailed);
+    // Deferred by one tick so the effect body never calls setState
+    // synchronously (react-hooks/set-state-in-effect).
+    const bootTimer = window.setTimeout(() => {
+      try {
+        const url = new URL(getCalComBaseUrl(lang));
+        ensureCalEmbed(url.origin);
+        getCalNsApi()?.('inline', {
+          calLink: `${url.pathname.replace(/^\//, '')}${url.search}`,
+          elementOrSelector: host,
+          config: { theme: 'dark', locale: CAL_COM_LANG[lang] ?? 'it' },
+        });
+      } catch {
+        window.clearTimeout(failTimer);
+        markFailed();
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(bootTimer);
+      window.clearTimeout(failTimer);
+      window.removeEventListener('tia:cal-link-ready', onReady);
+      window.removeEventListener('tia:cal-link-failed', onFailed);
+    };
+  }, [lang]);
+
+  const locale = CAL_COM_LANG[lang] ?? 'it';
+  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
+
+  return (
+    <div className="relative w-full h-full min-h-[560px]">
+      <div ref={hostRef} className="call-embed-host h-full min-h-[560px]" />
+      {status !== 'ready' && (
+        <div className={`absolute inset-0 flex flex-col items-center justify-center gap-3 ${status === 'loading' ? 'pointer-events-none' : ''}`}>
+          {status === 'loading' ? (
+            <>
+              <TiaIcon icon={LoaderPinwheelIcon} size={22} className="animate-spin text-teal-400" strokeWidth={2} />
+              <p className="text-neutral-500 text-xs">{t('contatti.call_loading', lang)}</p>
+            </>
+          ) : (
+            <>
+              <TiaIcon icon={AlertCircleIcon} size={20} className="text-amber-400" strokeWidth={2} />
+              <p className="text-neutral-400 text-xs text-center px-6">{t('contatti.call_failed', lang)}</p>
+              <a
+                href={newtabHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-400/50 text-xs font-medium transition-all"
+              >
+                {t('contatti.call_newtab', lang)}
+                <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Cal.com booking card — header + embed body, shared by the desktop
+// inline panel (lg+) and the mobile/tablet modal. compact=true lets the body
+// shrink inside the modal (the desktop panel keeps its fixed min-height so
+// the grid column matches the form + sidebar height).
+function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
+  onClose: () => void;
+  compact?: boolean;
+  bodyRef?: React.Ref<HTMLDivElement>;
+  closeBtnRef?: React.Ref<HTMLButtonElement>;
+}) {
+  const { lang } = useLanguage();
+  const locale = CAL_COM_LANG[lang] ?? 'it';
+  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
+
+  return (
+    <div className={`p-4 sm:p-5 h-full flex flex-col ${compact ? 'min-h-0' : 'min-h-[560px]'}`}>
+      <div className="flex items-center gap-3 mb-4 shrink-0">
+        <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/20 shadow-sm shadow-teal-950/40">
+          <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-teal-400 text-[10px] font-medium uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
+          <p className="text-white text-sm font-bold leading-tight truncate">{t('contatti.call_title', lang)}</p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <a
+            href={newtabHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('contatti.call_newtab', lang)}
+            title={t('contatti.call_newtab', lang)}
+            className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-400/50 text-[11px] sm:text-xs font-medium transition-all duration-300 shadow-sm shadow-teal-950/30 cursor-pointer"
+          >
+            <span className="hidden sm:inline">{t('contatti.call_newtab', lang)}</span>
+            <svg aria-hidden="true" className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+          <button
+            type="button"
+            ref={closeBtnRef}
+            onClick={onClose}
+            aria-label={t('contatti.call_close', lang)}
+            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
+          >
+            <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+      <div
+        ref={bodyRef}
+        data-lenis-prevent
+        data-lenis-prevent-wheel
+        data-lenis-prevent-touch
+        className={`flex-1 rounded-xl overflow-y-auto overflow-x-hidden border border-white/[0.06] bg-[#0a0a0a]/60 overscroll-contain touch-pan-y ${compact ? 'min-h-0' : 'min-h-[500px] max-h-[75vh] lg:max-h-none'}`}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <CallEmbedHost key={lang} />
+      </div>
     </div>
   );
 }
@@ -940,36 +1161,126 @@ export default function HomeShell() {
   // (Cal.com). null → fallback to the static "2 slots" text while loading or
   // when Cal.com isn't configured/unreachable.
   const [freeSlots, setFreeSlots] = useState<number | null>(null);
-  // Cal.com intro call — compact panel. The iframe mounts on first open
+  // Cal.com intro call — two exclusive layouts. The embed mounts on first open
   // (callOpenedOnce) and stays mounted, so closing/reopening is instant and
   // the booking UI never loads until the user actually asks for it.
+  // - lg+ (desktop): inline third column that slides in pushing form + sidebar
+  //   left (unchanged from the original design).
+  // - <lg (mobile/tablet): a centered closable MODAL over the page — on phones
+  //   the inline column appeared BELOW the whole contacts section where users
+  //   could not see it without hunting for it after tapping the button.
   const [callOpen, setCallOpen] = useState(false);
   const [callOpenedOnce, setCallOpenedOnce] = useState(false);
-  // ESC + click-outside close for the Cal.com panel — same UX as the other
-  // modals (LegalModal/ProjectModal close on Escape; the ServiceSelect dropdown
-  // closes on outside mousedown). Clicks INSIDE the panel or on the trigger
-  // button never close it: the button toggles instead.
   const callPanelRef = useRef<HTMLDivElement>(null);
   const callTriggerRef = useRef<HTMLButtonElement>(null);
+  const callModalBodyRef = useRef<HTMLDivElement>(null);
+  const callModalCloseRef = useRef<HTMLButtonElement>(null);
+  // Same useSyncExternalStore pattern as isMobile below: subscription lives
+  // outside the render path, server snapshot false (nothing renders before a
+  // user interaction anyway) so hydration is safe. 1024px = Tailwind `lg`.
+  const subscribeIsDesktop = useCallback((onStoreChange: () => void) => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    mq.addEventListener('change', onStoreChange);
+    return () => mq.removeEventListener('change', onStoreChange);
+  }, []);
+  const getIsDesktopSnapshot = useCallback(() => window.matchMedia('(min-width: 1024px)').matches, []);
+  const isDesktopLayout = useSyncExternalStore(subscribeIsDesktop, getIsDesktopSnapshot, () => false);
+  // ESC + click-outside close for the booking UI — same UX as the other modals
+  // (LegalModal/ProjectModal close on Escape). On desktop, clicks outside the
+  // panel close it (the trigger button toggles instead); on mobile the modal
+  // closes via its backdrop, its ✕ button or Escape — never on inside clicks.
   useEffect(() => {
     if (!callOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCallOpen(false); };
+    document.addEventListener('keydown', onKey);
+    if (!isDesktopLayout) {
+      if (callModalBodyRef.current) callModalBodyRef.current.scrollTop = 0;
+      // Keyboard users start on the modal's close button (LegalModal pattern).
+      const focusTimer = window.setTimeout(() => callModalCloseRef.current?.focus(), 80);
+      return () => {
+        window.clearTimeout(focusTimer);
+        document.removeEventListener('keydown', onKey);
+      };
+    }
     if (callPanelRef.current) {
       callPanelRef.current.scrollTop = 0;
     }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCallOpen(false); };
     const onOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       if (callPanelRef.current?.contains(target)) return;
       if (callTriggerRef.current?.contains(target)) return;
       setCallOpen(false);
     };
-    document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onOutside);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onOutside);
     };
-  }, [callOpen]);
+  }, [callOpen, isDesktopLayout]);
+  // Booking modal open (<lg): freeze the page behind — body position:fixed
+  // stops touch scrolling (Lenis on mobile falls back to native) and
+  // lenis.stop() blocks wheel; same proven technique as LegalModal.
+  useEffect(() => {
+    if (!callOpen || isDesktopLayout) return;
+    const inst = lenis.current;
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    document.body.style.overscrollBehavior = 'none';
+    inst?.stop();
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overscrollBehavior = '';
+      window.scrollTo(0, scrollY);
+      inst?.start();
+    };
+  }, [callOpen, isDesktopLayout, lenis]);
+  // ── "Prenotazione confermata" toast — fired by the Cal.com embed
+  // 'bookingSuccessful' event (relayed as the 'tia:booking-confirmed'
+  // CustomEvent from ensureCalEmbed). Auto-dismisses after 8s; the progress
+  // bar animation duration must stay in sync with the timer below.
+  const [showBookingToast, setShowBookingToast] = useState(false);
+  const [bookingToastHiding, setBookingToastHiding] = useState(false);
+  const bookingToastAutoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bookingToastHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bookingToastDismiss = useCallback(() => {
+    if (bookingToastAutoTimer.current) clearTimeout(bookingToastAutoTimer.current);
+    if (bookingToastHideTimer.current) clearTimeout(bookingToastHideTimer.current);
+    setBookingToastHiding(true);
+    bookingToastHideTimer.current = setTimeout(() => {
+      setShowBookingToast(false);
+      setBookingToastHiding(false);
+    }, 300);
+  }, []);
+  const bookingToastStart = useCallback(() => {
+    if (bookingToastAutoTimer.current) clearTimeout(bookingToastAutoTimer.current);
+    if (bookingToastHideTimer.current) clearTimeout(bookingToastHideTimer.current);
+    setShowBookingToast(true);
+    setBookingToastHiding(false);
+    bookingToastAutoTimer.current = setTimeout(() => {
+      setBookingToastHiding(true);
+      bookingToastHideTimer.current = setTimeout(() => {
+        setShowBookingToast(false);
+        setBookingToastHiding(false);
+      }, 300);
+    }, 8000);
+  }, []);
+  useEffect(() => {
+    const onConfirmed = () => {
+      trackClick('cal_booking_confirmed');
+      playNotificationSound();
+      bookingToastStart();
+    };
+    window.addEventListener('tia:booking-confirmed', onConfirmed);
+    return () => {
+      window.removeEventListener('tia:booking-confirmed', onConfirmed);
+      if (bookingToastAutoTimer.current) clearTimeout(bookingToastAutoTimer.current);
+      if (bookingToastHideTimer.current) clearTimeout(bookingToastHideTimer.current);
+    };
+  }, [bookingToastStart]);
   useEffect(() => {
     let cancelled = false;
     const load = () => {
@@ -998,23 +1309,27 @@ export default function HomeShell() {
   const [chatClosing, setChatClosing] = useState(false);
   // Keyboard offset (mobile): when the on-screen keyboard opens, visualViewport
   // shrinks while the layout viewport doesn't — Chrome would otherwise scroll
-  // the WHOLE page up to reveal the chat input (the ugly jump). Lifting the
-  // widget by the keyboard height keeps the chat (and its input) pinned just
-  // above the keyboard instead.
+  // the WHOLE page up to reveal the chat input (the ugly jump). The widget is
+  // lifted by EXACTLY the keyboard height (no extra base offset — any extra
+  // px would leave a visible gap between the chat input and the keyboard),
+  // and a visual-viewport pan (Chrome nudging the page when focusing the
+  // input) is subtracted so the window stays glued to the keyboard's top edge.
   const [kbOffset, setKbOffset] = useState(0);
   useEffect(() => {
     if (!chatOpen) return;
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
-      const kb = Math.max(0, Math.round(window.innerHeight - vv.height));
+      const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
       setKbOffset(prev => (prev === kb ? prev : kb));
     };
     onResize();
     vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {
       vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
       window.removeEventListener('orientationchange', onResize);
     };
   }, [chatOpen]);
@@ -2044,7 +2359,7 @@ export default function HomeShell() {
     try {
       const response = await secureChatFetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote', details }),
+        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote', details, lang }),
       });
       if (!response.ok) throw new Error('quote-send-failed');
 
@@ -2612,7 +2927,7 @@ export default function HomeShell() {
     try {
       const res = await secureChatFetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage, service: formService }),
+        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage, service: formService, lang }),
       });
       if (res.ok) {
         setFormStatus('sent');
@@ -3147,21 +3462,41 @@ export default function HomeShell() {
                   {t('chisono.bio', lang)}
                 </p>
 
-                {/* ── Perché un freelance (e non un'agenzia) — 4 punti, chips leggere ── */}
+                {/* ── Perché un freelance (e non un'agenzia) — 4 perk ──
+                     Mobile: griglia 2×2 di QUADRATI con icona in evidenza —
+                     le pill a tutta larghezza impilate si leggevano come un
+                     elenco di testo; i riquadri quadrati si leggono come
+                     vantaggi concreti mentre si scrolla. sm+: chips leggere
+                     in fila (com'era). */}
                 <div className="mt-10">
                   <h3 className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('chisono.why_title', lang)}</h3>
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                  <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-2 md:gap-3">
                     {[
                       { Icon: HandshakeIcon, key: 'chisono.why_1' },
                       { Icon: DollarSignIcon, key: 'chisono.why_2' },
                       { Icon: CheckmarkCircle01Icon, key: 'chisono.why_3' },
                       { Icon: Clock01Icon, key: 'chisono.why_4' },
-                    ].map((item) => (
-                      <span key={item.key} className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs sm:text-sm text-neutral-300">
-                        <TiaIcon icon={item.Icon} size={14} className="text-teal-400 shrink-0" strokeWidth={2} />
-                        {t(item.key, lang)}
-                      </span>
-                    ))}
+                    ].map((item) => {
+                      const label = t(item.key, lang);
+                      const sep = label.indexOf(' — ');
+                      const title = sep >= 0 ? label.slice(0, sep) : label;
+                      const sub = sep >= 0 ? label.slice(sep + 3) : null;
+                      return (
+                        <span
+                          key={item.key}
+                          className="flex flex-col items-center justify-center text-center gap-2.5 aspect-square rounded-2xl border border-white/[0.08] bg-white/[0.04] px-3 py-4 transition-colors hover:border-teal-400/25 sm:inline-flex sm:flex-row sm:aspect-auto sm:gap-2 sm:rounded-full sm:px-4 sm:py-2 sm:text-xs md:text-sm sm:text-neutral-300"
+                        >
+                          <span className="w-9 h-9 rounded-full bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(45,212,191,0.12)] sm:w-auto sm:h-auto sm:bg-transparent sm:border-0 sm:shadow-none">
+                            <TiaIcon icon={item.Icon} size={16} className="text-teal-400 shrink-0" strokeWidth={2} />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-[11px] leading-tight font-semibold text-white sm:hidden">{title}</span>
+                            {sub && <span className="block text-[10px] leading-snug text-neutral-500 mt-1 sm:hidden">{sub}</span>}
+                            <span className="hidden sm:inline">{label}</span>
+                          </span>
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               </ScrollReveal>
@@ -3824,7 +4159,7 @@ export default function HomeShell() {
                     <button
                       type="button"
                       ref={callTriggerRef}
-                      onClick={() => { setCallOpen(prev => !prev); setCallOpenedOnce(true); }}
+                      onClick={() => { if (!callOpen) trackClick('cal_booking_open'); setCallOpen(prev => !prev); setCallOpenedOnce(true); }}
                       aria-expanded={callOpen}
                       className="flex items-center gap-2.5 p-3 group h-full w-full text-left rounded-[18px] bg-teal-500/[0.08] hover:bg-teal-500/[0.14] transition-colors"
                     >
@@ -3856,80 +4191,66 @@ export default function HomeShell() {
                   </BorderGlow>
                 </div>
 
-                {/* ── Cal.com booking panel — slides in from the right on
-                     desktop (pushing form + sidebar left), drops below the
-                     sidebar on mobile. The iframe mounts on first open and
-                     stays mounted so reopening is instant; it never loads
-                     until the user actually asks for it. ── */}
-                <div
-                  ref={callPanelRef}
-                  data-lenis-prevent
-                  data-lenis-prevent-wheel
-                  data-lenis-prevent-touch
-                  className={`min-w-0 transition-all duration-500 ease-out ${callOpen ? 'block opacity-100 max-lg:mt-4' : 'hidden lg:block lg:opacity-0 pointer-events-none'}`}
-                  style={{
-                    visibility: callOpen ? 'visible' : 'hidden',
-                    transition: 'opacity 0.4s ease, visibility 0.4s ease',
-                  }}
-                >
-                  {callOpenedOnce && (
+                {/* ── Cal.com booking panel — DESKTOP (lg+): third grid
+                     column that slides in from the right, pushing form +
+                     sidebar left. Below lg the booking opens as a centered
+                     closable modal instead (portal right after this grid):
+                     on phones the inline column appeared BELOW the whole
+                     contacts section where it couldn't be seen after tapping
+                     the button. The embed mounts on first open and stays
+                     mounted so reopening is instant; it never loads until
+                     the user actually asks for it. ── */}
+                {isDesktopLayout && callOpenedOnce && (
+                  <div
+                    ref={callPanelRef}
+                    data-lenis-prevent
+                    data-lenis-prevent-wheel
+                    data-lenis-prevent-touch
+                    className={`min-w-0 transition-all duration-500 ease-out hidden lg:block ${callOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                    style={{
+                      visibility: callOpen ? 'visible' : 'hidden',
+                      transition: 'opacity 0.4s ease, visibility 0.4s ease',
+                    }}
+                  >
                     <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">
-                      <div className="p-4 sm:p-5 h-full flex flex-col min-h-[560px]">
-                        <div className="flex items-center gap-3 mb-4 shrink-0">
-                          <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/20 shadow-sm shadow-teal-950/40">
-                            <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-teal-400 text-[10px] font-medium uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
-                            <p className="text-white text-sm font-bold leading-tight truncate">{t('contatti.call_title', lang)}</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <a
-                              href={`${getCalComBaseUrl(lang)}?theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={t('contatti.call_newtab', lang)}
-                              title={t('contatti.call_newtab', lang)}
-                              className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-400/50 text-[11px] sm:text-xs font-medium transition-all duration-300 shadow-sm shadow-teal-950/30 cursor-pointer"
-                            >
-                              <span className="hidden sm:inline">{t('contatti.call_newtab', lang)}</span>
-                              <svg className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => setCallOpen(false)}
-                              aria-label={t('contatti.call_close', lang)}
-                              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
-                            >
-                              <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
-                            </button>
-                          </div>
-                        </div>
-                        <div
-                          data-lenis-prevent
-                          data-lenis-prevent-wheel
-                          data-lenis-prevent-touch
-                          className="flex-1 rounded-xl overflow-y-auto overflow-x-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[500px] max-h-[75vh] lg:max-h-none overscroll-contain touch-pan-y"
-                          style={{ WebkitOverflowScrolling: 'touch' }}
-                        >
-                          <iframe
-                            key={lang}
-                            src={`${getCalComBaseUrl(lang)}?embed=true&theme=dark&hl=${CAL_COM_LANG[lang] ?? 'it'}&locale=${CAL_COM_LANG[lang] ?? 'it'}&lang=${CAL_COM_LANG[lang] ?? 'it'}&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
-                            title={t('contatti.call_title', lang)}
-                            className="w-full h-full min-h-[560px] border-0 block"
-                            allow="calendar"
-                          />
-                        </div>
-                      </div>
+                      <CallBookingCard onClose={() => setCallOpen(false)} />
                     </BorderGlow>
-                  )}
-                </div>
+                  </div>
+                )}
               </StaggerReveal>
             </div>
           </section>
           </LazySection>
+
+          {/* ── Cal.com booking MODAL — mobile/tablet (<lg): a centered,
+               closable window over the page (portal + body scroll lock),
+               opened by the "Prenota una call" button. Kept mounted after
+               the first open so the embed stays warm and reopening is
+               instant; hidden with opacity/visibility (not unmount) for the
+               same reason. ── */}
+          {!isDesktopLayout && callOpenedOnce && typeof document !== 'undefined' && createPortal(
+            <div
+              className={`fixed inset-0 z-[10004] flex items-center justify-center p-3 sm:p-6 ${callOpen ? '' : 'pointer-events-none'}`}
+              aria-hidden={!callOpen}
+            >
+              {/* Backdrop — click to close */}
+              <div
+                aria-hidden="true"
+                onClick={() => setCallOpen(false)}
+                className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${callOpen ? 'opacity-100' : 'opacity-0'}`}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('contatti.call_title', lang)}
+                className={`relative w-full max-w-[560px] max-h-[min(86dvh,760px)] flex flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/80 transition-all duration-300 ${callOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
+                style={{ visibility: callOpen ? 'visible' : 'hidden' }}
+              >
+                <CallBookingCard compact onClose={() => setCallOpen(false)} bodyRef={callModalBodyRef} closeBtnRef={callModalCloseRef} />
+              </div>
+            </div>,
+            document.body
+          )}
 
           {/* ============ FOOTER ============ */}
           <div ref={footerRef} data-molten-cover="footer">
@@ -3958,6 +4279,43 @@ export default function HomeShell() {
             document.body
           )}
 
+          {/* Booking confirmed toast — animated checkmark, fired by the
+              Cal.com embed 'bookingSuccessful' event (via the
+              'tia:booking-confirmed' CustomEvent). Sits above the booking
+              modal/panel (z-10004) so it stays visible over both. */}
+          {showBookingToast && typeof document !== 'undefined' && createPortal(
+            <div
+              role="status"
+              aria-live="polite"
+              className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[10060] bg-[#121212]/95 backdrop-blur-xl border border-teal-400/25 rounded-2xl pl-3.5 pr-2.5 py-3 shadow-2xl shadow-teal-950/50 flex items-center gap-3 ${bookingToastHiding ? 'toast-exit' : 'toast-enter'}`}
+            >
+              <span className="relative flex items-center justify-center w-11 h-11 shrink-0">
+                <span aria-hidden="true" className="absolute inset-0 rounded-full bg-teal-400/30 booking-ring" />
+                <span className="relative w-10 h-10 rounded-full bg-teal-500/15 border border-teal-400/40 flex items-center justify-center booking-pop shadow-[0_0_16px_rgba(45,212,191,0.35)]">
+                  <svg aria-hidden="true" className="w-5 h-5 text-teal-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.75}>
+                    <path className="booking-check" pathLength={1} strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-white text-sm font-semibold leading-tight">{t('contatti.booking_confirmed', lang)}</span>
+                <span className="block text-neutral-400 text-xs mt-0.5">{t('contatti.booking_confirmed_sub', lang)}</span>
+              </span>
+              <button
+                type="button"
+                onClick={bookingToastDismiss}
+                aria-label={t('contatti.call_close', lang)}
+                className="w-7 h-7 rounded-lg hover:bg-white/10 text-neutral-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <TiaIcon icon={Cancel01Icon} size={13} strokeWidth={2} />
+              </button>
+              <span aria-hidden="true" className="absolute bottom-0 left-4 right-4 h-[2px] overflow-hidden rounded-full pointer-events-none">
+                <span className="block h-full bg-teal-400/60 rounded-full booking-timer" />
+              </span>
+            </div>,
+            document.body
+          )}
+
         </div>
         {/* ── Floating Chat Widget ──
              Apple-style snap — MOBILE ONLY: while the CTA sits at the bottom
@@ -3967,14 +4325,14 @@ export default function HomeShell() {
              is centered, so there is nothing to avoid). The window inside
              this container is anchored bottom-0, so its base is always at the
              same height as the bubble's base. When the on-screen keyboard
-             opens (kbOffset > 0) the whole widget is lifted above it and the
+             opens (kbOffset > 0) the widget sits EXACTLY on the keyboard's
+             top edge (bottom = kbOffset, no base offset → zero gap) and the
              transition is disabled so it follows the keyboard without lag. */}
         <div
           ref={chatWidgetRef}
           className={`fixed right-4 sm:right-6 z-50 pointer-events-auto ${kbOffset === 0 ? 'transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)]' : ''}`}
-          style={{ bottom: (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) + kbOffset }}
+          style={{ bottom: kbOffset > 0 ? kbOffset : (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) }}
         >
-          {/* Chat popup */}
           {/* Chat popup */}
           {(chatOpen || chatClosing) && (
             <BorderGlow

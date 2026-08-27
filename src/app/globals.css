@@ -275,6 +275,47 @@ html.lenis body {
   transition: opacity 0.25s ease-in, transform 0.25s ease-in;
 }
 
+/* Booking-confirmed toast — pop-in badge, radiating ring, checkmark draw,
+   auto-dismiss progress bar (duration must match the 8s auto-hide timer). */
+@keyframes booking-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.booking-pop {
+  animation: booking-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+@keyframes booking-ring {
+  0% { transform: scale(0.7); opacity: 0.8; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.booking-ring {
+  animation: booking-ring 1.1s ease-out 0.25s both;
+}
+@keyframes booking-check-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.booking-check {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: booking-check-draw 0.4s ease-out 0.45s forwards;
+}
+@keyframes booking-timer {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.booking-timer {
+  animation: booking-timer 8s linear both;
+}
+
+/* Cal.com inline embed — the embed auto-resizes the iframe to its content
+   height; inside the fixed-height booking panel/modal we want it to fill
+   the box and scroll INTERNALLY (like the previous bare iframe did). */
+.call-embed-host .cal-embed {
+  height: 100% !important;
+}
+
 /* ClickSpark fade-in on first mount — CSS-only, no hydration risk */
 @keyframes clickspark-fade-in {
   from { opacity: 0; }
