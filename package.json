@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/translation-audit.mjs",
-    "build": "prisma generate && next build",
+    "prebuild": "node scripts/translation-audit.mjs && node scripts/sync-turso-schema.mjs",
+    "build": "node scripts/sync-turso-schema.mjs && prisma generate && next build",
     "start": "next start",
     "clean": "rm -rf .next",
     "dev:clean": "npm run clean && npm run dev",
