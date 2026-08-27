@@ -44,13 +44,13 @@ export default function SmoothScrollProvider({ children }: Props) {
       gsap.registerPlugin(ScrollTrigger);
 
       const lenis = new LenisCtor({
-        duration: 1.1,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        lerp: 0.08,
         smoothWheel: true,
-        wheelMultiplier: 0.95,
+        wheelMultiplier: 1.0,
         touchMultiplier: 1.0,
         infinite: false,
         syncTouch: false,
+        autoResize: true,
         allowNestedScroll: true,
         prevent: (node: Element) => node.closest('[data-lenis-prevent]') !== null,
       });
