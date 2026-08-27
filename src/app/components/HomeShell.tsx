@@ -436,6 +436,7 @@ function PriceCard({
 
   return (
     <div ref={cardRef} className="h-full">
+      <TiltCard className="h-full">
       <BorderGlow
         borderRadius={20}
         glowRadius={35}
@@ -535,6 +536,7 @@ function PriceCard({
           </button>
         </div>
       </BorderGlow>
+      </TiltCard>
     </div>
   );
 }
@@ -2206,10 +2208,13 @@ export default function HomeShell() {
   }, [lang]);
 
   // Review card — clickable toward its related project when one exists.
+  // Wrapped in TiltCard (same 3D interaction as the services cards, no
+  // DotGrid — the dot grid stays special to a few card groups only).
   const renderReviewCard = (review: Review, key: string) => {
     const project = review.projectId ? projectById.get(review.projectId) : undefined;
     return (
-      <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
+      <TiltCard key={key} className="w-full">
+      <BorderGlow continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
         <div
           className={`p-5 sm:p-6 ${project ? 'cursor-pointer' : ''}`}
           onClick={() => { if (project) setSelectedProject(project); }}
@@ -2233,6 +2238,7 @@ export default function HomeShell() {
           )}
         </div>
       </BorderGlow>
+      </TiltCard>
     );
   };
   const filteredProjects = useMemo(
