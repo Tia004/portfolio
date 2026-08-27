@@ -120,6 +120,8 @@ async function run() {
         author TEXT NOT NULL,
         role TEXT NOT NULL,
         company TEXT,
+        companyLogo TEXT,
+        showLogo BOOLEAN NOT NULL DEFAULT 1,
         quoteIt TEXT NOT NULL,
         quoteEn TEXT,
         quoteEs TEXT,
@@ -131,6 +133,12 @@ async function run() {
         updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    try {
+      await client.execute('ALTER TABLE ClientReview ADD COLUMN companyLogo TEXT;');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE ClientReview ADD COLUMN showLogo BOOLEAN DEFAULT 1;');
+    } catch (e) {}
     console.log('Checked ClientReview table');
 
     // 6. Create RecoveryCode
