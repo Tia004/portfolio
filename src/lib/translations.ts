@@ -135,6 +135,8 @@ const it: Dict = {
   'prezzi.rapid': 'Consegna rapida',
   'prezzi.custom': 'Su misura per te',
   'prezzi.slots_note': 'Solo 2 slot liberi a {month}',
+  'prezzi.slots_one': 'Solo 1 slot libero a {month}',
+  'prezzi.slots_other': 'Solo {count} slot liberi a {month}',
   'prezzi.vat_note': 'I prezzi sono indicativi e si intendono al netto di IVA e oneri di legge. Ogni progetto ha un preventivo dedicato e gratuito.',
   'prezzi.flex_note': 'Piani flessibili: termini chiari concordati in fase di contratto. Puoi interrompere la collaborazione quando vuoi.',
 
@@ -462,6 +464,8 @@ const en: Dict = {
   'prezzi.rapid': 'Fast delivery',
   'prezzi.custom': 'Tailored for you',
   'prezzi.slots_note': 'Only 2 slots left in {month}',
+  'prezzi.slots_one': 'Only 1 slot left in {month}',
+  'prezzi.slots_other': 'Only {count} slots left in {month}',
   'prezzi.vat_note': 'Prices are indicative and exclusive of VAT and applicable charges. Every project gets a dedicated, free quote.',
   'prezzi.flex_note': 'Flexible plans: clear terms agreed at contract time. You can cancel the collaboration whenever you want.',
 
@@ -776,6 +780,8 @@ const es: Dict = {
   'prezzi.rapid': 'Entrega rápida',
   'prezzi.custom': 'A tu medida',
   'prezzi.slots_note': 'Solo quedan 2 huecos en {month}',
+  'prezzi.slots_one': 'Solo queda 1 hueco en {month}',
+  'prezzi.slots_other': 'Solo quedan {count} huecos en {month}',
   'prezzi.vat_note': 'Los precios son orientativos y no incluyen IVA ni cargos aplicables. Cada proyecto recibe un presupuesto dedicado y gratuito.',
   'prezzi.flex_note': 'Planes flexibles: términos claros acordados al firmar el contrato. Puedes cancelar la colaboración cuando quieras.',
 

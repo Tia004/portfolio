@@ -887,6 +887,28 @@ export default function HomeShell() {
     };
   }, [lenis]);
   const [isMonthly, setIsMonthly] = useState(false);
+  // Real free-slot count for the pricing badge, from GET /api/availability/slots
+  // (Cal.com). null → fallback to the static "2 slots" text while loading or
+  // when Cal.com isn't configured/unreachable.
+  const [freeSlots, setFreeSlots] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetch('/api/availability/slots')
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: { count?: number | null } | null) => {
+          if (!cancelled && data && typeof data.count === 'number') {
+            setFreeSlots(data.count);
+          }
+        })
+        .catch(() => { /* keep the fallback text */ });
+    };
+    load();
+    // Refresh in sync with the server-side cache TTL (5 min) so the badge
+    // self-updates after bookings without requiring a reload.
+    const t = window.setInterval(load, 5 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(t); };
+  }, []);
   const [activeFilter, setActiveFilter] = useState<string>('Tutti');
   const [projectsPage, setProjectsPage] = useState(0);
   const [tooltipInfo, setTooltipInfo] = useState<{ text: string; el: HTMLElement; hiding?: boolean } | null>(null);
@@ -2209,6 +2231,21 @@ export default function HomeShell() {
 
   const pricing = useMemo(() => isMonthly ? getPricingMonthly(lang) : getPricingOnetime(lang), [isMonthly, lang]);
   const reviews = useMemo(() => getReviews(lang), [lang]);
+
+  // Pricing badge — "N slot liberi a {month}". Uses the live Cal.com count when
+  // available (freeSlots !== null), otherwise the static fallback text.
+  const monthName = new Intl.DateTimeFormat(
+    lang === 'it' ? 'it-IT' : lang === 'es' ? 'es-ES' : 'en-GB',
+    { month: 'long' },
+  ).format(new Date());
+  const slotsNote =
+    freeSlots === null
+      ? t('prezzi.slots_note', lang).replace('{month}', monthName)
+      : freeSlots === 1
+        ? t('prezzi.slots_one', lang).replace('{month}', monthName)
+        : t('prezzi.slots_other', lang)
+            .replace('{count}', String(freeSlots))
+            .replace('{month}', monthName);
   const projectById = useMemo(() => {
     const map = new Map<string, ProjectData>();
     for (const project of getProjects(lang)) map.set(project.id, project);
@@ -3355,7 +3392,7 @@ export default function HomeShell() {
                         features={tier.features}
                         delivery={tier.delivery}
                         hours={tier.hours}
-                        slotsNote={t('prezzi.slots_note', lang).replace('{month}', new Intl.DateTimeFormat(lang === 'it' ? 'it-IT' : lang === 'es' ? 'es-ES' : 'en-GB', { month: 'long' }).format(new Date()))}
+                        slotsNote={slotsNote}
                         onTooltipShow={handleTooltipShow}
                         onTooltipHide={handleTooltipHide}
                         onRequestQuote={(title) => scrollToContatti({ service: title })}
