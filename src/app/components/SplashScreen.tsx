@@ -102,6 +102,32 @@ function whenMoltenReady(): Promise<void> {
   });
 }
 
+// The hero's animated WebGL dither must already be painting its first frame
+// when the splash fades: the static teal noise texture below the canvas is the
+// "TV static" white/teal speckle flash visible for a frame on load. The dither
+// fires tia:dither-ready exactly once, right after its first real draw (or
+// immediately when WebGL is unavailable and the static layer IS the intended
+// visual). Bounded like the molten wait so a hung GPU never pins the splash.
+const DITHER_WAIT_MS = 2500;
+function whenDitherReady(): Promise<void> {
+  return new Promise((resolve) => {
+    if ((window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady) {
+      resolve();
+      return;
+    }
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener('tia:dither-ready', onReady);
+      resolve();
+    };
+    const onReady = () => finish();
+    window.addEventListener('tia:dither-ready', onReady);
+    window.setTimeout(finish, DITHER_WAIT_MS);
+  });
+}
+
 export default function SplashScreen({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
@@ -147,8 +173,9 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
       }, FADE_MS);
     };
 
-    // Wait for page + images + molten background, respect min time, enforce max cap
-    Promise.all([whenPageReady(), whenImagesLoaded(), whenMoltenReady()]).then(() => {
+    // Wait for page + images + molten background + hero dither, respect min
+    // time, enforce max cap
+    Promise.all([whenPageReady(), whenImagesLoaded(), whenMoltenReady(), whenDitherReady()]).then(() => {
       const elapsed = performance.now() - progressStart;
       const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
       // If resources loaded faster than the min time, wait the difference.

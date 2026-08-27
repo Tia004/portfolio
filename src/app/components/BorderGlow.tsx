@@ -63,6 +63,28 @@ function buildGradientVars(colors: string[]): Record<string, string> {
 function easeOutCubic(x: number) { return 1 - Math.pow(1 - x, 3); }
 function easeInCubic(x: number) { return x * x * x; }
 
+// ── Shared IntersectionObserver ─────────────────────────────────
+// The skills marquee mounts ~630 BorderGlow cards at once; one IO per card
+// meant ~630 observers being created in a single React commit (measurable
+// mount cost in the trace). All cards share the same behavior (pre-warm the
+// glow on enter, force-exit hover on leave), so a single module-level IO with
+// a WeakMap of per-card callbacks replaces them — identical semantics, one
+// observer total.
+const glowCallbacks = new WeakMap<HTMLElement, (entry: IntersectionObserverEntry) => void>();
+let sharedGlowIO: IntersectionObserver | null = null;
+
+function getSharedGlowIO(): IntersectionObserver {
+  if (!sharedGlowIO) {
+    sharedGlowIO = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        const cb = glowCallbacks.get(entry.target as HTMLElement);
+        if (cb) cb(entry);
+      }
+    }, { rootMargin: '150px 0px' });
+  }
+  return sharedGlowIO;
+}
+
 interface AnimateOpts {
   start?: number; end?: number; duration?: number; delay?: number;
   ease?: (t: number) => number; onUpdate: (v: number) => void; onEnd?: () => void;
@@ -118,18 +140,18 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   useLayoutEffect(() => {
     const card = cardRef.current;
     if (!card) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) {
-          setIsHovered(false);
-        } else {
-          // Pre-warm: glow is ready before the first hover touches this card.
-          card.style.setProperty('--edge-proximity', '100');
-        }
-      },
-      { rootMargin: '150px 0px' }
-    );
-    io.observe(card);
+    // Shared IO — one observer for every card on the page instead of one per
+    // card (the marquee mounts ~630 of these in a single commit).
+    const handler = (entry: IntersectionObserverEntry) => {
+      if (!entry.isIntersecting) {
+        setIsHovered(false);
+      } else {
+        // Pre-warm: glow is ready before the first hover touches this card.
+        card.style.setProperty('--edge-proximity', '100');
+      }
+    };
+    glowCallbacks.set(card, handler);
+    getSharedGlowIO().observe(card);
     // Pre-warm on mount — the card may already be in the viewport when
     // LazySection renders it (rootMargin may have triggered before mount).
     card.style.setProperty('--edge-proximity', '100');
@@ -140,7 +162,10 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
     if (card.matches(':hover')) {
       handleMouseEnter();
     }
-    return () => io.disconnect();
+    return () => {
+      getSharedGlowIO().unobserve(card);
+      glowCallbacks.delete(card);
+    };
   }, []);
 
   const getCenterOfElement = useCallback((el: HTMLElement) => {

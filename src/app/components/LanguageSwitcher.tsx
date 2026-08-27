@@ -59,7 +59,7 @@ export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'c
         </button>
 
         {open && (
-          <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 flex flex-row gap-2 shrink-0">
+          <div className="absolute top-full mt-1.5 left-0 z-50 flex flex-col items-start gap-1 shrink-0">
             {Object.keys(FULL_NAMES).filter(code => code !== lang).map((code) => (
               <button
                 key={code}

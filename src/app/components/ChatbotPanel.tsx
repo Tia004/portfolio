@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import TiaIcon from './TiaIcon';
-import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
 import { ArrowExpandDiagonal01Icon, BubbleChatIcon, Cancel01Icon, FilePenIcon, UserIcon } from './icons';
@@ -376,22 +375,28 @@ export default function ChatbotPanel({
             )}
           </div>
 
-          {/* Curtain — ProgressiveBlur with backdrop-filter layers. The
-              container extends past the top edge so the blur samples the
-              Molten background beyond the messages, never clipped. w-screen +
-              left-1/2 centering spans the FULL viewport (the messages column
-              is max-w-3xl, so a left-0 right-0 curtain would end at the column
-              and show sharp side cuts); the symmetric mask dissolves the blur
-              to 0 on BOTH sides — no hard edge above the messages nor at the
-              section boundary. Sits at z-10: the "Nuova chat" button (z-20)
-              and the section heading (relative z-20 in HomeShell) stay above. */}
+          {/* Curtain — single radial blur layer at PANEL width (the same
+              approach as the reviews section): one backdrop-filter layer with
+              a soft radial-gradient mask instead of four stacked linear bands,
+              so the dissolve is continuous (no discrete blur steps). inset-x-0
+              keeps it inside the max-w-3xl chat column, and the ellipse fades
+              in ALL directions — no sharp side cuts against the molten
+              background. The blur is inline (not a CSS class) on purpose: the
+              CSS optimizer rewrites a class-level backdrop-filter to
+              -webkit-backdrop-filter only, which Chrome ≥141 no longer
+              supports. Sits at z-10: the "Nuova chat" button (z-20) and the
+              section heading (relative z-20 in HomeShell) stay above. */}
           {messages.length > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-[2rem] left-1/2 -translate-x-1/2 w-screen h-[6rem] sm:h-[8rem] z-10"
-            >
-              <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
-            </div>
+              className="pointer-events-none absolute -top-[3rem] inset-x-0 h-[8rem] sm:h-[10rem] z-10"
+              style={{
+                backdropFilter: 'blur(18px)',
+                WebkitBackdropFilter: 'blur(18px)',
+                maskImage: 'radial-gradient(120% 110% at 50% 35%, black 0%, black 30%, transparent 85%)',
+                WebkitMaskImage: 'radial-gradient(120% 110% at 50% 35%, black 0%, black 30%, transparent 85%)',
+              }}
+            />
           )}
 
         </div>

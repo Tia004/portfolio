@@ -177,7 +177,9 @@ import { playChatOpenSound } from '@/lib/menu-sounds';
 //   https://cal.com/<username>/<event-slug>?embed=true&theme=dark&cal-lang=<lang>
 // The iframe below is lazy-loaded (only fetched when the contacts section
 // scrolls near), so it never costs anything on the critical path.
-const CAL_COM_BASE_URL = 'https://cal.com/tiadesigns/consulenza';
+// Configurable via NEXT_PUBLIC_CAL_COM_BASE_URL (Vercel) so the event URL can
+// change without a redeploy; the hardcoded default matches the current event.
+const CAL_COM_BASE_URL = process.env.NEXT_PUBLIC_CAL_COM_BASE_URL ?? 'https://cal.com/tiadesigns/consulenza';
 const CAL_COM_LANG: Record<string, string> = { it: 'it', en: 'en', es: 'es' };
 
 // ── Custom ServiceSelect (grouped by macro-area) ─────────────
@@ -263,6 +265,13 @@ function normalizeContactService(value?: string): string | undefined {
   const raw = value?.trim();
   if (!raw) return undefined;
   const lower = raw.toLowerCase();
+  // EXACT match first: ServiceSelect options (and the growth-service values
+  // like "Audit Gratuito", "Siti Multilingua" — they are members of
+  // SERVICE_GROUPS) must pass through unchanged. The keyword heuristics below
+  // would otherwise hijack them ("Audit Gratuito" contains the substring
+  // "ui" → wrongly mapped to "UI/UX Design").
+  const exact = ALL_OPTIONS.find(option => option.value.toLowerCase() === lower);
+  if (exact) return exact.value;
   if (lower.includes('hardware') || /\bpc\b/i.test(lower) || lower.includes('informatica') || /\bit\b/i.test(lower)) return 'Informatica Hardware';
   if (lower.includes('social')) return 'Social Media';
   if (lower.includes('web') || lower.includes('website') || lower.includes('sito')) return 'Sito Web';
@@ -272,7 +281,7 @@ function normalizeContactService(value?: string): string | undefined {
   if (lower.includes('graphic') || lower.includes('grafica')) return 'Grafica & Social';
   if (lower.includes('video') || lower.includes('reel') || lower.includes('montaggio')) return 'Contenuti Video';
   if (lower.includes('post-produzione') || lower.includes('post produzione')) return 'Post-Produzione';
-  return ALL_OPTIONS.some(option => option.value.toLowerCase() === lower) ? raw : 'Altro';
+  return 'Altro';
 }
 
 // CHAT_CATEGORY_OPTIONS lives in @/lib/chat-categories (shared with the
@@ -383,6 +392,38 @@ function ServiceSelect({ value, onChange, highlighted }: { value: string; onChan
 // ── CountUp & HeroGlow (extracted to CountUp.tsx) ─────────────
 import { CountUp, HeroGlow } from './CountUp';
 
+// ── StaggerMount — spread a heavy sibling mount across frames ──
+// #chisono mounts ~630 marquee cards in a single React commit (measured
+// ~219ms long task). Each row is wrapped in StaggerMount with an index-based
+// delay: row 0 commits immediately, row 1 next frame, etc. — each commit is
+// one row of cards (~36ms) instead of all six at once. A fixed-height
+// placeholder keeps the section height stable so nothing visibly jumps (rows
+// mount while the section is still near/below the viewport anyway).
+function StaggerMount({ index, children }: { index: number; children: React.ReactNode }) {
+  // Row 0 mounts immediately (LazySection's commit), the rest trickle in one
+  // per frame — each React commit is a single row of cards instead of all six.
+  const [ready, setReady] = useState(index === 0);
+
+  useEffect(() => {
+    if (index === 0) return;
+    let raf = 0;
+    const t = window.setTimeout(() => {
+      raf = requestAnimationFrame(() => setReady(true));
+    }, index * 40);
+    return () => {
+      window.clearTimeout(t);
+      cancelAnimationFrame(raf);
+    };
+  }, [index]);
+
+  if (ready) return <>{children}</>;
+  // Fixed-height placeholder keeps the section height stable while the rows
+  // below the fold mount (identical final layout, no visible jump). Matches
+  // the measured 98px row height (title + skill card) on both mobile and
+  // desktop so nothing shifts when a row commits.
+  return <div aria-hidden="true" className="h-[98px]" />;
+}
+
 // ── PriceCard ─────────────────────────────────────────────────
 
 function PriceCard({
@@ -464,7 +505,7 @@ function PriceCard({
               {slotsNote}
             </span>
           )}
-          <h4 className={`font-semibold text-base sm:text-lg mb-1 flex items-center gap-2 ${premium ? 'text-teal-300' : 'text-white'}`}>
+          <h4 className={`font-semibold text-lg sm:text-xl mb-1 flex items-center gap-2 ${premium ? 'text-teal-300' : 'text-white'}`}>
             {premium && (
               <svg aria-hidden="true" className="w-4 h-4 text-teal-400 shrink-0 drop-shadow-[0_0_4px_rgba(45,212,191,0.5)]" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M11.21 2.07a1 1 0 011.58 0l2.46 3.11a1 1 0 00.84.4l3.96.16a1 1 0 01.88 1.06l-.67 3.9a1 1 0 00.28.87l2.68 2.92a1 1 0 01-.25 1.58l-3.51 1.85a1 1 0 00-.51.74l-.67 3.9a1 1 0 01-1.48.7l-3.5-1.85a1 1 0 00-.9 0l-3.5 1.85a1 1 0 01-1.48-.7l-.67-3.9a1 1 0 00-.51-.74l-3.51-1.85a1 1 0 01-.25-1.58l2.68-2.92a1 1 0 00.28-.87l-.67-3.9a1 1 0 01.88-1.06l3.96-.16a1 1 0 00.84-.4l2.46-3.11z" />
@@ -891,6 +932,33 @@ export default function HomeShell() {
   // (Cal.com). null → fallback to the static "2 slots" text while loading or
   // when Cal.com isn't configured/unreachable.
   const [freeSlots, setFreeSlots] = useState<number | null>(null);
+  // Cal.com intro call — compact panel. The iframe mounts on first open
+  // (callOpenedOnce) and stays mounted, so closing/reopening is instant and
+  // the booking UI never loads until the user actually asks for it.
+  const [callOpen, setCallOpen] = useState(false);
+  const [callOpenedOnce, setCallOpenedOnce] = useState(false);
+  // ESC + click-outside close for the Cal.com panel — same UX as the other
+  // modals (LegalModal/ProjectModal close on Escape; the ServiceSelect dropdown
+  // closes on outside mousedown). Clicks INSIDE the panel or on the trigger
+  // button never close it: the button toggles instead.
+  const callPanelRef = useRef<HTMLDivElement>(null);
+  const callTriggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!callOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCallOpen(false); };
+    const onOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (callPanelRef.current?.contains(target)) return;
+      if (callTriggerRef.current?.contains(target)) return;
+      setCallOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onOutside);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onOutside);
+    };
+  }, [callOpen]);
   useEffect(() => {
     let cancelled = false;
     const load = () => {
@@ -980,16 +1048,17 @@ export default function HomeShell() {
     return () => window.removeEventListener('splash-complete', cb);
   }, []);
 
-  // ── WebGL Dither: defer past splash + first idle slot ──
+  // ── WebGL Dither: mount at the first idle slot, BEHIND the splash ──
   // The static teal base (StaticDitherTexture) covers the hero from the very
-  // first paint, so the ~230KB three.js chunk can wait until the main thread
-  // is idle AFTER the splash — it never competes with LCP/TBT (previously it
-  // started downloading the moment the splash lifted, still inside the
-  // throttled load window). requestIdleCallback yields to a timeout on
-  // browsers without it, so the canvas always arrives shortly after.
+  // first paint, so the ~230KB three.js chunk can wait for an idle slot — it
+  // never competes with LCP/TBT. The canvas mounts while the splash is still
+  // covering the page, and the splash itself waits for tia:dither-ready (the
+  // first real WebGL frame) before fading — so the animated dither is ALREADY
+  // painting when the page is revealed, and the static-noise fallback is
+  // never visible even for a single frame (the old "TV static" flash on
+  // load). requestIdleCallback yields to a timeout on browsers without it.
   const [ditherReady, setDitherReady] = useState(false);
   useEffect(() => {
-    if (!splashDone) return;
     let alive = true;
     const fire = () => {
       if (alive) setDitherReady(true);
@@ -1010,7 +1079,7 @@ export default function HomeShell() {
       alive = false;
       window.clearTimeout(t);
     };
-  }, [splashDone]);
+  }, []);
 
   // Hide BOTH ProgressiveBlur bars while the chatbot section fills the whole
   // screen ("esattamente nel chatbot"): the bottom bar would otherwise frost
@@ -1843,6 +1912,26 @@ export default function HomeShell() {
   // ── Wire the footer→chatbot bridge refs now that sendBotMessage exists ──
   useEffect(() => { sendBotMessageRef.current = sendBotMessage; });
   useEffect(() => { resetChatRef.current = resetChat; });
+
+  // Spreadable props for the services cards: click OR Enter/Space opens the
+  // chat in that service's scope (keyboard parity — the cards become proper
+  // interactive elements, not just click targets). The actual work happens in
+  // the tia:service-chat listener below (same ref-safe bridge the footer uses:
+  // dispatching a CustomEvent keeps ref reads inside the effect, away from
+  // render — react-hooks/refs would flag calling the chat setters here).
+  const serviceChatHandlers = (category: ChatCategory, titleKey: string) => ({
+    role: 'button' as const,
+    tabIndex: 0,
+    onClick: () => {
+      window.dispatchEvent(new CustomEvent('tia:service-chat', { detail: { category, titleKey } }));
+    },
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('tia:service-chat', { detail: { category, titleKey } }));
+      }
+    },
+  });
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { category: ChatCategory } | undefined;
@@ -1857,8 +1946,32 @@ export default function HomeShell() {
         );
       }, 500);
     };
+    // Services-section cards: open the chatbot in that service's exact scope.
+    // Scrolls to the chat, wipes any running conversation, and posts the
+    // localized service name as the FIRST user message with the right
+    // category — the welcome "choose your area" step is skipped entirely, and
+    // because the message names the service (e.g. "UI/UX Design") the bot also
+    // skips the drill-down bubbles for specific services. The user sees their
+    // choice as a real bubble, then the bot asks the next question directly.
+    const serviceHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { category: ChatCategory; titleKey: string } | undefined;
+      if (!detail?.category || !detail?.titleKey) return;
+      const chatbot = document.getElementById('chatbot');
+      if (chatbot) chatbot.scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => {
+        resetChatRef.current?.();
+        sendBotMessageRef.current?.(
+          t('chat.service_start', lang).replace('{service}', t(detail.titleKey, lang)),
+          { category: detail.category },
+        );
+      }, 300);
+    };
     window.addEventListener('tia:footer-chat-category', handler);
-    return () => window.removeEventListener('tia:footer-chat-category', handler);
+    window.addEventListener('tia:service-chat', serviceHandler);
+    return () => {
+      window.removeEventListener('tia:footer-chat-category', handler);
+      window.removeEventListener('tia:service-chat', serviceHandler);
+    };
   }, [lang]);
 
   const approveQuote = async (messageId: number, prefill: Record<string, string>, quote: string) => {
@@ -2253,13 +2366,10 @@ export default function HomeShell() {
   }, [lang]);
 
   // Review card — clickable toward its related project when one exists.
-  // Wrapped in TiltCard (same 3D interaction as the services cards, no
-  // DotGrid — the dot grid stays special to a few card groups only).
   const renderReviewCard = (review: Review, key: string) => {
     const project = review.projectId ? projectById.get(review.projectId) : undefined;
     return (
-      <TiltCard key={key} className="w-full">
-      <BorderGlow continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
+      <BorderGlow key={key} continuousHover borderRadius={20} glowRadius={25} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
         <div
           className={`p-5 sm:p-6 ${project ? 'cursor-pointer' : ''}`}
           onClick={() => { if (project) setSelectedProject(project); }}
@@ -2283,7 +2393,6 @@ export default function HomeShell() {
           )}
         </div>
       </BorderGlow>
-      </TiltCard>
     );
   };
   const filteredProjects = useMemo(
@@ -2529,15 +2638,14 @@ export default function HomeShell() {
               speed={0.25}
               scale={5.5}
               detail={2}
-              glow={2.3}
+              glow={1.4}
               coreSize={0.1}
               swirl={1.35}
-              fold={-0.26}
+              fold={-0.15}
               blackPoint={0.03}
               brightness={0.3}
               colorMode="molten"
-              grain
-              grainIntensity={0.06}
+              grain={false}
               mouseInteraction={false}
               mouseStrength={0.15}
               opacity={1}
@@ -2680,7 +2788,7 @@ export default function HomeShell() {
               >
                 {/* ═══ DESIGN CARDS ═══ */}
                 {/* Card 1 — Brand Identity & Logo */}
-                <ScrollReveal delay={0.12} xOffset={-60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:1] lg:[grid-column:1] lg:[grid-row:1]">
+                <ScrollReveal delay={0.12} xOffset={-60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:1] lg:[grid-column:1] lg:[grid-row:1] cursor-pointer" {...serviceChatHandlers('design', 'servizi.brand')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2696,7 +2804,7 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 2 — Graphic Design */}
-                <ScrollReveal delay={0.15} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:1] lg:[grid-column:2] lg:[grid-row:1]">
+                <ScrollReveal delay={0.15} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:1] lg:[grid-column:2] lg:[grid-row:1] cursor-pointer" {...serviceChatHandlers('design', 'servizi.graphic')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2712,7 +2820,7 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 3 — Sviluppo Web (hero 2×2) */}
-                <ScrollReveal delay={0} xOffset={60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:1_/_span_2] lg:[grid-column:3_/_span_2] lg:[grid-row:1_/_span_2]">
+                <ScrollReveal delay={0} xOffset={60} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:1_/_span_2] lg:[grid-column:3_/_span_2] lg:[grid-row:1_/_span_2] cursor-pointer" {...serviceChatHandlers('software-web', 'servizi.webdev')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2729,7 +2837,7 @@ export default function HomeShell() {
 
                 {/* ═══ WEB DEV CARD ═══ */}
                 {/* Card 4 — UI/UX Design (wide 2×1) */}
-                <ScrollReveal delay={0.05} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1_/_span_2] md:[grid-row:2] lg:[grid-column:1_/_span_2] lg:[grid-row:2]">
+                <ScrollReveal delay={0.05} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1_/_span_2] md:[grid-row:2] lg:[grid-column:1_/_span_2] lg:[grid-row:2] cursor-pointer" {...serviceChatHandlers('design', 'servizi.uiux')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2746,7 +2854,7 @@ export default function HomeShell() {
 
                 {/* ═══ SOFTWARE CARD ═══ */}
                 {/* Card 5 — Software & App (large) */}
-                <ScrollReveal delay={0.18} xOffset={-50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:3] lg:[grid-column:1] lg:[grid-row:3]">
+                <ScrollReveal delay={0.18} xOffset={-50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:3] lg:[grid-column:1] lg:[grid-row:3] cursor-pointer" {...serviceChatHandlers('software-web', 'servizi.software')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2763,7 +2871,7 @@ export default function HomeShell() {
 
                 {/* ═══ VIDEO CARDS ═══ */}
                 {/* Card 6 — Video Content */}
-                <ScrollReveal delay={0.1} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:3] lg:[grid-column:2_/_span_2] lg:[grid-row:3]">
+                <ScrollReveal delay={0.1} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:3] lg:[grid-column:2_/_span_2] lg:[grid-row:3] cursor-pointer" {...serviceChatHandlers('video', 'servizi.video_content')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2779,7 +2887,7 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 7 — Post-Production */}
-                <ScrollReveal delay={0.22} xOffset={50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:3] lg:[grid-column:4] lg:[grid-row:3]">
+                <ScrollReveal delay={0.22} xOffset={50} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:3] md:[grid-row:3] lg:[grid-column:4] lg:[grid-row:3] cursor-pointer" {...serviceChatHandlers('video', 'servizi.video_post')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2795,7 +2903,7 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 8 — Hardware & IT (custom service, no pricing tier) */}
-                <ScrollReveal delay={0.12} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:4] lg:[grid-column:1_/_span_2] lg:[grid-row:4]">
+                <ScrollReveal delay={0.12} xOffset={-40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:1] md:[grid-row:4] lg:[grid-column:1_/_span_2] lg:[grid-row:4] cursor-pointer" {...serviceChatHandlers('hardware', 'servizi.hardware')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2811,7 +2919,7 @@ export default function HomeShell() {
                 </ScrollReveal>
 
                 {/* Card 9 — Social Media (custom service, no pricing tier) */}
-                <ScrollReveal delay={0.16} xOffset={40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:4] lg:[grid-column:3_/_span_2] lg:[grid-row:4]">
+                <ScrollReveal delay={0.16} xOffset={40} className="shrink-0 snap-start w-[85%] sm:w-[60%] md:w-auto md:[grid-column:2] md:[grid-row:4] lg:[grid-column:3_/_span_2] lg:[grid-row:4] cursor-pointer" {...serviceChatHandlers('social', 'servizi.social')}>
                   <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.2} edgeSensitivity={0} className="min-h-[200px] max-sm:min-h-[220px] group">
                     <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[20px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                       {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
@@ -2843,17 +2951,17 @@ export default function HomeShell() {
                 </ScrollReveal>
                 <MobileSnapSlider
                   ariaLabel={t('servizi.existing_title', lang)}
-                  trackClassName="flex gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible md:snap-none"
+                  trackClassName="flex gap-5 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-3 md:grid md:grid-cols-3 lg:grid-cols-5 md:auto-rows-fr md:overflow-visible md:snap-none"
                 >
                   {GROWTH_SERVICES.map((service, idx) => (
                     <div key={service.value} className="shrink-0 snap-start w-[80%] sm:w-[55%] md:w-auto">
                       <ScrollReveal delay={idx * 0.05} className="h-full">
                         <button
                           type="button"
-                          onClick={() => scrollToContatti({ service: service.value })}
+                          onClick={() => scrollToContatti({ service: service.value, message: t(service.descKey, lang) })}
                           className="w-full h-full text-left group"
                         >
-                          <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={18} glowRadius={26} glowIntensity={1.8} edgeSensitivity={0} className="h-full group">
+                          <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={18} glowRadius={26} glowIntensity={1.8} edgeSensitivity={0} className="h-full group [&_.border-glow-inner]:h-full">
                             <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[18px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
                               {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
                             </div>
@@ -2975,7 +3083,11 @@ export default function HomeShell() {
 
           {/* ============ CHI SONO ============ */}
           <LazySection rootMargin={800} placeholderHeight={1200}>
-          <section id="chisono" className="relative py-10 sm:py-24 px-4 overflow-y-visible">
+          {/* contain: 'paint' would clip the BorderGlow edge-light that paints
+              outside the section bounds — use layout+style only (same as
+              #progetti). Isolates the ~630-card marquee mount so its layout
+              work doesn't cascade to the rest of the document. */}
+          <section id="chisono" className="relative py-10 sm:py-24 px-4 overflow-y-visible" style={{ contain: 'layout style' } as React.CSSProperties}>
             {/* ── Two big edge curtains — one per side, spanning the WHOLE section.
                They hide the duplicated skill cards at the marquee edges with a
                smooth fade, and because they're as tall as the section they also
@@ -3128,12 +3240,13 @@ export default function HomeShell() {
                     { name: 'Blender', Icon: ThreeDViewIcon },
                   ],
                 },
-              ].map((row) => {
+              ].map((row, rowIndex) => {
                 // Double the skills array so 4 copies produce enough width
                 // for seamless looping even on ultrawide screens (no gaps)
                 const doubled = [...row.skills, ...row.skills];
                 return (
-                  <div key={row.id} className="w-full relative">
+                  <StaggerMount key={row.id} index={rowIndex}>
+                  <div className="w-full relative">
                     <div className="skill-line" style={{ paddingLeft: SKILL_TITLE_OFFSET, '--skill-line-offset': SKILL_TITLE_OFFSET } as React.CSSProperties}>
                       <ScrollReveal
                         xOffset={-28}
@@ -3182,6 +3295,7 @@ export default function HomeShell() {
                       </div>
                     </div>
                   </div>
+                  </StaggerMount>
                 )
               })}
             </div>
@@ -3262,23 +3376,42 @@ export default function HomeShell() {
               <ScrollReveal className="text-center mb-14 sm:mb-20 relative z-30">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('recensioni.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('recensioni.title', lang)}</h2>
-              </ScrollReveal>
-
-              {/* ── Two-column opposing vertical scrollers ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
-                {/* Progressive blur curtains top & bottom — full-viewport width
-                    (w-screen centered on the grid) and SYMMETRIC masks: the
-                    blur peaks in the middle and dissolves to 0 on BOTH sides,
-                    so there is no hard cut above/below/left/right — a true halo
-                    that fades the cards at the section boundary. */}
-                <div aria-hidden="true" className="pointer-events-none absolute -top-[3rem] left-1/2 -translate-x-1/2 w-screen h-[8rem] sm:h-[10rem] z-20">
-                  <ProgressiveBlur position="top" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
-                </div>
-                <div aria-hidden="true" className="pointer-events-none absolute -bottom-[3rem] left-1/2 -translate-x-1/2 w-screen h-[8rem] sm:h-[10rem] z-20">
-                  <ProgressiveBlur position="bottom" height="100%" blurLevels={[1, 4, 9, 18]} symmetric />
-                </div>
+              </ScrollReveal>                {/* ── Two-column opposing vertical scrollers ── */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
+                {/* Radial blur curtains top & bottom — SAME width as the
+                    reviews panel (inset-x-0, no w-screen break-out), one
+                    backdrop-filter layer with a soft radial-gradient mask
+                    instead of four stacked linear layers: the dissolve is
+                    continuous (no discrete blur bands) and the ellipse fades
+                    in ALL directions — no side cuts against the molten
+                    background. Two backdrop-filter layers total instead of
+                    eight. NOTE: the blur is inline (not a CSS class) on
+                    purpose — the CSS optimizer rewrites a class-level
+                    backdrop-filter to -webkit-backdrop-filter only, which
+                    Chrome ≥141 no longer supports (ProgressiveBlur does the
+                    same for this reason). */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -top-[1rem] inset-x-0 h-[13rem] sm:h-[16rem] z-20"
+                  style={{
+                    backdropFilter: 'blur(18px)',
+                    WebkitBackdropFilter: 'blur(18px)',
+                    maskImage: 'radial-gradient(130% 120% at 50% 15%, black 0%, black 20%, transparent 100%)',
+                    WebkitMaskImage: 'radial-gradient(130% 120% at 50% 15%, black 0%, black 20%, transparent 100%)',
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -bottom-[1rem] inset-x-0 h-[13rem] sm:h-[16rem] z-20"
+                  style={{
+                    backdropFilter: 'blur(18px)',
+                    WebkitBackdropFilter: 'blur(18px)',
+                    maskImage: 'radial-gradient(130% 120% at 50% 85%, black 0%, black 20%, transparent 100%)',
+                    WebkitMaskImage: 'radial-gradient(130% 120% at 50% 85%, black 0%, black 20%, transparent 100%)',
+                  }}
+                />
                 {/* ── Left column — scrolls up ── */}
-                <div className="relative min-h-0 overflow-hidden py-5 -my-5">
+                <div className="relative min-h-0 overflow-hidden py-3 -my-3">
                   <InfiniteSlider
                     gap={16}
                     duration={45}
@@ -3290,7 +3423,7 @@ export default function HomeShell() {
                   </InfiniteSlider>
                 </div>
                 {/* ── Right column — scrolls down ── */}
-                <div className="relative min-h-0 overflow-hidden hidden md:block py-5 -my-5">
+                <div className="relative min-h-0 overflow-hidden hidden md:block py-3 -my-3">
                   <InfiniteSlider
                     gap={16}
                     duration={40}
@@ -3444,7 +3577,11 @@ export default function HomeShell() {
           <div id="contatti-anchor" className="h-0 w-0 overflow-hidden" aria-hidden="true" />
           <LazySection rootMargin={400} placeholderHeight={900}>
           <section id="contatti" className="py-10 sm:py-24 px-4">
-            <div className="max-w-5xl mx-auto">
+            {/* The container widens slightly when the call panel slides in —
+                the extra 1fr of booking UI needs room, and the rest of the
+                layout (form + sidebar) shifts left, never overflowing the
+                viewport. */}
+            <div className={`mx-auto transition-[max-width] duration-500 ease-out ${callOpen ? 'max-w-7xl' : 'max-w-5xl'}`}>
               <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('contatti.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('contatti.title', lang)}</h2>
@@ -3453,10 +3590,14 @@ export default function HomeShell() {
                 </p>
               </ScrollReveal>
 
-              {/* ── Two-column layout: form left, info right ── */}
-              <StaggerReveal stagger={STAGGER_BY_SECTION.contatti} className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                {/* ── Form column (spans 2) ── */}
-                <div className="lg:col-span-2 flex flex-col gap-3">
+              {/* ── Layout: form left, info right; the booking panel is a
+                   third column that slides in (0fr → 1.4fr) pushing the
+                   form and sidebar left. On mobile it appears below the
+                   sidebar when the call button is tapped. ── */}
+              <StaggerReveal stagger={STAGGER_BY_SECTION.contatti}
+                className={`grid grid-cols-1 gap-3 transition-[grid-template-columns] duration-500 ease-out lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,0fr)] ${callOpen ? 'lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.6fr)]' : ''}`}>
+                {/* ── Form column ── */}
+                <div className="flex flex-col gap-3 min-w-0">
                   {/* Nome + Email + Servizio row */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div
@@ -3533,9 +3674,9 @@ export default function HomeShell() {
                   <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0}>
                     <div className="p-5">
                       <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider mb-2">{t('contatti.message', lang)}</label>
-                      <textarea id="form-message" required value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={8}
+                      <textarea id="form-message" required value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={11}
                         aria-invalid={formValidationErrors.has('message')}
-                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[140px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
+                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[200px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
                         placeholder={t('contatti.placeholder_message', lang)} />
                       {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400">{t('bot.message_required', lang)}</p>}
                     </div>
@@ -3601,6 +3742,24 @@ export default function HomeShell() {
                     </a>
                   </BorderGlow>
                   <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="flex-1">
+                    <button
+                      type="button"
+                      ref={callTriggerRef}
+                      onClick={() => { setCallOpen(prev => !prev); setCallOpenedOnce(true); }}
+                      aria-expanded={callOpen}
+                      className="flex items-center gap-2.5 p-3 group h-full w-full text-left rounded-[18px] bg-teal-500/[0.08] hover:bg-teal-500/[0.14] transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center shrink-0 group-hover:bg-teal-500/25 transition-all">
+                        <TiaIcon icon={Calendar01Icon} size={15} className="text-teal-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white text-[11px] font-medium">{t('contatti.call_button', lang)}</p>
+                        <p className="text-teal-400/70 text-[10px]">{t('contatti.call_button_sub', lang)}</p>
+                      </div>
+                      <TiaIcon icon={ArrowRight01Icon} size={14} strokeWidth={2} className={`ml-auto shrink-0 text-teal-400 transition-transform duration-300 ${callOpen ? 'rotate-90' : ''}`} />
+                    </button>
+                  </BorderGlow>
+                  <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="flex-1">
                     <div className="p-3 space-y-2 h-full flex flex-col justify-center">
                       <div className="flex items-center gap-1.5 text-[11px] text-neutral-400">
                         <TiaIcon icon={Location01Icon} size={11} className="text-teal-400 shrink-0" strokeWidth={2} />
@@ -3617,37 +3776,45 @@ export default function HomeShell() {
                     </div>
                   </BorderGlow>
                 </div>
-              </StaggerReveal>
 
-              {/* ── Cal.com intro call — full-width booking card ──
-                  Same BorderGlow language as the rest of the section; the
-                  iframe is lazy so the booking UI never loads until the user
-                  scrolls here. The URL is built from CAL_COM_BASE_URL with
-                  the current language. */}
-              <StaggerReveal stagger={0.08} className="mt-6">
-                <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="w-full">
-                  <div className="p-5 sm:p-8">
-                    <div className="flex items-start gap-3 mb-5">
-                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center shrink-0">
-                        <TiaIcon icon={Calendar01Icon} size={18} className="text-teal-400" />
+                {/* ── Cal.com booking panel — slides in from the right on
+                     desktop (pushing form + sidebar left), drops below the
+                     sidebar on mobile. The iframe mounts on first open and
+                     stays mounted so reopening is instant; it never loads
+                     until the user actually asks for it. ── */}
+                <div ref={callPanelRef} className={`min-w-0 overflow-hidden transition-opacity duration-500 ${callOpen ? 'block opacity-100' : 'hidden lg:block lg:opacity-0'}`}>
+                  {callOpenedOnce && (
+                    <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full">
+                      <div className="p-4 sm:p-5 h-full flex flex-col">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+                            <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-teal-400 text-[10px] font-medium uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
+                            <p className="text-white text-sm font-bold leading-tight">{t('contatti.call_title', lang)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCallOpen(false)}
+                            aria-label={t('contatti.call_close', lang)}
+                            className="w-8 h-8 shrink-0 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors"
+                          >
+                            <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
+                          </button>
+                        </div>
+                        <div className="flex-1 rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[440px] max-sm:min-h-[60vh]">
+                          <iframe
+                            src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
+                            title={t('contatti.call_title', lang)}
+                            className="w-full h-full border-0 block"
+                            allow="calendar"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-1">{t('contatti.call_label', lang)}</p>
-                        <h3 className="text-white text-lg sm:text-2xl font-bold tracking-tight">{t('contatti.call_title', lang)}</h3>
-                        <p className="text-neutral-500 mt-1.5 text-sm leading-relaxed max-w-2xl">{t('contatti.call_subtitle', lang)}</p>
-                      </div>
-                    </div>
-                    <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60">
-                      <iframe
-                        src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
-                        title={t('contatti.call_title', lang)}
-                        loading="lazy"
-                        className="w-full h-[560px] sm:h-[620px] border-0 block"
-                        allow="calendar"
-                      />
-                    </div>
-                  </div>
-                </BorderGlow>
+                    </BorderGlow>
+                  )}
+                </div>
               </StaggerReveal>
             </div>
           </section>

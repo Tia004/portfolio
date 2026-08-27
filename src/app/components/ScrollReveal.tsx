@@ -5,7 +5,7 @@ import { loadGsap } from '@/lib/gsap-lazy';
 import { REVEAL_DEFAULTS } from '@/lib/animation-theme';
 import { refreshScrollTriggers } from '@/lib/scroll';
 
-interface ScrollRevealProps {
+interface ScrollRevealProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
   /** How far the element slides up from, in px. Default 40 */
@@ -39,6 +39,7 @@ export default function ScrollReveal({
   scrub = false,
   start = REVEAL_DEFAULTS.start,
   end = REVEAL_DEFAULTS.end,
+  ...rest
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const ctxRef = useRef<gsap.Context | null>(null);
@@ -99,7 +100,7 @@ export default function ScrollReveal({
   }, [yOffset, xOffset, duration, delay, scrub, start, end]);
 
   return (
-    <div ref={ref} className={className}>
+    <div ref={ref} className={className} {...rest}>
       {children}
     </div>
   );

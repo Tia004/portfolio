@@ -220,6 +220,9 @@ const it: Dict = {
   'contatti.call_label': 'Call conoscitiva',
   'contatti.call_title': 'Prenota una call conoscitiva gratuita',
   'contatti.call_subtitle': 'Parliamo del tuo progetto senza impegno: capisco cosa ti serve, ti do un\'idea dei costi e dei tempi, e decidiamo insieme come procedere.',
+  'contatti.call_button': 'Prenota una call gratuita',
+  'contatti.call_button_sub': '30 minuti, senza impegno',
+  'contatti.call_close': 'Chiudi',
 
   // Footer
   'footer.desc': 'Designer, sviluppatore app e software, videomaker. Trasformo idee in prodotti digitali completi.',
@@ -277,6 +280,7 @@ const it: Dict = {
   'chat.new_chat': 'Nuova chat',
   'chat.new_chat_tip': 'Crea una nuova chat: elimina quella attuale e potrai scegliere una specializzazione tra le bolle di benvenuto.',
   'chat.empty_intro': 'Sono Tia Chinaglia. Raccontami cosa hai in mente.',
+  'chat.service_start': 'Vorrei un preventivo per {service}',
   'chat.category_label': 'Specializzazione',
   'chat.category_single': 'Una categoria alla volta',
   'chat.category_software_web': 'Software e Web',
@@ -543,6 +547,9 @@ const en: Dict = {
   'contatti.call_label': 'Intro call',
   'contatti.call_title': 'Book a free intro call',
   'contatti.call_subtitle': 'Let\'s talk about your project with no commitment: I\'ll understand what you need, give you an idea of costs and timelines, and we\'ll decide together how to proceed.',
+  'contatti.call_button': 'Book a free call',
+  'contatti.call_button_sub': '30 minutes, no commitment',
+  'contatti.call_close': 'Close',
 
   'footer.desc': 'Designer, app & software developer, videomaker. I turn ideas into complete digital products.',
   'footer.servizi': 'Services',
@@ -597,6 +604,7 @@ const en: Dict = {
   'chat.new_chat': 'New chat',
   'chat.new_chat_tip': 'Start a new chat: it deletes the current one and lets you pick a specialization from the welcome bubbles.',
   'chat.empty_intro': 'I\'m Tia Chinaglia. Tell me what you have in mind.',
+  'chat.service_start': 'I\'d like a quote for {service}',
   'chat.category_label': 'Specialization',
   'chat.category_single': 'One category at a time',
   'chat.category_software_web': 'Software & Web',
@@ -859,6 +867,9 @@ const es: Dict = {
   'contatti.call_label': 'Llamada de consulta',
   'contatti.call_title': 'Reserva una llamada de consulta gratuita',
   'contatti.call_subtitle': 'Hablemos de tu proyecto sin compromiso: entiendo qué necesitas, te doy una idea de costes y plazos, y decidimos juntos cómo proceder.',
+  'contatti.call_button': 'Reserva una llamada gratis',
+  'contatti.call_button_sub': '30 minutos, sin compromiso',
+  'contatti.call_close': 'Cerrar',
 
   'footer.desc': 'Diseñador, desarrollador de apps y software, videomaker. Transformo ideas en productos digitales completos.',
   'footer.servizi': 'Servicios',
@@ -913,6 +924,7 @@ const es: Dict = {
   'chat.new_chat': 'Nueva chat',
   'chat.new_chat_tip': 'Inicia un nuevo chat: elimina el actual y podrás elegir una especialización entre las burbujas de bienvenida.',
   'chat.empty_intro': 'Soy Tia Chinaglia. Cuéntame qué tienes en mente.',
+  'chat.service_start': 'Quiero un presupuesto para {service}',
   'chat.category_label': 'Especialización',
   'chat.category_single': 'Una categoría a la vez',
   'chat.category_software_web': 'Software y Web',

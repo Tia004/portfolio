@@ -59,6 +59,35 @@ function Logo() {
 function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: (href: string) => void; onClose: () => void; closing?: boolean }) {
   const { lang } = useLanguage();
   const { lenis } = useLenis();
+  const navRef = useRef<HTMLElement>(null);
+  const navItemsRef = useRef<HTMLDivElement>(null);
+  const [navScale, setNavScale] = useState(1);
+
+  // ── Shrink-to-fit — the nav options must NEVER scroll: if the 7 items +
+  //     gaps don't fit the available height (short viewports, landscape
+  //     phones), scale the whole list down uniformly instead. The transform
+  //     doesn't change layout size, so a ResizeObserver on the list re-measures
+  //     whenever the content or viewport changes; m-auto keeps the (possibly
+  //     taller-than-container) layout box centered, and the scale shrinks it
+  //     symmetrically toward that center — no clipping, no scrollbar. ──
+  useEffect(() => {
+    const nav = navRef.current;
+    const items = navItemsRef.current;
+    if (!nav || !items) return;
+    const update = () => {
+      const avail = nav.clientHeight;
+      const content = items.scrollHeight;
+      setNavScale(content > 0 ? Math.min(1, avail / content) : 1);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(items);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
 
   // ── Scroll lock + stop Lenis ──
   useEffect(() => {
@@ -113,9 +142,21 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
       >
         {/* Top bar intentionally empty — logo is in the sticky header above */}
 
-        {/* Nav items — spread out, large typography, 27km-inspired */}
-        <nav className="menu-scrollbar-hidden flex-1 flex flex-col justify-center px-5 sm:px-12 overflow-y-auto">
-          <div className="flex flex-col gap-0.5 sm:gap-1 max-w-3xl mx-auto w-full">
+        {/* Nav items — spread out, large typography, 27km-inspired. No
+            overflow-y-auto: the list scales down to fit instead (see
+            navScale above), so the options never scroll. */}
+        <nav ref={navRef} className="menu-scrollbar-hidden flex-1 min-h-0 flex px-5 sm:px-12 overflow-hidden">
+          {/* Centering wrapper: align-items:center distributes the overflow of
+              a taller-than-container layout box EQUALLY top and bottom (unlike
+              margin:auto, which pushes it all to the bottom) — so the scale
+              below shrinks symmetrically toward the nav center and the whole
+              list always fits, no scroll, no clipping. */}
+          <div className="flex-1 min-h-0 flex items-center justify-center">
+            <div
+              ref={navItemsRef}
+              className="flex flex-col gap-0.5 sm:gap-1 max-w-3xl w-full"
+              style={{ transform: `scale(${navScale})`, transformOrigin: 'center center' }}
+            >
             {NAV_ITEMS.map((item, i) => (
               <button
                 key={item.href}
@@ -131,6 +172,7 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
                 </span>
               </button>
             ))}
+            </div>
           </div>
         </nav>
 

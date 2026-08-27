@@ -77,8 +77,10 @@ uniform vec3 uColor2;
 uniform vec3 uColor3;
 out vec4 fragColor;
 
+// High-frequency pseudo-random noise without trigonometric aliasing (no diagonal striping/banding)
 float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+  vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+  return fract(magic.z * fract(dot(p, magic.xy)));
 }
 
 void main() {
@@ -270,7 +272,7 @@ export default function MoltenMetal({
   blackPoint = 0.05,
   brightness = 1.3,
   colorMode = 'molten',
-  grain = true,
+  grain = false,
   grainIntensity = 0.05,
   mouseInteraction = true,
   mouseStrength = 0.3,

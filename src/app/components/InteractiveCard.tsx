@@ -182,6 +182,11 @@ export function TiltCard({ children, className = '' }: { children: ReactNode; cl
     >
       <div
         ref={tiltRef}
+        // h-full: without it this wrapper breaks the percentage-height chain
+        // from the stretched grid item to the card content — shorter cards
+        // (e.g. base price tiers) stayed at their natural height instead of
+        // stretching to the tallest card in the row.
+        className="h-full"
         style={{
           transition: active ? 'none' : 'transform 0.6s cubic-bezier(0.16,1,0.3,1)',
           transformStyle: 'preserve-3d',

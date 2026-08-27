@@ -207,9 +207,20 @@ function DitheredWaves({
 
   const prevColor = useRef([...waveColor]);
   const drawBufferSize = useRef(new THREE.Vector2());
+  // Fires tia:dither-ready exactly once, after the FIRST real frame has been
+  // drawn. The splash screen waits on this event so it never lifts while the
+  // hero still shows the static-noise fallback below the canvas (the brief
+  // "TV static" flash on load): the animated dither is already painting by
+  // the time the splash fades.
+  const readyFiredRef = useRef(false);
 
   useFrame(({ clock }) => {
     if (!mesh.current) return;
+    if (!readyFiredRef.current) {
+      readyFiredRef.current = true;
+      (window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady = true;
+      window.dispatchEvent(new Event('tia:dither-ready'));
+    }
     // Access the material's actual cloned uniforms — uniformsRef holds only the initial values
     const mat = mesh.current.material as THREE.ShaderMaterial;
     // Resolution guard — CRITICAL on mobile: the uniform starts at (0,0) and
@@ -318,14 +329,23 @@ export default function Dither({
 
   // WebGL probe: if the context can't be created (old Safari, aggressive GPU
   // blocklists, webview containers), skip the Canvas entirely — the static
-  // teal layer below shows through instead of a black void.
+  // teal layer below shows through instead of a black void. In that case the
+  // static layer IS the intended final visual (there is no WebGL frame to
+  // wait for), so fire tia:dither-ready immediately rather than letting the
+  // splash hang until its safety cap.
   useEffect(() => {
     try {
       const probe = document.createElement('canvas');
       const gl = probe.getContext('webgl2') || probe.getContext('webgl');
-      if (!gl) setGlFailed(true);
+      if (!gl) {
+        setGlFailed(true);
+        (window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady = true;
+        window.dispatchEvent(new Event('tia:dither-ready'));
+      }
     } catch {
       setGlFailed(true);
+      (window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady = true;
+      window.dispatchEvent(new Event('tia:dither-ready'));
     }
   }, []);
 
