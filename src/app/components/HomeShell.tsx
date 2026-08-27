@@ -2772,9 +2772,10 @@ export default function HomeShell() {
                   Audit gratuito, performance, multilingua, chatbot AI, migrazione:
                   interventi mirati su siti già online. Ogni card scrolla al form
                   contatti con il servizio già preselezionato. Same card language
-                  (BorderGlow) ma senza DotGrid: 5 canvas in più sul mobile
-                  costavano GPU nella sezione servizi, e qui la coerenza del glow
-                  basta a mantenere il look della sezione. */}
+                  delle altre card servizi: DotGridCard + TiltCard + DotGrid (la
+                  grid si monta vicino al viewport e appare all'hover, o subito su
+                  touch — lo stesso pattern a basso costo usato dalle card
+                  principali). */}
               <div className="mt-14 sm:mt-20">
                 <ScrollReveal className="text-center mb-6 sm:mb-10">
                   <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-3">{t('servizi.existing_label', lang)}</p>
@@ -2793,8 +2794,11 @@ export default function HomeShell() {
                           onClick={() => scrollToContatti({ service: service.value })}
                           className="w-full h-full text-left group"
                         >
-                          <BorderGlow borderRadius={18} glowRadius={26} glowIntensity={1.8} edgeSensitivity={0} className="h-full">
-                            <div className="p-5 flex flex-col gap-2.5 h-full min-h-[170px]">
+                          <DotGridCard>{(mounted, fadeIn) => (<TiltCard className="h-full"><BorderGlow continuousHover borderRadius={18} glowRadius={26} glowIntensity={1.8} edgeSensitivity={0} className="h-full group">
+                            <div className={`absolute inset-0 pointer-events-none overflow-hidden rounded-[18px] transition-opacity duration-500 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+                              {mounted && <DotGrid dotSize={3} gap={14} baseColor="#0a0a0a" activeColor="#10B981" proximity={100} shockRadius={200} shockStrength={4} resistance={700} returnDuration={1.2} />}
+                            </div>
+                            <div className="p-5 flex flex-col gap-2.5 h-full min-h-[170px] relative z-10">
                               <div className="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center group-hover:bg-teal-500/20 transition-colors">
                                 <TiaIcon icon={service.Icon} size={18} className="text-teal-400" />
                               </div>
@@ -2805,7 +2809,7 @@ export default function HomeShell() {
                                 <TiaIcon icon={ArrowRight01Icon} size={13} className="transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
                               </span>
                             </div>
-                          </BorderGlow>
+                          </BorderGlow></TiltCard>)}</DotGridCard>
                         </button>
                       </ScrollReveal>
                     </div>
