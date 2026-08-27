@@ -1186,7 +1186,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Sviluppo Web', subtitle: 'Siti web, dashboard, e-commerce e applicazioni web su misura.', tiers: [
         { title: 'Sito Web Professionale', price: '600', period: '', description: 'Sito vetrina o landing page responsive', delivery: 'Consegna in 2-3 settimane', features: ['UI/UX design personalizzato', 'Sviluppo Next.js / React', 'Responsive e mobile-first', 'SEO tecnico e performance'] },
         { title: 'Piattaforma Web', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o dashboard', delivery: 'Consegna in 4-6 settimane', features: ['Architettura full-stack scalabile', 'Backend e API integrate', 'Autenticazione e database', 'Pannello admin e dashboard', 'Deploy e CI/CD inclusi'] },
-        { title: 'Soluzione Web Enterprise', price: '3250', priceLabel: 'Da €3.250', period: '', premium: true, description: 'Sistemi web complessi, multi-tenant, alta affidabilità', delivery: 'Su misura per te', features: ['Architettura cloud scalabile', 'Multi-tenancy e ruoli avanzati', 'Integrazioni API di terze parti', 'GDPR e compliance inclusi', 'Supporto e manutenzione 6 mesi'] },
+        { title: 'Soluzione Web Enterprise', price: '3.250', priceLabel: 'Da €3.250', period: '', premium: true, description: 'Sistemi web complessi, multi-tenant, alta affidabilità', delivery: 'Su misura per te', features: ['Architettura cloud scalabile', 'Multi-tenancy e ruoli avanzati', 'Integrazioni API di terze parti', 'GDPR e compliance inclusi', 'Supporto e manutenzione 6 mesi'] },
       ]
     },
     {
@@ -1199,8 +1199,8 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     {
       label: 'Software & App', subtitle: 'Applicazioni mobile, software su misura e sistemi backend.', tiers: [
         { title: 'MVP o App Mobile', price: '1.900', period: '', description: 'Per startup, PMI o tool interni', delivery: 'Consegna in 4-8 settimane', features: ['Analisi requisiti e architettura', 'Backend e API dedicate', 'Autenticazione e database', 'App mobile'] },
-        { title: 'Piattaforma Scalabile', price: '4000', priceLabel: 'Da €4.000', period: '', popular: true, description: 'Soluzioni enterprise, SaaS, sistemi complessi', delivery: 'Su misura per te', features: ['Architettura modulare e scalabile', 'Ruoli, permessi e multi-tenancy', 'Integrazioni API di terze parti', 'Automazioni e reportistica', 'Supporto e manutenzione inclusi'] },
-        { title: 'Soluzione Enterprise', price: '7500', priceLabel: 'Da €7.500', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA garantito e team dedicato'] },
+        { title: 'Piattaforma Scalabile', price: '4.000', priceLabel: 'Da €4.000', period: '', popular: true, description: 'Soluzioni enterprise, SaaS, sistemi complessi', delivery: 'Su misura per te', features: ['Architettura modular e scalabile', 'Ruoli, permessi e multi-tenancy', 'Integrazioni API di terze parti', 'Automazioni e reportistica', 'Supporto e manutenzione inclusi'] },
+        { title: 'Soluzione Enterprise', price: '7.500', priceLabel: 'Da €7.500', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA garantito e team dedicato'] },
       ]
     },
     {
@@ -1216,7 +1216,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Web Development', subtitle: 'Custom websites, dashboards, e-commerce and web applications.', tiers: [
         { title: 'Professional Website', price: '600', period: '', description: 'Showcase site or responsive landing page', delivery: 'Delivery in 2-3 weeks', features: ['Custom UI/UX design', 'Next.js / React development', 'Responsive and mobile-first', 'Technical SEO and performance'] },
         { title: 'Web Platform', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce or dashboard', delivery: 'Delivery in 4-6 weeks', features: ['Scalable full-stack architecture', 'Integrated backend and APIs', 'Authentication and database', 'Admin panel and dashboard', 'Deploy and CI/CD included'] },
-        { title: 'Enterprise Web Solution', price: '3250', priceLabel: 'From €3,250', period: '', premium: true, description: 'Complex web systems, multi-tenant, high reliability', delivery: 'Tailored for you', features: ['Scalable cloud architecture', 'Multi-tenancy and advanced roles', 'Third-party API integrations', 'GDPR and compliance included', '6 months support and maintenance'] },
+        { title: 'Enterprise Web Solution', price: '3.250', priceLabel: 'From €3.250', period: '', premium: true, description: 'Complex web systems, multi-tenant, high reliability', delivery: 'Tailored for you', features: ['Scalable cloud architecture', 'Multi-tenancy and advanced roles', 'Third-party API integrations', 'GDPR and compliance included', '6 months support and maintenance'] },
       ]
     },
     {
@@ -1229,8 +1229,8 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     {
       label: 'Software & Apps', subtitle: 'Mobile applications, custom software and backend systems.', tiers: [
         { title: 'MVP or Mobile App', price: '1.900', period: '', description: 'For startups, SMEs or internal tools', delivery: 'Delivery in 4-8 weeks', features: ['Requirements analysis and architecture', 'Dedicated backend and APIs', 'Authentication and database', 'Mobile app'] },
-        { title: 'Scalable Platform', price: '4000', priceLabel: 'From €4,000', period: '', popular: true, description: 'Enterprise solutions, SaaS, complex systems', delivery: 'Tailored for you', features: ['Modular and scalable architecture', 'Roles, permissions and multi-tenancy', 'Third-party API integrations', 'Automations and reporting', 'Support and maintenance included'] },
-        { title: 'Enterprise Solution', price: '7500', priceLabel: 'From €7,500', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'Guaranteed SLA and dedicated team'] },
+        { title: 'Scalable Platform', price: '4.000', priceLabel: 'From €4.000', period: '', popular: true, description: 'Enterprise solutions, SaaS, complex systems', delivery: 'Tailored for you', features: ['Modular and scalable architecture', 'Roles, permissions and multi-tenancy', 'Third-party API integrations', 'Automations and reporting', 'Support and maintenance included'] },
+        { title: 'Enterprise Solution', price: '7.500', priceLabel: 'From €7.500', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'Guaranteed SLA and dedicated team'] },
       ]
     },
     {
@@ -1246,7 +1246,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Desarrollo Web', subtitle: 'Sitios web, paneles, e-commerce y aplicaciones web a medida.', tiers: [
         { title: 'Sitio Web Profesional', price: '600', period: '', description: 'Sitio vitrina o landing page responsive', delivery: 'Entrega en 2-3 semanas', features: ['Diseño UI/UX personalizado', 'Desarrollo Next.js / React', 'Responsive y mobile-first', 'SEO técnico y rendimiento'] },
         { title: 'Plataforma Web', price: '1.750', period: '', popular: true, description: 'SaaS, marketplace, e-commerce o panel', delivery: 'Entrega en 4-6 semanas', features: ['Arquitectura full-stack escalable', 'Backend y APIs integradas', 'Autenticación y base de datos', 'Panel de administración', 'Deploy y CI/CD incluidos'] },
-        { title: 'Solución Web Enterprise', price: '3250', priceLabel: 'Desde 3.250 €', period: '', premium: true, description: 'Sistemas web complejos, multi-tenant, alta fiabilidad', delivery: 'A tu medida', features: ['Arquitectura cloud escalable', 'Multi-tenancy y roles avanzados', 'Integraciones API de terceros', 'GDPR y compliance incluidos', '6 meses de soporte y mantenimiento'] },
+        { title: 'Solución Web Enterprise', price: '3.250', priceLabel: 'Desde €3.250', period: '', premium: true, description: 'Sistemas web complejos, multi-tenant, alta fiabilidad', delivery: 'A tu medida', features: ['Arquitectura cloud escalable', 'Multi-tenancy y roles avanzados', 'Integraciones API de terceros', 'GDPR y compliance incluidos', '6 meses de soporte y mantenimiento'] },
       ]
     },
     {
@@ -1259,8 +1259,8 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
     {
       label: 'Software y Apps', subtitle: 'Aplicaciones móviles, software a medida y sistemas backend.', tiers: [
         { title: 'MVP o App Móvil', price: '1.900', period: '', description: 'Para startups, PYMEs o herramientas internas', delivery: 'Entrega en 4-8 semanas', features: ['Análisis de requisitos y arquitectura', 'Backend y APIs dedicadas', 'Autenticación y base de datos', 'App móvil'] },
-        { title: 'Plataforma Escalable', price: '4000', priceLabel: 'Desde 4.000 €', period: '', popular: true, description: 'Soluciones enterprise, SaaS, sistemas complejos', delivery: 'A tu medida', features: ['Arquitectura modular y escalable', 'Roles, permisos y multi-tenancy', 'Integraciones API de terceros', 'Automatizaciones y reporting', 'Soporte y mantenimiento incluidos'] },
-        { title: 'Solución Enterprise', price: '7500', priceLabel: 'Desde 7.500 €', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA garantizado y equipo dedicado'] },
+        { title: 'Plataforma Escalable', price: '4.000', priceLabel: 'Desde €4.000', period: '', popular: true, description: 'Soluciones enterprise, SaaS, sistemas complejos', delivery: 'A tu medida', features: ['Arquitectura modular y escalable', 'Roles, permisos y multi-tenancy', 'Integraciones API de terceros', 'Automatizaciones y reporting', 'Soporte y mantenimiento incluidos'] },
+        { title: 'Solución Enterprise', price: '7.500', priceLabel: 'Desde €7.500', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA garantizado y equipo dedicado'] },
       ]
     },
     {
