@@ -51,6 +51,13 @@ async function run() {
       console.log('Column lastUsedAt already exists or error:', e.message);
     }
 
+    try {
+      await client.execute('ALTER TABLE Authenticator ADD COLUMN createdAt DATETIME;');
+      console.log('Added createdAt to Authenticator');
+    } catch (e) {
+      console.log('Column createdAt already exists or error:', e.message);
+    }
+
     // 2. Create ContactMessage
     await client.execute(`
       CREATE TABLE IF NOT EXISTS ContactMessage (
