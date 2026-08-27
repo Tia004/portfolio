@@ -3601,7 +3601,7 @@ export default function HomeShell() {
               <StaggerReveal stagger={STAGGER_BY_SECTION.contatti}
                 className={`grid grid-cols-1 gap-3 transition-[grid-template-columns] duration-500 ease-out lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,0fr)] ${callOpen ? 'lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.6fr)]' : ''}`}>
                 {/* ── Form column ── */}
-                <div className="flex flex-col gap-3 min-w-0">
+                <div className="flex flex-col gap-3 min-w-0 h-full">
                   {/* Nome + Email + Servizio row */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div
@@ -3674,20 +3674,25 @@ export default function HomeShell() {
                       </BorderGlow>
                     </div>
                   </div>
-                  {/* Messaggio — taller */}
-                  <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0}>
-                    <div className="p-5">
-                      <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider mb-2">{t('contatti.message', lang)}</label>
-                      <textarea id="form-message" required value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={11}
+                  {/* Messaggio — expands to match sidebar height */}
+                  <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="flex-1 [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">
+                    <div className="p-5 flex flex-col h-full">
+                      <div className="flex items-center justify-between mb-2 shrink-0">
+                        <label htmlFor="form-message" className="block text-neutral-400 text-xs font-medium uppercase tracking-wider">{t('contatti.message', lang)}</label>
+                        <span className={`text-[11px] font-mono transition-colors ${formMessage.length > 2500 ? 'text-amber-400' : 'text-neutral-500'}`}>
+                          {formMessage.length} / 3000
+                        </span>
+                      </div>
+                      <textarea id="form-message" required maxLength={3000} value={formMessage} onChange={(e) => { setFormMessage(e.target.value); setFormValidationErrors(prev => { const next = new Set(prev); next.delete('message'); return next; }); }} rows={10}
                         aria-invalid={formValidationErrors.has('message')}
-                        className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[200px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
+                        className={`w-full flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 resize-none min-h-[220px] overflow-y-auto border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('message') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('message') ? 'form-highlight' : ''}`}
                         placeholder={t('contatti.placeholder_message', lang)} />
-                      {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400">{t('bot.message_required', lang)}</p>}
+                      {formValidationErrors.has('message') && <p className="mt-2 text-[11px] text-red-400 shrink-0">{t('bot.message_required', lang)}</p>}
                     </div>
                   </BorderGlow>
                   {/* Invia */}
                   <button type="button" onClick={handleContactSubmit} disabled={formStatus === 'sending'}
-                    className={`w-full py-3.5 font-medium rounded-xl text-sm transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 ${formStatus === 'error'
+                    className={`w-full py-3.5 font-medium rounded-xl text-sm transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0 ${formStatus === 'error'
                       ? 'bg-red-600 hover:bg-red-500 text-white animate-shake-error'
                       : formStatus === 'sent'
                         ? 'bg-teal-400 text-black hover:bg-teal-300 ring-1 ring-teal-400/40 shadow-lg shadow-teal-400/25'
@@ -3791,7 +3796,12 @@ export default function HomeShell() {
                   data-lenis-prevent
                   data-lenis-prevent-wheel
                   data-lenis-prevent-touch
-                  className={`min-w-0 transition-opacity duration-500 ${callOpen ? 'block opacity-100' : 'hidden lg:block lg:opacity-0 lg:pointer-events-none'}`}
+                  onScroll={(e) => { e.currentTarget.scrollTop = 0; }}
+                  className={`min-w-0 overflow-hidden transition-all duration-500 ease-out ${callOpen ? 'block opacity-100 max-lg:mt-4' : 'hidden lg:block lg:opacity-0 pointer-events-none'}`}
+                  style={{
+                    visibility: callOpen ? 'visible' : 'hidden',
+                    transition: 'opacity 0.4s ease, visibility 0.4s ease',
+                  }}
                 >
                   {callOpenedOnce && (
                     <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">

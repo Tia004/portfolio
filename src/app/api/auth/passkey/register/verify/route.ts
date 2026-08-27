@@ -5,11 +5,6 @@ import { getChallengeCookie, deleteChallengeCookie, createSession } from '@/lib/
 
 export async function POST(request: NextRequest) {
   try {
-    const userCount = await prisma.user.count();
-    if (userCount > 0) {
-      return NextResponse.json({ error: 'Master account already initialized' }, { status: 400 });
-    }
-
     const body = await request.json();
 
     const expectedChallenge = await getChallengeCookie('reg_challenge');
@@ -45,17 +40,32 @@ export async function POST(request: NextRequest) {
 
     const { id, publicKey, counter } = credential;
 
-    // Create the master user
-    const user = await prisma.user.create({
-      data: {
-        id: masterUserId,
-        username: 'master',
-      },
+    // Get or create the master user
+    let user = await prisma.user.findUnique({
+      where: { username: 'master' },
     });
 
-    // Create the authenticator
-    await prisma.authenticator.create({
-      data: {
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          id: masterUserId,
+          username: 'master',
+        },
+      });
+    }
+
+    // Create or update the authenticator
+    await prisma.authenticator.upsert({
+      where: { credentialID: id },
+      update: {
+        credentialPublicKey: Buffer.from(publicKey),
+        counter: BigInt(counter),
+        credentialDeviceType,
+        credentialBackedUp,
+        transports: body.response.transports?.join(',') || null,
+        userId: user.id,
+      },
+      create: {
         credentialID: id,
         credentialPublicKey: Buffer.from(publicKey),
         counter: BigInt(counter),

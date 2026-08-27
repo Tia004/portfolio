@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
-export default function LoginMasterPage() {
+function LoginMasterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [initialized, setInitialized] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +20,10 @@ export default function LoginMasterPage() {
         const res = await fetch('/api/auth/status');
         const data = await res.json();
         setInitialized(data.initialized);
+        const forceSetup = searchParams.get('setup') === 'true' || searchParams.get('register') === 'true';
+        if (!data.initialized || forceSetup) {
+          setMode('register');
+        }
       } catch (err) {
         console.error('Failed to check initialization status:', err);
         setError('Impossibile verificare lo stato del server. Riprova.');
@@ -26,7 +32,7 @@ export default function LoginMasterPage() {
       }
     }
     checkStatus();
-  }, []);
+  }, [searchParams]);
 
   const handleRegister = async () => {
     setError(null);
@@ -143,12 +149,12 @@ export default function LoginMasterPage() {
             </svg>
           </div>
 
-          <div className="text-center mt-6 mb-8">
+          <div className="text-center mt-6 mb-6">
             <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
-              {initialized ? 'Master Access' : 'Inizializzazione Portal'}
+              {mode === 'login' ? 'Master Access' : 'Registrazione Passkey'}
             </h1>
             <p className="text-gray-400 text-xs mt-2 uppercase tracking-widest font-semibold">
-              {initialized ? 'Autenticazione Biometrica Richiesta' : 'Configurazione Amministratore'}
+              {mode === 'login' ? 'Autenticazione Biometrica Richiesta' : 'Configurazione Chiave di Sicurezza'}
             </p>
           </div>
 
@@ -161,7 +167,7 @@ export default function LoginMasterPage() {
             </div>
           )}
 
-          {initialized ? (
+          {mode === 'login' ? (
             /* Login flow layout */
             <div className="flex flex-col gap-6">
               <p className="text-gray-400 text-sm text-center">
@@ -184,26 +190,32 @@ export default function LoginMasterPage() {
                   </>
                 )}
               </button>
+
+              <div className="pt-2 border-t border-white/10 text-center">
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setMode('register'); }}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-4 cursor-pointer"
+                >
+                  Nuovo dispositivo o browser? Registra una nuova Passkey
+                </button>
+              </div>
             </div>
           ) : (
-            /* First time Setup flow layout */
+            /* Setup / Register new Passkey flow layout */
             <div className="flex flex-col gap-6">
               <p className="text-gray-400 text-sm text-center">
-                Benvenuto! Configura la tua chiave di sicurezza primaria (Passkey) per blindare l&apos;amministrazione di questo portfolio.
+                Configura o aggiungi una nuova chiave di sicurezza (Passkey) per accedere all&apos;amministrazione di questo portfolio da questo dispositivo.
               </p>
 
               <div className="bg-white/5 border border-white/5 rounded-xl p-4 text-xs text-gray-300 flex flex-col gap-2">
                 <div className="flex gap-2">
-                  <span className="text-blue-400 font-bold">1.</span>
-                  <span>Assicurati che il tuo dispositivo supporti l&apos;autenticazione biometrica (Touch ID, Face ID, Windows Hello) o chiavi hardware (Yubikey).</span>
+                  <span className="text-teal-400 font-bold">1.</span>
+                  <span>Assicurati che il tuo dispositivo supporti l&apos;autenticazione biometrica (Touch ID, Face ID, Windows Hello) o una chiave hardware.</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-blue-400 font-bold">2.</span>
-                  <span>Clicca sul tasto sotto e segui le istruzioni del tuo sistema operativo per completare il setup.</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-blue-400 font-bold">3.</span>
-                  <span>Dopo la registrazione, questa schermata verrà bloccata e potrai accedere solo tu.</span>
+                  <span className="text-teal-400 font-bold">2.</span>
+                  <span>Clicca sul tasto sotto e segui le istruzioni del tuo sistema operativo o browser per completare la registrazione.</span>
                 </div>
               </div>
 
@@ -223,15 +235,42 @@ export default function LoginMasterPage() {
                   </>
                 )}
               </button>
+
+              {initialized && (
+                <div className="pt-2 border-t border-white/10 text-center">
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); setMode('login'); }}
+                    className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
+                  >
+                    Hai già una passkey configurata? Torna al login
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer text */}
         <p className="text-center text-gray-600 text-xs mt-8 tracking-wider">
-          Progetto Next.js • Protetto da crittografia end-to-end
+          Progetto Next.js • Protetto da crittografia end-to-end WebAuthn
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginMasterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400 text-sm tracking-wider animate-pulse">Caricamento...</p>
+        </div>
+      </div>
+    }>
+      <LoginMasterContent />
+    </Suspense>
   );
 }

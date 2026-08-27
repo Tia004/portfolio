@@ -5,16 +5,16 @@ import { setChallengeCookie } from '@/lib/session';
 
 export async function POST(request: NextRequest) {
   try {
-    const userCount = await prisma.user.count();
-    if (userCount > 0) {
-      return NextResponse.json({ error: 'Master account already initialized' }, { status: 400 });
-    }
-
     const url = new URL(request.url);
     const rpID = url.hostname;
 
     // Use a fixed userID for the master user
     const masterUserId = 'master-user-id';
+
+    const existingUser = await prisma.user.findUnique({
+      where: { username: 'master' },
+      include: { authenticators: true },
+    });
 
     const options = await generateRegistrationOptions({
       rpName: 'Tia Designs Master Portal',
@@ -23,6 +23,10 @@ export async function POST(request: NextRequest) {
       userName: 'master',
       userDisplayName: 'Master Administrator',
       attestationType: 'none',
+      excludeCredentials: existingUser?.authenticators?.map((auth: any) => ({
+        id: auth.credentialID,
+        transports: auth.transports ? (auth.transports.split(',') as any[]) : undefined,
+      })) ?? [],
       authenticatorSelection: {
         residentKey: 'required',
         userVerification: 'required',
