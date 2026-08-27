@@ -945,6 +945,9 @@ export default function HomeShell() {
   const callTriggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!callOpen) return;
+    if (callPanelRef.current) {
+      callPanelRef.current.scrollTop = 0;
+    }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCallOpen(false); };
     const onOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -3378,40 +3381,35 @@ export default function HomeShell() {
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('recensioni.title', lang)}</h2>
               </ScrollReveal>                {/* ── Two-column opposing vertical scrollers ── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative h-[400px] sm:h-[540px] overflow-visible py-5 isolate">
-                {/* Radial blur curtains top & bottom — SAME width as the
-                    reviews panel (inset-x-0, no w-screen break-out), one
-                    backdrop-filter layer with a soft radial-gradient mask
-                    instead of four stacked linear layers: the dissolve is
-                    continuous (no discrete blur bands) and the ellipse fades
-                    in ALL directions — no side cuts against the molten
-                    background. Two backdrop-filter layers total instead of
-                    eight. NOTE: the blur is inline (not a CSS class) on
-                    purpose — the CSS optimizer rewrites a class-level
-                    backdrop-filter to -webkit-backdrop-filter only, which
-                    Chrome ≥141 no longer supports (ProgressiveBlur does the
-                    same for this reason). */}
+                {/* Soft blur curtains top & bottom — compact height so cards remain crisp and readable, dissolving smoothly at the edges */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute -top-[1rem] inset-x-0 h-[13rem] sm:h-[16rem] z-20"
+                  className="pointer-events-none absolute top-0 inset-x-0 h-24 sm:h-32 z-20"
                   style={{
-                    backdropFilter: 'blur(18px)',
-                    WebkitBackdropFilter: 'blur(18px)',
-                    maskImage: 'radial-gradient(130% 120% at 50% 15%, black 0%, black 20%, transparent 100%)',
-                    WebkitMaskImage: 'radial-gradient(130% 120% at 50% 15%, black 0%, black 20%, transparent 100%)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    maskImage: 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
                   }}
                 />
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute -bottom-[1rem] inset-x-0 h-[13rem] sm:h-[16rem] z-20"
+                  className="pointer-events-none absolute bottom-0 inset-x-0 h-24 sm:h-32 z-20"
                   style={{
-                    backdropFilter: 'blur(18px)',
-                    WebkitBackdropFilter: 'blur(18px)',
-                    maskImage: 'radial-gradient(130% 120% at 50% 85%, black 0%, black 20%, transparent 100%)',
-                    WebkitMaskImage: 'radial-gradient(130% 120% at 50% 85%, black 0%, black 20%, transparent 100%)',
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    maskImage: 'linear-gradient(to top, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to top, black 0%, rgba(0,0,0,0.6) 30%, transparent 100%)',
                   }}
                 />
                 {/* ── Left column — scrolls up ── */}
-                <div className="relative min-h-0 overflow-hidden py-3 -my-3">
+                <div
+                  className="relative min-h-0 overflow-hidden py-3 -my-3"
+                  style={{
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+                  }}
+                >
                   <InfiniteSlider
                     gap={16}
                     duration={45}
@@ -3423,7 +3421,13 @@ export default function HomeShell() {
                   </InfiniteSlider>
                 </div>
                 {/* ── Right column — scrolls down ── */}
-                <div className="relative min-h-0 overflow-hidden hidden md:block py-3 -my-3">
+                <div
+                  className="relative min-h-0 overflow-hidden hidden md:block py-3 -my-3"
+                  style={{
+                    maskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)',
+                  }}
+                >
                   <InfiniteSlider
                     gap={16}
                     duration={40}
@@ -3782,11 +3786,17 @@ export default function HomeShell() {
                      sidebar on mobile. The iframe mounts on first open and
                      stays mounted so reopening is instant; it never loads
                      until the user actually asks for it. ── */}
-                <div ref={callPanelRef} className={`min-w-0 overflow-hidden transition-opacity duration-500 ${callOpen ? 'block opacity-100' : 'hidden lg:block lg:opacity-0'}`}>
+                <div
+                  ref={callPanelRef}
+                  data-lenis-prevent
+                  data-lenis-prevent-wheel
+                  data-lenis-prevent-touch
+                  className={`min-w-0 transition-opacity duration-500 ${callOpen ? 'block opacity-100' : 'hidden lg:block lg:opacity-0 lg:pointer-events-none'}`}
+                >
                   {callOpenedOnce && (
-                    <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full">
-                      <div className="p-4 sm:p-5 h-full flex flex-col">
-                        <div className="flex items-center gap-3 mb-4">
+                    <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">
+                      <div className="p-4 sm:p-5 h-full flex flex-col min-h-[560px]">
+                        <div className="flex items-center gap-3 mb-4 shrink-0">
                           <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
                             <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
                           </div>
@@ -3803,11 +3813,16 @@ export default function HomeShell() {
                             <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
                           </button>
                         </div>
-                        <div className="flex-1 rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[440px] max-sm:min-h-[60vh]">
+                        <div
+                          data-lenis-prevent
+                          data-lenis-prevent-wheel
+                          data-lenis-prevent-touch
+                          className="flex-1 rounded-xl overflow-hidden border border-white/[0.06] bg-[#0a0a0a]/60 min-h-[480px]"
+                        >
                           <iframe
                             src={`${CAL_COM_BASE_URL}?embed=true&theme=dark&cal-lang=${CAL_COM_LANG[lang] ?? 'it'}`}
                             title={t('contatti.call_title', lang)}
-                            className="w-full h-full border-0 block"
+                            className="w-full h-full border-0 block min-h-[480px]"
                             allow="calendar"
                           />
                         </div>
