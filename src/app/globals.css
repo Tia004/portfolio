@@ -801,3 +801,29 @@ img {
     padding-top: var(--lang-banner-h, 0px);
   }
 }
+
+/* ── Branded PDF & Print Styling for Preventivatore ─────────── */
+@media print {
+  body {
+    background-color: #081410 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  #printable-quote {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #081410 !important;
+  }
+  header, nav, footer, .molten-metal-container {
+    display: none !important;
+  }
+}

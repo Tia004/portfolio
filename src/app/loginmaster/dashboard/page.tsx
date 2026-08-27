@@ -169,12 +169,43 @@ export default function DashboardPage() {
   // System Health state
   const [systemHealth, setSystemHealth] = useState<any>(null);
 
-  // Quick Quote Builder state
-  const [quoteClient, setQuoteClient] = useState('');
-  const [quoteService, setQuoteService] = useState('Sito Vetrina');
-  const [quoteBasePrice, setQuoteBasePrice] = useState<number>(850);
+  // Branded Quote Builder state
+  const [quoteNumber, setQuoteNumber] = useState('TD-2026-001');
+  const [quoteDate, setQuoteDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [quoteValidity, setQuoteValidity] = useState('30 giorni');
+  const [quoteTimeline, setQuoteTimeline] = useState('2-3 settimane lavorative');
+  const [quoteClientName, setQuoteClientName] = useState('Mario Rossi');
+  const [quoteClientCompany, setQuoteClientCompany] = useState('Studio Rossi & Partners');
+  const [quoteClientEmail, setQuoteClientEmail] = useState('mario.rossi@example.com');
+  const [quoteClientPhone, setQuoteClientPhone] = useState('+39 340 000 0000');
+  const [quoteClientAddress, setQuoteClientAddress] = useState('Milano (MI), Italia');
+  const [quoteClientVat, setQuoteClientVat] = useState('IT12345678901');
+  const [quotePaymentTerms, setQuotePaymentTerms] = useState('50% acconto all\'avvio, 50% a saldo dopo il collaudo');
+  const [quoteIban, setQuoteIban] = useState('IT00 X 00000 00000 000000000000');
+  const [quoteTaxRegime, setQuoteTaxRegime] = useState<'forfettario' | 'iva22'>('forfettario');
   const [quoteDiscount, setQuoteDiscount] = useState<number>(0);
-  const [quoteNotes, setQuoteNotes] = useState('Include responsive layout, animazioni interattive, SEO di base e hosting setup.');
+  const [quoteNotes, setQuoteNotes] = useState('Il preventivo include setup hosting, dominio, certificato SSL, ottimizzazioni Core Web Vitals e garanzia di assistenza tecnica per 30 giorni dal rilascio.');
+  const [quoteItems, setQuoteItems] = useState<Array<{ id: string; title: string; description: string; quantity: number; price: number }>>([
+    { id: '1', title: 'UI/UX Design & Prototipo Interattivo', description: 'Design del layout su misura, wireframe interattivi e definizione palette cromatica.', quantity: 1, price: 450 },
+    { id: '2', title: 'Sviluppo Web Next.js & Animazioni WebGL', description: 'Architettura frontend moderna ad alte prestazioni, supporto multilingua e animazioni fluide.', quantity: 1, price: 850 },
+    { id: '3', title: 'Setup CMS, Form & Dashboard Riservata', description: 'Pannello di controllo contenuti, integrazione form contatti con notifiche e sicurezza WebAuthn.', quantity: 1, price: 350 },
+  ]);
+
+  const handleAddQuoteItem = () => {
+    setQuoteItems(prev => [
+      ...prev,
+      { id: String(Date.now()), title: 'Nuovo Servizio', description: 'Descrizione delle lavorazioni...', quantity: 1, price: 250 },
+    ]);
+  };
+
+  const handleRemoveQuoteItem = (id: string) => {
+    if (quoteItems.length <= 1) return;
+    setQuoteItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleUpdateQuoteItem = (id: string, field: 'title' | 'description' | 'quantity' | 'price', value: any) => {
+    setQuoteItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
 
   const showTemporarySuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -1339,120 +1370,451 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── TAB 7: PREVENTIVATORE RAPIDO ── */}
+        {/* ── TAB 7: PREVENTIVATORE RAPIDO BRANDED PDF ── */}
         {activeTab === 'quotes' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-              <h3 className="font-bold text-white text-base">Generatore Preventivo Rapido</h3>
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               
-              <div>
-                <label className="block text-xs text-neutral-400 mb-1">Nome Cliente / Azienda</label>
-                <input
-                  type="text"
-                  value={quoteClient}
-                  onChange={(e) => setQuoteClient(e.target.value)}
-                  placeholder="Es. Mario Rossi - Studio Legale"
-                  className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
-                />
-              </div>
+              {/* Form Controls Column (no-print) */}
+              <div className="lg:col-span-5 flex flex-col gap-4 no-print">
+                <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 flex flex-col gap-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                    <h3 className="font-bold text-white text-base flex items-center gap-2">
+                      <TiaIcon icon={DollarSignIcon} size={18} className="text-teal-400" />
+                      <span>Configura Preventivo</span>
+                    </h3>
+                    <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                      Brand Custom
+                    </span>
+                  </div>
 
-              <div>
-                <label className="block text-xs text-neutral-400 mb-1">Tipologia Servizio</label>
-                <select
-                  value={quoteService}
-                  onChange={(e) => {
-                    setQuoteService(e.target.value);
-                    if (e.target.value === 'Sito Vetrina') setQuoteBasePrice(850);
-                    if (e.target.value === 'E-Commerce') setQuoteBasePrice(1850);
-                    if (e.target.value === 'Web App & Dashboard') setQuoteBasePrice(2450);
-                    if (e.target.value === 'Branding & UI Design') setQuoteBasePrice(650);
-                  }}
-                  className="w-full px-3.5 py-2 rounded-xl bg-black border border-white/[0.08] text-xs text-white"
-                >
-                  <option value="Sito Vetrina">Sito Vetrina (850€)</option>
-                  <option value="E-Commerce">E-Commerce Completo (1.850€)</option>
-                  <option value="Web App & Dashboard">Web App & Dashboard Custom (2.450€)</option>
-                  <option value="Branding & UI Design">Branding & UI Design (650€)</option>
-                </select>
-              </div>
+                  {/* Document info */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">N. Preventivo</label>
+                      <input
+                        type="text"
+                        value={quoteNumber}
+                        onChange={(e) => setQuoteNumber(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Data Emissione</label>
+                      <input
+                        type="date"
+                        value={quoteDate}
+                        onChange={(e) => setQuoteDate(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
+                      />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-neutral-400 mb-1">Prezzo Base (€)</label>
-                  <input
-                    type="number"
-                    value={quoteBasePrice}
-                    onChange={(e) => setQuoteBasePrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-neutral-400 mb-1">Sconto applicato (%)</label>
-                  <input
-                    type="number"
-                    value={quoteDiscount}
-                    onChange={(e) => setQuoteDiscount(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
-                  />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Validità</label>
+                      <input
+                        type="text"
+                        value={quoteValidity}
+                        onChange={(e) => setQuoteValidity(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Tempi Consegna</label>
+                      <input
+                        type="text"
+                        value={quoteTimeline}
+                        onChange={(e) => setQuoteTimeline(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs text-neutral-400 mb-1">Note & Voci Incluse</label>
-                <textarea
-                  rows={3}
-                  value={quoteNotes}
-                  onChange={(e) => setQuoteNotes(e.target.value)}
-                  className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none"
-                />
-              </div>
-            </div>
+                  {/* Client Info */}
+                  <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2.5">
+                    <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Dati Cliente</p>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Nome Referente</label>
+                        <input
+                          type="text"
+                          value={quoteClientName}
+                          onChange={(e) => setQuoteClientName(e.target.value)}
+                          placeholder="Mario Rossi"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Ragione Sociale / Azienda</label>
+                        <input
+                          type="text"
+                          value={quoteClientCompany}
+                          onChange={(e) => setQuoteClientCompany(e.target.value)}
+                          placeholder="Azienda S.r.l."
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={quoteClientEmail}
+                          onChange={(e) => setQuoteClientEmail(e.target.value)}
+                          placeholder="cliente@email.com"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Telefono</label>
+                        <input
+                          type="text"
+                          value={quoteClientPhone}
+                          onChange={(e) => setQuoteClientPhone(e.target.value)}
+                          placeholder="+39 340..."
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Indirizzo & Città</label>
+                        <input
+                          type="text"
+                          value={quoteClientAddress}
+                          onChange={(e) => setQuoteClientAddress(e.target.value)}
+                          placeholder="Via Roma 1, Milano"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">P.IVA / Cod. Fiscale</label>
+                        <input
+                          type="text"
+                          value={quoteClientVat}
+                          onChange={(e) => setQuoteClientVat(e.target.value)}
+                          placeholder="IT12345678901"
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Printable Preview Card */}
-            <div className="bg-[#081410]/95 backdrop-blur-2xl border border-teal-500/30 rounded-3xl p-6 flex flex-col justify-between shadow-2xl">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                  {/* Items list manager */}
+                  <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Voci di Servizio ({quoteItems.length})</p>
+                      <button
+                        type="button"
+                        onClick={handleAddQuoteItem}
+                        className="text-xs font-bold text-teal-400 hover:text-teal-300 cursor-pointer"
+                      >
+                        + Aggiungi Voce
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                      {quoteItems.map((item, index) => (
+                        <div key={item.id} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <input
+                              type="text"
+                              value={item.title}
+                              onChange={(e) => handleUpdateQuoteItem(item.id, 'title', e.target.value)}
+                              placeholder="Nome voce"
+                              className="flex-1 font-semibold text-xs text-white bg-transparent border-b border-white/[0.1] focus:outline-none focus:border-teal-400 py-0.5"
+                            />
+                            {quoteItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveQuoteItem(item.id)}
+                                className="text-neutral-500 hover:text-red-400 text-xs px-1"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                          <textarea
+                            rows={1}
+                            value={item.description}
+                            onChange={(e) => handleUpdateQuoteItem(item.id, 'description', e.target.value)}
+                            placeholder="Dettagli e deliverables inclusi..."
+                            className="w-full text-[11px] text-neutral-300 bg-transparent resize-none border-b border-white/[0.05] focus:outline-none py-0.5"
+                          />
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-neutral-400">Q.tà:</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={item.quantity}
+                                onChange={(e) => handleUpdateQuoteItem(item.id, 'quantity', Number(e.target.value))}
+                                className="w-12 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-center border border-white/[0.08]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <span className="text-[10px] text-neutral-400">Prezzo (€):</span>
+                              <input
+                                type="number"
+                                min={0}
+                                value={item.price}
+                                onChange={(e) => handleUpdateQuoteItem(item.id, 'price', Number(e.target.value))}
+                                className="w-20 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-right border border-white/[0.08]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Financial terms */}
+                  <div className="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-neutral-400 mb-1">Sconto Promo (%)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={quoteDiscount}
+                        onChange={(e) => setQuoteDiscount(Number(e.target.value))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-neutral-400 mb-1">Regime Fiscale</label>
+                      <select
+                        value={quoteTaxRegime}
+                        onChange={(e) => setQuoteTaxRegime(e.target.value as 'forfettario' | 'iva22')}
+                        className="w-full px-2.5 py-1.5 rounded-xl bg-black border border-white/[0.08] text-xs text-white"
+                      >
+                        <option value="forfettario">Forfettario (Esente IVA)</option>
+                        <option value="iva22">IVA Ordinaria (22%)</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
-                    <h4 className="font-bold text-teal-400 text-lg">Tia Designs</h4>
-                    <p className="text-[11px] text-neutral-400">Design • Web Development • Video</p>
+                    <label className="block text-[10px] text-neutral-400 mb-1">Termini di Pagamento</label>
+                    <input
+                      type="text"
+                      value={quotePaymentTerms}
+                      onChange={(e) => setQuotePaymentTerms(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                    />
                   </div>
-                  <span className="text-xs font-mono text-neutral-500">{new Date().toLocaleDateString('it-IT')}</span>
-                </div>
 
-                <div>
-                  <p className="text-[11px] text-neutral-400 uppercase tracking-wider">Cliente</p>
-                  <p className="text-sm font-bold text-white">{quoteClient || 'Nome Cliente'}</p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-black/50 border border-white/[0.06] flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-300 font-semibold">{quoteService}</span>
-                    <span className="text-white font-mono">{quoteBasePrice} €</span>
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 mb-1">IBAN per Bonifico</label>
+                    <input
+                      type="text"
+                      value={quoteIban}
+                      onChange={(e) => setQuoteIban(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
+                    />
                   </div>
-                  {quoteDiscount > 0 && (
-                    <div className="flex items-center justify-between text-xs text-teal-300">
-                      <span>Sconto Promo ({quoteDiscount}%)</span>
-                      <span className="font-mono">- {Math.round((quoteBasePrice * quoteDiscount) / 100)} €</span>
+
+                  <div>
+                    <label className="block text-[10px] text-neutral-400 mb-1">Note & Garanzie</label>
+                    <textarea
+                      rows={2}
+                      value={quoteNotes}
+                      onChange={(e) => setQuoteNotes(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="w-full py-3 mt-1 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer"
+                  >
+                    <span>🖨️ Stampa o Salva PDF Brandizzato</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable Live PDF Document Column */}
+              <div className="lg:col-span-7 flex flex-col items-center">
+                <div
+                  id="printable-quote"
+                  className="w-full max-w-[780px] bg-[#081410] border border-teal-500/25 rounded-3xl p-8 sm:p-10 shadow-2xl text-neutral-200 relative overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-[#081410] print:text-white"
+                >
+                  {/* Subtle top glow bar */}
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300" />
+
+                  {/* Header Row: Logo + Brand Info + Quote Meta */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b border-white/[0.1]">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <picture>
+                          <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
+                          <source srcSet="/TiaDesignsLogo.webp" type="image/webp" />
+                          <img
+                            src="/TiaDesignsLogo.png"
+                            alt="Tia Designs"
+                            className="h-10 w-auto brightness-0 invert select-none"
+                            draggable={false}
+                          />
+                        </picture>
+                      </div>
+                      <p className="text-xs font-semibold text-teal-400 tracking-wider uppercase mt-1">
+                        Design • Sviluppo Web • Video
+                      </p>
+                      <div className="text-[11px] text-neutral-400 leading-tight space-y-0.5">
+                        <p>Tia Chinaglia</p>
+                        <p>Email: <span className="text-neutral-200">info@tiadesigns.it</span></p>
+                        <p>Web: <span className="text-neutral-200">tiadesigns.it</span></p>
+                        <p>Tel: <span className="text-neutral-200">+39 331 882 1334</span></p>
+                        <p>Sede: <span className="text-neutral-200">Mantova (MN), Italia</span></p>
+                      </div>
+                    </div>
+
+                    {/* Quote Meta Badge */}
+                    <div className="flex flex-col sm:items-end gap-1.5 bg-black/40 p-4 rounded-2xl border border-white/[0.08] sm:min-w-[220px]">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/30">
+                        Preventivo Commerciale
+                      </span>
+                      <p className="text-lg font-bold text-white font-mono mt-1">{quoteNumber}</p>
+                      <p className="text-[11px] text-neutral-400">Data: <strong className="text-neutral-200">{quoteDate}</strong></p>
+                      <p className="text-[11px] text-neutral-400">Validità: <strong className="text-neutral-200">{quoteValidity}</strong></p>
+                      <p className="text-[11px] text-neutral-400">Consegna stimata: <strong className="text-teal-300">{quoteTimeline}</strong></p>
+                    </div>
+                  </div>
+
+                  {/* Client Details Block */}
+                  <div className="py-5 border-b border-white/[0.1] grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest font-bold text-teal-400 mb-1">Destinatario / Spett.le</p>
+                      <p className="text-sm font-bold text-white">{quoteClientName || 'Mario Rossi'}</p>
+                      {quoteClientCompany && <p className="text-xs font-semibold text-neutral-300">{quoteClientCompany}</p>}
+                      {quoteClientAddress && <p className="text-xs text-neutral-400">{quoteClientAddress}</p>}
+                    </div>
+                    <div className="sm:text-right flex flex-col sm:items-end justify-center text-xs text-neutral-400">
+                      {quoteClientEmail && <p>Email: <strong className="text-neutral-200">{quoteClientEmail}</strong></p>}
+                      {quoteClientPhone && <p>Tel: <strong className="text-neutral-200">{quoteClientPhone}</strong></p>}
+                      {quoteClientVat && <p>P.IVA / CF: <strong className="text-neutral-200 font-mono">{quoteClientVat}</strong></p>}
+                    </div>
+                  </div>
+
+                  {/* Itemized Deliverables Table */}
+                  <div className="py-6">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/[0.1] text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                          <th className="py-2.5 px-2 w-8">#</th>
+                          <th className="py-2.5 px-2">Descrizione Servizio & Deliverables</th>
+                          <th className="py-2.5 px-2 text-center w-14">Q.tà</th>
+                          <th className="py-2.5 px-2 text-right w-24">Prezzo Unit.</th>
+                          <th className="py-2.5 px-2 text-right w-24">Totale</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.05] text-xs">
+                        {quoteItems.map((item, idx) => {
+                          const lineTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
+                          return (
+                            <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3 px-2 text-neutral-500 font-mono">{idx + 1}</td>
+                              <td className="py-3 px-2">
+                                <p className="font-bold text-white text-xs">{item.title}</p>
+                                {item.description && (
+                                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">{item.description}</p>
+                                )}
+                              </td>
+                              <td className="py-3 px-2 text-center font-mono text-neutral-300">{item.quantity}</td>
+                              <td className="py-3 px-2 text-right font-mono text-neutral-300">{item.price} €</td>
+                              <td className="py-3 px-2 text-right font-mono font-bold text-teal-300">{lineTotal} €</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summary & Totals Calculation Box */}
+                  {(() => {
+                    const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
+                    const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
+                    const taxable = subtotal - discountAmount;
+                    const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+                    const total = taxable + vatAmount;
+
+                    return (
+                      <div className="pt-4 border-t border-white/[0.1] flex flex-col sm:flex-row justify-between items-start gap-6">
+                        {/* Terms and IBAN */}
+                        <div className="flex-1 text-xs text-neutral-400 space-y-1.5 bg-black/30 p-4 rounded-2xl border border-white/[0.06] w-full">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-teal-400">Modalità di Pagamento</p>
+                          <p className="text-neutral-200 font-medium">{quotePaymentTerms}</p>
+                          <p className="text-[11px] pt-1">
+                            IBAN: <span className="font-mono text-teal-300 font-bold">{quoteIban}</span>
+                          </p>
+                          <p className="text-[10px] text-neutral-500 italic pt-1">
+                            {quoteTaxRegime === 'forfettario'
+                              ? 'Operazione effettuata in regime forfettario ex art. 1 c. 54-89 L. 190/2014 (esente IVA).'
+                              : 'Importi espressi al netto di IVA ordinaria 22%.'}
+                          </p>
+                        </div>
+
+                        {/* Totals table */}
+                        <div className="w-full sm:w-64 bg-teal-950/30 border border-teal-500/30 p-4 rounded-2xl flex flex-col gap-2">
+                          <div className="flex justify-between text-xs text-neutral-400">
+                            <span>Subtotale Voci:</span>
+                            <span className="font-mono text-white">{subtotal} €</span>
+                          </div>
+                          {quoteDiscount > 0 && (
+                            <div className="flex justify-between text-xs text-teal-300 font-semibold">
+                              <span>Sconto ({quoteDiscount}%):</span>
+                              <span className="font-mono">- {discountAmount} €</span>
+                            </div>
+                          )}
+                          {quoteTaxRegime === 'iva22' && (
+                            <div className="flex justify-between text-xs text-neutral-400">
+                              <span>IVA (22%):</span>
+                              <span className="font-mono text-white">{vatAmount} €</span>
+                            </div>
+                          )}
+                          <div className="pt-2 border-t border-teal-500/30 flex justify-between items-baseline">
+                            <span className="text-sm font-bold text-white uppercase">Totale:</span>
+                            <span className="text-2xl font-bold text-teal-400 font-mono tracking-tight">{total} €</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Notes & Acceptance Guarantee */}
+                  {quoteNotes && (
+                    <div className="mt-6 p-4 rounded-2xl bg-black/40 border border-white/[0.06] text-xs text-neutral-300 leading-relaxed">
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-teal-400 mb-1">Note & Condizioni di Assistenza</p>
+                      <p>{quoteNotes}</p>
                     </div>
                   )}
-                  <p className="text-[11px] text-neutral-400 pt-2 border-t border-white/[0.06]">{quoteNotes}</p>
-                </div>
 
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-teal-500/10 border border-teal-500/30">
-                  <span className="text-sm font-bold text-white">Totale Preventivato:</span>
-                  <span className="text-xl font-bold text-teal-400 font-mono">
-                    {Math.round(quoteBasePrice * (1 - quoteDiscount / 100))} €
-                  </span>
+                  {/* Signature Acceptance Box */}
+                  <div className="mt-8 pt-6 border-t border-white/[0.1] grid grid-cols-2 gap-8 text-xs">
+                    <div>
+                      <p className="text-neutral-400 mb-8">Tia Designs (Fornitore)</p>
+                      <div className="border-b border-white/[0.2] pb-1">
+                        <span className="font-serif italic text-teal-300 text-sm">Tia Chinaglia</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-neutral-400 mb-8">Firma e Timbro per Accettazione (Cliente)</p>
+                      <div className="border-b border-white/[0.2] pb-1 text-neutral-600">
+                        Data: ______ / ______ / 2026
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom footer notice */}
+                  <div className="mt-8 text-center text-[10px] text-neutral-500 font-mono border-t border-white/[0.06] pt-3">
+                    Tia Designs • P.IVA: 02737630206 • Documento valido ai fini dell&apos;accordo commerciale
+                  </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="w-full mt-4 py-3 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs transition-colors cursor-pointer"
-              >
-                🖨️ Stampa / Salva in PDF
-              </button>
             </div>
           </div>
         )}
