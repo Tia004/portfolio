@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import WorldVectorMap from '@/app/components/WorldVectorMap';
+import { formatClickElement } from '@/lib/click-elements-dictionary';
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
@@ -810,23 +811,55 @@ export default function AnalyticsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Top clicked */}
           <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.05] rounded-2xl p-6">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-teal-400" />
-              Elementi più cliccati
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-teal-400" />
+                Elementi più cliccati
+              </h3>
+              <span className="text-[10px] font-mono text-neutral-500">
+                {stats.topClicked.reduce((sum, item) => sum + item.count, 0)} click totali
+              </span>
+            </div>
             {stats.topClicked.length === 0 ? (
-              <p className="text-neutral-500 text-sm">Nessun click tracciato</p>
+              <p className="text-neutral-500 text-sm py-6 text-center">Nessun click tracciato</p>
             ) : (
-              <div className="space-y-3">
-                {stats.topClicked.slice(0, 8).map((item, i) => (
-                  <BarRow
-                    key={i}
-                    label={item.element || '(senza nome)'}
-                    value={item.count}
-                    max={maxClickCount}
-                    color={DONUT_COLORS[i % DONUT_COLORS.length]}
-                  />
-                ))}
+              <div className="space-y-3.5">
+                {stats.topClicked.slice(0, 8).map((item, i) => {
+                  const info = formatClickElement(item.element);
+                  const pct = maxClickCount > 0 ? (item.count / maxClickCount) * 100 : 0;
+                  const itemColor = info.color || DONUT_COLORS[i % DONUT_COLORS.length];
+
+                  return (
+                    <div key={i} className="group p-2.5 rounded-xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.04] transition-all">
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm">{info.icon}</span>
+                            <span className="text-white font-medium text-xs truncate">{info.title}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.06] text-neutral-400 font-mono">
+                              {info.category}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-neutral-500 truncate">{info.description}</span>
+                            <code className="text-[9px] text-neutral-600 font-mono bg-black/30 px-1 rounded shrink-0">
+                              {item.element}
+                            </code>
+                          </div>
+                        </div>
+                        <span className="text-teal-400 font-mono font-bold text-xs shrink-0">
+                          {item.count.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${pct}%`, backgroundColor: itemColor }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
