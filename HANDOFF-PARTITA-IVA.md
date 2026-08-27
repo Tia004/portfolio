@@ -188,16 +188,55 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ---
 
-## 7. Note legali rapide (per Tia, non vincolanti)
+## 8. Modulo Fatturazione Elettronica & Ricevute di Acconto (Automatica da Preventivo Accettato)
 
-- Aprire la P.IVA (Agenzia delle Entrate), scegliendo **regime forfettario** (se sotto la soglia
-  di ~€85.000/anno) — niente IVA in fattura, tassazione agevolata.
-- Per incassare online serve anche un **IBAN** dedicato o Stripe con payouts su conto corrente.
-- Fattura elettronica tramite **SDI** (o intermediario come Stripe Tax/Fatture in Cloud).
-- Il sito mostra già "P.IVA: in fase di configurazione" in qualche punto? Aggiornarlo con il
-  numero reale appena disponibile (chiave `contatti.vat_invoice`).
+> **Richiede Partita IVA attiva:** In Italia l'emissione di fatture elettroniche (tramite SDI) o ricevute fiscali aziendali richiede obbligatoriamente il numero di Partita IVA e l'iscrizione al regime fiscale (es. Forfettario). Senza P.IVA è possibile emettere solo ricevute per prestazione occasionale con ritenuta d'acconto.
+
+### Flusso di Automazione Preventivo → Fattura:
+
+Quando nella dashboard `/loginmaster/dashboard` un preventivo passa allo stato **`accepted`** (o quando il cliente accetta e firma online):
+
+```
+Preventivo (Stato: Accettato) 
+  ↳ 1. Calcolo Acconto (es. 50% = quota avvio lavori)
+  ↳ 2. Chiamata API Fatturazione (Fatture in Cloud / Aruba / Stripe Invoicing)
+  ↳ 3. Generazione automatica Fattura Elettronica SDI + PDF di cortesia
+  ↳ 4. Invio email automatico al cliente con link di pagamento / IBAN e PDF allegato
+  ↳ 5. Notifica di conferma a info@tiadesigns.it
+```
+
+### Servizi Consigliati per il Collegamento API:
+
+| Provider | Perché | Tipo Integrazione |
+|---|---|---|
+| **Fatture in Cloud API v2** (Consigliato per Italia) | Gestisce SDI, fatture elettroniche, regime forfettario, marca da bollo virtuale 2€ in automatico | REST API via webhook (`POST /api/master/invoices/create`) |
+| **Stripe Invoicing** | Integrato nativamente se si usa Stripe per pagamenti con carta/Klarna | Stripe SDK (`stripe.invoices.create`) |
+| **Aruba Fatturazione Elettronica API** | Economico e diffuso in Italia | REST API |
+
+### Endpoint e Variabili da Aggiungere:
+
+```env
+# Fatturazione Elettronica (da attivare dopo apertura P.IVA)
+FATTURE_IN_CLOUD_API_KEY="fic_api_..."
+FATTURE_IN_CLOUD_COMPANY_ID="123456"
+# oppure
+STRIPE_AUTO_INVOICING="true"
+```
+
+### Route API da creare nel progetto:
+- `src/app/api/master/invoices/create/route.ts` → Prende l'ID del preventivo accettato (`quoteId`), estrae i dati anagrafici e le voci, calcola l'acconto (es. 50%) e genera la fattura tramite API.
+- Aggiorna il modello `Quote` con i campi `invoiceId`, `invoiceNumber`, `invoicePdfUrl`.
 
 ---
 
-*Scritto da Codebuff il 2026-08-27. File pensato per essere letto da un agente: le coordinate
-dei file sono riferite al codice attuale (branch `main`).*
+## 9. Note legali rapide (per Tia, non vincolanti)
+
+- Aprire la P.IVA (Agenzia delle Entrate), scegliendo **regime forfettario** (se sotto la soglia di ~€85.000/anno) — niente IVA in fattura, tassazione agevolata (5% per i primi 5 anni).
+- Per incassare online serve anche un **IBAN** dedicato o Stripe con payouts su conto corrente.
+- Fattura elettronica tramite **SDI** (o intermediario come Fatture in Cloud).
+- In regime forfettario, per importi superiori a €77,47 si applica la **marca da bollo da €2,00** (gestibile in automatico con assolvimento virtuale del bollo).
+- Il sito mostra già "P.IVA: in fase di configurazione" in qualche punto? Aggiornarlo con il numero reale appena disponibile (chiave `contatti.vat_invoice`).
+
+---
+
+*Aggiornato il 2026-08-27 con le specifiche per Preventivi, Firme Digitali e Fatturazione Automatica.*
