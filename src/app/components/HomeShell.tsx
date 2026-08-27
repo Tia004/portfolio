@@ -3957,6 +3957,7 @@ export default function HomeShell() {
           style={{ bottom: (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) + kbOffset }}
         >
           {/* Chat popup */}
+          {/* Chat popup */}
           {(chatOpen || chatClosing) && (
             <BorderGlow
               continuousHover
@@ -3965,7 +3966,7 @@ export default function HomeShell() {
               glowRadius={28}
               glowIntensity={1.4}
               edgeSensitivity={0}
-              backgroundColor="rgba(6, 10, 10, 0.78)"
+              backgroundColor="#081410"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >
@@ -3973,25 +3974,23 @@ export default function HomeShell() {
                   title-bar background to the rounded-2xl corners. The BorderGlow
                   lives on the parent card's pseudo-elements + .edge-light, which
                   are siblings — clipping this child never touches the glow. */}
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[rgba(6,10,10,0.62)] rounded-2xl overflow-hidden flex flex-col">
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#081410] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
                 {/* Title bar */}
-                <div className="flex items-center px-4 py-3 border-b border-white/[0.06] bg-[#1a1a1a]/60 backdrop-blur-xl select-none">
+                <div className="flex items-center px-4 py-3 border-b border-white/[0.08] bg-[#0c1c17] select-none">
                   {/* Centered title */}
                   <span className="flex-1 text-center text-xs font-medium text-neutral-300 tracking-wide">{t('chat.title', lang)}</span>
                   {/* Close button */}
                   <button
                     onClick={() => { setChatClosing(true); setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300); }}
-                    className="w-6 h-6 rounded-md hover:bg-white/[0.06] flex items-center justify-center transition-colors text-neutral-500 hover:text-white shrink-0"
+                    className="w-6 h-6 rounded-md hover:bg-white/[0.06] flex items-center justify-center transition-colors text-neutral-500 hover:text-white shrink-0 cursor-pointer"
                     aria-label="Chiudi chat"
                   >
                     <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
 
-                {/* Messages area — native scroll via Lenis allowNestedScroll:
-                   the chat scrolls itself and at its boundary the wheel chains
-                   to the page (Lenis stays in sync — no fight, no jitter). */}
-                <div ref={chatMessagesRef} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative">
+                {/* Messages area — solid background */}
+                <div ref={chatMessagesRef} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative bg-[#081410]">
                   {/* Subtle DotGrid background — always mounted, static for perf */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
                     <DotGrid dotSize={2} gap={18} baseColor="#0a0a0a" activeColor="#2dd4bf" proximity={0} shockRadius={0} shockStrength={0} resistance={0} returnDuration={0} />
@@ -4002,7 +4001,7 @@ export default function HomeShell() {
                       // Neutral system notice (e.g. delivery failure) — centered,
                       // dim, clearly not a message from either side.
                       <div key={msg.id} className="flex justify-center">
-                        <span className="max-w-[85%] rounded-full bg-white/[0.04] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-500">{msg.text}</span>
+                        <span className="max-w-[85%] rounded-full bg-black/60 border border-white/[0.06] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-400">{msg.text}</span>
                       </div>
                     ) : (
                     <div
@@ -4016,8 +4015,8 @@ export default function HomeShell() {
                       )}
                       <div
                         className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'client'
-                          ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm'
-                          : 'bg-white/[0.04] text-white rounded-2xl rounded-bl-sm'
+                          ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm shadow-md'
+                          : 'bg-black/70 border border-white/[0.08] text-white rounded-2xl rounded-bl-sm shadow-md'
                           }`}
                       >
                         {linkifyChatText(msg.text, msg.sender === 'client')}
@@ -4037,7 +4036,7 @@ export default function HomeShell() {
                       <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0">
                         <TiaIcon icon={BubbleChatIcon} size={12} className="text-teal-400" />
                       </div>
-                      <div className="bg-white/[0.04] rounded-2xl rounded-bl-sm px-4 py-3">
+                      <div className="bg-black/70 border border-white/[0.08] rounded-2xl rounded-bl-sm px-4 py-3">
                         <div className="flex gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -4053,7 +4052,7 @@ export default function HomeShell() {
                     keyboard must NOT auto-open (it would jump/resize the whole
                     page while the window animates in): the user taps the bar
                     to type, and the visualViewport lift keeps it visible. */}
-                <div className="px-5 pb-5 pt-2 border-t border-white/[0.06]">
+                <div className="px-5 pb-5 pt-2 border-t border-white/[0.08] bg-[#081410]">
                   <div className="flex items-end gap-2">
                     <textarea
                       ref={chatTextareaRef}
@@ -4062,7 +4061,7 @@ export default function HomeShell() {
                       placeholder={t('chat.placeholder', lang)}
                       rows={1}
                       autoFocus={!isMobile}
-                      className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
+                      className="flex-1 bg-black/60 border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -4073,7 +4072,7 @@ export default function HomeShell() {
                     <button
                       onClick={sendMessage}
                       disabled={!chatMessage.trim()}
-                      className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 hover:bg-teal-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 hover:bg-teal-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                       aria-label="Invia messaggio"
                     >
                       <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
