@@ -182,8 +182,8 @@ import { playChatOpenSound } from '@/lib/menu-sounds';
 // load seamlessly with 100% translated titles and descriptions.
 const CAL_COM_URLS: Record<string, string> = {
   it: process.env.NEXT_PUBLIC_CAL_COM_URL_IT ?? process.env.NEXT_PUBLIC_CAL_COM_BASE_URL ?? 'https://cal.com/tiadesigns/consulenza',
-  en: process.env.NEXT_PUBLIC_CAL_COM_URL_EN ?? 'https://cal.com/tiadesigns/consulenza-en',
-  es: process.env.NEXT_PUBLIC_CAL_COM_URL_ES ?? 'https://cal.com/tiadesigns/consulenza-es',
+  en: process.env.NEXT_PUBLIC_CAL_COM_URL_EN ?? 'https://cal.com/tiadesigns/consultation',
+  es: process.env.NEXT_PUBLIC_CAL_COM_URL_ES ?? 'https://cal.com/tiadesigns/asesoria',
 };
 function getCalComBaseUrl(l: string): string {
   return CAL_COM_URLS[l] ?? CAL_COM_URLS.it ?? 'https://cal.com/tiadesigns/consulenza';
