@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { invalidateSlotsCache } from '@/lib/cal-slots';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Cal.com webhook receiver.
@@ -31,28 +32,52 @@ function isValidSignature(req: NextRequest, rawBody: string): boolean {
   if (!secret) return process.env.NODE_ENV !== 'production';
   const received = (req.headers.get('x-cal-signature-256') || '').replace(/^sha256=/, '');
   if (!received) return false;
-  const computed = createHmac('sha256', secret).update(rawBody).digest('hex');
-  const left = Buffer.from(received);
-  const right = Buffer.from(computed);
-  return left.length === right.length && timingSafeEqual(left, right);
+  try {
+    const computed = createHmac('sha256', secret).update(rawBody).digest('hex');
+    const left = Buffer.from(received);
+    const right = Buffer.from(computed);
+    return left.length === right.length && timingSafeEqual(left, right);
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   if (!isValidSignature(req, rawBody)) {
-    return NextResponse.json({ ok: false }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'Invalid signature' }, { status: 401 });
   }
 
-  let payload: { triggerEvent?: string };
+  let payload: { triggerEvent?: string; payload?: Record<string, unknown> };
   try {
-    payload = JSON.parse(rawBody) as { triggerEvent?: string };
+    payload = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ ok: false }, { status: 400 });
+    return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (payload?.triggerEvent && BOOKING_TRIGGERS.has(payload.triggerEvent)) {
+  const trigger = payload?.triggerEvent;
+  if (trigger && BOOKING_TRIGGERS.has(trigger)) {
     invalidateSlotsCache();
+
+    // Log to dashboard system logs
+    try {
+      await prisma.systemLog.create({
+        data: {
+          level: 'info',
+          source: 'cal',
+          message: `Cal.com booking event: ${trigger}`,
+          metadata: JSON.stringify({
+            trigger,
+            title: payload?.payload?.title || payload?.payload?.eventTitle,
+            startTime: payload?.payload?.startTime,
+            attendee: payload?.payload?.attendees,
+          }),
+        },
+      });
+    } catch {
+      // Fire-and-forget: do not block webhook ACK
+    }
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, trigger });
 }
