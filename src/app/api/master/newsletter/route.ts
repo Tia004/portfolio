@@ -169,3 +169,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
   }
 }
+
+// DELETE /api/master/newsletter?id=... - Delete a newsletter campaign
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || session.username !== 'master') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'ID campagna mancante' }, { status: 400 });
+    }
+
+    await prisma.newsletterCampaign.delete({ where: { id } });
+    return NextResponse.json({ success: true, message: 'Campagna eliminata con successo' });
+  } catch (error: any) {
+    console.error('Error deleting newsletter campaign:', error);
+    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+  }
+}
