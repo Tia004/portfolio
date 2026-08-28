@@ -2020,18 +2020,6 @@ export default function DashboardPage() {
               <span>{isOnline ? 'Disponibile per progetti' : 'Non disponibile'}</span>
             </button>
           </div>
-
-          {/* Direct Analytics Standalone Link */}
-          <Link
-            href="/loginmaster/analytics"
-            className="bg-[#081410]/90 hover:bg-white/[0.06] border border-white/[0.08] rounded-3xl p-4 flex items-center justify-between text-xs font-medium text-white transition-colors group"
-          >
-            <div className="flex items-center gap-2.5">
-              <TiaIcon icon={GaugeIcon} size={16} className="text-teal-400" />
-              <span>Pagina Analytics Dedicata</span>
-            </div>
-            <TiaIcon icon={ExternalLinkIcon} size={14} className="text-neutral-400 group-hover:text-teal-400 transition-colors" />
-          </Link>
         </aside>
 
         {/* ── RIGHT MAIN DASHBOARD CONTENT AREA ── */}
