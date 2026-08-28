@@ -138,6 +138,7 @@ model Project {
   projectUrl      String?
   githubUrl       String?
   tags            String
+  category        String   @default("Sviluppo")
   featured        Boolean  @default(false)
   order           Int      @default(0)
   createdAt       DateTime @default(now())
@@ -187,3 +188,37 @@ model Quote {
   @@index([createdAt])
   @@index([clientEmail])
 }
+
+model NewsletterCampaign {
+  id             String    @id @default(uuid())
+  subject        String
+  previewText    String?
+  bodyContent    String
+  recipients     String    @default("all_contacts") // 'all_contacts' | 'all_leads' | JSON array or comma separated
+  recipientCount Int       @default(0)
+  status         String    @default("draft") // "draft" | "scheduled" | "sent" | "failed"
+  scheduledFor   DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model CustomEmailTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  icon      String   @default("✉️")
+  badge     String   @default("Tia Designs")
+  title     String
+  subject   String
+  body      String
+  ctaText   String?
+  ctaUrl    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
+
+

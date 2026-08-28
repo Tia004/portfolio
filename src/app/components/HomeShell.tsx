@@ -1301,6 +1301,35 @@ export default function HomeShell() {
   }, []);
   const [activeFilter, setActiveFilter] = useState<string>('Tutti');
   const [projectsPage, setProjectsPage] = useState(0);
+  const [liveProjects, setLiveProjects] = useState<ProjectData[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/projects')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data) || data.length === 0) return;
+        const mapped: ProjectData[] = data.map((p: any) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description,
+          longDescription: p.longDescription || p.description,
+          thumbnail: p.thumbnail,
+          url: p.projectUrl || undefined,
+          githubUrl: p.githubUrl || undefined,
+          tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+          category: p.category || 'Sviluppo',
+          featured: p.featured,
+          isVideo: (p.category || '').toLowerCase() === 'video' || (p.tags || '').toLowerCase().includes('video'),
+        }));
+        setLiveProjects(mapped);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [tooltipInfo, setTooltipInfo] = useState<{ text: string; el: HTMLElement; hiding?: boolean } | null>(null);
   const hideTooltipTimerRef = useRef<number | null>(null);
   const ctaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2739,9 +2768,10 @@ export default function HomeShell() {
       </BorderGlow>
     );
   };
+  const allProjects = liveProjects || getProjects(lang);
   const filteredProjects = useMemo(
-    () => getProjects(lang).filter((project) => activeFilter === 'Tutti' || project.category === activeFilter),
-    [activeFilter, lang]
+    () => allProjects.filter((project) => activeFilter === 'Tutti' || project.category === activeFilter),
+    [allProjects, activeFilter]
   );
   // Desktop shows 3 projects per view (one row) with arrows — 6 (two rows)
   // didn't fit a 16" screen and lost coherence. Mobile keeps its own slider.

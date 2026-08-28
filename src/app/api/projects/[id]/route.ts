@@ -16,7 +16,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, longDescription, thumbnail, projectUrl, githubUrl, tags, featured, order } = body;
+    const { title, description, longDescription, thumbnail, projectUrl, githubUrl, tags, category, featured, order } = body;
 
     const existingProject = await prisma.project.findUnique({
       where: { id },
@@ -36,6 +36,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         projectUrl: projectUrl !== undefined ? projectUrl : existingProject.projectUrl,
         githubUrl: githubUrl !== undefined ? githubUrl : existingProject.githubUrl,
         tags: tags !== undefined ? tags : existingProject.tags,
+        category: category !== undefined ? category : existingProject.category,
         featured: featured !== undefined ? featured : existingProject.featured,
         order: typeof order === 'number' ? order : existingProject.order,
       },

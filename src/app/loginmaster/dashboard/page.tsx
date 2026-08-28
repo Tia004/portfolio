@@ -48,6 +48,17 @@ import {
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
+const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepAnalyticsView'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-12 flex flex-col items-center justify-center text-center">
+      <div className="w-8 h-8 rounded-full border-2 border-teal-400 border-t-transparent animate-spin mb-4" />
+      <p className="text-sm font-bold text-white">Caricamento Deep Analytics...</p>
+      <p className="text-xs text-neutral-400 mt-1">Connessione ai log e metriche in tempo reale</p>
+    </div>
+  ),
+});
+
 const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
   ssr: false,
   loading: () => (
@@ -71,8 +82,11 @@ interface Project {
   projectUrl: string | null;
   githubUrl: string | null;
   tags: string;
+  category?: string;
   featured: boolean;
   order: number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 interface ContactMessage {
@@ -176,6 +190,64 @@ interface SavedQuote {
   createdAt: string;
 }
 
+const EMAIL_TEMPLATES = [
+  {
+    id: 'quote',
+    name: 'Offerta & Preventivo',
+    icon: '💼',
+    badge: 'Preventivo & Proposta',
+    title: 'Proposta per il tuo Progetto',
+    subject: (client: string) => `Proposta & Preventivo per il tuo Progetto - Tia Designs`,
+    body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\ngrazie per l'interesse dimostrato per i miei servizi!\n\nIn allegato e di seguito trovi la proposta personalizzata per la realizzazione del tuo progetto:\n\n- **Obiettivo**: Sviluppo & Design su misura con focus su performance e UX moderna\n- **Tempistiche stimate**: 2-3 settimane lavorative\n- **Cosa include**: Design responsivo, ottimizzazione SEO & Core Web Vitals, integrazioni avanzate e supporto dedicato\n\nPer approvare la proposta o per qualsiasi chiarimento sui dettagli tecnici, puoi rispondere direttamente a questa email oppure prenotare una call veloce.\n\nResto a tua completa disposizione!\n\nA presto,\nTia`,
+    ctaText: 'Fissa Call di Approfondimento',
+    ctaUrl: 'https://tiadesigns.it#contatti',
+  },
+  {
+    id: 'followup',
+    name: 'Follow-up / Ricontatto',
+    icon: '🔄',
+    badge: 'Follow-up',
+    title: 'Hai avuto modo di valutare la proposta?',
+    subject: (client: string) => `Aggiornamento sul tuo progetto - Tia Designs`,
+    body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\nti ricontatto per sapere se hai avuto modo di esaminare la proposta che ti ho inviato.\n\nSe hai domande, dubbi o desideri apportare modifiche alle funzionalità o al budget, possiamo sentirci per una breve call e calibrare tutto secondo le tue esigenze.\n\nFammi sapere qual è il momento migliore per te!\n\nBuona giornata,\nTia`,
+    ctaText: 'Prenota Breve Call',
+    ctaUrl: 'https://tiadesigns.it#contatti',
+  },
+  {
+    id: 'kickoff',
+    name: 'Conferma & Kick-off',
+    icon: '🚀',
+    badge: 'Kick-off & Avvio',
+    title: 'Benvenuto a bordo! Iniziamo il progetto',
+    subject: (client: string) => `Conferma d'Ordine & Avvio Lavori - Tia Designs`,
+    body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\nsono entusiasta di confermarti che abbiamo ufficialmente avviato i lavori per il tuo progetto!\n\nEcco i prossimi passaggi operativi:\n1. **Setup & Architettura**: Configurazione dell'ambiente di lavoro e delle bozze di design\n2. **Revisioni Intermedie**: Ti condividerò un link di anteprima per raccogliere i tuoi feedback in tempo reale\n3. **Test & Collaudo Finale**: Ottimizzazione finale e messa online\n\nTi terrò costantemente aggiornato sui progressi.\n\nA presto con i primi aggiornamenti,\nTia`,
+    ctaText: 'Vedi Avanzamento Lavori',
+    ctaUrl: 'https://tiadesigns.it',
+  },
+  {
+    id: 'briefing',
+    name: 'Briefing Tecnico',
+    icon: '📋',
+    badge: 'Briefing & Info',
+    title: 'Dettagli necessari per procedere',
+    subject: (client: string) => `Dettagli e requisiti per il tuo progetto - Tia Designs`,
+    body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\nper poter avviare al meglio lo sviluppo del progetto, avrei bisogno di alcuni dettagli e materiali:\n\n- **Logo e Asset Grafici**: File vettoriali (SVG, AI) o immagini ad alta risoluzione\n- **Testi e Contenuti**: Bozza dei testi per le sezioni principali\n- **Siti / Brand di Riferimento**: 2-3 esempi di siti o stili grafici che rispecchiano la tua visione\n- **Scadenza Desiderata**: Eventuali date di lancio tassative\n\nPuoi inviarmi tutto rispondendo a questa mail o caricando i file nel form dedicato.\n\nGrazie mille per la collaborazione!\nTia`,
+    ctaText: 'Compila Brief Online',
+    ctaUrl: 'https://tiadesigns.it#contatti',
+  },
+  {
+    id: 'delivery',
+    name: 'Consegna & Recensione',
+    icon: '🌟',
+    badge: 'Consegna & Feedback',
+    title: 'Il tuo progetto è online con successo!',
+    subject: (client: string) => `Il tuo progetto è online! 🚀 - Tia Designs`,
+    body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\nè con grande piacere che ti confermo che il tuo progetto è ufficialmente completato e online!\n\nÈ stato un vero piacere collaborare con te su questo progetto.\n\nSe sei soddisfatto del risultato e del lavoro svolto insieme, ti sarei immensamente grato se potessi dedicare 1 minuto per lasciare una breve recensione sul sito: per me è fondamentale!\n\nGrazie ancora per la fiducia e resto a disposizione per qualsiasi esigenza futura.\n\nUn caro saluto,\nTia`,
+    ctaText: 'Lascia una Recensione',
+    ctaUrl: 'https://tiadesigns.it#recensioni',
+  },
+];
+
 const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   IT: { name: 'Italia', flag: '🇮🇹' },
   US: { name: 'Stati Uniti', flag: '🇺🇸' },
@@ -204,45 +276,53 @@ const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
   IN: { name: 'India', flag: '🇮🇳' },
 };
 
-// ── WebP Image Converter ─────────────────────────────────────────
+// ── WebP Image Converter (Auto-converts any uploaded image format to WebP) ──
 async function convertImageToWebp(file: File, quality = 0.85): Promise<File> {
-  return new Promise((resolve, reject) => {
-    if (file.type === 'image/webp') {
-      resolve(file);
-      return;
-    }
-    const img = new Image();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(file);
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
+  if (file.type === 'image/webp') return file;
+  return new Promise((resolve) => {
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
             resolve(file);
             return;
           }
-          const baseName = file.name.replace(/\.[^/.]+$/, '');
-          const newFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
-          resolve(newFile);
-        },
-        'image/webp',
-        quality
-      );
-    };
-    img.onerror = reject;
-    reader.readAsDataURL(file);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(objectUrl);
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const baseName = file.name.replace(/\.[^/.]+$/, '');
+              const newFile = new File([blob], `${baseName}.webp`, { type: 'image/webp' });
+              resolve(newFile);
+            },
+            'image/webp',
+            quality
+          );
+        } catch {
+          URL.revokeObjectURL(objectUrl);
+          resolve(file);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      img.src = objectUrl;
+    } catch {
+      resolve(file);
+    }
   });
 }
 
@@ -263,6 +343,7 @@ export default function DashboardPage() {
   const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState('');
+  const [projectCategory, setProjectCategory] = useState('Sviluppo');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectLongDescription, setProjectLongDescription] = useState('');
   const [projectThumbnail, setProjectThumbnail] = useState('');
@@ -271,13 +352,69 @@ export default function DashboardPage() {
   const [projectTags, setProjectTags] = useState('');
   const [projectFeatured, setProjectFeatured] = useState(false);
   const [projectOrder, setProjectOrder] = useState<number>(0);
+  const [projectSearch, setProjectSearch] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [isProjectDrawerOpen, setIsProjectDrawerOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
+  const [dragOverProjectId, setDragOverProjectId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
+  const [originalProjectsSnapshot, setOriginalProjectsSnapshot] = useState<Project[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Messages Inbox state
+  // 16:9 Interactive Crop & Preview State
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState<number>(1);
+  const [cropPanX, setCropPanX] = useState<number>(0);
+  const [cropPanY, setCropPanY] = useState<number>(0);
+  const [isCropDragging, setIsCropDragging] = useState(false);
+  const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const previewCropRef = useRef<HTMLDivElement>(null);
+
+  // Messages Inbox & Email/Newsletter state
+  const [inboxSubTab, setInboxSubTab] = useState<'messages' | 'compose' | 'newsletter'>('messages');
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [messageFilter, setMessageFilter] = useState<string>('all');
+  const [messageSearch, setMessageSearch] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [messageNotes, setMessageNotes] = useState('');
+
+  // Branded Email Composer State
+  const [composeTo, setComposeTo] = useState('');
+  const [composeRecipientName, setComposeRecipientName] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeTitle, setComposeTitle] = useState('Comunicazione Ufficiale');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeCtaText, setComposeCtaText] = useState('');
+  const [composeCtaUrl, setComposeCtaUrl] = useState('');
+  const [composeBadgeText, setComposeBadgeText] = useState('Tia Designs');
+  const [composeContactMessageId, setComposeContactMessageId] = useState<string | null>(null);
+  const [isSendingBrandedEmail, setIsSendingBrandedEmail] = useState(false);
+  const [emailPreviewTab, setEmailPreviewTab] = useState<'preview' | 'code'>('preview');
+
+  // Custom Email Templates State
+  const [customEmailTemplates, setCustomEmailTemplates] = useState<any[]>([]);
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateIcon, setNewTemplateIcon] = useState('✉️');
+  const [isSavingCustomTemplate, setIsSavingCustomTemplate] = useState(false);
+
+  // Newsletter & Campaigns State
+  const [newsletterTarget, setNewsletterTarget] = useState<'all_contacts' | 'all_leads' | 'all_audience' | 'custom'>('all_audience');
+  const [newsletterCustomEmails, setNewsletterCustomEmails] = useState('');
+  const [newsletterSubject, setNewsletterSubject] = useState('');
+  const [newsletterPreviewText, setNewsletterPreviewText] = useState('');
+  const [newsletterBody, setNewsletterBody] = useState('');
+  const [newsletterCtaText, setNewsletterCtaText] = useState('Scopri di più sul sito');
+  const [newsletterCtaUrl, setNewsletterCtaUrl] = useState('https://tiadesigns.it');
+  const [newsletterScheduleMode, setNewsletterScheduleMode] = useState<'now' | 'schedule'>('now');
+  const [newsletterScheduledFor, setNewsletterScheduledFor] = useState('');
+  const [newsletterCampaigns, setNewsletterCampaigns] = useState<any[]>([]);
+  const [newsletterStats, setNewsletterStats] = useState<{ totalAudience: number; contactsCount: number; leadsCount: number } | null>(null);
+  const [audienceList, setAudienceList] = useState<Array<{ email: string; name: string }>>([]);
+  const [isSendingNewsletter, setIsSendingNewsletter] = useState(false);
+  const [isExecutingCron, setIsExecutingCron] = useState(false);
 
   // Chat & Leads state
   const [chatSessions, setChatSessions] = useState<ChatSessionSummary[]>([]);
@@ -329,6 +466,7 @@ export default function DashboardPage() {
   const [quoteNotes, setQuoteNotes] = useState('Garanzia bugfix 30 giorni inclusa. Assistenza e supporto post-lancio garantiti.');
   const [quoteDiscount, setQuoteDiscount] = useState<number>(0);
   const [quoteTaxRegime, setQuoteTaxRegime] = useState<'forfettario' | 'iva22'>('forfettario');
+  const [quotePreviewTheme, setQuotePreviewTheme] = useState<'dark' | 'light'>('dark');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
     {
       id: 'item-1',
@@ -383,6 +521,8 @@ export default function DashboardPage() {
           fetchHealth(),
           fetchSavedQuotes(),
           fetchAnalytics(),
+          fetchNewsletterData(),
+          fetchEmailTemplates(),
         ]);
       } catch (err: any) {
         setError(err.message || 'Errore di connessione');
@@ -430,6 +570,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
+        setOriginalProjectsSnapshot((prev) => (prev.length === 0 ? data : prev));
       }
     } catch {}
   };
@@ -497,6 +638,18 @@ export default function DashboardPage() {
     } catch {}
   };
 
+  const fetchNewsletterData = async () => {
+    try {
+      const res = await fetch('/api/master/newsletter');
+      if (res.ok) {
+        const data = await res.json();
+        setNewsletterCampaigns(data.campaigns || []);
+        setNewsletterStats(data.stats || null);
+        setAudienceList(data.audienceList || []);
+      }
+    } catch {}
+  };
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.replace('/loginmaster');
@@ -506,6 +659,7 @@ export default function DashboardPage() {
   const resetProjectForm = () => {
     setEditingProjectId(null);
     setProjectTitle('');
+    setProjectCategory('Sviluppo');
     setProjectDescription('');
     setProjectLongDescription('');
     setProjectThumbnail('');
@@ -513,7 +667,12 @@ export default function DashboardPage() {
     setProjectGithubUrl('');
     setProjectTags('');
     setProjectFeatured(false);
-    setProjectOrder(0);
+    setProjectOrder(projects.length > 0 ? Math.max(...projects.map((p) => p.order || 0)) + 1 : 1);
+  };
+
+  const handleOpenNewProjectModal = () => {
+    resetProjectForm();
+    setIsProjectModalOpen(true);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -537,6 +696,139 @@ export default function DashboardPage() {
     }
   };
 
+  const handleFileSelectForCrop = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
+    setCropZoom(1);
+    setCropPanX(0);
+    setCropPanY(0);
+    setShowCropModal(true);
+    if (e.target) e.target.value = '';
+  };
+
+  const handleOpenCropForExistingThumb = () => {
+    if (!projectThumbnail) return;
+    setCropImageSrc(projectThumbnail);
+    setCropZoom(1);
+    setCropPanX(0);
+    setCropPanY(0);
+    setShowCropModal(true);
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!cropImageSrc) return;
+    setUploadLoading(true);
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = cropImageSrc;
+      await new Promise<void>((resolve, reject) => {
+        if (img.complete && img.naturalWidth > 0) {
+          resolve();
+        } else {
+          img.onload = () => resolve();
+          img.onerror = () => reject(new Error('Impossibile caricare l\'immagine per il ritaglio'));
+        }
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Contesto Canvas non disponibile');
+
+      ctx.fillStyle = '#050f0c';
+      ctx.fillRect(0, 0, 1920, 1080);
+
+      const previewEl = previewCropRef.current;
+      const pW = previewEl?.clientWidth || 560;
+      const scaleFactor = 1920 / pW;
+
+      const imgAspect = img.naturalWidth / img.naturalHeight;
+      const targetAspect = 16 / 9;
+
+      let baseW = 1920;
+      let baseH = 1080;
+      if (imgAspect > targetAspect) {
+        baseW = 1080 * imgAspect;
+      } else {
+        baseH = 1920 / imgAspect;
+      }
+
+      const scaledW = baseW * cropZoom;
+      const scaledH = baseH * cropZoom;
+      const drawX = (1920 - scaledW) / 2 + (cropPanX * scaleFactor);
+      const drawY = (1080 - scaledH) / 2 + (cropPanY * scaleFactor);
+
+      ctx.drawImage(img, drawX, drawY, scaledW, scaledH);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setError('Errore durante la generazione del file WebP');
+          setUploadLoading(false);
+          return;
+        }
+
+        const webpFile = new File([blob], `project-thumb-16x9-${Date.now()}.webp`, { type: 'image/webp' });
+        const formData = new FormData();
+        formData.append('file', webpFile);
+
+        const res = await fetch('/api/projects/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Errore durante il caricamento');
+
+        setProjectThumbnail(data.url);
+        setShowCropModal(false);
+        setCropImageSrc(null);
+        showTemporarySuccess('Thumbnail ritagliata in 16:9, convertita in WebP e salvata!');
+        setUploadLoading(false);
+      }, 'image/webp', 0.88);
+    } catch (err: any) {
+      setError(err.message || 'Errore nel ritaglio immagine');
+      setUploadLoading(false);
+    }
+  };
+
+  const handleDuplicateProject = async (p: Project) => {
+    try {
+      const maxOrder = projects.length > 0 ? Math.max(...projects.map((item) => item.order || 0)) : 0;
+      const payload = {
+        title: `${p.title} (Copia)`,
+        description: p.description,
+        longDescription: p.longDescription || '',
+        thumbnail: p.thumbnail,
+        projectUrl: p.projectUrl || null,
+        githubUrl: p.githubUrl || null,
+        tags: p.tags,
+        category: p.category || 'Sviluppo',
+        featured: false,
+        order: maxOrder + 1,
+      };
+
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Errore durante la duplicazione');
+      }
+
+      await fetchProjects();
+      showTemporarySuccess(`Progetto "${p.title}" duplicato con successo come #${maxOrder + 1}!`);
+    } catch (err: any) {
+      setError(err.message || 'Errore duplicazione');
+    }
+  };
+
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectTitle || !projectThumbnail) {
@@ -551,9 +843,10 @@ export default function DashboardPage() {
         description: projectDescription,
         longDescription: projectLongDescription,
         thumbnail: projectThumbnail,
-        projectUrl,
-        githubUrl: projectGithubUrl,
+        projectUrl: projectUrl || null,
+        githubUrl: projectGithubUrl || null,
         tags: projectTags,
+        category: projectCategory || 'Sviluppo',
         featured: projectFeatured,
         order: Number(projectOrder) || 0,
       };
@@ -573,6 +866,8 @@ export default function DashboardPage() {
       }
 
       resetProjectForm();
+      setIsProjectDrawerOpen(false);
+      setIsProjectModalOpen(false);
       await fetchProjects();
       showTemporarySuccess(editingProjectId ? 'Progetto aggiornato con successo!' : 'Nuovo progetto pubblicato!');
     } catch (err: any) {
@@ -585,6 +880,7 @@ export default function DashboardPage() {
   const handleEditProject = (p: Project) => {
     setEditingProjectId(p.id);
     setProjectTitle(p.title);
+    setProjectCategory(p.category || 'Sviluppo');
     setProjectDescription(p.description);
     setProjectLongDescription(p.longDescription || '');
     setProjectThumbnail(p.thumbnail);
@@ -593,6 +889,180 @@ export default function DashboardPage() {
     setProjectTags(p.tags || '');
     setProjectFeatured(p.featured);
     setProjectOrder(p.order);
+    setIsProjectModalOpen(true);
+  };
+
+  const handleToggleFeatured = async (p: Project) => {
+    const nextFeatured = !p.featured;
+    setIsReordering(true);
+    try {
+      let updatedList = [...projects];
+      if (nextFeatured) {
+        // Move to the very top (beginning of list) as requested
+        const withoutP = updatedList.filter((item) => item.id !== p.id);
+        const updatedItem = { ...p, featured: true };
+        updatedList = [updatedItem, ...withoutP];
+      } else {
+        // Unfeature the project
+        updatedList = updatedList.map((item) =>
+          item.id === p.id ? { ...item, featured: false } : item
+        );
+      }
+
+      // Recompute orders 1..N
+      const reindexed = updatedList.map((item, idx) => ({ ...item, order: idx + 1 }));
+      setProjects(reindexed);
+
+      // Save individual project featured state
+      await fetch(`/api/projects/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: nextFeatured }),
+      });
+
+      // Save reordered indices
+      await fetch('/api/projects/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: reindexed.map((item) => ({ id: item.id, order: item.order })),
+        }),
+      });
+
+      showTemporarySuccess(
+        nextFeatured
+          ? `★ "${p.title}" messo in evidenza e spostato in cima!`
+          : `☆ "${p.title}" rimosso dai featured.`
+      );
+    } catch {
+      setError('Errore durante l\'aggiornamento del flag featured');
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleExportProjectsJson = () => {
+    const jsonStr = JSON.stringify(projects, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio-projects-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showTemporarySuccess('Backup JSON esportato con successo!');
+  };
+
+  const handleAutoReorderCategories = async () => {
+    if (!confirm('Riorganizzare l\'ordine di tutti i progetti raggruppandoli per categoria (Web -> Software -> Design -> Video -> Social)?')) return;
+    const categoryPriority: Record<string, number> = {
+      Sviluppo: 1,
+      Software: 2,
+      Design: 3,
+      Video: 4,
+      Social: 5,
+      Altro: 6,
+    };
+
+    const sorted = [...projects].sort((a, b) => {
+      const pA = categoryPriority[a.category || 'Sviluppo'] || 99;
+      const pB = categoryPriority[b.category || 'Sviluppo'] || 99;
+      if (pA !== pB) return pA - pB;
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    const reindexed = sorted.map((p, idx) => ({ ...p, order: idx + 1 }));
+    setProjects(reindexed);
+
+    setIsReordering(true);
+    try {
+      const res = await fetch('/api/projects/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: reindexed.map((p) => ({ id: p.id, order: p.order })),
+        }),
+      });
+      if (res.ok) {
+        showTemporarySuccess('Progetti riordinati per categoria e salvati!');
+      }
+    } catch {
+      setError('Errore durante il riordino per categoria');
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleResetProjectsOrder = async () => {
+    if (!confirm('Ripristinare l\'ordine dei progetti a quello iniziale del sito (con i nuovi aggiunti in fondo ordinati per data)?')) return;
+    
+    // Canonical default order by title
+    const canonicalDefaultTitles = [
+      'GSA Hotels',
+      'Vergilius Nectar',
+      'Studio Ing. Moretti',
+      'PCS Mantova',
+      'Canapa Store',
+      'Pigg',
+      'Flussi di Coscienza',
+      'Introspection',
+      'Obi-Wan Kenobi',
+      'Trovare le parole',
+      'Vergilius Nectar Poster',
+      'Design Editoriale — Vol. 1',
+      'Design Editoriale — Vol. 2',
+      'Design Editoriale — Vol. 2B',
+      'Design Editoriale — Vol. 3',
+      'Collage Digitale Astratto',
+      'DestTime — Shaman King',
+      'DestTime — My Hero Academia',
+      'DestTime — Spider-Man',
+      'DestTime — Stories Social',
+    ];
+
+    const canonicalOrderMap = new Map<string, number>(
+      canonicalDefaultTitles.map((title, idx) => [title.toLowerCase().trim(), idx + 1])
+    );
+
+    const sorted = [...projects].sort((a, b) => {
+      const titleA = a.title.toLowerCase().trim();
+      const titleB = b.title.toLowerCase().trim();
+      const isCanonicalA = canonicalOrderMap.has(titleA);
+      const isCanonicalB = canonicalOrderMap.has(titleB);
+
+      if (isCanonicalA && isCanonicalB) {
+        return canonicalOrderMap.get(titleA)! - canonicalOrderMap.get(titleB)!;
+      }
+      if (isCanonicalA && !isCanonicalB) return -1;
+      if (!isCanonicalA && isCanonicalB) return 1;
+
+      // Newly added custom projects sorted by createdAt ascending (earlier created first, most recent last)
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    const reindexed = sorted.map((p, idx) => ({ ...p, order: idx + 1 }));
+    setProjects(reindexed);
+
+    setIsReordering(true);
+    try {
+      const res = await fetch('/api/projects/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: reindexed.map((p) => ({ id: p.id, order: p.order })),
+        }),
+      });
+      if (res.ok) {
+        showTemporarySuccess('Ordine iniziale dei progetti ripristinato con successo!');
+      }
+    } catch {
+      setError('Errore durante il ripristino dell\'ordine');
+    } finally {
+      setIsReordering(false);
+    }
   };
 
   const handleDeleteProject = async (id: string) => {
@@ -604,6 +1074,77 @@ export default function DashboardPage() {
       showTemporarySuccess('Progetto eliminato.');
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  // ── Drag & Drop Reordering ───────────────────────────────────────
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedProjectId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverProjectId !== id) {
+      setDragOverProjectId(id);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedProjectId(null);
+    setDragOverProjectId(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedProjectId || draggedProjectId === targetId) {
+      handleDragEnd();
+      return;
+    }
+
+    const currentList = [...projects];
+    const fromIndex = currentList.findIndex((p) => p.id === draggedProjectId);
+    const toIndex = currentList.findIndex((p) => p.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      handleDragEnd();
+      return;
+    }
+
+    const [moved] = currentList.splice(fromIndex, 1);
+    currentList.splice(toIndex, 0, moved);
+
+    // Recalculate order indices (1-indexed)
+    const reindexed = currentList.map((p, idx) => ({
+      ...p,
+      order: idx + 1,
+    }));
+
+    setProjects(reindexed);
+    handleDragEnd();
+
+    // Persist to server
+    setIsReordering(true);
+    try {
+      const res = await fetch('/api/projects/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: reindexed.map((p) => ({ id: p.id, order: p.order })),
+        }),
+      });
+      if (res.ok) {
+        showTemporarySuccess('Ordine dei progetti aggiornato e salvato con successo!');
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Errore durante il salvataggio del riordino');
+      }
+    } catch {
+      setError('Errore di connessione durante il riordino');
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -648,6 +1189,213 @@ export default function DashboardPage() {
         showTemporarySuccess('Messaggio rimosso.');
       }
     } catch {}
+  };
+
+  const handleStartReply = (msg: ContactMessage) => {
+    setComposeTo(msg.email);
+    setComposeRecipientName(msg.name);
+    setComposeSubject(`Re: Richiesta ${msg.service} - Tia Designs`);
+    setComposeTitle(`Riscontro per il tuo progetto di ${msg.service}`);
+    setComposeBody(
+      `Ciao **${msg.name}**,\n\ngrazie per avermi contattato!\n\nIn merito alla tua richiesta:\n> "${msg.message}"\n\nHo esaminato i dettagli e sono felice di confermarti la mia disponibilità. Possiamo concordare una call conoscitiva di 30 minuti per definire gli ultimi dettagli e procedere con il preventivo.\n\nResto a tua completa disposizione!\n\nA presto,\nTia`
+    );
+    setComposeCtaText('Prenota Call Conoscitiva');
+    setComposeCtaUrl('https://tiadesigns.it#contatti');
+    setComposeContactMessageId(msg.id);
+    setInboxSubTab('compose');
+    showTemporarySuccess(`Composer pronto per rispondere a ${msg.name}`);
+  };
+
+  const handleSendBrandedEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeTo || !composeSubject || !composeBody) {
+      setError('Destinatario, Oggetto e Contenuto sono obbligatori');
+      return;
+    }
+    setIsSendingBrandedEmail(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/master/emails/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: composeTo,
+          recipientName: composeRecipientName,
+          subject: composeSubject,
+          title: composeTitle,
+          bodyMarkdown: composeBody,
+          ctaText: composeCtaText,
+          ctaUrl: composeCtaUrl,
+          badgeText: composeBadgeText,
+          contactMessageId: composeContactMessageId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore invio email');
+
+      showTemporarySuccess(data.message || 'Email inviata con successo nello stile branded!');
+      setComposeContactMessageId(null);
+      await fetchMessages();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSendingBrandedEmail(false);
+    }
+  };
+
+  const handleApplyEmailTemplate = (tmpl: (typeof EMAIL_TEMPLATES)[0]) => {
+    const clientName = composeRecipientName.trim();
+    setComposeSubject(tmpl.subject(clientName));
+    setComposeTitle(tmpl.title);
+    setComposeBadgeText(tmpl.badge);
+    setComposeBody(tmpl.body(clientName));
+    setComposeCtaText(tmpl.ctaText);
+    setComposeCtaUrl(tmpl.ctaUrl);
+    showTemporarySuccess(`Template "${tmpl.name}" applicato con successo!`);
+  };
+
+  const fetchEmailTemplates = async () => {
+    try {
+      const res = await fetch('/api/master/email-templates');
+      if (res.ok) {
+        const data = await res.json();
+        setCustomEmailTemplates(data.templates || []);
+      }
+    } catch {}
+  };
+
+  const handleApplyCustomTemplate = (tmpl: any) => {
+    const clientName = composeRecipientName.trim();
+    const sub = tmpl.subject.replace(/\{\{CLIENT_NAME\}\}/g, clientName || 'Gentile Cliente');
+    const body = tmpl.body.replace(/\{\{CLIENT_NAME\}\}/g, clientName || 'Gentile Cliente');
+    setComposeSubject(sub);
+    setComposeTitle(tmpl.title);
+    setComposeBadgeText(tmpl.badge || 'Tia Designs');
+    setComposeBody(body);
+    setComposeCtaText(tmpl.ctaText || '');
+    setComposeCtaUrl(tmpl.ctaUrl || '');
+    showTemporarySuccess(`Template "${tmpl.name}" applicato!`);
+  };
+
+  const handleSaveCustomTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateName.trim()) {
+      setError('Inserisci un nome per il template');
+      return;
+    }
+    if (!composeSubject.trim() || !composeBody.trim()) {
+      setError('Compila Oggetto e Contenuto nel composer prima di salvare il template');
+      return;
+    }
+
+    setIsSavingCustomTemplate(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/master/email-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newTemplateName.trim(),
+          icon: newTemplateIcon.trim() || '✉️',
+          badge: composeBadgeText.trim() || 'Tia Designs',
+          title: composeTitle.trim() || 'Comunicazione Ufficiale',
+          subject: composeSubject.trim(),
+          body: composeBody.trim(),
+          ctaText: composeCtaText.trim() || null,
+          ctaUrl: composeCtaUrl.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore salvataggio template');
+
+      showTemporarySuccess('Template salvato nel database Turso con successo!');
+      setNewTemplateName('');
+      setIsSaveTemplateModalOpen(false);
+      await fetchEmailTemplates();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingCustomTemplate(false);
+    }
+  };
+
+  const handleDeleteCustomTemplate = async (id: string, name: string) => {
+    if (!confirm(`Eliminare definitivamente il template "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/master/email-templates?id=${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setCustomEmailTemplates((prev) => prev.filter((t) => t.id !== id));
+        showTemporarySuccess(`Template "${name}" eliminato.`);
+      }
+    } catch {}
+  };
+
+  const handleResetEmailComposer = () => {
+    setComposeSubject('');
+    setComposeTitle('Comunicazione Ufficiale');
+    setComposeBadgeText('Tia Designs');
+    setComposeBody('');
+    setComposeCtaText('');
+    setComposeCtaUrl('');
+    showTemporarySuccess('Campi composer svuotati.');
+  };
+
+  const handleSendNewsletter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterSubject || !newsletterBody) {
+      setError('Oggetto e Contenuto della newsletter sono obbligatori');
+      return;
+    }
+    setIsSendingNewsletter(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/master/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: newsletterSubject,
+          previewText: newsletterPreviewText,
+          bodyContent: newsletterBody,
+          target: newsletterTarget,
+          customEmails: newsletterCustomEmails,
+          sendNow: newsletterScheduleMode === 'now',
+          scheduledFor: newsletterScheduleMode === 'schedule' ? newsletterScheduledFor : null,
+          ctaText: newsletterCtaText,
+          ctaUrl: newsletterCtaUrl,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore creazione campagna');
+
+      showTemporarySuccess(data.message || 'Campagna elaborata con successo!');
+      setNewsletterSubject('');
+      setNewsletterPreviewText('');
+      setNewsletterBody('');
+      await fetchNewsletterData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSendingNewsletter(false);
+    }
+  };
+
+  const handleExecuteCronNow = async () => {
+    setIsExecutingCron(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/cron/newsletter', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore esecuzione cron');
+
+      showTemporarySuccess(data.message || 'Cron eseguito con successo!');
+      await fetchNewsletterData();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsExecutingCron(false);
+    }
   };
 
   // ── Passkeys Handlers ────────────────────────────────────────────
@@ -1106,7 +1854,7 @@ export default function DashboardPage() {
           
           {/* Global Alerts */}
           {error && (
-            <div className="p-4 rounded-2xl bg-red-950/70 border border-red-500/40 text-red-200 text-sm flex items-center justify-between gap-3 shadow-lg">
+            <div className="no-print p-4 rounded-2xl bg-red-950/70 border border-red-500/40 text-red-200 text-sm flex items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-2.5">
                 <TiaIcon icon={AlertCircleIcon} size={18} className="text-red-400 shrink-0" />
                 <span>{error}</span>
@@ -1116,7 +1864,7 @@ export default function DashboardPage() {
           )}
 
           {successMessage && (
-            <div className="p-4 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-teal-200 text-sm flex items-center gap-2.5 shadow-lg">
+            <div className="no-print p-4 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-teal-200 text-sm flex items-center gap-2.5 shadow-lg">
               <TiaIcon icon={CheckmarkCircle01Icon} size={18} className="text-teal-400 shrink-0" />
               <span>{successMessage}</span>
             </div>
@@ -1124,368 +1872,1612 @@ export default function DashboardPage() {
 
           {/* ── TAB 1: PROGETTI ── */}
           {activeTab === 'projects' && (
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-              {/* Form Column */}
-              <div className="xl:col-span-5">
-                <BorderGlow continuousHover borderRadius={24} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0}>
-                  <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-base font-bold text-white">
-                        {editingProjectId ? 'Modifica Progetto' : 'Nuovo Progetto'}
-                      </h2>
-                      {editingProjectId && (
-                        <button onClick={resetProjectForm} className="text-xs text-neutral-400 hover:text-white underline cursor-pointer">
-                          Annulla
-                        </button>
-                      )}
+            <div className="flex flex-col gap-6">
+              
+              {/* Top Section Header & Primary Actions */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 sm:p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                      <TiaIcon icon={CodeFolderIcon} size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                          Gestione Portfolio Progetti
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                          {projects.length} Progetti
+                        </span>
+                        {isReordering && (
+                          <span className="flex items-center gap-1.5 text-xs text-teal-300 font-mono animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-teal-400" />
+                            Salvataggio ordine live...
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-neutral-400 mt-0.5">
+                        Griglia su 5 colonne fisse. Trascina la trama tattile ⠿ per riorganizzare l'ordine sul sito live o usa ★ per mettere in evidenza un progetto e portarlo in cima.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2 Top Right Buttons: 1. + Nuovo Progetto, 2. ↺ Ripristina Ordine Iniziale */}
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleResetProjectsOrder}
+                    disabled={isReordering}
+                    className="px-4 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-amber-500/20 border border-white/[0.08] hover:border-amber-500/40 text-neutral-200 hover:text-amber-300 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                    title="Ripristina l'ordine iniziale del sito e mette i nuovi progetti in fondo in ordine cronologico"
+                  >
+                    <span className="text-sm">↺</span>
+                    <span>Ripristina Ordine Iniziale</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenNewProjectModal}
+                    className="px-5 py-2.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-teal-400/25"
+                  >
+                    <TiaIcon icon={PlusSignIcon} size={15} />
+                    <span>+ Nuovo Progetto</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search Toolbar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1">
+                {/* Category Filter Pills */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { id: 'all', label: 'Tutti', count: projects.length },
+                    { id: 'featured', label: '★ In Evidenza', count: projects.filter((p) => p.featured).length },
+                    { id: 'Sviluppo', label: 'Web', count: projects.filter((p) => (p.category || 'Sviluppo') === 'Sviluppo').length },
+                    { id: 'Software', label: 'App', count: projects.filter((p) => p.category === 'Software' || p.tags.toLowerCase().includes('software') || p.tags.toLowerCase().includes('app')).length },
+                    { id: 'Design', label: 'Design', count: projects.filter((p) => p.category === 'Design' || p.tags.toLowerCase().includes('design')).length },
+                    { id: 'Video', label: 'Video', count: projects.filter((p) => p.category === 'Video' || p.tags.toLowerCase().includes('video') || p.tags.toLowerCase().includes('montaggio')).length },
+                    { id: 'Social', label: 'Social', count: projects.filter((p) => p.category === 'Social' || p.tags.toLowerCase().includes('social')).length },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategoryFilter(cat.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        selectedCategoryFilter === cat.id
+                          ? 'bg-teal-400 text-black shadow-md shadow-teal-400/20'
+                          : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08]'
+                      }`}
+                    >
+                      <span>{cat.label}</span>
+                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${selectedCategoryFilter === cat.id ? 'bg-black/20 text-black font-bold' : 'bg-black/40 text-neutral-400'}`}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-64 shrink-0">
+                  <TiaIcon icon={Search01Icon} size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <input
+                    type="text"
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    placeholder="Cerca progetti o tag..."
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
+                  />
+                  {projectSearch && (
+                    <button onClick={() => setProjectSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white cursor-pointer">
+                      <TiaIcon icon={Cancel01Icon} size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 5-Column Grid with N Rows & Drag and Drop Reordering */}
+              {(() => {
+                const filtered = projects.filter((p) => {
+                  const cat = (p.category || 'Sviluppo').toLowerCase();
+                  const matchesCategory =
+                    selectedCategoryFilter === 'all' ||
+                    (selectedCategoryFilter === 'featured'
+                      ? p.featured
+                      : cat === selectedCategoryFilter.toLowerCase() ||
+                        p.tags.toLowerCase().includes(selectedCategoryFilter.toLowerCase()));
+
+                  const matchesSearch =
+                    !projectSearch ||
+                    p.title.toLowerCase().includes(projectSearch.toLowerCase()) ||
+                    p.description.toLowerCase().includes(projectSearch.toLowerCase()) ||
+                    p.tags.toLowerCase().includes(projectSearch.toLowerCase());
+
+                  return matchesCategory && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-12 rounded-3xl bg-black/40 border border-white/[0.06] text-center text-neutral-400">
+                      Nessun progetto trovato con i filtri selezionati.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-4">
+                    {filtered.map((p) => {
+                      const isDragged = draggedProjectId === p.id;
+                      const isDragOver = dragOverProjectId === p.id;
+
+                      const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
+                        Sviluppo: { bg: 'bg-teal-500/15', text: 'text-teal-300', border: 'border-teal-500/30' },
+                        Software: { bg: 'bg-cyan-500/15', text: 'text-cyan-300', border: 'border-cyan-500/30' },
+                        Design: { bg: 'bg-purple-500/15', text: 'text-purple-300', border: 'border-purple-500/30' },
+                        Video: { bg: 'bg-amber-500/15', text: 'text-amber-300', border: 'border-amber-500/30' },
+                        Social: { bg: 'bg-blue-500/15', text: 'text-blue-300', border: 'border-blue-500/30' },
+                        Altro: { bg: 'bg-neutral-500/15', text: 'text-neutral-300', border: 'border-neutral-500/30' },
+                      };
+
+                      const catStyle = categoryColors[p.category || 'Sviluppo'] || categoryColors.Sviluppo;
+
+                      return (
+                        <div
+                          key={p.id}
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(e, p.id)}
+                          onDragOver={(e) => handleDragOver(e, p.id)}
+                          onDrop={(e) => handleDrop(e, p.id)}
+                          onDragEnd={handleDragEnd}
+                          className={`group bg-[#081410]/95 backdrop-blur-2xl border rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 select-none ${
+                            isDragged
+                              ? 'opacity-30 scale-95 border-teal-500 shadow-2xl'
+                              : isDragOver
+                              ? 'border-teal-400 bg-[#0d2a21] shadow-[0_0_25px_rgba(45,212,191,0.3)] scale-[1.02]'
+                              : 'border-white/[0.08] hover:border-teal-500/40 hover:shadow-xl'
+                          }`}
+                        >
+                          <div>
+                            {/* ⠿ Trama Tattile / Textured Grip Handle Bar */}
+                            <div
+                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-xl bg-black/60 hover:bg-teal-950/40 border border-white/[0.06] hover:border-teal-400/40 cursor-grab active:cursor-grabbing transition-all select-none shadow-sm mb-2 group/handle"
+                              title="Afferra la trama per trascinare e riordinare questo progetto"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                {/* Textured 3x3 Dot Grid Pattern */}
+                                <div className="flex items-center justify-center p-1 rounded-md bg-teal-500/15 border border-teal-500/25 text-teal-300 group-hover/handle:bg-teal-400 group-hover/handle:text-black transition-colors shadow-inner">
+                                  <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                                    <circle cx="2" cy="2" r="1.2" />
+                                    <circle cx="6" cy="2" r="1.2" />
+                                    <circle cx="10" cy="2" r="1.2" />
+                                    <circle cx="2" cy="6" r="1.2" />
+                                    <circle cx="6" cy="6" r="1.2" />
+                                    <circle cx="10" cy="6" r="1.2" />
+                                    <circle cx="2" cy="10" r="1.2" />
+                                    <circle cx="6" cy="10" r="1.2" />
+                                    <circle cx="10" cy="10" r="1.2" />
+                                  </svg>
+                                </div>
+                                <span className="text-[10px] font-mono font-bold text-teal-300">
+                                  #{p.order}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1">
+                                {/* Featured Star Toggle Button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFeatured(p);
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-0.5 cursor-pointer transition-all ${
+                                    p.featured
+                                      ? 'bg-amber-400 text-black shadow-sm shadow-amber-400/30'
+                                      : 'bg-white/[0.04] text-neutral-400 hover:text-amber-300 hover:bg-white/[0.08]'
+                                  }`}
+                                  title={p.featured ? 'In evidenza (clicca per rimuovere)' : 'Clicca per mettere in evidenza e portare in cima'}
+                                >
+                                  <span>★</span>
+                                  <span className="text-[9px] hidden 2xl:inline">{p.featured ? 'Featured' : 'Normale'}</span>
+                                </button>
+
+                                <span className={`px-1.5 py-0.2 rounded-md text-[9px] font-bold uppercase tracking-wider ${catStyle.bg} ${catStyle.text} border ${catStyle.border}`}>
+                                  {p.category || 'Sviluppo'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Thumbnail Container (16:9) */}
+                            <div className="h-28 w-full rounded-xl overflow-hidden mb-2 bg-black/60 relative border border-white/[0.06] flex items-center justify-center">
+                              {p.thumbnail ? (
+                                <img
+                                  src={p.thumbnail}
+                                  alt={p.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.opacity = '0.3';
+                                  }}
+                                />
+                              ) : (
+                                <div className="text-neutral-600 text-[10px] font-mono">No preview</div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+                              <div className="absolute bottom-1.5 left-2 right-2 z-10">
+                                <h4 className="font-bold text-white text-xs truncate drop-shadow-md">
+                                  {p.title}
+                                </h4>
+                              </div>
+                            </div>
+
+                            {/* Description Snippet */}
+                            <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed px-0.5 mb-2">
+                              {p.description}
+                            </p>
+
+                            {/* Tags Chips */}
+                            {p.tags && (
+                              <div className="flex flex-wrap gap-1 px-0.5 mb-2">
+                                {p.tags.split(',').slice(0, 2).map((tag, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.2 rounded-md bg-white/[0.04] border border-white/[0.04] text-[9px] text-teal-300/90 font-mono truncate max-w-[100px]">
+                                    #{tag.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Footer Actions */}
+                          <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] px-0.5">
+                            <div className="flex items-center gap-1 text-xs text-neutral-400">
+                              {p.projectUrl && (
+                                <a
+                                  href={p.projectUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 transition-colors"
+                                  title="Apri link live"
+                                >
+                                  <TiaIcon icon={ExternalLinkIcon} size={12} />
+                                </a>
+                              )}
+                              {p.githubUrl && (
+                                <a
+                                  href={p.githubUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 transition-colors"
+                                  title="Apri GitHub"
+                                >
+                                  <TiaIcon icon={CodeFolderIcon} size={12} />
+                                </a>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {/* Duplicate Project Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateProject(p)}
+                                className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                title="Duplica questo progetto"
+                              >
+                                <span>📋</span>
+                                <span className="hidden 2xl:inline">Duplica</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleEditProject(p)}
+                                className="px-2 py-1 rounded-lg bg-white/[0.06] hover:bg-teal-500/20 hover:text-teal-300 text-[11px] text-white font-semibold transition-colors cursor-pointer"
+                              >
+                                Modifica
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProject(p.id)}
+                                className="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-[11px] text-red-300 font-semibold transition-colors cursor-pointer"
+                              >
+                                Elimina
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* ── PROJECT CREATION / EDIT MODAL POPUP ── */}
+              {isProjectModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+                  <div className="bg-[#081410] border border-white/[0.12] shadow-2xl rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col gap-5">
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                          <TiaIcon icon={editingProjectId ? FilePenIcon : PlusSignIcon} size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-lg">
+                            {editingProjectId ? 'Modifica Progetto' : 'Nuovo Progetto Portfolio'}
+                          </h3>
+                          <p className="text-xs text-neutral-400">
+                            {editingProjectId ? 'Aggiorna i dettagli e i media del progetto' : 'Compila i dati per pubblicare un nuovo lavoro sul portfolio live'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProjectModalOpen(false);
+                          resetProjectForm();
+                        }}
+                        className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white cursor-pointer transition-colors"
+                      >
+                        <TiaIcon icon={Cancel01Icon} size={18} />
+                      </button>
                     </div>
 
+                    {/* Form */}
                     <form onSubmit={handleProjectSubmit} className="flex flex-col gap-4">
-                      <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Titolo *</label>
-                        <input
-                          type="text"
-                          required
-                          value={projectTitle}
-                          onChange={(e) => setProjectTitle(e.target.value)}
-                          placeholder="Nome del progetto"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
-                        />
+                      {/* Title & Category */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                            Titolo Progetto *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={projectTitle}
+                            onChange={(e) => setProjectTitle(e.target.value)}
+                            placeholder="Es. GSA Hotels & Resorts"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                            Categoria *
+                          </label>
+                          <select
+                            value={projectCategory}
+                            onChange={(e) => setProjectCategory(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-[#081410] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 cursor-pointer"
+                          >
+                            <option value="Sviluppo">Sviluppo Web</option>
+                            <option value="Software">Software & App</option>
+                            <option value="Design">Design & Branding</option>
+                            <option value="Video">Video Making</option>
+                            <option value="Social">Social Media & Carousel</option>
+                            <option value="Altro">Altro</option>
+                          </select>
+                        </div>
                       </div>
 
+                      {/* Short Description */}
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Descrizione Breve *</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                          Descrizione Breve * (Mostrata nella card)
+                        </label>
                         <textarea
                           required
                           rows={2}
                           value={projectDescription}
                           onChange={(e) => setProjectDescription(e.target.value)}
-                          placeholder="Sintesi del lavoro svolto..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none"
+                          placeholder="Sintesi del progetto in 1-2 frasi incisive..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none leading-relaxed"
                         />
                       </div>
 
+                      {/* Long Description */}
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Descrizione Dettagliata</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                          Descrizione Approfondita (Per modale & case study)
+                        </label>
                         <textarea
                           rows={3}
                           value={projectLongDescription}
                           onChange={(e) => setProjectLongDescription(e.target.value)}
-                          placeholder="Dettagli approfonditi per il modale..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none"
+                          placeholder="Dettagli estesi, sfide tecniche, stack impiegato e risultati ottenuti..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 resize-none leading-relaxed"
                         />
                       </div>
 
+                      {/* Thumbnail & Upload with Auto-WebP & 16:9 Crop */}
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Copertina / Thumbnail * (WebP Automatico)</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            required
-                            value={projectThumbnail}
-                            onChange={(e) => setProjectThumbnail(e.target.value)}
-                            placeholder="/uploads/image.webp o URL"
-                            className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadLoading}
-                            className="px-3.5 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold cursor-pointer shrink-0"
-                          >
-                            {uploadLoading ? '...' : 'Upload'}
-                          </button>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                            Copertina / Thumbnail * (Conversione WebP Automatica)
+                          </label>
+                          <span className="text-[10px] text-teal-300 font-mono">Formato consigliato 16:9</span>
                         </div>
-                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <div className="flex-1 flex gap-2">
+                            <input
+                              type="text"
+                              required
+                              value={projectThumbnail}
+                              onChange={(e) => setProjectThumbnail(e.target.value)}
+                              placeholder="/uploads/nome-progetto.webp o URL"
+                              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploadLoading}
+                              className="px-4 py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold cursor-pointer shrink-0 flex items-center gap-1.5 transition-all"
+                            >
+                              <TiaIcon icon={Upload01Icon} size={14} />
+                              <span>{uploadLoading ? 'Conversione...' : 'Carica & Ritaglia'}</span>
+                            </button>
+                          </div>
+
+                          {projectThumbnail && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <div className="w-16 h-10 rounded-xl overflow-hidden bg-black/60 border border-white/10 shrink-0 relative group/thumb">
+                                <img
+                                  src={projectThumbnail}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.opacity = '0.3';
+                                  }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleOpenCropForExistingThumb}
+                                className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.08] hover:border-teal-500/30 text-neutral-300 hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                                title="Regola ritaglio e proporzione 16:9"
+                              >
+                                <span>✂️</span>
+                                <span>Regola 16:9</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <input type="file" ref={fileInputRef} onChange={handleFileSelectForCrop} accept="image/*" className="hidden" />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* URLs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Live URL</label>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                            Live URL (Opzionale)
+                          </label>
                           <input
                             type="url"
                             value={projectUrl}
                             onChange={(e) => setProjectUrl(e.target.value)}
-                            placeholder="https://..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                            placeholder="https://clientedomain.com"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
                           />
                         </div>
+
                         <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">GitHub URL</label>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                            GitHub Repository (Opzionale)
+                          </label>
                           <input
                             type="url"
                             value={projectGithubUrl}
                             onChange={(e) => setProjectGithubUrl(e.target.value)}
-                            placeholder="https://github.com/..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                            placeholder="https://github.com/account/repo"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                          Tags & Tecnologie (Separati da virgola)
+                        </label>
+                        <input
+                          type="text"
+                          value={projectTags}
+                          onChange={(e) => setProjectTags(e.target.value)}
+                          placeholder="Next.js, TypeScript, Tailwind, UI/UX, 3D WebGL"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                        />
+                      </div>
+
+                      {/* Featured & Order */}
+                      <div className="flex items-center justify-between pt-3 border-t border-white/[0.08]">
+                        <label className="flex items-center gap-2.5 cursor-pointer text-xs text-neutral-300 font-medium">
+                          <input
+                            type="checkbox"
+                            checked={projectFeatured}
+                            onChange={(e) => setProjectFeatured(e.target.checked)}
+                            className="accent-teal-400 w-4 h-4 rounded cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1.5">
+                            <TiaIcon icon={StarIcon} size={13} className={projectFeatured ? 'text-teal-400' : 'text-neutral-500'} />
+                            <span>In Evidenza (Featured Showcase)</span>
+                          </span>
+                        </label>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-400">Ordine Indice:</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={projectOrder}
+                            onChange={(e) => setProjectOrder(Number(e.target.value))}
+                            className="w-16 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs text-center font-mono focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProjectModalOpen(false);
+                            resetProjectForm();
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+                        >
+                          Annulla
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={submitLoading}
+                          className="px-6 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <TiaIcon icon={editingProjectId ? CheckmarkCircle01Icon : PlusSignIcon} size={15} />
+                          <span>{submitLoading ? 'Salvataggio...' : editingProjectId ? 'Salva Modifiche' : 'Pubblica Progetto'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* ── 16:9 INTERACTIVE CROP & PREVIEW MODAL ── */}
+              {showCropModal && cropImageSrc && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-lg animate-in fade-in duration-200">
+                  <div className="bg-[#081410] border border-teal-500/30 shadow-[0_0_50px_rgba(45,212,191,0.2)] rounded-3xl p-6 max-w-2xl w-full flex flex-col gap-5">
+                    {/* Crop Modal Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
+                          ✂️
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-base">Ritaglio & Inquadratura 16:9 Interattiva</h3>
+                          <p className="text-xs text-neutral-400">Trascina per riposizionare l&apos;immagine e usa lo zoom per centrare la copertina</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCropModal(false);
+                          setCropImageSrc(null);
+                        }}
+                        className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white cursor-pointer transition-colors"
+                      >
+                        <TiaIcon icon={Cancel01Icon} size={18} />
+                      </button>
+                    </div>
+
+                    {/* 16:9 Interactive Viewport */}
+                    <div className="flex flex-col items-center gap-3">
+                      <div
+                        ref={previewCropRef}
+                        onMouseDown={(e) => {
+                          setIsCropDragging(true);
+                          setCropDragStart({ x: e.clientX - cropPanX, y: e.clientY - cropPanY });
+                        }}
+                        onMouseMove={(e) => {
+                          if (!isCropDragging) return;
+                          setCropPanX(e.clientX - cropDragStart.x);
+                          setCropPanY(e.clientY - cropDragStart.y);
+                        }}
+                        onMouseUp={() => setIsCropDragging(false)}
+                        onMouseLeave={() => setIsCropDragging(false)}
+                        onTouchStart={(e) => {
+                          if (e.touches.length === 1) {
+                            setIsCropDragging(true);
+                            setCropDragStart({ x: e.touches[0].clientX - cropPanX, y: e.touches[0].clientY - cropPanY });
+                          }
+                        }}
+                        onTouchMove={(e) => {
+                          if (!isCropDragging || e.touches.length !== 1) return;
+                          setCropPanX(e.touches[0].clientX - cropDragStart.x);
+                          setCropPanY(e.touches[0].clientY - cropDragStart.y);
+                        }}
+                        onTouchEnd={() => setIsCropDragging(false)}
+                        className="aspect-video w-full max-w-lg rounded-2xl overflow-hidden relative border-2 border-teal-400/80 bg-black shadow-2xl cursor-grab active:cursor-grabbing select-none group/crop"
+                      >
+                        {/* Interactive Image with Transform */}
+                        <img
+                          src={cropImageSrc}
+                          alt="Crop Source"
+                          draggable={false}
+                          style={{
+                            transform: `translate(${cropPanX}px, ${cropPanY}px) scale(${cropZoom})`,
+                            transformOrigin: 'center center',
+                            transition: isCropDragging ? 'none' : 'transform 0.15s ease-out',
+                          }}
+                          className="w-full h-full object-cover pointer-events-none select-none max-w-none"
+                        />
+
+                        {/* Rule of Thirds Guides (3x3 grid) */}
+                        <div className="absolute inset-0 pointer-events-none grid grid-cols-3 grid-rows-3 border border-teal-400/20">
+                          <div className="border-r border-b border-white/10" />
+                          <div className="border-r border-b border-white/10" />
+                          <div className="border-b border-white/10" />
+                          <div className="border-r border-b border-white/10" />
+                          <div className="border-r border-b border-white/10" />
+                          <div className="border-b border-white/10" />
+                          <div className="border-r border-white/10" />
+                          <div className="border-r border-white/10" />
+                          <div />
+                        </div>
+
+                        {/* 16:9 Badge */}
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-teal-300 border border-teal-500/30 pointer-events-none">
+                          16:9 ULTRA-HD
+                        </div>
+
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono text-neutral-300 border border-white/10 pointer-events-none">
+                          Trascina per inquadrare
+                        </div>
+                      </div>
+
+                      {/* Controls Bar: Zoom Slider + Quick Presets */}
+                      <div className="w-full max-w-lg bg-black/40 border border-white/[0.06] rounded-2xl p-3 flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between text-xs text-neutral-300">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <span>🔍</span>
+                            <span>Livello Zoom:</span>
+                          </span>
+                          <span className="font-mono font-bold text-teal-300">
+                            {cropZoom.toFixed(2)}x
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-neutral-500 font-mono">1.0x</span>
+                          <input
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.05"
+                            value={cropZoom}
+                            onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                            className="flex-1 accent-teal-400 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+                          />
+                          <span className="text-[10px] text-neutral-500 font-mono">3.0x</span>
+                        </div>
+
+                        {/* Position presets */}
+                        <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-neutral-400">Posizionamento rapido:</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCropPanX(0);
+                                setCropPanY(0);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-neutral-300 transition-colors cursor-pointer"
+                            >
+                              Centra
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCropPanX(0);
+                                setCropPanY(50);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-neutral-300 transition-colors cursor-pointer"
+                            >
+                              In Alto
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCropPanX(0);
+                                setCropPanY(-50);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-neutral-300 transition-colors cursor-pointer"
+                            >
+                              In Basso
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCropZoom(1);
+                                setCropPanX(0);
+                                setCropPanY(0);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-amber-300 transition-colors cursor-pointer"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-white/[0.08]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCropModal(false);
+                          setCropImageSrc(null);
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+                      >
+                        Annulla
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleConfirmCrop}
+                        disabled={uploadLoading}
+                        className="px-6 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <TiaIcon icon={CheckmarkCircle01Icon} size={15} />
+                        <span>{uploadLoading ? 'Conversione WebP...' : 'Conferma Ritaglio & Salva WebP'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* ── TAB 2: INBOX MESSAGGI & EMAIL / NEWSLETTER CENTER ── */}
+          {activeTab === 'inbox' && (
+            <div className="flex flex-col gap-6">
+              {/* Inbox Navigation Sub-Tabs */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInboxSubTab('messages')}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      inboxSubTab === 'messages'
+                        ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <TiaIcon icon={Mail01Icon} size={16} />
+                    <span>Posta & Richieste</span>
+                    {messages.filter((m) => m.status === 'new').length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300">
+                        {messages.filter((m) => m.status === 'new').length} nuovi
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setInboxSubTab('compose')}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      inboxSubTab === 'compose'
+                        ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <TiaIcon icon={SentIcon} size={16} />
+                    <span>Rispondi / Componi Branded</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInboxSubTab('newsletter');
+                      fetchNewsletterData();
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      inboxSubTab === 'newsletter'
+                        ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <TiaIcon icon={SparklesIcon} size={16} />
+                    <span>Newsletter & Campagne</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-500/20 text-teal-300">
+                      {audienceList.length || messages.length} destinatari
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono pr-2">
+                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                  <span>Sender: info@tiadesigns.it</span>
+                </div>
+              </div>
+
+              {/* ── SUB-TAB 1: MESSAGGI RICEVUTI & LEAD ── */}
+              {inboxSubTab === 'messages' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Messages List Column */}
+                  <div className="lg:col-span-7 flex flex-col gap-4">
+                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-1.5 overflow-x-auto">
+                          {['all', 'new', 'in_progress', 'contacted', 'closed'].map((st) => (
+                            <button
+                              key={st}
+                              onClick={() => setMessageFilter(st)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize cursor-pointer transition-colors ${
+                                messageFilter === st
+                                  ? 'bg-teal-400 text-black shadow-md shadow-teal-400/20'
+                                  : 'bg-white/[0.04] text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              {st === 'all' ? 'Tutti' : st === 'new' ? 'Nuovi' : st === 'in_progress' ? 'In corso' : st === 'contacted' ? 'Risposti' : 'Chiusi'}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="relative w-full sm:w-48">
+                          <TiaIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+                          <input
+                            type="text"
+                            value={messageSearch}
+                            onChange={(e) => setMessageSearch(e.target.value)}
+                            placeholder="Filtra mittente o testo..."
+                            className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const filtered = messages.filter((m) => {
+                        const matchesFilter = messageFilter === 'all' || m.status === messageFilter;
+                        const matchesSearch =
+                          !messageSearch ||
+                          m.name.toLowerCase().includes(messageSearch.toLowerCase()) ||
+                          m.email.toLowerCase().includes(messageSearch.toLowerCase()) ||
+                          m.message.toLowerCase().includes(messageSearch.toLowerCase()) ||
+                          m.service.toLowerCase().includes(messageSearch.toLowerCase());
+                        return matchesFilter && matchesSearch;
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
+                            Nessun messaggio trovato in questa visualizzazione.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="flex flex-col gap-3">
+                          {filtered.map((m) => (
+                            <div
+                              key={m.id}
+                              onClick={() => {
+                                setSelectedMessage(m);
+                                setMessageNotes(m.notes || '');
+                              }}
+                              className={`p-4 rounded-3xl border transition-all cursor-pointer ${
+                                selectedMessage?.id === m.id
+                                  ? 'bg-[#0e2720] border-teal-400/60 shadow-lg shadow-teal-400/10'
+                                  : 'bg-[#081410]/85 border-white/[0.08] hover:border-teal-500/30'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div>
+                                  <span className="font-bold text-white text-sm">{m.name}</span>
+                                  <span className="text-neutral-400 text-xs ml-2 font-mono">({m.email})</span>
+                                </div>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold ${
+                                    m.status === 'new'
+                                      ? 'bg-teal-400/20 text-teal-300 border border-teal-400/40 animate-pulse'
+                                      : m.status === 'in_progress'
+                                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                                      : m.status === 'contacted'
+                                      ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
+                                      : 'bg-neutral-800 text-neutral-400'
+                                  }`}
+                                >
+                                  {m.status}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-neutral-300 line-clamp-2 mb-3 bg-black/40 p-2.5 rounded-xl border border-white/[0.04]">
+                                {m.message}
+                              </p>
+
+                              <div className="flex items-center justify-between text-[11px] text-neutral-500">
+                                <span>
+                                  Servizio: <strong className="text-teal-400 font-medium">{m.service}</strong>
+                                </span>
+                                <span>{new Date(m.createdAt).toLocaleString('it-IT')}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Message Detail Drawer Column */}
+                  <div className="lg:col-span-5">
+                    {selectedMessage ? (
+                      <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sticky top-6 flex flex-col gap-4 shadow-xl">
+                        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                          <div>
+                            <h3 className="font-bold text-white text-base">Dettaglio Messaggio</h3>
+                            <span className="text-[11px] text-neutral-400 font-mono">ID: {selectedMessage.id.slice(0, 8)}</span>
+                          </div>
+                          <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="text-xs text-red-400 hover:text-red-300 cursor-pointer">
+                            Elimina
+                          </button>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider">Mittente</p>
+                          <p className="text-sm font-bold text-white">{selectedMessage.name}</p>
+                          <a href={`mailto:${selectedMessage.email}`} className="text-xs text-teal-400 hover:underline font-mono">
+                            {selectedMessage.email}
+                          </a>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider">Servizio richiesto</p>
+                          <p className="text-xs font-semibold text-teal-300">{selectedMessage.service}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1">Messaggio Completo</p>
+                          <div className="p-3.5 rounded-2xl bg-black/60 border border-white/[0.06] text-xs text-neutral-200 whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto">
+                            {selectedMessage.message}
+                          </div>
+                        </div>
+
+                        {/* Status Selector */}
+                        <div>
+                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1.5">Stato Richiesta</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              { id: 'new', label: 'Nuovo' },
+                              { id: 'in_progress', label: 'In corso' },
+                              { id: 'contacted', label: 'Risposto' },
+                              { id: 'closed', label: 'Chiuso' },
+                            ].map((st) => (
+                              <button
+                                key={st.id}
+                                onClick={() => handleUpdateMessageStatus(selectedMessage.id, st.id)}
+                                className={`py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
+                                  selectedMessage.status === st.id ? 'bg-teal-400 text-black font-bold' : 'bg-white/[0.05] text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {st.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Internal Notes */}
+                        <div>
+                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1.5">Note Interne</p>
+                          <textarea
+                            rows={3}
+                            value={messageNotes}
+                            onChange={(e) => setMessageNotes(e.target.value)}
+                            placeholder="Appunti o recap per questo contatto..."
+                            className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none focus:border-teal-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveMessageNotes(selectedMessage.id)}
+                            className="w-full mt-2 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs text-white font-semibold transition-colors cursor-pointer"
+                          >
+                            Salva Note
+                          </button>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.06]">
+                          <button
+                            type="button"
+                            onClick={() => handleStartReply(selectedMessage)}
+                            className="w-full py-3 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-teal-400/20 transition-all cursor-pointer"
+                          >
+                            <TiaIcon icon={SentIcon} size={15} />
+                            <span>Rispondi con Stile Branded</span>
+                          </button>
+
+                          <a
+                            href={`mailto:${selectedMessage.email}?subject=Re:%20Richiesta%20${encodeURIComponent(selectedMessage.service)}%20-%20Tia%20Designs`}
+                            className="w-full py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white font-medium text-xs text-center transition-all block"
+                          >
+                            Apri nel tuo Client Email (Mailto)
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
+                        Seleziona un messaggio dalla lista per visualizzare i dettagli e rispondere.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── SUB-TAB 2: COMPONI / RISPONDI EMAIL CON STILE BRANDED ── */}
+              {inboxSubTab === 'compose' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Column: Compose Form */}
+                  <div className="lg:col-span-6 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col gap-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                      <div>
+                        <h3 className="font-bold text-white text-base">Componi Email Ufficiale</h3>
+                        <p className="text-xs text-neutral-400">Invia email formattate con lo stile scuro e teal di Tia Designs</p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                        HTML Branded
+                      </span>
+                    </div>
+
+                    <form onSubmit={handleSendBrandedEmail} className="flex flex-col gap-4">
+                      {/* ⚡ Quick Email Templates Selector */}
+                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <TiaIcon icon={SparklesIcon} size={13} className="text-teal-400" />
+                            <span>Template Rapidi Predefiniti & Personalizzati</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewTemplateName('');
+                                setIsSaveTemplateModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                              title="Salva il contenuto corrente come nuovo template riutilizzabile"
+                            >
+                              <TiaIcon icon={PlusSignIcon} size={12} />
+                              <span>Salva come Nuovo Template</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResetEmailComposer}
+                              className="px-2 py-1 rounded-xl bg-white/[0.02] hover:bg-red-500/20 border border-white/[0.04] hover:border-red-500/30 text-neutral-400 hover:text-red-300 text-[11px] font-medium transition-all cursor-pointer"
+                              title="Svuota campi composer"
+                            >
+                              Svuota
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Presets & Custom list */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {/* Standard Built-in Templates */}
+                          {EMAIL_TEMPLATES.map((tmpl) => (
+                            <button
+                              key={tmpl.id}
+                              type="button"
+                              onClick={() => handleApplyEmailTemplate(tmpl)}
+                              className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.06] hover:border-teal-500/40 text-neutral-300 hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            >
+                              <span>{tmpl.icon}</span>
+                              <span>{tmpl.name}</span>
+                            </button>
+                          ))}
+
+                          {/* Custom Saved Templates from Database */}
+                          {customEmailTemplates.map((customTmpl) => (
+                            <div
+                              key={customTmpl.id}
+                              className="flex items-center rounded-xl bg-teal-950/40 border border-teal-500/30 hover:border-teal-400/60 transition-all overflow-hidden"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleApplyCustomTemplate(customTmpl)}
+                                className="px-2.5 py-1.5 text-xs font-semibold text-teal-200 hover:text-teal-100 flex items-center gap-1.5 cursor-pointer"
+                                title={`Applica template: ${customTmpl.name}`}
+                              >
+                                <span>{customTmpl.icon || '✉️'}</span>
+                                <span>{customTmpl.name}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCustomTemplate(customTmpl.id, customTmpl.name)}
+                                className="px-1.5 py-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-xs cursor-pointer border-l border-teal-500/20"
+                                title="Elimina questo template dal database"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Modal for saving custom template */}
+                      {isSaveTemplateModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+                          <div className="w-full max-w-md bg-[#081410] border border-teal-500/30 rounded-3xl p-6 shadow-2xl relative">
+                            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">💾</span>
+                                <div>
+                                  <h4 className="text-base font-bold text-white">Salva come Nuovo Template</h4>
+                                  <p className="text-[11px] text-neutral-400">Salva il layout corrente nel database Turso</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setIsSaveTemplateModalOpen(false)}
+                                className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white"
+                              >
+                                <TiaIcon icon={Cancel01Icon} size={16} />
+                              </button>
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                              <div>
+                                <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                                  Nome Template *
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  value={newTemplateName}
+                                  onChange={(e) => setNewTemplateName(e.target.value)}
+                                  placeholder="Es. Preventivo E-Commerce, Sollecito, ..."
+                                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                                  Icona Emoji
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  {['✉️', '💼', '🚀', '⚡', '🔔', '🎯', '💡', '💰', '💎', '🌟'].map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() => setNewTemplateIcon(emoji)}
+                                      className={`w-9 h-9 rounded-xl text-base flex items-center justify-center transition-all cursor-pointer ${
+                                        newTemplateIcon === emoji
+                                          ? 'bg-teal-500/20 border border-teal-400 scale-110'
+                                          : 'bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]'
+                                      }`}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="p-3 rounded-xl bg-black/40 border border-white/[0.04] text-[11px] text-neutral-400 flex flex-col gap-1">
+                                <div><strong className="text-white">Oggetto:</strong> {composeSubject || '(Nessun oggetto specificato)'}</div>
+                                <div><strong className="text-white">Titolo:</strong> {composeTitle || 'Comunicazione Ufficiale'}</div>
+                                <div className="truncate"><strong className="text-white">Body:</strong> {composeBody ? composeBody.slice(0, 60) + '...' : '(Nessun testo)'}</div>
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setIsSaveTemplateModalOpen(false)}
+                                  className="flex-1 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-300 font-semibold text-xs transition-colors cursor-pointer"
+                                >
+                                  Annulla
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleSaveCustomTemplate}
+                                  disabled={isSavingCustomTemplate || !newTemplateName.trim()}
+                                  className="flex-1 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                  {isSavingCustomTemplate ? 'Salvataggio...' : 'Salva Template'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Email Destinatario *</label>
+                          <input
+                            type="email"
+                            required
+                            value={composeTo}
+                            onChange={(e) => setComposeTo(e.target.value)}
+                            placeholder="cliente@dominio.com"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 font-mono text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Nome Destinatario</label>
+                          <input
+                            type="text"
+                            value={composeRecipientName}
+                            onChange={(e) => setComposeRecipientName(e.target.value)}
+                            placeholder="Nome del cliente"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Tags (separati da virgola)</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Oggetto Email *</label>
                         <input
                           type="text"
-                          value={projectTags}
-                          onChange={(e) => setProjectTags(e.target.value)}
-                          placeholder="Next.js, TypeScript, Tailwind"
+                          required
+                          value={composeSubject}
+                          onChange={(e) => setComposeSubject(e.target.value)}
+                          placeholder="Oggetto dell'email..."
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
                         />
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.08]">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Titolo Intestazione</label>
                           <input
-                            type="checkbox"
-                            checked={projectFeatured}
-                            onChange={(e) => setProjectFeatured(e.target.checked)}
-                            className="accent-teal-400 w-4 h-4 rounded"
+                            type="text"
+                            value={composeTitle}
+                            onChange={(e) => setComposeTitle(e.target.value)}
+                            placeholder="Titolo interno al messaggio"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
                           />
-                          <span>In Evidenza (Featured)</span>
-                        </label>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-neutral-400">Ordine:</span>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Badge Etichetta</label>
                           <input
-                            type="number"
-                            value={projectOrder}
-                            onChange={(e) => setProjectOrder(Number(e.target.value))}
-                            className="w-16 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs text-center focus:outline-none"
+                            type="text"
+                            value={composeBadgeText}
+                            onChange={(e) => setComposeBadgeText(e.target.value)}
+                            placeholder="Tia Designs / Preventivo"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400">Contenuto Messaggio (Markdown Supportato) *</label>
+                          <span className="text-[10px] text-neutral-500 font-mono">**grassetto**, *corsivo*, elenchi</span>
+                        </div>
+                        <textarea
+                          required
+                          rows={8}
+                          value={composeBody}
+                          onChange={(e) => setComposeBody(e.target.value)}
+                          placeholder="Scrivi qui il messaggio per il cliente..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 font-mono text-xs leading-relaxed resize-y"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (Testo opzionale)</label>
+                          <input
+                            type="text"
+                            value={composeCtaText}
+                            onChange={(e) => setComposeCtaText(e.target.value)}
+                            placeholder="Es. Prenota una Call"
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (URL)</label>
+                          <input
+                            type="url"
+                            value={composeCtaUrl}
+                            onChange={(e) => setComposeCtaUrl(e.target.value)}
+                            placeholder="https://tiadesigns.it#contatti"
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
                           />
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        disabled={submitLoading}
-                        className="w-full py-3 mt-2 font-semibold rounded-xl text-sm bg-teal-400 hover:bg-teal-300 text-black shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                        disabled={isSendingBrandedEmail}
+                        className="w-full py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50 mt-2"
                       >
-                        {submitLoading ? 'Salvataggio...' : editingProjectId ? 'Aggiorna Progetto' : 'Pubblica Progetto'}
+                        <TiaIcon icon={SentIcon} size={16} />
+                        <span>{isSendingBrandedEmail ? 'Invio in corso...' : 'Invia Email Ufficiale Branded'}</span>
                       </button>
                     </form>
                   </div>
-                </BorderGlow>
-              </div>
 
-              {/* Projects List Column */}
-              <div className="xl:col-span-7 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">
-                    Tutti i Progetti nel Portfolio ({projects.length})
-                  </h3>
-                </div>
+                  {/* Right Column: Live Email Preview */}
+                  <div className="lg:col-span-6 flex flex-col gap-4">
+                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-2">
+                        <TiaIcon icon={GaugeIcon} size={15} className="text-teal-400" />
+                        Anteprima Live Email (Come apparirà al cliente)
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono">620px Responsive</span>
+                    </div>
 
-                {projects.length === 0 ? (
-                  <div className="p-8 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400">
-                    Nessun progetto caricato al momento.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {projects.map((p) => (
-                      <div
-                        key={p.id}
-                        className="bg-[#081410]/85 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 flex flex-col justify-between hover:border-teal-500/30 transition-colors group"
-                      >
+                    {/* Email Mock Container */}
+                    <div className="bg-[#040d0a] border border-teal-500/30 rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden text-neutral-100 flex flex-col gap-4">
+                      {/* Top Gradient Bar */}
+                      <div className="h-1 w-full bg-gradient-to-r from-teal-500 via-teal-300 to-teal-500 rounded-full" />
+
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
                         <div>
-                          {p.thumbnail && (
-                            <div className="h-36 w-full rounded-xl overflow-hidden mb-3 bg-black/40 relative">
-                              <img src={p.thumbnail} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                              {p.featured && (
-                                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-400 text-black shadow-md">
-                                  Featured
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <h4 className="font-bold text-white text-base">{p.title}</h4>
-                          <p className="text-xs text-neutral-400 mt-1 line-clamp-2">{p.description}</p>
-                          <div className="flex flex-wrap gap-1.5 mt-2.5">
-                            {p.tags.split(',').map((tag, i) => (
-                              <span key={i} className="px-2 py-0.5 rounded-md bg-white/[0.04] text-[10px] text-teal-300/80">
-                                {tag.trim()}
-                              </span>
-                            ))}
+                          <div className="text-lg font-bold text-white tracking-tight">
+                            Tia <span className="text-teal-400">Designs</span>
                           </div>
+                          <p className="text-[10px] text-neutral-400">Designer • Sviluppatore App & Software • Videomaker</p>
                         </div>
-
-                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.06]">
-                          <span className="text-[11px] text-neutral-500 font-mono">Ordine: {p.order}</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleEditProject(p)}
-                              className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs text-white font-medium transition-colors cursor-pointer"
-                            >
-                              Modifica
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProject(p.id)}
-                              className="px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-xs text-red-300 font-medium transition-colors cursor-pointer"
-                            >
-                              Elimina
-                            </button>
-                          </div>
-                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
+                          {composeBadgeText || 'Tia Designs'}
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* ── TAB 2: INBOX MESSAGGI ── */}
-          {activeTab === 'inbox' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Messages List */}
-              <div className="lg:col-span-2 flex flex-col gap-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    {['all', 'new', 'in_progress', 'contacted', 'closed'].map((st) => (
-                      <button
-                        key={st}
-                        onClick={() => setMessageFilter(st)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize cursor-pointer transition-colors ${
-                          messageFilter === st ? 'bg-teal-400 text-black font-semibold' : 'bg-white/[0.04] text-neutral-400 hover:text-white'
-                        }`}
-                      >
-                        {st === 'all' ? 'Tutti' : st === 'new' ? 'Nuovi' : st === 'in_progress' ? 'In corso' : st === 'contacted' ? 'Risposti' : 'Chiusi'}
-                      </button>
-                    ))}
-                  </div>
-                  <span className="text-xs text-neutral-500">{messages.length} messaggi</span>
-                </div>
+                      {/* Content Area */}
+                      <div className="py-2 flex flex-col gap-3">
+                        {composeTitle && <h4 className="text-base font-bold text-white">{composeTitle}</h4>}
+                        {composeRecipientName && <p className="text-xs font-bold text-teal-300">Ciao {composeRecipientName},</p>}
 
-                {messages.length === 0 ? (
-                  <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400">
-                    Nessun messaggio trovato in questa categoria.
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {messages.map((m) => (
-                      <div
-                        key={m.id}
-                        onClick={() => { setSelectedMessage(m); setMessageNotes(m.notes || ''); }}
-                        className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                          selectedMessage?.id === m.id
-                            ? 'bg-[#0e241d] border-teal-400/50 shadow-lg'
-                            : 'bg-[#081410]/85 border-white/[0.08] hover:border-white/[0.15]'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div>
-                            <span className="font-bold text-white text-sm">{m.name}</span>
-                            <span className="text-neutral-400 text-xs ml-2">({m.email})</span>
+                        <div className="p-4 rounded-xl bg-black/40 border border-white/[0.06] border-l-2 border-l-teal-400 text-xs text-neutral-200 leading-relaxed whitespace-pre-wrap">
+                          {composeBody || 'Scrivi il messaggio a sinistra per vedere l\'anteprima in tempo reale...'}
+                        </div>
+
+                        {composeCtaText && (
+                          <div className="text-center my-3">
+                            <span className="inline-block px-6 py-2.5 rounded-xl bg-teal-400 text-black font-bold text-xs shadow-lg shadow-teal-400/20">
+                              {composeCtaText} &rarr;
+                            </span>
                           </div>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold ${
-                            m.status === 'new'
-                              ? 'bg-teal-400/20 text-teal-300 border border-teal-400/40 animate-pulse'
-                              : m.status === 'in_progress'
-                                ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
-                                : m.status === 'contacted'
-                                  ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
-                                  : 'bg-neutral-800 text-neutral-400'
-                          }`}>
-                            {m.status}
+                        )}
+                      </div>
+
+                      {/* Signature */}
+                      <div className="pt-4 border-t border-white/[0.08] text-xs">
+                        <p className="font-bold text-white">Tia Chinaglia</p>
+                        <p className="text-[11px] text-teal-400">Fondatore & Lead Creative Developer • Tia Designs</p>
+                        <p className="text-[10px] text-neutral-500 mt-1">info@tiadesigns.it • tiadesigns.it</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── SUB-TAB 3: NEWSLETTER & CAMPAGNE ── */}
+              {inboxSubTab === 'newsletter' && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  {/* Left Column: Create Newsletter */}
+                  <div className="lg:col-span-7 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.08]">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-white text-base">Crea Campagna Newsletter</h3>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                            Cron Attivo (Vercel)
                           </span>
                         </div>
-                        <p className="text-xs text-neutral-300 line-clamp-2 mb-2 font-mono bg-black/30 p-2 rounded-lg">{m.message}</p>
-                        <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                          <span>Servizio: <strong className="text-teal-400">{m.service}</strong></span>
-                          <span>{new Date(m.createdAt).toLocaleString('it-IT')}</span>
+                        <p className="text-xs text-neutral-400">Invia o programma comunicazioni promozionali automatiche</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleExecuteCronNow}
+                          disabled={isExecutingCron}
+                          className="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                          title="Esegue manualmente il controllo delle newsletter programmate per inviare quelle scadute"
+                        >
+                          <span>⚡</span>
+                          <span>{isExecutingCron ? 'Esecuzione...' : 'Esegui Cron Ora'}</span>
+                        </button>
+                        <span className="px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-white/[0.04] text-neutral-300 border border-white/[0.06]">
+                          {audienceList.length || messages.length} Contatti
+                        </span>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSendNewsletter} className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Destinatari Target *</label>
+                        <select
+                          value={newsletterTarget}
+                          onChange={(e) => setNewsletterTarget(e.target.value as any)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-[#081410] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 cursor-pointer"
+                        >
+                          <option value="all_audience">Tutti i Contatti & Lead ({audienceList.length || messages.length})</option>
+                          <option value="all_contacts">Solo Richieste Form Sito ({messages.length})</option>
+                          <option value="all_leads">Solo Preventivi AI ({chatLeads.length})</option>
+                          <option value="custom">Destinatari Personalizzati</option>
+                        </select>
+                      </div>
+
+                      {newsletterTarget === 'custom' && (
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Email Personalizzate (separate da virgola o a capo)</label>
+                          <textarea
+                            rows={2}
+                            value={newsletterCustomEmails}
+                            onChange={(e) => setNewsletterCustomEmails(e.target.value)}
+                            placeholder="mail1@test.it, mail2@test.it..."
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono focus:outline-none focus:border-teal-400 resize-none"
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Oggetto Newsletter *</label>
+                          <input
+                            type="text"
+                            required
+                            value={newsletterSubject}
+                            onChange={(e) => setNewsletterSubject(e.target.value)}
+                            placeholder="Es. Novità e Aggiornamenti Tia Designs"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Testo Anteprima (Preheader)</label>
+                          <input
+                            type="text"
+                            value={newsletterPreviewText}
+                            onChange={(e) => setNewsletterPreviewText(e.target.value)}
+                            placeholder="Breve frase visibile nell'inbox"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
 
-              {/* Message Detail & Notes Drawer */}
-              <div className="lg:col-span-1">
-                {selectedMessage ? (
-                  <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sticky top-6 flex flex-col gap-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                      <h3 className="font-bold text-white text-base">Dettaglio Messaggio</h3>
-                      <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="text-xs text-red-400 hover:text-red-300 cursor-pointer">
-                        Elimina
-                      </button>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-neutral-400 uppercase tracking-wider">Mittente</p>
-                      <p className="text-sm font-bold text-white">{selectedMessage.name}</p>
-                      <a href={`mailto:${selectedMessage.email}`} className="text-xs text-teal-400 hover:underline">
-                        {selectedMessage.email}
-                      </a>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-neutral-400 uppercase tracking-wider">Servizio richiesto</p>
-                      <p className="text-xs font-semibold text-teal-300">{selectedMessage.service}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1">Messaggio Completo</p>
-                      <div className="p-3.5 rounded-xl bg-black/50 border border-white/[0.06] text-xs text-neutral-200 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                        {selectedMessage.message}
+                      <div>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Contenuto Newsletter (Markdown) *</label>
+                        <textarea
+                          required
+                          rows={6}
+                          value={newsletterBody}
+                          onChange={(e) => setNewsletterBody(e.target.value)}
+                          placeholder="Scrivi qui la tua newsletter o annuncio..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono leading-relaxed focus:outline-none focus:border-teal-400 resize-y"
+                        />
                       </div>
-                    </div>
 
-                    {/* Status Selector */}
-                    <div>
-                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1.5">Aggiorna Stato</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { id: 'new', label: 'Nuovo' },
-                          { id: 'in_progress', label: 'In corso' },
-                          { id: 'contacted', label: 'Risposto' },
-                          { id: 'closed', label: 'Chiuso' },
-                        ].map((st) => (
-                          <button
-                            key={st.id}
-                            onClick={() => handleUpdateMessageStatus(selectedMessage.id, st.id)}
-                            className={`py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
-                              selectedMessage.status === st.id ? 'bg-teal-400 text-black font-bold' : 'bg-white/[0.05] text-neutral-400 hover:text-white'
-                            }`}
-                          >
-                            {st.label}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (Testo)</label>
+                          <input
+                            type="text"
+                            value={newsletterCtaText}
+                            onChange={(e) => setNewsletterCtaText(e.target.value)}
+                            placeholder="Scopri di più"
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (URL)</label>
+                          <input
+                            type="url"
+                            value={newsletterCtaUrl}
+                            onChange={(e) => setNewsletterCtaUrl(e.target.value)}
+                            placeholder="https://tiadesigns.it"
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Internal Notes */}
-                    <div>
-                      <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1.5">Note Interne</p>
-                      <textarea
-                        rows={3}
-                        value={messageNotes}
-                        onChange={(e) => setMessageNotes(e.target.value)}
-                        placeholder="Scrivi appunti su questo cliente..."
-                        className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none focus:border-teal-400"
-                      />
+                      {/* Scheduling options */}
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-white font-semibold">
+                            <input
+                              type="radio"
+                              name="scheduleMode"
+                              checked={newsletterScheduleMode === 'now'}
+                              onChange={() => setNewsletterScheduleMode('now')}
+                              className="accent-teal-400"
+                            />
+                            <span>Invia Subito</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-white font-semibold">
+                            <input
+                              type="radio"
+                              name="scheduleMode"
+                              checked={newsletterScheduleMode === 'schedule'}
+                              onChange={() => setNewsletterScheduleMode('schedule')}
+                              className="accent-teal-400"
+                            />
+                            <span>Programma Invio</span>
+                          </label>
+                        </div>
+
+                        {newsletterScheduleMode === 'schedule' && (
+                          <div>
+                            <label className="block text-[11px] text-neutral-400 mb-1">Seleziona Data e Ora</label>
+                            <input
+                              type="datetime-local"
+                              required
+                              value={newsletterScheduledFor}
+                              onChange={(e) => setNewsletterScheduledFor(e.target.value)}
+                              className="px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-teal-400"
+                            />
+                          </div>
+                        )}
+                      </div>
+
                       <button
-                        type="button"
-                        onClick={() => handleSaveMessageNotes(selectedMessage.id)}
-                        className="w-full mt-2 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs text-white font-semibold transition-colors cursor-pointer"
+                        type="submit"
+                        disabled={isSendingNewsletter}
+                        className="w-full py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
                       >
-                        Salva Note
+                        <TiaIcon icon={SparklesIcon} size={16} />
+                        <span>
+                          {isSendingNewsletter
+                            ? 'Elaborazione...'
+                            : newsletterScheduleMode === 'schedule'
+                            ? 'Programma Campagna Newsletter'
+                            : 'Lancia Campagna Newsletter Subito'}
+                        </span>
                       </button>
-                    </div>
+                    </form>
+                  </div>
 
-                    {/* Quick Action Button */}
-                    <a
-                      href={`mailto:${selectedMessage.email}?subject=Re:%20Preventivo%20${encodeURIComponent(selectedMessage.service)}%20-%20Tia%20Designs`}
-                      className="w-full py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-semibold text-xs text-center shadow-lg shadow-teal-400/20 transition-all block"
-                    >
-                      Rispondi via Email
-                    </a>
+                  {/* Right Column: Campaigns History */}
+                  <div className="lg:col-span-5 flex flex-col gap-4">
+                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
+                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                        <h3 className="font-bold text-white text-sm">Storico Campagne & Newsletter</h3>
+                        <span className="text-xs text-neutral-400 font-mono">{newsletterCampaigns.length} campagne</span>
+                      </div>
+
+                      {newsletterCampaigns.length === 0 ? (
+                        <p className="text-xs text-neutral-500 py-8 text-center">Nessuna campagna newsletter inviata o programmata finora.</p>
+                      ) : (
+                        <div className="flex flex-col gap-3 max-h-[600px] overflow-y-auto pr-1">
+                          {newsletterCampaigns.map((camp) => (
+                            <div key={camp.id} className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-white text-xs truncate max-w-[200px]">{camp.subject}</span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold ${
+                                    camp.status === 'sent'
+                                      ? 'bg-teal-400/20 text-teal-300 border border-teal-400/40'
+                                      : camp.status === 'scheduled'
+                                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                                      : 'bg-neutral-800 text-neutral-400'
+                                  }`}
+                                >
+                                  {camp.status}
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-neutral-400 line-clamp-2">{camp.bodyContent}</p>
+
+                              <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1 border-t border-white/[0.04]">
+                                <span>{camp.recipientCount} destinatari</span>
+                                <span>
+                                  {camp.sentAt
+                                    ? `Inviata il ${new Date(camp.sentAt).toLocaleDateString()}`
+                                    : camp.scheduledFor
+                                    ? `Schedulata per ${new Date(camp.scheduledFor).toLocaleDateString()}`
+                                    : new Date(camp.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-8 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
-                    Seleziona un messaggio dalla lista per visualizzare i dettagli e gestire le note.
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1572,6 +3564,36 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                  {/* Preview Theme Switcher (no-print) */}
+                  <div className="flex items-center rounded-2xl bg-white/[0.04] p-1 border border-white/[0.08]">
+                    <button
+                      type="button"
+                      onClick={() => setQuotePreviewTheme('dark')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        quotePreviewTheme === 'dark'
+                          ? 'bg-teal-400 text-black shadow-md shadow-teal-400/20'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="Mostra anteprima in stile Dark (Cyber)"
+                    >
+                      <span>🌙</span>
+                      <span>Dark</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuotePreviewTheme('light')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        quotePreviewTheme === 'light'
+                          ? 'bg-white text-black shadow-md shadow-white/20'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="Mostra anteprima in stile Documento Bianco A4 Ufficiale"
+                    >
+                      <span>📄</span>
+                      <span>Bianco (A4)</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setShowSignatureModal(true)}
@@ -1597,9 +3619,10 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="px-4 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/[0.1] text-white text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer"
+                    className="px-4 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-teal-400 hover:text-black border border-white/[0.1] text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md"
+                    title="Genera e stampa il preventivo in formato A4 bianco ufficiale senza bordi o intestazioni inutili"
                   >
-                    <span>🖨️ Stampa / Salva PDF</span>
+                    <span>🖨️ Stampa / Salva PDF (A4 Bianco)</span>
                   </button>
                 </div>
               </div>
@@ -1922,16 +3945,22 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Printable Live PDF Document Column */}
-                <div className="xl:col-span-7 flex flex-col items-center">
+                <div className="xl:col-span-7 flex flex-col items-center w-full">
                   <div
                     id="printable-quote"
-                    className="w-full max-w-[780px] bg-[#081410] border border-teal-500/25 rounded-3xl p-8 sm:p-10 shadow-2xl text-neutral-200 relative overflow-hidden print:p-0 print:border-none print:shadow-none print:bg-[#081410] print:text-white"
+                    className={`w-full max-w-[780px] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden transition-all duration-300 ${
+                      quotePreviewTheme === 'light'
+                        ? 'bg-white text-slate-900 border border-slate-200 shadow-xl'
+                        : 'bg-[#081410] text-neutral-200 border border-teal-500/25'
+                    }`}
                   >
                     {/* Subtle top glow bar */}
-                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300" />
+                    <div className="quote-top-bar absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300" />
 
                     {/* Header Row: Logo + Brand Info + Quote Meta */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b border-white/[0.1]">
+                    <div className={`quote-divider flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b ${
+                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                    }`}>
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-3">
                           <picture>
@@ -1940,47 +3969,87 @@ export default function DashboardPage() {
                             <img
                               src="/TiaDesignsLogo.png"
                               alt="Tia Designs"
-                              className="h-10 w-auto brightness-0 invert select-none"
+                              className={`quote-logo h-10 w-auto select-none transition-all ${
+                                quotePreviewTheme === 'light' ? 'brightness-0' : 'brightness-0 invert'
+                              }`}
                               draggable={false}
                             />
                           </picture>
                         </div>
-                        <p className="text-xs font-semibold text-teal-400 tracking-wider uppercase mt-1">
+                        <p className={`quote-brand-title text-xs font-semibold tracking-wider uppercase mt-1 ${
+                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
+                        }`}>
                           Design • Sviluppo Web • Video
                         </p>
-                        <div className="text-[11px] text-neutral-400 leading-tight space-y-0.5">
-                          <p>Tia Chinaglia</p>
-                          <p>Email: <span className="text-neutral-200">info@tiadesigns.it</span></p>
-                          <p>Web: <span className="text-neutral-200">tiadesigns.it</span></p>
-                          <p>Tel: <span className="text-neutral-200">+39 331 882 1334</span></p>
-                          <p>Sede: <span className="text-neutral-200">Mantova (MN), Italia</span></p>
+                        <div className={`quote-text-muted text-[11px] leading-tight space-y-0.5 ${
+                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                        }`}>
+                          <p className="quote-text-primary font-bold">Tia Chinaglia</p>
+                          <p>Email: <span className="quote-text-primary">info@tiadesigns.it</span></p>
+                          <p>Web: <span className="quote-text-primary">tiadesigns.it</span></p>
+                          <p>Tel: <span className="quote-text-primary">+39 331 882 1334</span></p>
+                          <p>Sede: <span className="quote-text-primary">Mantova (MN), Italia</span></p>
                         </div>
                       </div>
 
                       {/* Quote Meta Badge */}
-                      <div className="flex flex-col sm:items-end gap-1.5 bg-black/40 p-4 rounded-2xl border border-white/[0.08] sm:min-w-[220px]">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/30">
+                      <div className={`quote-card-subtle flex flex-col sm:items-end gap-1.5 p-4 rounded-2xl sm:min-w-[220px] ${
+                        quotePreviewTheme === 'light'
+                          ? 'bg-slate-50 border border-slate-200'
+                          : 'bg-black/40 border border-white/[0.08]'
+                      }`}>
+                        <span className={`quote-badge-commercial text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-0.5 rounded-full border ${
+                          quotePreviewTheme === 'light'
+                            ? 'bg-teal-50 text-teal-700 border-teal-200'
+                            : 'bg-teal-500/10 text-teal-400 border-teal-500/30'
+                        }`}>
                           Preventivo Commerciale
                         </span>
-                        <p className="text-lg font-bold text-white font-mono mt-1">{quoteNumber}</p>
-                        <p className="text-[11px] text-neutral-400">Data: <strong className="text-neutral-200">{quoteDate}</strong></p>
-                        <p className="text-[11px] text-neutral-400">Validità: <strong className="text-neutral-200">{quoteValidity}</strong></p>
-                        <p className="text-[11px] text-neutral-400">Consegna stimata: <strong className="text-teal-300">{quoteTimeline}</strong></p>
+                        <p className={`quote-text-primary text-lg font-bold font-mono mt-1 ${
+                          quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                        }`}>{quoteNumber}</p>
+                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
+                          Data: <strong className="quote-text-primary">{quoteDate}</strong>
+                        </p>
+                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
+                          Validità: <strong className="quote-text-primary">{quoteValidity}</strong>
+                        </p>
+                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
+                          Consegna stimata: <strong className={`quote-accent font-bold ${
+                            quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
+                          }`}>{quoteTimeline}</strong>
+                        </p>
                       </div>
                     </div>
 
                     {/* Client Details Block */}
-                    <div className="py-5 border-b border-white/[0.1] grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className={`quote-divider py-5 border-b grid grid-cols-1 sm:grid-cols-2 gap-4 ${
+                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                    }`}>
                       <div>
-                        <p className="text-[10px] uppercase tracking-widest font-bold text-teal-400 mb-1">Destinatario / Spett.le</p>
-                        <p className="text-sm font-bold text-white">{quoteClientName || 'Mario Rossi'}</p>
-                        {quoteClientCompany && <p className="text-xs font-semibold text-neutral-300">{quoteClientCompany}</p>}
-                        {quoteClientAddress && <p className="text-xs text-neutral-400">{quoteClientAddress}</p>}
+                        <p className={`quote-brand-title text-[10px] uppercase tracking-widest font-bold mb-1 ${
+                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
+                        }`}>Destinatario / Spett.le</p>
+                        <p className={`quote-text-primary text-sm font-bold ${
+                          quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                        }`}>{quoteClientName || 'Mario Rossi'}</p>
+                        {quoteClientCompany && (
+                          <p className={`quote-text-secondary text-xs font-semibold ${
+                            quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
+                          }`}>{quoteClientCompany}</p>
+                        )}
+                        {quoteClientAddress && (
+                          <p className={`quote-text-muted text-xs ${
+                            quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                          }`}>{quoteClientAddress}</p>
+                        )}
                       </div>
-                      <div className="sm:text-right flex flex-col sm:items-end justify-center text-xs text-neutral-400">
-                        {quoteClientEmail && <p>Email: <strong className="text-neutral-200">{quoteClientEmail}</strong></p>}
-                        {quoteClientPhone && <p>Tel: <strong className="text-neutral-200">{quoteClientPhone}</strong></p>}
-                        {quoteClientVat && <p>P.IVA / CF: <strong className="text-neutral-200 font-mono">{quoteClientVat}</strong></p>}
+                      <div className={`sm:text-right flex flex-col sm:items-end justify-center text-xs ${
+                        quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                      }`}>
+                        {quoteClientEmail && <p>Email: <strong className="quote-text-primary">{quoteClientEmail}</strong></p>}
+                        {quoteClientPhone && <p>Tel: <strong className="quote-text-primary">{quoteClientPhone}</strong></p>}
+                        {quoteClientVat && <p>P.IVA / CF: <strong className="quote-text-primary font-mono">{quoteClientVat}</strong></p>}
                       </div>
                     </div>
 
@@ -1988,7 +4057,11 @@ export default function DashboardPage() {
                     <div className="py-6">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-white/[0.1] text-[10px] font-bold uppercase tracking-wider text-teal-400">
+                          <tr className={`border-b text-[10px] font-bold uppercase tracking-wider ${
+                            quotePreviewTheme === 'light'
+                              ? 'border-teal-600 text-teal-700'
+                              : 'border-white/[0.1] text-teal-400'
+                          }`}>
                             <th className="py-2.5 px-2 w-8">#</th>
                             <th className="py-2.5 px-2">Descrizione Servizio & Deliverables</th>
                             <th className="py-2.5 px-2 text-center w-14">Q.tà</th>
@@ -1996,21 +4069,35 @@ export default function DashboardPage() {
                             <th className="py-2.5 px-2 text-right w-24">Totale</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/[0.05] text-xs">
+                        <tbody className={`divide-y text-xs ${
+                          quotePreviewTheme === 'light' ? 'divide-slate-100' : 'divide-white/[0.05]'
+                        }`}>
                           {quoteItems.map((item, idx) => {
                             const lineTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
                             return (
-                              <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                                <td className="py-3 px-2 text-neutral-500 font-mono">{idx + 1}</td>
+                              <tr key={item.id} className={quotePreviewTheme === 'light' ? 'hover:bg-slate-50' : 'hover:bg-white/[0.02]'}>
+                                <td className={`quote-text-muted py-3 px-2 font-mono ${
+                                  quotePreviewTheme === 'light' ? 'text-slate-500' : 'text-neutral-500'
+                                }`}>{idx + 1}</td>
                                 <td className="py-3 px-2">
-                                  <p className="font-bold text-white text-xs">{item.title}</p>
+                                  <p className={`quote-text-primary font-bold text-xs ${
+                                    quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                                  }`}>{item.title}</p>
                                   {item.description && (
-                                    <p className="text-[11px] text-neutral-400 mt-0.5 leading-relaxed">{item.description}</p>
+                                    <p className={`quote-text-muted text-[11px] mt-0.5 leading-relaxed ${
+                                      quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                                    }`}>{item.description}</p>
                                   )}
                                 </td>
-                                <td className="py-3 px-2 text-center font-mono text-neutral-300">{item.quantity}</td>
-                                <td className="py-3 px-2 text-right font-mono text-neutral-300">{item.price} €</td>
-                                <td className="py-3 px-2 text-right font-mono font-bold text-teal-300">{lineTotal} €</td>
+                                <td className={`quote-text-secondary py-3 px-2 text-center font-mono ${
+                                  quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
+                                }`}>{item.quantity}</td>
+                                <td className={`quote-text-secondary py-3 px-2 text-right font-mono ${
+                                  quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
+                                }`}>{item.price} €</td>
+                                <td className={`quote-accent py-3 px-2 text-right font-mono font-bold ${
+                                  quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
+                                }`}>{lineTotal} €</td>
                               </tr>
                             );
                           })}
@@ -2027,15 +4114,29 @@ export default function DashboardPage() {
                       const total = taxable + vatAmount;
 
                       return (
-                        <div className="pt-4 border-t border-white/[0.1] flex flex-col sm:flex-row justify-between items-start gap-6">
+                        <div className={`quote-divider pt-4 border-t flex flex-col sm:flex-row justify-between items-start gap-6 ${
+                          quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                        }`}>
                           {/* Terms and IBAN */}
-                          <div className="flex-1 text-xs text-neutral-400 space-y-1.5 bg-black/30 p-4 rounded-2xl border border-white/[0.06] w-full">
-                            <p className="text-[10px] uppercase tracking-wider font-bold text-teal-400">Modalità di Pagamento</p>
-                            <p className="text-neutral-200 font-medium">{quotePaymentTerms}</p>
+                          <div className={`quote-card-subtle flex-1 text-xs space-y-1.5 p-4 rounded-2xl w-full ${
+                            quotePreviewTheme === 'light'
+                              ? 'bg-slate-50 border border-slate-200 text-slate-600'
+                              : 'bg-black/30 border border-white/[0.06] text-neutral-400'
+                          }`}>
+                            <p className={`quote-brand-title text-[10px] uppercase tracking-wider font-bold ${
+                              quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
+                            }`}>Modalità di Pagamento</p>
+                            <p className={`quote-text-primary font-medium ${
+                              quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-neutral-200'
+                            }`}>{quotePaymentTerms}</p>
                             <p className="text-[11px] pt-1">
-                              IBAN: <span className="font-mono text-teal-300 font-bold">{quoteIban}</span>
+                              IBAN: <span className={`quote-accent font-mono font-bold ${
+                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
+                              }`}>{quoteIban}</span>
                             </p>
-                            <p className="text-[10px] text-neutral-500 italic pt-1">
+                            <p className={`quote-text-muted text-[10px] italic pt-1 ${
+                              quotePreviewTheme === 'light' ? 'text-slate-500' : 'text-neutral-500'
+                            }`}>
                               {quoteTaxRegime === 'forfettario'
                                 ? 'Operazione effettuata in regime forfettario ex art. 1 c. 54-89 L. 190/2014 (esente IVA).'
                                 : 'Importi espressi al netto di IVA ordinaria 22%.'}
@@ -2043,26 +4144,46 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Totals table */}
-                          <div className="w-full sm:w-64 bg-teal-950/30 border border-teal-500/30 p-4 rounded-2xl flex flex-col gap-2">
-                            <div className="flex justify-between text-xs text-neutral-400">
+                          <div className={`quote-card-total w-full sm:w-64 p-4 rounded-2xl flex flex-col gap-2 ${
+                            quotePreviewTheme === 'light'
+                              ? 'bg-emerald-50/70 border border-emerald-200'
+                              : 'bg-teal-950/30 border border-teal-500/30'
+                          }`}>
+                            <div className={`flex justify-between text-xs ${
+                              quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                            }`}>
                               <span>Subtotale Voci:</span>
-                              <span className="font-mono text-white">{subtotal} €</span>
+                              <span className={`quote-text-primary font-mono ${
+                                quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                              }`}>{subtotal} €</span>
                             </div>
                             {quoteDiscount > 0 && (
-                              <div className="flex justify-between text-xs text-teal-300 font-semibold">
+                              <div className={`flex justify-between text-xs font-semibold ${
+                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
+                              }`}>
                                 <span>Sconto ({quoteDiscount}%):</span>
                                 <span className="font-mono">- {discountAmount} €</span>
                               </div>
                             )}
                             {quoteTaxRegime === 'iva22' && (
-                              <div className="flex justify-between text-xs text-neutral-400">
+                              <div className={`flex justify-between text-xs ${
+                                quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                              }`}>
                                 <span>IVA (22%):</span>
-                                <span className="font-mono text-white">{vatAmount} €</span>
+                                <span className={`quote-text-primary font-mono ${
+                                  quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                                }`}>{vatAmount} €</span>
                               </div>
                             )}
-                            <div className="pt-2 border-t border-teal-500/30 flex justify-between items-baseline">
-                              <span className="text-sm font-bold text-white uppercase">Totale:</span>
-                              <span className="text-2xl font-bold text-teal-400 font-mono tracking-tight">{total} €</span>
+                            <div className={`quote-divider pt-2 border-t flex justify-between items-baseline ${
+                              quotePreviewTheme === 'light' ? 'border-emerald-200' : 'border-teal-500/30'
+                            }`}>
+                              <span className={`quote-text-primary text-sm font-bold uppercase ${
+                                quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
+                              }`}>Totale:</span>
+                              <span className={`quote-total-price text-2xl font-bold font-mono tracking-tight ${
+                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
+                              }`}>{total} €</span>
                             </div>
                           </div>
                         </div>
@@ -2071,41 +4192,63 @@ export default function DashboardPage() {
 
                     {/* Notes & Acceptance Guarantee */}
                     {quoteNotes && (
-                      <div className="mt-6 p-4 rounded-2xl bg-black/40 border border-white/[0.06] text-xs text-neutral-300 leading-relaxed">
-                        <p className="text-[10px] uppercase font-bold tracking-wider text-teal-400 mb-1">Note & Condizioni di Assistenza</p>
+                      <div className={`quote-card-subtle mt-6 p-4 rounded-2xl text-xs leading-relaxed ${
+                        quotePreviewTheme === 'light'
+                          ? 'bg-slate-50 border border-slate-200 text-slate-700'
+                          : 'bg-black/40 border border-white/[0.06] text-neutral-300'
+                      }`}>
+                        <p className={`quote-brand-title text-[10px] uppercase font-bold tracking-wider mb-1 ${
+                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
+                        }`}>Note & Condizioni di Assistenza</p>
                         <p>{quoteNotes}</p>
                       </div>
                     )}
 
                     {/* Signature Acceptance Box with Real Digital Signature Render */}
-                    <div className="mt-8 pt-6 border-t border-white/[0.1] grid grid-cols-2 gap-8 text-xs">
+                    <div className={`quote-divider mt-8 pt-6 border-t grid grid-cols-2 gap-8 text-xs ${
+                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                    }`}>
                       <div>
-                        <p className="text-neutral-400 mb-2">Tia Designs (Fornitore)</p>
-                        <div className="border-b border-white/[0.2] pb-1 min-h-[44px] flex items-center justify-between">
+                        <p className={`quote-text-muted mb-2 ${
+                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                        }`}>Tia Designs (Fornitore)</p>
+                        <div className={`quote-sig-line border-b pb-1 min-h-[44px] flex items-center justify-between ${
+                          quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.2]'
+                        }`}>
                           {signatureData ? (
                             <img src={signatureData} alt="Firma Digitale" className="h-10 w-auto object-contain" />
                           ) : (
-                            <span className="font-serif italic text-teal-300 text-sm">Tia Chinaglia</span>
+                            <span className={`quote-accent font-serif italic text-sm ${
+                              quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
+                            }`}>Tia Chinaglia</span>
                           )}
                           <button
                             type="button"
                             onClick={() => setShowSignatureModal(true)}
-                            className="no-print text-[10px] text-teal-400 hover:text-teal-300 font-sans cursor-pointer underline"
+                            className={`no-print text-[10px] font-sans cursor-pointer underline ${
+                              quotePreviewTheme === 'light' ? 'text-teal-700 hover:text-teal-800' : 'text-teal-400 hover:text-teal-300'
+                            }`}
                           >
                             {signatureData ? 'Modifica' : '✍️ Firma a mano'}
                           </button>
                         </div>
                       </div>
                       <div>
-                        <p className="text-neutral-400 mb-2">Firma e Timbro per Accettazione (Cliente)</p>
-                        <div className="border-b border-white/[0.2] pb-1 min-h-[44px] flex items-end text-neutral-600">
+                        <p className={`quote-text-muted mb-2 ${
+                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
+                        }`}>Firma e Timbro per Accettazione (Cliente)</p>
+                        <div className={`quote-sig-line border-b pb-1 min-h-[44px] flex items-end ${
+                          quotePreviewTheme === 'light' ? 'border-slate-300 text-slate-400' : 'border-white/[0.2] text-neutral-600'
+                        }`}>
                           Data: ______ / ______ / 2026
                         </div>
                       </div>
                     </div>
 
                     {/* Bottom footer notice */}
-                    <div className="mt-8 text-center text-[10px] text-neutral-500 font-mono border-t border-white/[0.06] pt-3">
+                    <div className={`quote-divider mt-8 text-center text-[10px] font-mono border-t pt-3 ${
+                      quotePreviewTheme === 'light' ? 'border-slate-200 text-slate-400' : 'border-white/[0.06] text-neutral-500'
+                    }`}>
                       Tia Designs • P.IVA: 02737630206 • Documento valido ai fini dell&apos;accordo commerciale
                     </div>
                   </div>
@@ -2242,142 +4385,7 @@ export default function DashboardPage() {
 
           {/* ── TAB 5: DEEP ANALYTICS ── */}
           {activeTab === 'analytics' && (
-            <div className="flex flex-col gap-6">
-              
-              {/* Filter bar */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
-                    <TiaIcon icon={GaugeIcon} size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-base">Traffic & User Behavior Insights</h3>
-                    <p className="text-xs text-neutral-400">First-party telemetry & GDPR Compliant</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {[7, 30, 90].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setAnalyticsDays(d)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
-                        analyticsDays === d ? 'bg-teal-400 text-black' : 'bg-white/[0.04] text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      Ultimi {d} giorni
-                    </button>
-                  ))}
-                  <button onClick={fetchAnalytics} className="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-teal-400">
-                    <TiaIcon icon={RefreshIcon} size={15} />
-                  </button>
-                </div>
-              </div>
-
-              {/* KPIs Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Eventi Totali', val: analyticsData?.totalEvents ?? 0, icon: Activity01Icon },
-                  { label: 'Sessioni Uniche', val: analyticsData?.totalSessions ?? 0, icon: DashboardSquare01Icon },
-                  { label: 'Visualizzazioni Pagina', val: analyticsData?.pageViews ?? 0, icon: Globe02Icon },
-                  { label: 'Click Tracciati', val: analyticsData?.totalClicks ?? 0, icon: ArrowRight01Icon },
-                ].map((kpi, i) => {
-                  const Icon = kpi.icon;
-                  return (
-                    <div key={i} className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-neutral-400 uppercase tracking-wider">{kpi.label}</span>
-                        <TiaIcon icon={Icon} size={16} className="text-teal-400" />
-                      </div>
-                      <span className="text-2xl font-bold font-mono text-white">{kpi.val.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Ultra-Detailed Real World Map with Leaflet & CartoDB Dark Tiles */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-white text-base flex items-center gap-2">
-                      <TiaIcon icon={Globe02Icon} size={18} className="text-teal-400" />
-                      <span>Distribuzione Geografica Mondiale Reale (Leaflet & CartoDB Dark)</span>
-                    </h3>
-                    <p className="text-xs text-neutral-400">Confini reali, costa ultra-dettagliata e pin radar pulsanti sulle coordinate esatte</p>
-                  </div>
-                </div>
-
-                <RealWorldMap
-                  countries={analyticsData?.countries || []}
-                  cities={analyticsData?.topCities || []}
-                  selectedCountry={selectedCountry}
-                  onCountryClick={(country) => setSelectedCountry(selectedCountry === country ? null : country)}
-                />
-              </div>
-
-              {/* Humanized Click Elements & Top Pages */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Clicked Elements with Explanations */}
-                <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-                  <h3 className="font-bold text-white text-base">Elementi Più Cliccati (Spiegati)</h3>
-                  {(!analyticsData?.topClicked || analyticsData.topClicked.length === 0) ? (
-                    <p className="text-xs text-neutral-500 py-6 text-center">Nessun click registrato nel periodo.</p>
-                  ) : (
-                    <div className="flex flex-col gap-2.5 max-h-80 overflow-y-auto">
-                      {analyticsData.topClicked.map((item: any, idx: number) => {
-                        const formatted = formatClickElement(item.element);
-                        return (
-                          <div key={idx} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="text-lg shrink-0">{formatted.icon}</span>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-bold text-white text-xs truncate">{formatted.title}</span>
-                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-mono uppercase bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                                    {formatted.category}
-                                  </span>
-                                </div>
-                                <p className="text-[10px] text-neutral-400 truncate">{formatted.description}</p>
-                              </div>
-                            </div>
-                            <span className="text-xs font-mono font-bold text-teal-400 shrink-0">
-                              {item.count} click
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Country List breakdown */}
-                <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-                  <h3 className="font-bold text-white text-base">Classifica Paesi</h3>
-                  {(!analyticsData?.countries || analyticsData.countries.length === 0) ? (
-                    <p className="text-xs text-neutral-500 py-6 text-center">Nessun dato geografico registrato.</p>
-                  ) : (
-                    <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
-                      {analyticsData.countries.map((c: any, idx: number) => {
-                        const info = COUNTRY_MAP[c.code.toUpperCase()] || { name: c.code, flag: '🌐' };
-                        return (
-                          <div key={idx} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-base">{info.flag}</span>
-                              <span className="font-bold text-white text-xs">{info.name}</span>
-                              <span className="text-[10px] font-mono text-neutral-500">({c.code})</span>
-                            </div>
-                            <span className="text-xs font-mono font-bold text-teal-300">{c.count} visite</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-            </div>
+            <DeepAnalyticsView />
           )}
 
           {/* ── TAB 6: CMS CONTENUTI ── */}

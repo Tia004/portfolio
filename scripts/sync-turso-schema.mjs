@@ -196,6 +196,48 @@ async function run() {
     `);
     console.log('Checked Quote table');
 
+    // 9. Project category check
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN category TEXT DEFAULT \'Sviluppo\';');
+      console.log('Added category to Project');
+    } catch (e) {}
+
+    // 10. Create NewsletterCampaign
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS NewsletterCampaign (
+        id TEXT PRIMARY KEY,
+        subject TEXT NOT NULL,
+        previewText TEXT,
+        bodyContent TEXT NOT NULL,
+        recipients TEXT NOT NULL DEFAULT 'all',
+        recipientCount INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft',
+        scheduledFor DATETIME,
+        sentAt DATETIME,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Checked NewsletterCampaign table');
+
+    // 11. Create CustomEmailTemplate
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS CustomEmailTemplate (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL DEFAULT '✉️',
+        badge TEXT NOT NULL DEFAULT 'Tia Designs',
+        title TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        ctaText TEXT,
+        ctaUrl TEXT,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Checked CustomEmailTemplate table');
+
     console.log('✅ Turso schema synchronization complete!');
   } catch (err) {
     console.error('❌ Error updating Turso database:', err);

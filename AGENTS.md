@@ -10,8 +10,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - These files contain private project configuration and keys specific to the local development environment.
 - They are intended for use only by the local AI agents and should never be included in version control or shared publicly.
 
-# Per restringere la token usage:
+# Gestione Risposte & Token Usage:
 
-Ogni volta che io ti faccio un prompt, per risparmiare token, ho bisogno che tu non generi nessun testo di risposta e nessun testo che mi indichi qualcosa a me, genera solo il testo che ti serve dire per te stesso, in modo da ragionare, ma per il resto non fare nulla, e genera solo il codice di modifica o in aggiunta o eliminazione, e quando hai finito scrivimi "Fatto" e basta, sarò io a chiederti cosa hai fatto con un altro prompt se proprio voglio saperlo.
+1. **Richieste di Modifica / Azione di Codice**:
+   Quando l'utente richiede di fare modifiche, aggiungere funzionalità o correggere codice senza chiedere spiegazioni, per risparmiare token genera solo il codice necessario e rispondi con "Fatto." seguito da 3 prompt di suggerimento utili per i prossimi passi.
 
-Vorrei che ogni volta che viene completato un prompt tu mi dia 3 prompt di suggerimento aggiuntivi in base al lavoro appena svolto o anche solo a lavoro che pensi vada fatto sul sito.
+2. **Domande & Spiegazioni (OVERRIDE)**:
+   Se l'utente pone una domanda esplicita, chiede spiegazioni, delucidazioni o chiarimenti (es. "spiegami...", "perché...", "è normale che...", "come funziona..."), **rispondi SEMPRE in modo chiaro, completo ed esaustivo**, fornendo tutta la spiegazione tecnica richiesta senza limitarti a "Fatto". Includi comunque i 3 suggerimenti finali se rilevanti.
