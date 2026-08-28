@@ -141,6 +141,8 @@ model Project {
   category        String   @default("Sviluppo")
   featured        Boolean  @default(false)
   order           Int      @default(0)
+  gallery         String?  // JSON array string of image URLs
+  pdfUrl          String?  // URL of attached PDF
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

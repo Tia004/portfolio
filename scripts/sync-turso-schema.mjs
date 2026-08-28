@@ -201,6 +201,14 @@ async function run() {
       await client.execute('ALTER TABLE Project ADD COLUMN category TEXT DEFAULT \'Sviluppo\';');
       console.log('Added category to Project');
     } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN gallery TEXT;');
+      console.log('Added gallery to Project');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN pdfUrl TEXT;');
+      console.log('Added pdfUrl to Project');
+    } catch (e) {}
 
     // 10. Create NewsletterCampaign
     await client.execute(`

@@ -44,6 +44,9 @@ import {
   Shield01Icon,
   DashboardSquare01Icon,
   Activity01Icon,
+  CloudIcon,
+  LayersIcon,
+  ViewIcon,
 } from '@/app/components/icons';
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
@@ -59,17 +62,7 @@ const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepA
   ),
 });
 
-const RealWorldMap = dynamic(() => import('@/app/components/RealWorldMap'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[450px] rounded-3xl bg-[#050f0c] border border-white/10 flex items-center justify-center text-xs text-neutral-400 font-mono">
-      <span className="w-3 h-3 rounded-full bg-teal-400 animate-ping mr-2" />
-      Caricamento mappa geografica interattiva...
-    </div>
-  ),
-});
-
-type ActiveTab = 'projects' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'cms' | 'health' | 'passkeys';
+type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'cms' | 'health' | 'passkeys';
 
 // ── Models & Interfaces ──────────────────────────────────────────
 
@@ -85,8 +78,20 @@ interface Project {
   category?: string;
   featured: boolean;
   order: number;
+  gallery?: string | null;
+  pdfUrl?: string | null;
   createdAt?: string | Date;
   updatedAt?: string | Date;
+}
+
+interface MediaAsset {
+  filename: string;
+  url: string;
+  folder: string;
+  size: number;
+  ext: string;
+  type: 'image' | 'pdf' | 'video' | 'other';
+  updatedAt: string;
 }
 
 interface ContactMessage {
@@ -372,6 +377,26 @@ export default function DashboardPage() {
   const [cropDragStart, setCropDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const previewCropRef = useRef<HTMLDivElement>(null);
 
+  // Project Gallery & PDF States
+  const [projectGallery, setProjectGallery] = useState<string[]>([]);
+  const [projectPdfUrl, setProjectPdfUrl] = useState('');
+  const [galleryUploadLoading, setGalleryUploadLoading] = useState(false);
+  const [pdfUploadLoading, setPdfUploadLoading] = useState(false);
+  const galleryFileInputRef = useRef<HTMLInputElement>(null);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedProjectPdfModal, setSelectedProjectPdfModal] = useState<string | null>(null);
+  const [selectedProjectGalleryModal, setSelectedProjectGalleryModal] = useState<{ title: string; images: string[]; activeIdx: number } | null>(null);
+
+  // Cloudflare Media Gallery & CDN State
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [mediaStats, setMediaStats] = useState<{ totalFiles: number; totalBytes: number; imageCount: number; pdfCount: number; webpCount: number } | null>(null);
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'pdf' | 'design'>('all');
+  const [mediaSearch, setMediaSearch] = useState('');
+  const [isMediaLoading, setIsMediaLoading] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [selectedMediaPreview, setSelectedMediaPreview] = useState<MediaAsset | null>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
+
   // Messages Inbox & Email/Newsletter state
   const [inboxSubTab, setInboxSubTab] = useState<'messages' | 'compose' | 'newsletter'>('messages');
   const [messages, setMessages] = useState<ContactMessage[]>([]);
@@ -524,6 +549,7 @@ export default function DashboardPage() {
           fetchAnalytics(),
           fetchNewsletterData(),
           fetchEmailTemplates(),
+          fetchMediaAssets(),
         ]);
       } catch (err: any) {
         setError(err.message || 'Errore di connessione');
@@ -669,6 +695,8 @@ export default function DashboardPage() {
     setProjectTags('');
     setProjectFeatured(false);
     setProjectOrder(projects.length > 0 ? Math.max(...projects.map((p) => p.order || 0)) + 1 : 1);
+    setProjectGallery([]);
+    setProjectPdfUrl('');
   };
 
   const handleOpenNewProjectModal = () => {
@@ -694,6 +722,125 @@ export default function DashboardPage() {
       setError(err.message);
     } finally {
       setUploadLoading(false);
+    }
+  };
+
+  const handleUploadGalleryImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setGalleryUploadLoading(true);
+    setError(null);
+    const uploadedUrls: string[] = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let fileToSend: File | Blob = file;
+        if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+          try {
+            fileToSend = await convertImageToWebp(file, 0.92);
+          } catch {}
+        }
+        const formData = new FormData();
+        formData.append('file', fileToSend, file.name);
+        const res = await fetch('/api/projects/upload', { method: 'POST', body: formData });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedUrls.push(data.url);
+        }
+      }
+      setProjectGallery((prev) => [...prev, ...uploadedUrls]);
+      showTemporarySuccess(`${uploadedUrls.length} immagini caricate nel carosello!`);
+    } catch (err: any) {
+      setError(err.message || 'Errore caricamento carosello');
+    } finally {
+      setGalleryUploadLoading(false);
+      if (galleryFileInputRef.current) galleryFileInputRef.current.value = '';
+    }
+  };
+
+  const handleUploadProjectPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfUploadLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file, file.name);
+      const res = await fetch('/api/projects/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore caricamento PDF');
+      setProjectPdfUrl(data.url);
+      showTemporarySuccess('Documento PDF caricato con successo!');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setPdfUploadLoading(false);
+      if (pdfFileInputRef.current) pdfFileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveGalleryImage = (indexToRemove: number) => {
+    setProjectGallery((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  // ── Cloudflare Media Hub Handlers ─────────────────────────────────
+  const fetchMediaAssets = async () => {
+    setIsMediaLoading(true);
+    try {
+      const res = await fetch('/api/master/media');
+      if (res.ok) {
+        const data = await res.json();
+        setMediaAssets(data.assets || []);
+        setMediaStats(data.stats || null);
+      }
+    } catch {} finally {
+      setIsMediaLoading(false);
+    }
+  };
+
+  const handleBatchMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingMedia(true);
+    setError(null);
+    let successCount = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let fileToSend: File | Blob = file;
+        if (file.type.startsWith('image/') && !file.type.includes('svg')) {
+          try {
+            fileToSend = await convertImageToWebp(file, 0.92);
+          } catch {}
+        }
+        const formData = new FormData();
+        formData.append('file', fileToSend, file.name);
+        const res = await fetch('/api/projects/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) successCount++;
+      }
+      showTemporarySuccess(`${successCount} file caricati ed elaborati su Cloudflare / CDN con successo!`);
+      await fetchMediaAssets();
+    } catch (err: any) {
+      setError(err.message || 'Errore durante il caricamento');
+    } finally {
+      setIsUploadingMedia(false);
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteMediaAsset = async (url: string, filename: string) => {
+    if (!confirm(`Sei sicuro di voler eliminare "${filename}"?`)) return;
+    try {
+      const res = await fetch(`/api/master/media?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
+      if (res.ok) {
+        showTemporarySuccess(`File "${filename}" eliminato.`);
+        await fetchMediaAssets();
+      }
+    } catch {
+      setError('Errore durante l\'eliminazione del file');
     }
   };
 
@@ -810,6 +957,8 @@ export default function DashboardPage() {
         category: p.category || 'Sviluppo',
         featured: false,
         order: maxOrder + 1,
+        gallery: p.gallery || null,
+        pdfUrl: p.pdfUrl || null,
       };
 
       const res = await fetch('/api/projects', {
@@ -850,6 +999,8 @@ export default function DashboardPage() {
         category: projectCategory || 'Sviluppo',
         featured: projectFeatured,
         order: Number(projectOrder) || 0,
+        gallery: projectGallery.length > 0 ? JSON.stringify(projectGallery) : null,
+        pdfUrl: projectPdfUrl.trim() || null,
       };
 
       const url = editingProjectId ? `/api/projects/${editingProjectId}` : '/api/projects';
@@ -890,6 +1041,17 @@ export default function DashboardPage() {
     setProjectTags(p.tags || '');
     setProjectFeatured(p.featured);
     setProjectOrder(p.order);
+    try {
+      if (p.gallery) {
+        const parsed = typeof p.gallery === 'string' ? JSON.parse(p.gallery) : p.gallery;
+        setProjectGallery(Array.isArray(parsed) ? parsed : []);
+      } else {
+        setProjectGallery([]);
+      }
+    } catch {
+      setProjectGallery([]);
+    }
+    setProjectPdfUrl(p.pdfUrl || '');
     setIsProjectModalOpen(true);
   };
 
@@ -1019,6 +1181,7 @@ export default function DashboardPage() {
       'DestTime — My Hero Academia',
       'DestTime — Spider-Man',
       'DestTime — Stories Social',
+      'Progetti di UI',
     ];
 
     const canonicalOrderMap = new Map<string, number>(
@@ -1804,8 +1967,9 @@ export default function DashboardPage() {
           {/* Left Vertical Tabs Menu */}
           <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-3 flex flex-col gap-1.5">
             {[
-              { id: 'projects', label: 'Progetti', icon: CodeFolderIcon, count: projects.length },
-              { id: 'inbox', label: 'Inbox Messaggi', icon: Mail01Icon, count: messages.filter((m) => m.status === 'new').length },
+              { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, count: projects.length },
+              { id: 'media', label: 'Media & Cloudflare CDN', icon: CloudIcon, count: mediaAssets.length },
+              { id: 'inbox', label: 'Inbox & Newsletter', icon: Mail01Icon, count: messages.filter((m) => m.status === 'new').length },
               { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatLeads.length },
               { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
@@ -2041,6 +2205,13 @@ export default function DashboardPage() {
                       };
 
                       const catStyle = categoryColors[p.category || 'Sviluppo'] || categoryColors.Sviluppo;
+                      let galleryList: string[] = [];
+                      try {
+                        if (p.gallery) {
+                          const parsed = typeof p.gallery === 'string' ? JSON.parse(p.gallery) : p.gallery;
+                          if (Array.isArray(parsed)) galleryList = parsed;
+                        }
+                      } catch {}
 
                       return (
                         <div
@@ -2135,6 +2306,34 @@ export default function DashboardPage() {
                             <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed px-0.5 mb-2">
                               {p.description}
                             </p>
+
+                            {/* Media badges: Gallery & PDF */}
+                            {(galleryList.length > 0 || p.pdfUrl) && (
+                              <div className="flex flex-wrap items-center gap-1.5 px-0.5 mb-2">
+                                {galleryList.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedProjectGalleryModal({ title: p.title, images: galleryList, activeIdx: 0 })}
+                                    className="px-2 py-0.5 rounded-md bg-teal-500/15 hover:bg-teal-500/30 border border-teal-500/30 text-[10px] text-teal-300 font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Visualizza galleria carosello"
+                                  >
+                                    <span>🖼️</span>
+                                    <span>{galleryList.length} foto</span>
+                                  </button>
+                                )}
+                                {p.pdfUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedProjectPdfModal(p.pdfUrl || null)}
+                                    className="px-2 py-0.5 rounded-md bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 text-[10px] text-rose-300 font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                                    title="Visualizza documento PDF"
+                                  >
+                                    <span>📄</span>
+                                    <span>PDF</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
                             {/* Tags Chips */}
                             {p.tags && (
@@ -2361,6 +2560,112 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <input type="file" ref={fileInputRef} onChange={handleFileSelectForCrop} accept="image/*" className="hidden" />
+                      </div>
+
+                      {/* Galleria & Carosello Immagini Multiplo (Auto WebP) */}
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">🖼️</span>
+                            <div>
+                              <p className="text-xs font-bold text-white">Carosello / Galleria Immagini ({projectGallery.length})</p>
+                              <p className="text-[10px] text-neutral-400">Carica più immagini insieme, convertite automaticamente in WebP</p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => galleryFileInputRef.current?.click()}
+                            disabled={galleryUploadLoading}
+                            className="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                          >
+                            <TiaIcon icon={Upload01Icon} size={13} />
+                            <span>{galleryUploadLoading ? 'Elaborazione WebP...' : '+ Aggiungi Immagini'}</span>
+                          </button>
+                          <input
+                            type="file"
+                            ref={galleryFileInputRef}
+                            onChange={handleUploadGalleryImages}
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                          />
+                        </div>
+
+                        {/* Gallery Thumbnails Strip */}
+                        {projectGallery.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/[0.06]">
+                            {projectGallery.map((imgUrl, idx) => (
+                              <div key={idx} className="relative group/gitem w-16 h-12 rounded-lg overflow-hidden bg-black/70 border border-white/10 shrink-0">
+                                <img src={imgUrl} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveGalleryImage(idx)}
+                                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-600/90 text-white text-[10px] flex items-center justify-center opacity-0 group-hover/gitem:opacity-100 transition-opacity cursor-pointer"
+                                  title="Rimuovi immagine"
+                                >
+                                  &times;
+                                </button>
+                                <span className="absolute bottom-0.5 left-0.5 px-1 rounded bg-black/80 text-[8px] text-white font-mono">
+                                  #{idx + 1}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-neutral-500 italic">Nessuna immagine aggiuntiva nel carosello.</p>
+                        )}
+                      </div>
+
+                      {/* Documento PDF Allegato (Case Study / Presentazione / Preventivo) */}
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">📄</span>
+                            <div>
+                              <p className="text-xs font-bold text-white">Documento PDF Allegato (Case Study / Presentazione)</p>
+                              <p className="text-[10px] text-neutral-400">Permette di visualizzare un documento PDF sfogliabile</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {projectPdfUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProjectPdfModal(projectPdfUrl)}
+                                className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-teal-300 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <TiaIcon icon={ViewIcon} size={13} />
+                                <span>Anteprima PDF</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => pdfFileInputRef.current?.click()}
+                              disabled={pdfUploadLoading}
+                              className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                            >
+                              <TiaIcon icon={Upload01Icon} size={13} />
+                              <span>{pdfUploadLoading ? 'Caricamento...' : 'Carica PDF'}</span>
+                            </button>
+                            <input
+                              type="file"
+                              ref={pdfFileInputRef}
+                              onChange={handleUploadProjectPdf}
+                              accept="application/pdf"
+                              className="hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <input
+                          type="text"
+                          value={projectPdfUrl}
+                          onChange={(e) => setProjectPdfUrl(e.target.value)}
+                          placeholder="/uploads/design-works/Misti/WCM.pdf o URL del documento"
+                          className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 font-mono"
+                        />
                       </div>
 
                       {/* URLs */}
@@ -2654,6 +2959,277 @@ export default function DashboardPage() {
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* ── TAB: MEDIA & CLOUDFLARE CDN HUB ── */}
+          {activeTab === 'media' && (
+            <div className="flex flex-col gap-6">
+              {/* Media Overview & Stats Header */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse" />
+                    <span className="text-[11px] font-mono uppercase tracking-widest text-teal-400">
+                      Cloudflare CDN & Asset Vault
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-bold tracking-tight text-white">Media Hub & Cloudflare CDN</h2>
+                  <p className="text-xs text-neutral-400 mt-1 max-w-xl">
+                    Gestione centralizzata degli asset multimediali, sincronizzazione con edge Cloudflare e conversione WebP automatica ad altissima definizione.
+                  </p>
+                </div>
+
+                {/* KPI Metrics Strip */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                    <span className="text-[10px] text-neutral-400 font-medium">Asset Totali</span>
+                    <span className="text-base font-bold text-white font-mono">{mediaStats?.totalFiles ?? mediaAssets.length}</span>
+                  </div>
+                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                    <span className="text-[10px] text-neutral-400 font-medium">Dimensione Storage</span>
+                    <span className="text-base font-bold text-teal-300 font-mono">
+                      {mediaStats ? `${(mediaStats.totalBytes / (1024 * 1024)).toFixed(1)} MB` : '...'}
+                    </span>
+                  </div>
+                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                    <span className="text-[10px] text-neutral-400 font-medium">Immagini WebP</span>
+                    <span className="text-base font-bold text-cyan-300 font-mono">{mediaStats?.webpCount ?? 0}</span>
+                  </div>
+                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                    <span className="text-[10px] text-neutral-400 font-medium">Documenti PDF</span>
+                    <span className="text-base font-bold text-rose-300 font-mono">{mediaStats?.pdfCount ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Dropzone & Actions Toolbar */}
+              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-5 flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  {/* Category Filter Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { id: 'all', label: `Tutti i file (${mediaAssets.length})` },
+                      { id: 'image', label: `Immagini WebP (${mediaAssets.filter((a) => a.type === 'image').length})` },
+                      { id: 'pdf', label: `Documenti PDF (${mediaAssets.filter((a) => a.type === 'pdf').length})` },
+                      { id: 'design', label: `Design Works (${mediaAssets.filter((a) => a.folder.includes('design-works')).length})` },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setMediaFilter(f.id as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
+                          mediaFilter === f.id
+                            ? 'bg-teal-400 text-black border-teal-300 shadow-md shadow-teal-400/20'
+                            : 'bg-white/[0.04] text-neutral-400 border-white/[0.06] hover:text-white hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Upload & Refresh Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={fetchMediaAssets}
+                      disabled={isMediaLoading}
+                      className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                      title="Aggiorna asset"
+                    >
+                      <TiaIcon icon={RefreshIcon} size={15} className={isMediaLoading ? 'animate-spin' : ''} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => mediaFileInputRef.current?.click()}
+                      disabled={isUploadingMedia}
+                      className="px-4 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <TiaIcon icon={Upload01Icon} size={15} />
+                      <span>{isUploadingMedia ? 'Conversione & Invio...' : '+ Carica File (Auto-WebP)'}</span>
+                    </button>
+                    <input
+                      type="file"
+                      ref={mediaFileInputRef}
+                      onChange={handleBatchMediaUpload}
+                      accept="image/*,application/pdf"
+                      multiple
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none">
+                    <TiaIcon icon={Search01Icon} size={15} />
+                  </span>
+                  <input
+                    type="text"
+                    value={mediaSearch}
+                    onChange={(e) => setMediaSearch(e.target.value)}
+                    placeholder="Cerca per nome file o cartella CDN..."
+                    className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
+                  />
+                  {mediaSearch && (
+                    <button onClick={() => setMediaSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white cursor-pointer">
+                      <TiaIcon icon={Cancel01Icon} size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Media Gallery Grid (5 Columns) */}
+              {(() => {
+                const filteredMedia = mediaAssets.filter((asset) => {
+                  if (mediaFilter === 'image' && asset.type !== 'image') return false;
+                  if (mediaFilter === 'pdf' && asset.type !== 'pdf') return false;
+                  if (mediaFilter === 'design' && !asset.folder.includes('design-works')) return false;
+                  if (mediaSearch) {
+                    const q = mediaSearch.toLowerCase();
+                    return asset.filename.toLowerCase().includes(q) || asset.folder.toLowerCase().includes(q) || asset.url.toLowerCase().includes(q);
+                  }
+                  return true;
+                });
+
+                if (filteredMedia.length === 0) {
+                  return (
+                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-3">
+                      <span className="text-3xl">📁</span>
+                      <p className="text-sm font-semibold text-white">Nessun asset trovato</p>
+                      <p className="text-xs text-neutral-400 max-w-sm">
+                        Nessun file multimediale corrisponde ai criteri di ricerca o alla cartella selezionata.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-4">
+                    {filteredMedia.map((asset, idx) => {
+                      const isImage = asset.type === 'image';
+                      const isPdf = asset.type === 'pdf';
+                      const formattedSize = asset.size > 1024 * 1024
+                        ? `${(asset.size / (1024 * 1024)).toFixed(1)} MB`
+                        : `${(asset.size / 1024).toFixed(0)} KB`;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="group bg-[#081410]/95 backdrop-blur-2xl border border-white/[0.08] hover:border-teal-500/40 rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-xl select-none"
+                        >
+                          <div>
+                            {/* Preview Area (16:9 for images, dedicated card for PDF) */}
+                            <div className="h-32 w-full rounded-xl overflow-hidden mb-2 bg-black/70 relative border border-white/[0.06] flex items-center justify-center group/preview">
+                              {isImage ? (
+                                <img
+                                  src={asset.url}
+                                  alt={asset.filename}
+                                  className="w-full h-full object-cover group-hover/preview:scale-105 transition-transform duration-500"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.opacity = '0.3';
+                                  }}
+                                />
+                              ) : isPdf ? (
+                                <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-rose-400">
+                                  <span className="text-3xl">📄</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 font-mono">PDF Document</span>
+                                </div>
+                              ) : (
+                                <div className="text-neutral-500 text-xs font-mono">{asset.ext}</div>
+                              )}
+
+                              {/* Hover Action Overlay */}
+                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/preview:opacity-100 backdrop-blur-xs transition-opacity flex items-center justify-center gap-2">
+                                {isImage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedMediaPreview(asset)}
+                                    className="p-2 rounded-xl bg-teal-400 text-black font-semibold text-xs shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                                    title="Visualizza immagine ad alta risoluzione"
+                                  >
+                                    <TiaIcon icon={ViewIcon} size={15} />
+                                  </button>
+                                )}
+                                {isPdf && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedProjectPdfModal(asset.url)}
+                                    className="p-2 rounded-xl bg-rose-400 text-black font-semibold text-xs shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                                    title="Apri nel visualizzatore PDF integrato"
+                                  >
+                                    <TiaIcon icon={ViewIcon} size={15} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fullUrl = `${window.location.origin}${asset.url}`;
+                                    navigator.clipboard.writeText(fullUrl);
+                                    showTemporarySuccess(`URL copiato: ${asset.filename}`);
+                                  }}
+                                  className="p-2 rounded-xl bg-white/[0.15] hover:bg-white/[0.25] text-white text-xs shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                                  title="Copia URL CDN"
+                                >
+                                  🔗
+                                </button>
+                              </div>
+
+                              {/* Format Badge Top Left */}
+                              <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase ${
+                                isImage ? 'bg-teal-500/80 text-black' : isPdf ? 'bg-rose-500/80 text-white' : 'bg-neutral-600/80 text-white'
+                              }`}>
+                                {asset.ext || asset.type}
+                              </span>
+
+                              {/* Size Badge Top Right */}
+                              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono bg-black/75 text-neutral-300">
+                                {formattedSize}
+                              </span>
+                            </div>
+
+                            {/* Filename & Folder */}
+                            <h4 className="font-bold text-white text-xs truncate drop-shadow-sm px-0.5" title={asset.filename}>
+                              {asset.filename}
+                            </h4>
+                            <p className="text-[10px] text-neutral-500 font-mono truncate px-0.5 mb-2" title={asset.folder}>
+                              📁 /{asset.folder}
+                            </p>
+                          </div>
+
+                          {/* Footer Actions */}
+                          <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] px-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const fullUrl = `${window.location.origin}${asset.url}`;
+                                navigator.clipboard.writeText(fullUrl);
+                                showTemporarySuccess(`URL copiato negli appunti!`);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                              title="Copia link"
+                            >
+                              <span>🔗</span>
+                              <span>Copia CDN</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMediaAsset(asset.url, asset.filename)}
+                              className="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-[10px] text-red-300 font-semibold transition-colors cursor-pointer"
+                              title="Elimina asset"
+                            >
+                              Elimina
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -4856,6 +5432,218 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+        {/* ── MODAL: INTEGRATED PDF DOCUMENT VIEWER ── */}
+        {selectedProjectPdfModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-lg animate-in fade-in duration-200">
+            <div className="bg-[#081410] border border-rose-500/30 shadow-[0_0_50px_rgba(244,63,94,0.2)] rounded-3xl p-5 max-w-5xl w-full h-[90vh] flex flex-col gap-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
+                    📄
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Visualizzatore PDF Integrato</h3>
+                    <p className="text-xs text-neutral-400 font-mono truncate max-w-md">{selectedProjectPdfModal}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={selectedProjectPdfModal}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-colors"
+                  >
+                    <TiaIcon icon={Download01Icon} size={14} />
+                    <span>Scarica PDF</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectPdfModal(null)}
+                    className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white cursor-pointer transition-colors"
+                  >
+                    <TiaIcon icon={Cancel01Icon} size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* PDF Document Container */}
+              <div className="flex-1 w-full rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 relative">
+                <iframe
+                  src={selectedProjectPdfModal}
+                  title="PDF Viewer"
+                  className="w-full h-full border-0 rounded-2xl bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL: PROJECT CAROUSEL / GALLERY LIGHTBOX ── */}
+        {selectedProjectGalleryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-lg animate-in fade-in duration-200">
+            <div className="bg-[#081410] border border-teal-500/30 shadow-[0_0_50px_rgba(45,212,191,0.2)] rounded-3xl p-5 max-w-4xl w-full flex flex-col gap-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
+                    🖼️
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">{selectedProjectGalleryModal.title}</h3>
+                    <p className="text-xs text-neutral-400">
+                      Immagine {selectedProjectGalleryModal.activeIdx + 1} di {selectedProjectGalleryModal.images.length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const curUrl = selectedProjectGalleryModal.images[selectedProjectGalleryModal.activeIdx];
+                      if (curUrl) {
+                        navigator.clipboard.writeText(`${window.location.origin}${curUrl}`);
+                        showTemporarySuccess('URL immagine copiato!');
+                      }
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>🔗</span>
+                    <span>Copia URL</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectGalleryModal(null)}
+                    className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white cursor-pointer transition-colors"
+                  >
+                    <TiaIcon icon={Cancel01Icon} size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Carousel Main Image */}
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black/80 border border-white/10 flex items-center justify-center">
+                <img
+                  src={selectedProjectGalleryModal.images[selectedProjectGalleryModal.activeIdx]}
+                  alt={`${selectedProjectGalleryModal.title} Slide ${selectedProjectGalleryModal.activeIdx + 1}`}
+                  className="w-full h-full object-contain"
+                />
+
+                {/* Left / Right Buttons */}
+                {selectedProjectGalleryModal.images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedProjectGalleryModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                activeIdx:
+                                  (prev.activeIdx - 1 + prev.images.length) % prev.images.length,
+                              }
+                            : null
+                        )
+                      }
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-2xl bg-black/70 hover:bg-teal-500 text-white hover:text-black font-bold transition-all cursor-pointer shadow-xl backdrop-blur-md"
+                    >
+                      ‹
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedProjectGalleryModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                activeIdx: (prev.activeIdx + 1) % prev.images.length,
+                              }
+                            : null
+                        )
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-2xl bg-black/70 hover:bg-teal-500 text-white hover:text-black font-bold transition-all cursor-pointer shadow-xl backdrop-blur-md"
+                    >
+                      ›
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Thumbnails Navigation Strip */}
+              {selectedProjectGalleryModal.images.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                  {selectedProjectGalleryModal.images.map((imgUrl, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() =>
+                        setSelectedProjectGalleryModal((prev) => (prev ? { ...prev, activeIdx: i } : null))
+                      }
+                      className={`relative w-16 h-12 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                        i === selectedProjectGalleryModal.activeIdx
+                          ? 'border-teal-400 scale-105 shadow-md shadow-teal-400/30'
+                          : 'border-white/10 opacity-50 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={imgUrl} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL: MEDIA IMAGE PREVIEW LIGHTBOX ── */}
+        {selectedMediaPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-lg animate-in fade-in duration-200">
+            <div className="bg-[#081410] border border-teal-500/30 shadow-[0_0_50px_rgba(45,212,191,0.2)] rounded-3xl p-5 max-w-3xl w-full flex flex-col gap-4">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                <div>
+                  <h3 className="font-bold text-white text-base truncate">{selectedMediaPreview.filename}</h3>
+                  <p className="text-xs text-neutral-400 font-mono">
+                    📁 /{selectedMediaPreview.folder} • {(selectedMediaPreview.size / 1024).toFixed(0)} KB • {selectedMediaPreview.ext}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}${selectedMediaPreview.url}`);
+                      showTemporarySuccess('URL copiato negli appunti!');
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>🔗</span>
+                    <span>Copia URL</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMediaPreview(null)}
+                    className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white cursor-pointer transition-colors"
+                  >
+                    <TiaIcon icon={Cancel01Icon} size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Image */}
+              <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black/80 border border-white/10 flex items-center justify-center">
+                <img
+                  src={selectedMediaPreview.url}
+                  alt={selectedMediaPreview.filename}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         </main>
 
