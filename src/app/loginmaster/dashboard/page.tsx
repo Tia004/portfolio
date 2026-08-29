@@ -481,7 +481,12 @@ export default function DashboardPage() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
 
-  // ── Preventivatore State ─────────────────────────────────────────
+  // ── Preventivatore & Fatturatore (Prestazione Occasionale senza P.IVA) State ──────
+  const [quoteDocumentType, setQuoteDocumentType] = useState<'quote' | 'occasional_receipt' | 'proforma_invoice'>('quote');
+  const [quoteWithholdingTax, setQuoteWithholdingTax] = useState(true);
+  const [quoteApplyStampDuty, setQuoteApplyStampDuty] = useState(true);
+  const [quoteProviderCf, setQuoteProviderCf] = useState('CHNTNA04D14E897A');
+  const [quoteProviderAddress, setQuoteProviderAddress] = useState('Mantova (MN), Italia');
   const [quoteClientName, setQuoteClientName] = useState('');
   const [quoteClientCompany, setQuoteClientCompany] = useState('');
   const [quoteClientEmail, setQuoteClientEmail] = useState('');
@@ -497,7 +502,7 @@ export default function DashboardPage() {
   const [quoteNotes, setQuoteNotes] = useState('Garanzia bugfix 30 giorni inclusa. Assistenza e supporto post-lancio garantiti.');
   const [quoteDiscount, setQuoteDiscount] = useState<number>(0);
   const [quoteTaxRegime, setQuoteTaxRegime] = useState<'forfettario' | 'iva22'>('forfettario');
-  const [quotePreviewTheme, setQuotePreviewTheme] = useState<'dark' | 'light'>('dark');
+  const [quotePreviewTheme, setQuotePreviewTheme] = useState<'dark' | 'light'>('light');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([
     {
       id: 'item-1',
@@ -4445,26 +4450,62 @@ export default function DashboardPage() {
                 
                 {/* Form Controls Column (no-print) */}
                 <div className="xl:col-span-5 flex flex-col gap-4 no-print">
-                  <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 flex flex-col gap-4">
+                  <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-6 flex flex-col gap-4">
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                       <h3 className="font-bold text-white text-base flex items-center gap-2">
                         <TiaIcon icon={DollarSignIcon} size={18} className="text-teal-400" />
-                        <span>Parametri Preventivo</span>
+                        <span>Generatore Documenti & Fatture</span>
                       </h3>
                       <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
-                        Brand Custom
+                        Legal Document Engine
                       </span>
+                    </div>
+
+                    {/* Document Type Selector */}
+                    <div>
+                      <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                        Tipo Documento da Generare *
+                      </label>
+                      <select
+                        value={quoteDocumentType}
+                        onChange={(e) => {
+                          const val = e.target.value as any;
+                          setQuoteDocumentType(val);
+                          if (val === 'occasional_receipt') {
+                            setQuoteNumber(`RIC-${new Date().getFullYear()}/001`);
+                            setQuotePaymentTerms('Bonifico bancario entro 15 giorni dalla ricezione della notula');
+                          } else if (val === 'proforma_invoice') {
+                            setQuoteNumber(`PROFORMA-${new Date().getFullYear()}/001`);
+                            setQuotePaymentTerms('Bonifico bancario a vista');
+                          } else {
+                            setQuoteNumber(`PREV-${new Date().getFullYear()}-001`);
+                            setQuotePaymentTerms('50% acconto all\'avvio lavori, 50% a consegna e collaudo finale');
+                          }
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-teal-500/40 text-white text-xs font-semibold focus:outline-none focus:border-teal-400 cursor-pointer shadow-inner"
+                      >
+                        <option value="quote">📋 Preventivo Commerciale / Contratto d&apos;Opera</option>
+                        <option value="occasional_receipt">🧾 Ricevuta per Prestazione Occasionale (senza P.IVA - art. 2222 C.C.)</option>
+                        <option value="proforma_invoice">📑 Fattura Pro-Forma</option>
+                      </select>
+                      <p className="text-[10px] text-teal-300/80 mt-1">
+                        {quoteDocumentType === 'occasional_receipt'
+                          ? 'Idoneo per freelance senza Partita IVA: calcola la Ritenuta d\'Acconto del 20% e la marca da bollo ex art. 2222 C.C.'
+                          : quoteDocumentType === 'proforma_invoice'
+                          ? 'Documento contabile pro-forma da trasmettere prima dell\'emissione definitiva.'
+                          : 'Proposta commerciale e accordo d\'incarico professionale con validità temporale.'}
+                      </p>
                     </div>
 
                     {/* Document info */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">N. Preventivo</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">N. Documento</label>
                         <input
                           type="text"
                           value={quoteNumber}
                           onChange={(e) => setQuoteNumber(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:outline-none focus:border-teal-400"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-teal-400"
                         />
                       </div>
                       <div>
@@ -4480,7 +4521,9 @@ export default function DashboardPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Validità</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
+                          {quoteDocumentType === 'occasional_receipt' ? 'Termini di Pagamento' : 'Validità Offerta'}
+                        </label>
                         <input
                           type="text"
                           value={quoteValidity}
@@ -4489,7 +4532,7 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Tempi Consegna</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Tempi di Esecuzione</label>
                         <input
                           type="text"
                           value={quoteTimeline}
@@ -4499,9 +4542,36 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Dati Prestatore (Tia Designs / Freelance) */}
+                    <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2.5">
+                      <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Dati Prestatore d&apos;Opera</p>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 mb-1">Codice Fiscale Prestatore</label>
+                          <input
+                            type="text"
+                            value={quoteProviderCf}
+                            onChange={(e) => setQuoteProviderCf(e.target.value)}
+                            placeholder="Codice Fiscale"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-neutral-400 mb-1">Sede / Residenza</label>
+                          <input
+                            type="text"
+                            value={quoteProviderAddress}
+                            onChange={(e) => setQuoteProviderAddress(e.target.value)}
+                            placeholder="Mantova (MN), Italia"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Client Info */}
                     <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2.5">
-                      <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Dati Cliente</p>
+                      <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Dati Committente / Cliente</p>
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
                           <label className="block text-[10px] text-neutral-400 mb-1">Nome Referente *</label>
@@ -4526,7 +4596,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-[10px] text-neutral-400 mb-1">Email Cliente *</label>
+                          <label className="block text-[10px] text-neutral-400 mb-1">Email Committente *</label>
                           <input
                             type="email"
                             value={quoteClientEmail}
@@ -4548,7 +4618,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-[10px] text-neutral-400 mb-1">Indirizzo & Città</label>
+                          <label className="block text-[10px] text-neutral-400 mb-1">Indirizzo & Sede Committente</label>
                           <input
                             type="text"
                             value={quoteClientAddress}
@@ -4558,78 +4628,77 @@ export default function DashboardPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-neutral-400 mb-1">P.IVA / Cod. Fiscale</label>
+                          <label className="block text-[10px] text-neutral-400 mb-1">C.F. / Partita IVA Committente</label>
                           <input
                             type="text"
                             value={quoteClientVat}
                             onChange={(e) => setQuoteClientVat(e.target.value)}
-                            placeholder="IT12345678901"
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white"
+                            placeholder="IT12345678901 / CF"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Items list manager */}
-                    <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-2.5">
+                    {/* Deliverable Items Section */}
+                    <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Voci di Servizio ({quoteItems.length})</p>
+                        <p className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Voci & Deliverables ({quoteItems.length})</p>
                         <button
                           type="button"
                           onClick={handleAddQuoteItem}
-                          className="text-xs font-bold text-teal-400 hover:text-teal-300 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                         >
-                          + Aggiungi Voce
+                          <span>+ Aggiungi Voce</span>
                         </button>
                       </div>
 
-                      <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
-                        {quoteItems.map((item, index) => (
-                          <div key={item.id} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2">
+                      <div className="flex flex-col gap-3 max-h-60 overflow-y-auto pr-1">
+                        {quoteItems.map((item, idx) => (
+                          <div key={item.id} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2 relative group/qitem">
                             <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono text-teal-400 font-bold">#{idx + 1}</span>
                               <input
                                 type="text"
+                                placeholder="Titolo Voce (es. Sviluppo Web App Next.js)"
                                 value={item.title}
                                 onChange={(e) => handleUpdateQuoteItem(item.id, 'title', e.target.value)}
-                                placeholder="Nome voce"
-                                className="flex-1 font-semibold text-xs text-white bg-transparent border-b border-white/[0.1] focus:outline-none focus:border-teal-400 py-0.5"
+                                className="flex-1 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs text-white font-medium"
                               />
-                              {quoteItems.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveQuoteItem(item.id)}
-                                  className="text-neutral-500 hover:text-red-400 text-xs px-1 cursor-pointer"
-                                >
-                                  ✕
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveQuoteItem(item.id)}
+                                className="p-1 rounded text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                              >
+                                &times;
+                              </button>
                             </div>
                             <textarea
-                              rows={1}
-                              value={item.description}
+                              rows={2}
+                              placeholder="Descrizione dettagliata delle specifiche tecniche, deliverable inclusi e requisiti..."
+                              value={item.description || ''}
                               onChange={(e) => handleUpdateQuoteItem(item.id, 'description', e.target.value)}
-                              placeholder="Dettagli e deliverables inclusi..."
-                              className="w-full text-[11px] text-neutral-300 bg-transparent resize-none border-b border-white/[0.05] focus:outline-none py-0.5"
+                              className="w-full px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-[11px] text-neutral-300 resize-none"
                             />
-                            <div className="grid grid-cols-2 gap-2 items-center">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-neutral-400">Q.tà:</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[9px] text-neutral-500 uppercase">Q.tà</label>
                                 <input
                                   type="number"
                                   min={1}
                                   value={item.quantity}
                                   onChange={(e) => handleUpdateQuoteItem(item.id, 'quantity', Number(e.target.value))}
-                                  className="w-12 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-center border border-white/[0.08]"
+                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs font-mono text-white text-center"
                                 />
                               </div>
-                              <div className="flex items-center gap-1.5 justify-end">
-                                <span className="text-[10px] text-neutral-400">Prezzo (€):</span>
+                              <div>
+                                <label className="block text-[9px] text-neutral-500 uppercase">Prezzo Unitario (€)</label>
                                 <input
                                   type="number"
                                   min={0}
                                   value={item.price}
                                   onChange={(e) => handleUpdateQuoteItem(item.id, 'price', Number(e.target.value))}
-                                  className="w-20 px-1.5 py-0.5 rounded bg-white/[0.05] text-xs text-white text-right border border-white/[0.08]"
+                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs font-mono text-white text-right"
                                 />
                               </div>
                             </div>
@@ -4638,10 +4707,10 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    {/* Financial terms */}
+                    {/* Fiscal Adjustments & Totals Controls */}
                     <div className="pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] text-neutral-400 mb-1">Sconto Promo (%)</label>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Sconto Commerciale (%)</label>
                         <input
                           type="number"
                           min={0}
@@ -4652,20 +4721,45 @@ export default function DashboardPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-neutral-400 mb-1">Regime Fiscale</label>
-                        <select
-                          value={quoteTaxRegime}
-                          onChange={(e) => setQuoteTaxRegime(e.target.value as 'forfettario' | 'iva22')}
-                          className="w-full px-2.5 py-1.5 rounded-xl bg-black border border-white/[0.08] text-xs text-white"
-                        >
-                          <option value="forfettario">Forfettario (Esente IVA)</option>
-                          <option value="iva22">IVA Ordinaria (22%)</option>
-                        </select>
+                        {quoteDocumentType === 'occasional_receipt' ? (
+                          <div className="flex flex-col gap-1 pt-1">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-teal-300 font-medium">
+                              <input
+                                type="checkbox"
+                                checked={quoteWithholdingTax}
+                                onChange={(e) => setQuoteWithholdingTax(e.target.checked)}
+                                className="accent-teal-400 w-3.5 h-3.5 rounded"
+                              />
+                              <span>Ritenuta d&apos;Acconto 20%</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-neutral-400">
+                              <input
+                                type="checkbox"
+                                checked={quoteApplyStampDuty}
+                                onChange={(e) => setQuoteApplyStampDuty(e.target.checked)}
+                                className="accent-teal-400 w-3.5 h-3.5 rounded"
+                              />
+                              <span>Marca da Bollo (€ 2,00)</span>
+                            </label>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-[10px] text-neutral-400 mb-1">Regime Fiscale</label>
+                            <select
+                              value={quoteTaxRegime}
+                              onChange={(e) => setQuoteTaxRegime(e.target.value as 'forfettario' | 'iva22')}
+                              className="w-full px-2.5 py-1.5 rounded-xl bg-black border border-white/[0.08] text-xs text-white cursor-pointer"
+                            >
+                              <option value="forfettario">Forfettario (Esente IVA)</option>
+                              <option value="iva22">IVA Ordinaria (22%)</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-neutral-400 mb-1">Termini di Pagamento</label>
+                      <label className="block text-[10px] text-neutral-400 mb-1">Termini e Condizioni di Pagamento</label>
                       <input
                         type="text"
                         value={quotePaymentTerms}
@@ -4675,7 +4769,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-neutral-400 mb-1">IBAN per Bonifico</label>
+                      <label className="block text-[10px] text-neutral-400 mb-1">IBAN per Versamento / Bonifico</label>
                       <input
                         type="text"
                         value={quoteIban}
@@ -4685,7 +4779,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-[10px] text-neutral-400 mb-1">Note & Garanzie</label>
+                      <label className="block text-[10px] text-neutral-400 mb-1">Note, Specifiche & Garanzie</label>
                       <textarea
                         rows={2}
                         value={quoteNotes}
@@ -4700,20 +4794,20 @@ export default function DashboardPage() {
                 <div className="xl:col-span-7 flex flex-col items-center w-full">
                   <div
                     id="printable-quote"
-                    className={`w-full max-w-[780px] rounded-3xl p-8 sm:p-10 shadow-2xl relative overflow-hidden transition-all duration-300 ${
+                    className={`w-full max-w-[800px] rounded-2xl p-8 sm:p-12 shadow-2xl relative overflow-hidden transition-all duration-300 font-sans ${
                       quotePreviewTheme === 'light'
                         ? 'bg-white text-slate-900 border border-slate-200 shadow-xl'
                         : 'bg-[#081410] text-neutral-200 border border-teal-500/25'
                     }`}
                   >
-                    {/* Subtle top glow bar */}
-                    <div className="quote-top-bar absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-300" />
+                    {/* Top Solid Border Accent */}
+                    <div className="quote-top-bar absolute top-0 left-0 right-0 h-1 bg-slate-900" />
 
-                    {/* Header Row: Logo + Brand Info + Quote Meta */}
+                    {/* Header Row: Logo & Provider Identity + Document Official Badge */}
                     <div className={`quote-divider flex flex-col sm:flex-row sm:items-start justify-between gap-6 pb-6 border-b ${
-                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                      quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.1]'
                     }`}>
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-3">
                           <picture>
                             <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
@@ -4727,81 +4821,78 @@ export default function DashboardPage() {
                               draggable={false}
                             />
                           </picture>
+                          <div>
+                            <h2 className="font-serif text-2xl font-bold tracking-tight text-slate-950">
+                              Tia Designs
+                            </h2>
+                            <p className="text-[9px] uppercase tracking-[0.22em] font-semibold text-slate-500">
+                              Creative Development & Digital Design
+                            </p>
+                          </div>
                         </div>
-                        <p className={`quote-brand-title text-xs font-semibold tracking-wider uppercase mt-1 ${
-                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
-                        }`}>
-                          Design • Sviluppo Web • Video
-                        </p>
-                        <div className={`quote-text-muted text-[11px] leading-tight space-y-0.5 ${
-                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                        }`}>
-                          <p className="quote-text-primary font-bold">Tia Chinaglia</p>
-                          <p>Email: <span className="quote-text-primary">info@tiadesigns.it</span></p>
-                          <p>Web: <span className="quote-text-primary">tiadesigns.it</span></p>
-                          <p>Tel: <span className="quote-text-primary">+39 331 882 1334</span></p>
-                          <p>Sede: <span className="quote-text-primary">Mantova (MN), Italia</span></p>
+
+                        <div className="text-[11px] text-slate-600 space-y-0.5 mt-2 font-sans">
+                          <p className="font-bold text-slate-900">Tia Chinaglia</p>
+                          <p>Codice Fiscale: <strong className="font-mono text-slate-900">{quoteProviderCf || 'CHNTNA04D14E897A'}</strong></p>
+                          <p>Sede / Domicilio: <span className="text-slate-800">{quoteProviderAddress || 'Mantova (MN), Italia'}</span></p>
+                          <p>Email: <span className="text-slate-900">info@tiadesigns.it</span> • Web: <span className="text-slate-900">tiadesigns.it</span></p>
+                          <p>Tel: <span className="text-slate-900">+39 331 882 1334</span></p>
                         </div>
                       </div>
 
-                      {/* Quote Meta Badge */}
-                      <div className={`quote-card-subtle flex flex-col sm:items-end gap-1.5 p-4 rounded-2xl sm:min-w-[220px] ${
+                      {/* Official Document Meta Box */}
+                      <div className={`quote-card-subtle flex flex-col sm:items-end gap-1.5 p-4 rounded-xl sm:min-w-[240px] border ${
                         quotePreviewTheme === 'light'
-                          ? 'bg-slate-50 border border-slate-200'
-                          : 'bg-black/40 border border-white/[0.08]'
+                          ? 'bg-slate-50 border-slate-300'
+                          : 'bg-black/40 border-white/[0.08]'
                       }`}>
-                        <span className={`quote-badge-commercial text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-0.5 rounded-full border ${
-                          quotePreviewTheme === 'light'
-                            ? 'bg-teal-50 text-teal-700 border-teal-200'
-                            : 'bg-teal-500/10 text-teal-400 border-teal-500/30'
-                        }`}>
-                          Preventivo Commerciale
+                        <span className="text-[9px] font-bold uppercase tracking-[0.18em] px-2.5 py-1 rounded bg-slate-900 text-white">
+                          {quoteDocumentType === 'occasional_receipt'
+                            ? 'Ricevuta Prestazione Occasionale'
+                            : quoteDocumentType === 'proforma_invoice'
+                            ? 'Fattura Pro-Forma'
+                            : 'Preventivo & Proposta d\'Opera'}
                         </span>
-                        <p className={`quote-text-primary text-lg font-bold font-mono mt-1 ${
-                          quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                        }`}>{quoteNumber}</p>
-                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
-                          Data: <strong className="quote-text-primary">{quoteDate}</strong>
+                        <p className="font-serif text-lg font-bold text-slate-950 mt-1">
+                          {quoteNumber}
                         </p>
-                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
-                          Validità: <strong className="quote-text-primary">{quoteValidity}</strong>
+                        <p className="text-[11px] text-slate-600">
+                          Data di Emissione: <strong className="text-slate-900">{quoteDate}</strong>
                         </p>
-                        <p className={`quote-text-muted text-[11px] ${quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'}`}>
-                          Consegna stimata: <strong className={`quote-accent font-bold ${
-                            quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
-                          }`}>{quoteTimeline}</strong>
+                        <p className="text-[11px] text-slate-600">
+                          {quoteDocumentType === 'occasional_receipt' ? 'Termine Saldo:' : 'Validità Offerta:'}{' '}
+                          <strong className="text-slate-900">{quoteValidity}</strong>
+                        </p>
+                        <p className="text-[11px] text-slate-600">
+                          Tempi Esecuzione: <strong className="text-slate-900">{quoteTimeline}</strong>
                         </p>
                       </div>
                     </div>
 
-                    {/* Client Details Block */}
+                    {/* Committente / Spett.le Block */}
                     <div className={`quote-divider py-5 border-b grid grid-cols-1 sm:grid-cols-2 gap-4 ${
-                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                      quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.1]'
                     }`}>
                       <div>
-                        <p className={`quote-brand-title text-[10px] uppercase tracking-widest font-bold mb-1 ${
-                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
-                        }`}>Destinatario / Spett.le</p>
-                        <p className={`quote-text-primary text-sm font-bold ${
-                          quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                        }`}>{quoteClientName || 'Mario Rossi'}</p>
+                        <p className="text-[9px] uppercase tracking-widest font-bold text-slate-500 mb-1">
+                          Committente / Spett.le
+                        </p>
+                        <p className="font-serif text-base font-bold text-slate-950">
+                          {quoteClientName || 'Mario Rossi'}
+                        </p>
                         {quoteClientCompany && (
-                          <p className={`quote-text-secondary text-xs font-semibold ${
-                            quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
-                          }`}>{quoteClientCompany}</p>
+                          <p className="text-xs font-semibold text-slate-800">{quoteClientCompany}</p>
                         )}
                         {quoteClientAddress && (
-                          <p className={`quote-text-muted text-xs ${
-                            quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                          }`}>{quoteClientAddress}</p>
+                          <p className="text-xs text-slate-600 mt-0.5">{quoteClientAddress}</p>
                         )}
                       </div>
-                      <div className={`sm:text-right flex flex-col sm:items-end justify-center text-xs ${
-                        quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                      }`}>
-                        {quoteClientEmail && <p>Email: <strong className="quote-text-primary">{quoteClientEmail}</strong></p>}
-                        {quoteClientPhone && <p>Tel: <strong className="quote-text-primary">{quoteClientPhone}</strong></p>}
-                        {quoteClientVat && <p>P.IVA / CF: <strong className="quote-text-primary font-mono">{quoteClientVat}</strong></p>}
+                      <div className="sm:text-right flex flex-col sm:items-end justify-center text-xs text-slate-600 space-y-0.5">
+                        {quoteClientVat && (
+                          <p>C.F. / P.IVA: <strong className="text-slate-900 font-mono">{quoteClientVat}</strong></p>
+                        )}
+                        {quoteClientEmail && <p>Email: <strong className="text-slate-900">{quoteClientEmail}</strong></p>}
+                        {quoteClientPhone && <p>Telefono: <strong className="text-slate-900">{quoteClientPhone}</strong></p>}
                       </div>
                     </div>
 
@@ -4809,47 +4900,29 @@ export default function DashboardPage() {
                     <div className="py-6">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className={`border-b text-[10px] font-bold uppercase tracking-wider ${
-                            quotePreviewTheme === 'light'
-                              ? 'border-teal-600 text-teal-700'
-                              : 'border-white/[0.1] text-teal-400'
-                          }`}>
+                          <tr className="border-b-2 border-slate-900 text-[10px] font-bold uppercase tracking-wider text-slate-900">
                             <th className="py-2.5 px-2 w-8">#</th>
-                            <th className="py-2.5 px-2">Descrizione Servizio & Deliverables</th>
+                            <th className="py-2.5 px-2">Descrizione Prestazione & Deliverables</th>
                             <th className="py-2.5 px-2 text-center w-14">Q.tà</th>
                             <th className="py-2.5 px-2 text-right w-24">Prezzo Unit.</th>
-                            <th className="py-2.5 px-2 text-right w-24">Totale</th>
+                            <th className="py-2.5 px-2 text-right w-24">Importo</th>
                           </tr>
                         </thead>
-                        <tbody className={`divide-y text-xs ${
-                          quotePreviewTheme === 'light' ? 'divide-slate-100' : 'divide-white/[0.05]'
-                        }`}>
+                        <tbody className="divide-y divide-slate-200 text-xs">
                           {quoteItems.map((item, idx) => {
                             const lineTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
                             return (
-                              <tr key={item.id} className={quotePreviewTheme === 'light' ? 'hover:bg-slate-50' : 'hover:bg-white/[0.02]'}>
-                                <td className={`quote-text-muted py-3 px-2 font-mono ${
-                                  quotePreviewTheme === 'light' ? 'text-slate-500' : 'text-neutral-500'
-                                }`}>{idx + 1}</td>
+                              <tr key={item.id} className="hover:bg-slate-50">
+                                <td className="py-3 px-2 font-mono text-slate-500">{idx + 1}</td>
                                 <td className="py-3 px-2">
-                                  <p className={`quote-text-primary font-bold text-xs ${
-                                    quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                                  }`}>{item.title}</p>
+                                  <p className="font-semibold text-xs text-slate-900">{item.title}</p>
                                   {item.description && (
-                                    <p className={`quote-text-muted text-[11px] mt-0.5 leading-relaxed ${
-                                      quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                                    }`}>{item.description}</p>
+                                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed font-sans">{item.description}</p>
                                   )}
                                 </td>
-                                <td className={`quote-text-secondary py-3 px-2 text-center font-mono ${
-                                  quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
-                                }`}>{item.quantity}</td>
-                                <td className={`quote-text-secondary py-3 px-2 text-right font-mono ${
-                                  quotePreviewTheme === 'light' ? 'text-slate-700' : 'text-neutral-300'
-                                }`}>{item.price} €</td>
-                                <td className={`quote-accent py-3 px-2 text-right font-mono font-bold ${
-                                  quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
-                                }`}>{lineTotal} €</td>
+                                <td className="py-3 px-2 text-center font-mono text-slate-700">{item.quantity}</td>
+                                <td className="py-3 px-2 text-right font-mono text-slate-700">{item.price} €</td>
+                                <td className="py-3 px-2 text-right font-mono font-bold text-slate-950">{lineTotal} €</td>
                               </tr>
                             );
                           })}
@@ -4857,151 +4930,174 @@ export default function DashboardPage() {
                       </table>
                     </div>
 
-                    {/* Summary & Totals Calculation Box */}
+                    {/* Summary & Calculation Box */}
                     {(() => {
                       const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
                       const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
                       const taxable = subtotal - discountAmount;
-                      const vatAmount = quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
-                      const total = taxable + vatAmount;
+
+                      // Occasional Receipt Calculations (art. 2222 C.C. without VAT)
+                      const isOccasional = quoteDocumentType === 'occasional_receipt';
+                      const withholdingAmount = isOccasional && quoteWithholdingTax ? Math.round(taxable * 0.20) : 0;
+                      const stampDuty = isOccasional && quoteApplyStampDuty && taxable > 77.47 ? 2 : 0;
+                      const netToPay = isOccasional ? taxable - withholdingAmount + stampDuty : taxable;
+
+                      // VAT Calculations (for standard quotes with VAT)
+                      const vatAmount = !isOccasional && quoteTaxRegime === 'iva22' ? Math.round(taxable * 0.22) : 0;
+                      const quoteTotal = !isOccasional ? taxable + vatAmount : netToPay;
 
                       return (
                         <div className={`quote-divider pt-4 border-t flex flex-col sm:flex-row justify-between items-start gap-6 ${
-                          quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                          quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.1]'
                         }`}>
-                          {/* Terms and IBAN */}
-                          <div className={`quote-card-subtle flex-1 text-xs space-y-1.5 p-4 rounded-2xl w-full ${
+                          {/* Terms and Legal Notes */}
+                          <div className={`quote-card-subtle flex-1 text-xs space-y-2 p-4 rounded-xl w-full border ${
                             quotePreviewTheme === 'light'
-                              ? 'bg-slate-50 border border-slate-200 text-slate-600'
-                              : 'bg-black/30 border border-white/[0.06] text-neutral-400'
+                              ? 'bg-slate-50 border-slate-300 text-slate-700'
+                              : 'bg-black/30 border-white/[0.06] text-neutral-400'
                           }`}>
-                            <p className={`quote-brand-title text-[10px] uppercase tracking-wider font-bold ${
-                              quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
-                            }`}>Modalità di Pagamento</p>
-                            <p className={`quote-text-primary font-medium ${
-                              quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-neutral-200'
-                            }`}>{quotePaymentTerms}</p>
-                            <p className="text-[11px] pt-1">
-                              IBAN: <span className={`quote-accent font-mono font-bold ${
-                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
-                              }`}>{quoteIban}</span>
+                            <p className="text-[9px] uppercase tracking-wider font-bold text-slate-900">
+                              Modalità & Coordinate di Versamento
                             </p>
-                            <p className={`quote-text-muted text-[10px] italic pt-1 ${
-                              quotePreviewTheme === 'light' ? 'text-slate-500' : 'text-neutral-500'
-                            }`}>
-                              {quoteTaxRegime === 'forfettario'
-                                ? 'Operazione effettuata in regime forfettario ex art. 1 c. 54-89 L. 190/2014 (esente IVA).'
-                                : 'Importi espressi al netto di IVA ordinaria 22%.'}
+                            <p className="font-medium text-slate-900">{quotePaymentTerms}</p>
+                            <p className="text-[11px] pt-0.5">
+                              IBAN: <strong className="font-mono font-bold text-slate-950">{quoteIban}</strong> (Intestato a Tia Chinaglia)
                             </p>
+
+                            {/* Mandatory Legal Clause */}
+                            <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-600 leading-relaxed italic">
+                              {isOccasional ? (
+                                <p>
+                                  <strong>Dicitura di Legge:</strong> Prestazione occasionale di lavoro autonomo non soggetta ad IVA ai sensi dell&apos;art. 5 del D.P.R. 633/1972 (mancanza del presupposto soggettivo). Prestazione resa ai sensi dell&apos;art. 2222 e segg. del Codice Civile. Ritenuta d&apos;acconto del 20% a cura del committente sostituto d&apos;imposta (art. 25 D.P.R. 600/1973). {stampDuty > 0 && 'Imposta di bollo assolta sull\'originale mediante applicazione di marca da bollo da € 2,00.'}
+                                </p>
+                              ) : quoteTaxRegime === 'forfettario' ? (
+                                <p>
+                                  <strong>Dicitura Fiscale:</strong> Operazione effettuata in regime forfettario ex art. 1 c. 54-89 L. 190/2014 e successive modificazioni (senza applicazione dell&apos;IVA ai sensi di legge).
+                                </p>
+                              ) : (
+                                <p>
+                                  <strong>Dicitura Fiscale:</strong> Importi soggetti ad aliquota IVA ordinaria al 22% come per legge.
+                                </p>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Totals table */}
-                          <div className={`quote-card-total w-full sm:w-64 p-4 rounded-2xl flex flex-col gap-2 ${
+                          {/* Financial Totals Table */}
+                          <div className={`quote-card-total w-full sm:w-72 p-4 rounded-xl flex flex-col gap-2 border ${
                             quotePreviewTheme === 'light'
-                              ? 'bg-emerald-50/70 border border-emerald-200'
-                              : 'bg-teal-950/30 border border-teal-500/30'
+                              ? 'bg-slate-50 border-slate-900 text-slate-900'
+                              : 'bg-teal-950/30 border-teal-500/30 text-white'
                           }`}>
-                            <div className={`flex justify-between text-xs ${
-                              quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                            }`}>
-                              <span>Subtotale Voci:</span>
-                              <span className={`quote-text-primary font-mono ${
-                                quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                              }`}>{subtotal} €</span>
+                            <div className="flex justify-between text-xs text-slate-600">
+                              <span>Compenso Lordo / Voci:</span>
+                              <span className="font-mono font-medium text-slate-900">{subtotal} €</span>
                             </div>
+
                             {quoteDiscount > 0 && (
-                              <div className={`flex justify-between text-xs font-semibold ${
-                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
-                              }`}>
-                                <span>Sconto ({quoteDiscount}%):</span>
+                              <div className="flex justify-between text-xs font-semibold text-red-600">
+                                <span>Sconto Applicato ({quoteDiscount}%):</span>
                                 <span className="font-mono">- {discountAmount} €</span>
                               </div>
                             )}
-                            {quoteTaxRegime === 'iva22' && (
-                              <div className={`flex justify-between text-xs ${
-                                quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                              }`}>
-                                <span>IVA (22%):</span>
-                                <span className={`quote-text-primary font-mono ${
-                                  quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                                }`}>{vatAmount} €</span>
-                              </div>
+
+                            {isOccasional ? (
+                              <>
+                                {quoteWithholdingTax && (
+                                  <div className="flex justify-between text-xs font-semibold text-slate-700">
+                                    <span>Ritenuta d&apos;Acconto (20%):</span>
+                                    <span className="font-mono text-red-700">- {withholdingAmount} €</span>
+                                  </div>
+                                )}
+                                {stampDuty > 0 && (
+                                  <div className="flex justify-between text-xs text-slate-600">
+                                    <span>Marca da Bollo (D.P.R. 642/72):</span>
+                                    <span className="font-mono text-slate-900">+ {stampDuty} €</span>
+                                  </div>
+                                )}
+                                <div className="quote-divider pt-2 border-t border-slate-900 flex justify-between items-baseline">
+                                  <span className="font-serif text-xs font-bold uppercase text-slate-950 tracking-wider">
+                                    Netto a Pagare:
+                                  </span>
+                                  <span className="font-serif text-2xl font-bold font-mono tracking-tight text-slate-950">
+                                    {netToPay} €
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                {quoteTaxRegime === 'iva22' && (
+                                  <div className="flex justify-between text-xs text-slate-600">
+                                    <span>IVA Ordinaria (22%):</span>
+                                    <span className="font-mono text-slate-900">{vatAmount} €</span>
+                                  </div>
+                                )}
+                                <div className="quote-divider pt-2 border-t border-slate-900 flex justify-between items-baseline">
+                                  <span className="font-serif text-xs font-bold uppercase text-slate-950 tracking-wider">
+                                    Totale Documento:
+                                  </span>
+                                  <span className="font-serif text-2xl font-bold font-mono tracking-tight text-slate-950">
+                                    {quoteTotal} €
+                                  </span>
+                                </div>
+                              </>
                             )}
-                            <div className={`quote-divider pt-2 border-t flex justify-between items-baseline ${
-                              quotePreviewTheme === 'light' ? 'border-emerald-200' : 'border-teal-500/30'
-                            }`}>
-                              <span className={`quote-text-primary text-sm font-bold uppercase ${
-                                quotePreviewTheme === 'light' ? 'text-slate-900' : 'text-white'
-                              }`}>Totale:</span>
-                              <span className={`quote-total-price text-2xl font-bold font-mono tracking-tight ${
-                                quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
-                              }`}>{total} €</span>
-                            </div>
                           </div>
                         </div>
                       );
                     })()}
 
-                    {/* Notes & Acceptance Guarantee */}
+                    {/* Legal Guarantee & Notes */}
                     {quoteNotes && (
-                      <div className={`quote-card-subtle mt-6 p-4 rounded-2xl text-xs leading-relaxed ${
+                      <div className={`quote-card-subtle mt-5 p-3.5 rounded-xl text-[11px] leading-relaxed border ${
                         quotePreviewTheme === 'light'
-                          ? 'bg-slate-50 border border-slate-200 text-slate-700'
-                          : 'bg-black/40 border border-white/[0.06] text-neutral-300'
+                          ? 'bg-slate-50 border-slate-300 text-slate-700'
+                          : 'bg-black/40 border-white/[0.06] text-neutral-300'
                       }`}>
-                        <p className={`quote-brand-title text-[10px] uppercase font-bold tracking-wider mb-1 ${
-                          quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-400'
-                        }`}>Note & Condizioni di Assistenza</p>
+                        <p className="text-[9px] uppercase font-bold tracking-wider text-slate-900 mb-0.5">Note Contrattuali & Garanzie</p>
                         <p>{quoteNotes}</p>
                       </div>
                     )}
 
-                    {/* Signature Acceptance Box with Real Digital Signature Render */}
-                    <div className={`quote-divider mt-8 pt-6 border-t grid grid-cols-2 gap-8 text-xs ${
-                      quotePreviewTheme === 'light' ? 'border-slate-200' : 'border-white/[0.1]'
+                    {/* Double Legal Signature Sottoscrizione Box */}
+                    <div className={`quote-divider mt-7 pt-5 border-t grid grid-cols-2 gap-8 text-xs ${
+                      quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.1]'
                     }`}>
                       <div>
-                        <p className={`quote-text-muted mb-2 ${
-                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                        }`}>Tia Designs (Fornitore)</p>
+                        <p className="text-[11px] font-bold text-slate-900 mb-1">Il Prestatore d&apos;Opera</p>
+                        <p className="text-[10px] text-slate-500 mb-2">Tia Chinaglia (Tia Designs)</p>
                         <div className={`quote-sig-line border-b pb-1 min-h-[44px] flex items-center justify-between ${
-                          quotePreviewTheme === 'light' ? 'border-slate-300' : 'border-white/[0.2]'
+                          quotePreviewTheme === 'light' ? 'border-slate-400' : 'border-white/[0.2]'
                         }`}>
                           {signatureData ? (
                             <img src={signatureData} alt="Firma Digitale" className="h-10 w-auto object-contain" />
                           ) : (
-                            <span className={`quote-accent font-serif italic text-sm ${
-                              quotePreviewTheme === 'light' ? 'text-teal-700' : 'text-teal-300'
-                            }`}>Tia Chinaglia</span>
+                            <span className="font-serif italic text-base text-slate-900">Tia Chinaglia</span>
                           )}
                           <button
                             type="button"
                             onClick={() => setShowSignatureModal(true)}
-                            className={`no-print text-[10px] font-sans cursor-pointer underline ${
-                              quotePreviewTheme === 'light' ? 'text-teal-700 hover:text-teal-800' : 'text-teal-400 hover:text-teal-300'
-                            }`}
+                            className="no-print text-[10px] font-sans cursor-pointer underline text-teal-700 hover:text-teal-900"
                           >
-                            {signatureData ? 'Modifica' : '✍️ Firma a mano'}
+                            {signatureData ? 'Modifica Firma' : '✍️ Firma a mano'}
                           </button>
                         </div>
                       </div>
                       <div>
-                        <p className={`quote-text-muted mb-2 ${
-                          quotePreviewTheme === 'light' ? 'text-slate-600' : 'text-neutral-400'
-                        }`}>Firma e Timbro per Accettazione (Cliente)</p>
-                        <div className={`quote-sig-line border-b pb-1 min-h-[44px] flex items-end ${
-                          quotePreviewTheme === 'light' ? 'border-slate-300 text-slate-400' : 'border-white/[0.2] text-neutral-600'
+                        <p className="text-[11px] font-bold text-slate-900 mb-1">Per Accettazione & Conferma d&apos;Incarico</p>
+                        <p className="text-[10px] text-slate-500 mb-2">Il Committente (Timbro e Firma)</p>
+                        <div className={`quote-sig-line border-b pb-1 min-h-[44px] flex items-end text-slate-400 text-[11px] ${
+                          quotePreviewTheme === 'light' ? 'border-slate-400' : 'border-white/[0.2]'
                         }`}>
                           Data: ______ / ______ / 2026
                         </div>
                       </div>
                     </div>
 
-                    {/* Bottom footer notice */}
-                    <div className={`quote-divider mt-8 text-center text-[10px] font-mono border-t pt-3 ${
-                      quotePreviewTheme === 'light' ? 'border-slate-200 text-slate-400' : 'border-white/[0.06] text-neutral-500'
+                    {/* Bottom Legal Footer */}
+                    <div className={`quote-divider mt-7 text-center text-[9px] font-sans border-t pt-3 ${
+                      quotePreviewTheme === 'light' ? 'border-slate-200 text-slate-500' : 'border-white/[0.06] text-neutral-500'
                     }`}>
-                      Tia Designs • P.IVA: 02737630206 • Documento valido ai fini dell&apos;accordo commerciale
+                      Tia Designs • Studio di Ingegneria Creativa & Design Digitale • Documento redatto ai sensi dell&apos;art. 2222 C.C. e della normativa vigente
                     </div>
                   </div>
                 </div>
