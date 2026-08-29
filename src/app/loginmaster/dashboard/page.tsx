@@ -48,6 +48,29 @@ import {
   LayersIcon,
   ViewIcon,
 } from '@/app/components/icons';
+import {
+  Paperclip,
+  Image as LucideImage,
+  Link as LucideLink,
+  Bold as LucideBold,
+  Italic as LucideItalic,
+  Underline as LucideUnderline,
+  Strikethrough as LucideStrikethrough,
+  List as LucideList,
+  ListOrdered as LucideListOrdered,
+  Quote as LucideQuote,
+  Star as LucideStar,
+  Trash2 as LucideTrash2,
+  Reply as LucideReply,
+  Send as LucideSend,
+  RefreshCw as LucideRefreshCw,
+  FileText as LucideFileText,
+  Palette as LucidePalette,
+  Smile as LucideSmile,
+  ChevronDown as LucideChevronDown,
+  Inbox as LucideInbox,
+  Archive as LucideArchive,
+} from 'lucide-react';
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
@@ -406,16 +429,30 @@ export default function DashboardPage() {
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
   // Messages Inbox & Email/Newsletter state
-  const [inboxSubTab, setInboxSubTab] = useState<'messages' | 'compose' | 'newsletter'>('messages');
+  const [inboxSubTab, setInboxSubTab] = useState<'aruba' | 'compose' | 'messages' | 'newsletter'>('aruba');
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [messageFilter, setMessageFilter] = useState<string>('all');
   const [messageSearch, setMessageSearch] = useState<string>('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [messageNotes, setMessageNotes] = useState('');
 
-  // Branded Email Composer State
+  // Aruba Webmail State
+  const [arubaEmails, setArubaEmails] = useState<any[]>([]);
+  const [arubaUnreadCount, setArubaUnreadCount] = useState<number>(0);
+  const [arubaTotalCount, setArubaTotalCount] = useState<number>(0);
+  const [arubaConfigured, setArubaConfigured] = useState<boolean | null>(null);
+  const [arubaMailbox, setArubaMailbox] = useState<string>('INBOX');
+  const [selectedArubaEmail, setSelectedArubaEmail] = useState<any | null>(null);
+  const [isArubaLoading, setIsArubaLoading] = useState<boolean>(false);
+  const [arubaSearchQuery, setArubaSearchQuery] = useState<string>('');
+  const [arubaFilter, setArubaFilter] = useState<'all' | 'unread' | 'flagged' | 'attachments'>('all');
+
+  // Gmail-style Composer State
   const [composeTo, setComposeTo] = useState('');
   const [composeRecipientName, setComposeRecipientName] = useState('');
+  const [composerCc, setComposerCc] = useState('');
+  const [composerBcc, setComposerBcc] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
   const [composeSubject, setComposeSubject] = useState('');
   const [composeTitle, setComposeTitle] = useState('Comunicazione Ufficiale');
   const [composeBody, setComposeBody] = useState('');
@@ -425,6 +462,15 @@ export default function DashboardPage() {
   const [composeContactMessageId, setComposeContactMessageId] = useState<string | null>(null);
   const [isSendingBrandedEmail, setIsSendingBrandedEmail] = useState(false);
   const [emailPreviewTab, setEmailPreviewTab] = useState<'preview' | 'code'>('preview');
+  const [composerAttachments, setComposerAttachments] = useState<Array<{ filename: string; contentType: string; size: number; file?: File }>>([]);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
+  const [composerColorOpen, setComposerColorOpen] = useState(false);
+  const composerFileInputRef = useRef<HTMLInputElement>(null);
+  const composerImageInputRef = useRef<HTMLInputElement>(null);
+  const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Custom Email Templates State
   const [customEmailTemplates, setCustomEmailTemplates] = useState<any[]>([]);
@@ -586,6 +632,7 @@ export default function DashboardPage() {
           fetchNewsletterData(),
           fetchEmailTemplates(),
           fetchMediaAssets(),
+          fetchArubaEmailsList(),
         ]);
       } catch (err: any) {
         setError(err.message || 'Errore di connessione');
@@ -1544,13 +1591,220 @@ export default function DashboardPage() {
   };
 
   const handleResetEmailComposer = () => {
+    setComposeTo('');
+    setComposerCc('');
+    setComposerBcc('');
     setComposeSubject('');
     setComposeTitle('Comunicazione Ufficiale');
     setComposeBadgeText('Tia Designs');
     setComposeBody('');
     setComposeCtaText('');
     setComposeCtaUrl('');
+    setComposerAttachments([]);
     showTemporarySuccess('Campi composer svuotati.');
+  };
+
+  // ── Aruba Webmail & Gmail-Style Handlers ─────────────────────────
+  const fetchArubaEmailsList = async (mailbox = arubaMailbox) => {
+    setIsArubaLoading(true);
+    try {
+      const res = await fetch(`/api/master/aruba-mail?mailbox=${encodeURIComponent(mailbox)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setArubaConfigured(data.configured);
+        setArubaEmails(data.emails || []);
+        setArubaTotalCount(data.total || 0);
+        setArubaUnreadCount(data.unread || 0);
+      }
+    } catch {} finally {
+      setIsArubaLoading(false);
+    }
+  };
+
+  const handleOpenArubaEmail = async (email: any) => {
+    setSelectedArubaEmail(email);
+    // Mark as seen locally
+    setArubaEmails((prev) => prev.map((m) => (m.uid === email.uid ? { ...m, seen: true } : m)));
+    try {
+      const res = await fetch(`/api/master/aruba-mail/${email.uid}?mailbox=${encodeURIComponent(arubaMailbox)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.email) setSelectedArubaEmail(data.email);
+      }
+    } catch {}
+  };
+
+  const handleToggleArubaFlag = async (uid: number, currentlyFlagged: boolean) => {
+    const action = currentlyFlagged ? 'unflag' : 'flag';
+    setArubaEmails((prev) => prev.map((m) => (m.uid === uid ? { ...m, flagged: !currentlyFlagged } : m)));
+    try {
+      await fetch('/api/master/aruba-mail', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, action, mailbox: arubaMailbox }),
+      });
+    } catch {}
+  };
+
+  const handleDeleteArubaEmail = async (uid: number) => {
+    if (!confirm('Sei sicuro di voler eliminare questa email?')) return;
+    try {
+      const res = await fetch(`/api/master/aruba-mail?uid=${uid}&mailbox=${encodeURIComponent(arubaMailbox)}`, { method: 'DELETE' });
+      if (res.ok) {
+        showTemporarySuccess('Email eliminata.');
+        setSelectedArubaEmail(null);
+        await fetchArubaEmailsList(arubaMailbox);
+      }
+    } catch {}
+  };
+
+  const handleReplyArubaEmail = (email: any) => {
+    setComposeTo(email.from.address);
+    setComposeRecipientName(email.from.name || email.from.address);
+    setComposeSubject(email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`);
+    const quoteSnippet = email.text || email.snippet || '';
+    setComposeBody(
+      `\n\n---\nIl ${new Date(email.date).toLocaleString('it-IT')}, ${email.from.name || email.from.address} ha scritto:\n> ${quoteSnippet.slice(0, 300)}...`
+    );
+    setInboxSubTab('compose');
+    showTemporarySuccess(`Composer pronto per rispondere a ${email.from.address}`);
+  };
+
+  const insertFormatting = (prefix: string, suffix = '') => {
+    const textarea = composeTextareaRef.current;
+    if (!textarea) {
+      setComposeBody((prev) => prev + prefix + suffix);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.substring(start, end);
+    const replacement = prefix + (selected || 'testo') + suffix;
+    const newText = text.substring(0, start) + replacement + text.substring(end);
+    setComposeBody(newText);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + (selected.length || 'testo'.length));
+    }, 50);
+  };
+
+  const handleComposerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newAtts: Array<{ filename: string; contentType: string; size: number; file?: File }> = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      newAtts.push({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        size: file.size,
+        file,
+      });
+    }
+    setComposerAttachments((prev) => [...prev, ...newAtts]);
+    showTemporarySuccess(`${files.length} allegato/i aggiunto/i`);
+    if (composerFileInputRef.current) composerFileInputRef.current.value = '';
+  };
+
+  const handleComposerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/projects/upload', { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        const imgUrl = data.url.startsWith('http') ? data.url : `${window.location.origin}${data.url}`;
+        setComposeBody((prev) => `${prev}\n\n<p align="center"><img src="${imgUrl}" alt="${file.name}" style="max-width:100%; border-radius:16px; margin:16px 0; box-shadow:0 8px 30px rgba(0,0,0,0.3);" /></p>\n\n`);
+        showTemporarySuccess('Immagine inserita nel messaggio!');
+      }
+    } catch {
+      setError('Errore caricamento immagine');
+    } finally {
+      if (composerImageInputRef.current) composerImageInputRef.current.value = '';
+    }
+  };
+
+  const handleInsertGif = (gifUrl: string) => {
+    setComposeBody((prev) => `${prev}\n\n<p align="center"><img src="${gifUrl}" alt="GIF" style="max-width:320px; border-radius:16px; margin:12px 0; box-shadow:0 8px 24px rgba(0,0,0,0.3);" /></p>\n\n`);
+    setShowGifPicker(false);
+    showTemporarySuccess('GIF inserita nel messaggio!');
+  };
+
+  const handleApplyLink = () => {
+    if (!linkUrl.trim()) return;
+    const txt = linkText.trim() || linkUrl.trim();
+    const linkHtml = `<a href="${linkUrl.trim()}" target="_blank" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${txt}</a>`;
+    setComposeBody((prev) => `${prev} ${linkHtml} `);
+    setShowLinkModal(false);
+    setLinkUrl('');
+    setLinkText('');
+    showTemporarySuccess('Link inserito!');
+  };
+
+  const handleSendGmailStyleEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeTo || !composeSubject || !composeBody) {
+      setError('Destinatario, Oggetto e Contenuto sono obbligatori');
+      return;
+    }
+    setIsSendingBrandedEmail(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('to', composeTo);
+      formData.append('subject', composeSubject);
+      if (composerCc.trim()) formData.append('cc', composerCc.trim());
+      if (composerBcc.trim()) formData.append('bcc', composerBcc.trim());
+
+      const htmlBody = `
+        <div style="background-color:#060d0b; color:#e5e7eb; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; padding:32px 20px; min-height:100%;">
+          <div style="max-width:620px; margin:0 auto; background-color:#0b1915; border:1px solid rgba(255,255,255,0.12); border-radius:24px; padding:36px 32px; box-shadow:0 20px 40px rgba(0,0,0,0.4);">
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:20px; margin-bottom:28px;">
+              <span style="font-size:18px; font-weight:bold; color:#ffffff; letter-spacing:-0.5px;">Tia <span style="color:#2dd4bf;">Designs</span></span>
+              <span style="font-size:11px; font-family:monospace; color:#2dd4bf; background-color:rgba(45,212,191,0.12); border:1px solid rgba(45,212,191,0.25); padding:4px 10px; border-radius:999px;">${composeBadgeText || 'info@tiadesigns.it'}</span>
+            </div>
+            ${composeTitle ? `<h1 style="color:#ffffff; font-size:22px; font-weight:700; margin:0 0 20px 0; line-height:1.3;">${composeTitle}</h1>` : ''}
+            <div style="font-size:14px; line-height:1.7; color:#d1d5db; white-space:pre-wrap;">${composeBody}</div>
+            ${composeCtaText && composeCtaUrl ? `
+              <div style="margin-top:32px; text-align:center;">
+                <a href="${composeCtaUrl}" target="_blank" style="display:inline-block; background-color:#2dd4bf; color:#000000; font-weight:700; font-size:13px; text-decoration:none; padding:12px 28px; border-radius:12px; box-shadow:0 4px 16px rgba(45,212,191,0.25);">${composeCtaText} &rarr;</a>
+              </div>
+            ` : ''}
+            <div style="margin-top:40px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.08); font-size:11px; color:#6b7280; text-align:center;">
+              <p style="margin:0;">Mattia • <strong>Tia Designs</strong> • <a href="https://tiadesigns.it" style="color:#2dd4bf; text-decoration:none;">tiadesigns.it</a></p>
+              <p style="margin:4px 0 0 0;">Inviata da <a href="mailto:info@tiadesigns.it" style="color:#9ca3af; text-decoration:none;">info@tiadesigns.it</a></p>
+            </div>
+          </div>
+        </div>
+      `;
+      formData.append('html', htmlBody);
+
+      for (const att of composerAttachments) {
+        if (att.file) {
+          formData.append('attachments', att.file);
+        }
+      }
+
+      const res = await fetch('/api/master/aruba-mail/send', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore durante l\'invio');
+
+      showTemporarySuccess('Email inviata con successo direttamente da info@tiadesigns.it!');
+      setComposerAttachments([]);
+      setComposeContactMessageId(null);
+      await fetchArubaEmailsList('INBOX');
+    } catch (err: any) {
+      setError(err.message || 'Errore invio email');
+    } finally {
+      setIsSendingBrandedEmail(false);
+    }
   };
 
   const handleSendNewsletter = async (e: React.FormEvent) => {
@@ -2016,7 +2270,7 @@ export default function DashboardPage() {
             {[
               { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, count: projects.length },
               { id: 'media', label: 'Media & Cloudflare CDN', icon: CloudIcon, count: mediaAssets.length },
-              { id: 'inbox', label: 'Inbox & Newsletter', icon: Mail01Icon, count: messages.filter((m) => m.status === 'new').length },
+              { id: 'inbox', label: 'Webmail & Inbox', icon: Mail01Icon, count: (arubaUnreadCount > 0 ? arubaUnreadCount : messages.filter((m) => m.status === 'new').length) },
               { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatLeads.length },
               { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
@@ -3287,25 +3541,30 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-6">
               {/* Inbox Navigation Sub-Tabs */}
               <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Sub-tab 1: Webmail Aruba */}
                   <button
                     type="button"
-                    onClick={() => setInboxSubTab('messages')}
+                    onClick={() => {
+                      setInboxSubTab('aruba');
+                      fetchArubaEmailsList(arubaMailbox);
+                    }}
                     className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-                      inboxSubTab === 'messages'
+                      inboxSubTab === 'aruba'
                         ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
                         : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
                     }`}
                   >
                     <TiaIcon icon={Mail01Icon} size={16} />
-                    <span>Posta & Richieste</span>
-                    {messages.filter((m) => m.status === 'new').length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300">
-                        {messages.filter((m) => m.status === 'new').length} nuovi
+                    <span>Webmail Aruba (info@tiadesigns.it)</span>
+                    {arubaUnreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300 animate-pulse font-bold">
+                        {arubaUnreadCount} non lette
                       </span>
                     )}
                   </button>
 
+                  {/* Sub-tab 2: Gmail Style Composer */}
                   <button
                     type="button"
                     onClick={() => setInboxSubTab('compose')}
@@ -3315,10 +3574,35 @@ export default function DashboardPage() {
                         : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
                     }`}
                   >
-                    <TiaIcon icon={SentIcon} size={16} />
-                    <span>Rispondi / Componi Branded</span>
+                    <LucideSend size={15} />
+                    <span>Componi Stile Gmail</span>
+                    {composerAttachments.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-teal-500/20 text-teal-300">
+                        {composerAttachments.length} allegati
+                      </span>
+                    )}
                   </button>
 
+                  {/* Sub-tab 3: Website Form Messages */}
+                  <button
+                    type="button"
+                    onClick={() => setInboxSubTab('messages')}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      inboxSubTab === 'messages'
+                        ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <TiaIcon icon={BubbleChatIcon} size={16} />
+                    <span>Lead & Form Sito</span>
+                    {messages.filter((m) => m.status === 'new').length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300">
+                        {messages.filter((m) => m.status === 'new').length} nuovi
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Sub-tab 4: Newsletter */}
                   <button
                     type="button"
                     onClick={() => {
@@ -3340,558 +3624,769 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono pr-2">
-                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-                  <span>Sender: info@tiadesigns.it</span>
+                  <span className={`w-2 h-2 rounded-full ${arubaConfigured ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
+                  <span>{arubaConfigured ? 'Aruba IMAP/SMTP Live' : 'info@tiadesigns.it'}</span>
                 </div>
               </div>
 
-              {/* ── SUB-TAB 1: MESSAGGI RICEVUTI & LEAD ── */}
-              {inboxSubTab === 'messages' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Messages List Column */}
-                  <div className="lg:col-span-7 flex flex-col gap-4">
-                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col gap-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-1.5 overflow-x-auto">
-                          {['all', 'new', 'in_progress', 'contacted', 'closed'].map((st) => (
+              {/* ── SUB-TAB 1: ARUBA WEBMAIL LIVE CLIENT ── */}
+              {inboxSubTab === 'aruba' && (
+                <div className="flex flex-col gap-6">
+                  {/* Setup guide if not configured */}
+                  {arubaConfigured === false && (
+                    <div className="p-6 rounded-3xl bg-amber-950/20 border border-amber-500/30 flex flex-col md:flex-row items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">🔐</span>
+                        <div className="text-xs text-neutral-300 space-y-1.5">
+                          <p className="font-bold text-amber-300 text-sm">Configurazione Aruba Mail (info@tiadesigns.it)</p>
+                          <p>
+                            Per visualizzare la cronologia delle tue email, leggere i messaggi ricevuti e inviare come su Gmail direttamente dalla dashboard, aggiungi la password della tua casella Aruba su Vercel (o in <code>.env</code>):
+                          </p>
+                          <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 font-mono text-[11px]">
+                            <li><code>ARUBA_EMAIL_USER=&quot;info@tiadesigns.it&quot;</code></li>
+                            <li><code>ARUBA_EMAIL_PASSWORD=&quot;&lt;la_tua_password_aruba&gt;&quot;</code></li>
+                            <li><code>ARUBA_IMAP_HOST=&quot;imaps.aruba.it&quot; (Porta 993 SSL)</code></li>
+                            <li><code>ARUBA_SMTP_HOST=&quot;smtps.aruba.it&quot; (Porta 465 SSL)</code></li>
+                          </ul>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fetchArubaEmailsList(arubaMailbox)}
+                        className="px-4 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 text-xs font-semibold shrink-0 cursor-pointer transition-colors"
+                      >
+                        Riprova Connessione
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left: Folders & Filters */}
+                    <div className="lg:col-span-3 flex flex-col gap-4">
+                      <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col gap-2 shadow-xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setComposeTo('');
+                            setComposeSubject('');
+                            setComposeBody('');
+                            setInboxSubTab('compose');
+                          }}
+                          className="w-full py-3 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-teal-400/20 transition-all cursor-pointer mb-2"
+                        >
+                          <LucideSend size={15} />
+                          <span>+ Componi Nuova Email</span>
+                        </button>
+
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 pt-1">Cartelle Aruba</p>
+                        
+                        {[
+                          { id: 'INBOX', label: 'Posta in arrivo', icon: LucideInbox, count: arubaUnreadCount },
+                          { id: 'Sent', label: 'Posta inviata', icon: SentIcon },
+                          { id: 'Trash', label: 'Cestino', icon: LucideTrash2 },
+                        ].map((box) => {
+                          const active = arubaMailbox === box.id;
+                          const IconComp = box.icon;
+                          return (
                             <button
-                              key={st}
-                              onClick={() => setMessageFilter(st)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize cursor-pointer transition-colors ${
-                                messageFilter === st
-                                  ? 'bg-teal-400 text-black shadow-md shadow-teal-400/20'
-                                  : 'bg-white/[0.04] text-neutral-400 hover:text-white'
+                              key={box.id}
+                              type="button"
+                              onClick={() => {
+                                setArubaMailbox(box.id);
+                                fetchArubaEmailsList(box.id);
+                              }}
+                              className={`w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                                active
+                                  ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                                  : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
                               }`}
                             >
-                              {st === 'all' ? 'Tutti' : st === 'new' ? 'Nuovi' : st === 'in_progress' ? 'In corso' : st === 'contacted' ? 'Risposti' : 'Chiusi'}
+                              <div className="flex items-center gap-2.5">
+                                <TiaIcon icon={IconComp as any} size={15} />
+                                <span>{box.label}</span>
+                              </div>
+                              {typeof box.count === 'number' && box.count > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-400 text-black font-bold">
+                                  {box.count}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-1">
+                          <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2">Filtri Rapidi</p>
+                          {[
+                            { id: 'all', label: 'Tutte le email' },
+                            { id: 'unread', label: 'Solo non lette' },
+                            { id: 'flagged', label: 'Contrassegnate ⭐' },
+                            { id: 'attachments', label: 'Con allegati 📎' },
+                          ].map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setArubaFilter(f.id as any)}
+                              className={`w-full px-3 py-1.5 rounded-xl text-left text-xs font-medium transition-colors cursor-pointer ${
+                                arubaFilter === f.id ? 'text-teal-300 bg-white/[0.06]' : 'text-neutral-400 hover:text-neutral-200'
+                              }`}
+                            >
+                              {f.label}
                             </button>
                           ))}
-                        </div>
-
-                        <div className="relative w-full sm:w-48">
-                          <TiaIcon icon={Search01Icon} size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-                          <input
-                            type="text"
-                            value={messageSearch}
-                            onChange={(e) => setMessageSearch(e.target.value)}
-                            placeholder="Filtra mittente o testo..."
-                            className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
-                          />
                         </div>
                       </div>
                     </div>
 
-                    {(() => {
-                      const filtered = messages.filter((m) => {
-                        const matchesFilter = messageFilter === 'all' || m.status === messageFilter;
-                        const matchesSearch =
-                          !messageSearch ||
-                          m.name.toLowerCase().includes(messageSearch.toLowerCase()) ||
-                          m.email.toLowerCase().includes(messageSearch.toLowerCase()) ||
-                          m.message.toLowerCase().includes(messageSearch.toLowerCase()) ||
-                          m.service.toLowerCase().includes(messageSearch.toLowerCase());
-                        return matchesFilter && matchesSearch;
-                      });
+                    {/* Middle & Right: Emails List & Detail */}
+                    <div className="lg:col-span-9 flex flex-col gap-4">
+                      {/* Search & Actions Bar */}
+                      <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+                        <div className="relative w-full sm:w-80">
+                          <TiaIcon icon={Search01Icon} size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                          <input
+                            type="text"
+                            value={arubaSearchQuery}
+                            onChange={(e) => setArubaSearchQuery(e.target.value)}
+                            placeholder="Cerca mittente, oggetto o testo..."
+                            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
 
-                      if (filtered.length === 0) {
-                        return (
-                          <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
-                            Nessun messaggio trovato in questa visualizzazione.
-                          </div>
-                        );
-                      }
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-neutral-400 font-mono">
+                            {arubaEmails.length} email caricate
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => fetchArubaEmailsList(arubaMailbox)}
+                            disabled={isArubaLoading}
+                            className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
+                            title="Aggiorna email da Aruba"
+                          >
+                            <TiaIcon icon={RefreshIcon} size={14} className={isArubaLoading ? 'animate-spin' : ''} />
+                          </button>
+                        </div>
+                      </div>
 
-                      return (
-                        <div className="flex flex-col gap-3">
-                          {filtered.map((m) => (
-                            <div
-                              key={m.id}
-                              onClick={() => {
-                                setSelectedMessage(m);
-                                setMessageNotes(m.notes || '');
-                              }}
-                              className={`p-4 rounded-3xl border transition-all cursor-pointer ${
-                                selectedMessage?.id === m.id
-                                  ? 'bg-[#0e2720] border-teal-400/60 shadow-lg shadow-teal-400/10'
-                                  : 'bg-[#081410]/85 border-white/[0.08] hover:border-teal-500/30'
-                              }`}
+                      {/* Email List or Detail */}
+                      {selectedArubaEmail ? (
+                        /* Email Full Detail View */
+                        <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in duration-200">
+                          <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedArubaEmail(null)}
+                              className="px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 flex items-center gap-1.5 cursor-pointer transition-colors"
                             >
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <div>
-                                  <span className="font-bold text-white text-sm">{m.name}</span>
-                                  <span className="text-neutral-400 text-xs ml-2 font-mono">({m.email})</span>
+                              <span>&larr; Torna alla lista</span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleReplyArubaEmail(selectedArubaEmail)}
+                                className="px-4 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-1.5 shadow-md shadow-teal-400/20 cursor-pointer transition-all"
+                              >
+                                <LucideReply size={14} />
+                                <span>Rispondi</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleArubaFlag(selectedArubaEmail.uid, selectedArubaEmail.flagged)}
+                                className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                                  selectedArubaEmail.flagged
+                                    ? 'bg-amber-400/20 text-amber-300 border-amber-400/40'
+                                    : 'bg-white/[0.04] text-neutral-400 border-white/[0.08] hover:text-white'
+                                }`}
+                                title="Contrassegna"
+                              >
+                                <LucideStar size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteArubaEmail(selectedArubaEmail.uid)}
+                                className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-500/20 text-xs cursor-pointer transition-colors"
+                                title="Elimina email"
+                              >
+                                <LucideTrash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Email Header */}
+                          <div className="flex flex-col gap-2">
+                            <h3 className="text-lg font-bold text-white tracking-tight">{selectedArubaEmail.subject}</h3>
+                            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-300 font-bold flex items-center justify-center text-sm">
+                                  {selectedArubaEmail.from.name.charAt(0).toUpperCase()}
                                 </div>
-                                <span
-                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold ${
-                                    m.status === 'new'
-                                      ? 'bg-teal-400/20 text-teal-300 border border-teal-400/40 animate-pulse'
-                                      : m.status === 'in_progress'
-                                      ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
-                                      : m.status === 'contacted'
-                                      ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
-                                      : 'bg-neutral-800 text-neutral-400'
-                                  }`}
-                                >
-                                  {m.status}
-                                </span>
+                                <div>
+                                  <p className="font-bold text-white">{selectedArubaEmail.from.name}</p>
+                                  <p className="text-neutral-400 font-mono text-[11px]">&lt;{selectedArubaEmail.from.address}&gt;</p>
+                                </div>
                               </div>
-
-                              <p className="text-xs text-neutral-300 line-clamp-2 mb-3 bg-black/40 p-2.5 rounded-xl border border-white/[0.04]">
-                                {m.message}
-                              </p>
-
-                              <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                                <span>
-                                  Servizio: <strong className="text-teal-400 font-medium">{m.service}</strong>
+                              <div className="text-right text-neutral-400 text-[11px]">
+                                <div>{new Date(selectedArubaEmail.date).toLocaleString('it-IT')}</div>
+                                <span className="text-[10px] font-mono text-teal-400 bg-teal-950/40 px-2 py-0.5 rounded-md border border-teal-500/30">
+                                  Aruba IMAP Verified
                                 </span>
-                                <span>{new Date(m.createdAt).toLocaleString('it-IT')}</span>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Message Detail Drawer Column */}
-                  <div className="lg:col-span-5">
-                    {selectedMessage ? (
-                      <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 sticky top-6 flex flex-col gap-4 shadow-xl">
-                        <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                          <div>
-                            <h3 className="font-bold text-white text-base">Dettaglio Messaggio</h3>
-                            <span className="text-[11px] text-neutral-400 font-mono">ID: {selectedMessage.id.slice(0, 8)}</span>
                           </div>
-                          <button onClick={() => handleDeleteMessage(selectedMessage.id)} className="text-xs text-red-400 hover:text-red-300 cursor-pointer">
-                            Elimina
-                          </button>
-                        </div>
 
-                        <div>
-                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider">Mittente</p>
-                          <p className="text-sm font-bold text-white">{selectedMessage.name}</p>
-                          <a href={`mailto:${selectedMessage.email}`} className="text-xs text-teal-400 hover:underline font-mono">
-                            {selectedMessage.email}
-                          </a>
-                        </div>
+                          {/* Attachments Section */}
+                          {selectedArubaEmail.attachments && selectedArubaEmail.attachments.length > 0 && (
+                            <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2">
+                              <span className="text-[11px] font-semibold text-teal-300 flex items-center gap-1.5">
+                                <Paperclip size={13} />
+                                <span>Allegati inclusi ({selectedArubaEmail.attachments.length}):</span>
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedArubaEmail.attachments.map((att: any, attIdx: number) => (
+                                  <a
+                                    key={attIdx}
+                                    href={att.dataBase64 ? `data:${att.contentType};base64,${att.dataBase64}` : '#'}
+                                    download={att.filename}
+                                    className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.08] text-xs text-neutral-200 hover:text-teal-300 flex items-center gap-2 transition-all cursor-pointer"
+                                  >
+                                    <LucideFileText size={14} className="text-teal-400" />
+                                    <span className="font-medium truncate max-w-[200px]">{att.filename}</span>
+                                    <span className="text-[10px] text-neutral-500 font-mono">
+                                      ({(att.size / 1024).toFixed(0)} KB)
+                                    </span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
-                        <div>
-                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider">Servizio richiesto</p>
-                          <p className="text-xs font-semibold text-teal-300">{selectedMessage.service}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1">Messaggio Completo</p>
-                          <div className="p-3.5 rounded-2xl bg-black/60 border border-white/[0.06] text-xs text-neutral-200 whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto">
-                            {selectedMessage.message}
-                          </div>
-                        </div>
-
-                        {/* Status Selector */}
-                        <div>
-                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1.5">Stato Richiesta</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {[
-                              { id: 'new', label: 'Nuovo' },
-                              { id: 'in_progress', label: 'In corso' },
-                              { id: 'contacted', label: 'Risposto' },
-                              { id: 'closed', label: 'Chiuso' },
-                            ].map((st) => (
-                              <button
-                                key={st.id}
-                                onClick={() => handleUpdateMessageStatus(selectedMessage.id, st.id)}
-                                className={`py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-colors ${
-                                  selectedMessage.status === st.id ? 'bg-teal-400 text-black font-bold' : 'bg-white/[0.05] text-neutral-400 hover:text-white'
-                                }`}
-                              >
-                                {st.label}
-                              </button>
-                            ))}
+                          {/* Email Body Rendering */}
+                          <div className="p-5 rounded-2xl bg-black/60 border border-white/[0.06] text-xs text-neutral-200 leading-relaxed overflow-x-auto min-h-[220px]">
+                            {selectedArubaEmail.html ? (
+                              <div
+                                dangerouslySetInnerHTML={{ __html: selectedArubaEmail.html }}
+                                className="prose prose-invert max-w-none text-xs text-neutral-200"
+                              />
+                            ) : (
+                              <pre className="whitespace-pre-wrap font-sans text-xs text-neutral-200">
+                                {selectedArubaEmail.text || selectedArubaEmail.snippet}
+                              </pre>
+                            )}
                           </div>
                         </div>
+                      ) : (
+                        /* Emails List View */
+                        (() => {
+                          const filtered = arubaEmails.filter((email) => {
+                            if (arubaFilter === 'unread' && email.seen) return false;
+                            if (arubaFilter === 'flagged' && !email.flagged) return false;
+                            if (arubaFilter === 'attachments' && !email.hasAttachments) return false;
+                            if (arubaSearchQuery) {
+                              const q = arubaSearchQuery.toLowerCase();
+                              return (
+                                email.subject.toLowerCase().includes(q) ||
+                                email.from.name.toLowerCase().includes(q) ||
+                                email.from.address.toLowerCase().includes(q) ||
+                                email.snippet.toLowerCase().includes(q)
+                              );
+                            }
+                            return true;
+                          });
 
-                        {/* Internal Notes */}
-                        <div>
-                          <p className="text-[11px] text-neutral-400 uppercase tracking-wider mb-1.5">Note Interne</p>
-                          <textarea
-                            rows={3}
-                            value={messageNotes}
-                            onChange={(e) => setMessageNotes(e.target.value)}
-                            placeholder="Appunti o recap per questo contatto..."
-                            className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white resize-none focus:outline-none focus:border-teal-400"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveMessageNotes(selectedMessage.id)}
-                            className="w-full mt-2 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs text-white font-semibold transition-colors cursor-pointer"
-                          >
-                            Salva Note
-                          </button>
-                        </div>
+                          if (filtered.length === 0) {
+                            return (
+                              <div className="p-16 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center flex flex-col items-center justify-center gap-3">
+                                <span className="text-3xl">📭</span>
+                                <p className="text-sm font-semibold text-white">Nessuna email trovata</p>
+                                <p className="text-xs text-neutral-400 max-w-sm">
+                                  {isArubaLoading ? 'Scaricamento messaggi da Aruba IMAP in corso...' : 'Nessuna email corrisponde ai filtri o alla cartella selezionata.'}
+                                </p>
+                              </div>
+                            );
+                          }
 
-                        {/* Actions */}
-                        <div className="flex flex-col gap-2 pt-2 border-t border-white/[0.06]">
-                          <button
-                            type="button"
-                            onClick={() => handleStartReply(selectedMessage)}
-                            className="w-full py-3 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-teal-400/20 transition-all cursor-pointer"
-                          >
-                            <TiaIcon icon={SentIcon} size={15} />
-                            <span>Rispondi con Stile Branded</span>
-                          </button>
+                          return (
+                            <div className="flex flex-col gap-2">
+                              {filtered.map((email) => (
+                                <div
+                                  key={email.uid}
+                                  onClick={() => handleOpenArubaEmail(email)}
+                                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                    !email.seen
+                                      ? 'bg-[#0d2720]/90 border-teal-500/40 shadow-md shadow-teal-500/10'
+                                      : 'bg-[#081410]/80 border-white/[0.06] hover:border-teal-500/30 hover:bg-[#081410]'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                                    <div className="pt-0.5">
+                                      {!email.seen ? (
+                                        <span className="w-2.5 h-2.5 rounded-full bg-teal-400 inline-block animate-pulse" />
+                                      ) : (
+                                        <span className="w-2.5 h-2.5 rounded-full bg-neutral-600 inline-block opacity-40" />
+                                      )}
+                                    </div>
 
-                          <a
-                            href={`mailto:${selectedMessage.email}?subject=Re:%20Richiesta%20${encodeURIComponent(selectedMessage.service)}%20-%20Tia%20Designs`}
-                            className="w-full py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white font-medium text-xs text-center transition-all block"
-                          >
-                            Apri nel tuo Client Email (Mailto)
-                          </a>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-12 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center text-neutral-400 text-xs">
-                        Seleziona un messaggio dalla lista per visualizzare i dettagli e rispondere.
-                      </div>
-                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-0.5">
+                                        <span className={`text-xs truncate ${!email.seen ? 'font-bold text-white' : 'font-medium text-neutral-300'}`}>
+                                          {email.from.name || email.from.address}
+                                        </span>
+                                        {email.hasAttachments && (
+                                          <Paperclip size={12} className="text-teal-400 shrink-0" />
+                                        )}
+                                      </div>
+                                      <p className={`text-xs truncate ${!email.seen ? 'font-semibold text-teal-200' : 'text-neutral-300'}`}>
+                                        {email.subject}
+                                      </p>
+                                      <p className="text-[11px] text-neutral-500 truncate mt-0.5">
+                                        {email.snippet}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
+                                    <span className="text-[10px] font-mono text-neutral-400">
+                                      {new Date(email.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                                    </span>
+                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleArubaFlag(email.uid, email.flagged)}
+                                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                          email.flagged ? 'text-amber-300 hover:text-amber-200' : 'text-neutral-500 hover:text-white'
+                                        }`}
+                                      >
+                                        <LucideStar size={13} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteArubaEmail(email.uid)}
+                                        className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 transition-colors cursor-pointer"
+                                      >
+                                        <LucideTrash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* ── SUB-TAB 2: COMPONI / RISPONDI EMAIL CON STILE BRANDED ── */}
+              {/* ── SUB-TAB 2: COMPONI EMAIL STILE GMAIL (RICH TOOLBAR & ATTACHMENTS) ── */}
               {inboxSubTab === 'compose' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  {/* Left Column: Compose Form */}
-                  <div className="lg:col-span-6 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col gap-4">
+                  {/* Left Column: Gmail-Style Rich Compose Form */}
+                  <div className="lg:col-span-7 bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col gap-4">
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                      <div>
-                        <h3 className="font-bold text-white text-base">Componi Email Ufficiale</h3>
-                        <p className="text-xs text-neutral-400">Invia email formattate con lo stile scuro e teal di Tia Designs</p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-teal-500/20 border border-teal-500/40 text-teal-300 flex items-center justify-center">
+                          <LucideSend size={16} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-base">Componi Email Ufficiale</h3>
+                          <p className="text-[11px] text-neutral-400">Da: <strong className="text-teal-300 font-mono">info@tiadesigns.it</strong> (Aruba SMTP)</p>
+                        </div>
                       </div>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30">
-                        HTML Branded
-                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCcBcc(!showCcBcc)}
+                          className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-neutral-300 font-mono cursor-pointer transition-colors"
+                        >
+                          {showCcBcc ? 'Nascondi Cc/Ccn' : '+ Cc / Ccn'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleResetEmailComposer}
+                          className="px-2 py-1 rounded-xl bg-white/[0.02] hover:bg-red-500/20 text-neutral-400 hover:text-red-300 text-[11px] cursor-pointer transition-colors"
+                        >
+                          Svuota
+                        </button>
+                      </div>
                     </div>
 
-                    <form onSubmit={handleSendBrandedEmail} className="flex flex-col gap-4">
-                      {/* ⚡ Quick Email Templates Selector */}
-                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
-                            <TiaIcon icon={SparklesIcon} size={13} className="text-teal-400" />
-                            <span>Template Rapidi Predefiniti & Personalizzati</span>
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewTemplateName('');
-                                setIsSaveTemplateModalOpen(true);
-                              }}
-                              className="px-2.5 py-1 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
-                              title="Salva il contenuto corrente come nuovo template riutilizzabile"
-                            >
-                              <TiaIcon icon={PlusSignIcon} size={12} />
-                              <span>Salva come Nuovo Template</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleResetEmailComposer}
-                              className="px-2 py-1 rounded-xl bg-white/[0.02] hover:bg-red-500/20 border border-white/[0.04] hover:border-red-500/30 text-neutral-400 hover:text-red-300 text-[11px] font-medium transition-all cursor-pointer"
-                              title="Svuota campi composer"
-                            >
-                              Svuota
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Presets & Custom list */}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {/* Standard Built-in Templates */}
-                          {EMAIL_TEMPLATES.map((tmpl) => (
-                            <button
-                              key={tmpl.id}
-                              type="button"
-                              onClick={() => handleApplyEmailTemplate(tmpl)}
-                              className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.06] hover:border-teal-500/40 text-neutral-300 hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                            >
-                              <span>{tmpl.icon}</span>
-                              <span>{tmpl.name}</span>
-                            </button>
-                          ))}
-
-                          {/* Custom Saved Templates from Database */}
-                          {customEmailTemplates.map((customTmpl) => (
-                            <div
-                              key={customTmpl.id}
-                              className="flex items-center rounded-xl bg-teal-950/40 border border-teal-500/30 hover:border-teal-400/60 transition-all overflow-hidden"
-                            >
-                              <button
-                                type="button"
-                                onClick={() => handleApplyCustomTemplate(customTmpl)}
-                                className="px-2.5 py-1.5 text-xs font-semibold text-teal-200 hover:text-teal-100 flex items-center gap-1.5 cursor-pointer"
-                                title={`Applica template: ${customTmpl.name}`}
-                              >
-                                <span>{customTmpl.icon || '✉️'}</span>
-                                <span>{customTmpl.name}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCustomTemplate(customTmpl.id, customTmpl.name)}
-                                className="px-1.5 py-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-xs cursor-pointer border-l border-teal-500/20"
-                                title="Elimina questo template dal database"
-                              >
-                                &times;
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                    <form onSubmit={handleSendGmailStyleEmail} className="flex flex-col gap-3.5">
+                      {/* Recipient Field A: */}
+                      <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-teal-400">
+                        <span className="text-xs font-mono font-bold text-teal-400 w-10">A:</span>
+                        <input
+                          type="email"
+                          required
+                          value={composeTo}
+                          onChange={(e) => setComposeTo(e.target.value)}
+                          placeholder="destinatario@cliente.com"
+                          className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none font-mono"
+                        />
                       </div>
 
-                      {/* Modal for saving custom template */}
-                      {isSaveTemplateModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-                          <div className="w-full max-w-md bg-[#081410] border border-teal-500/30 rounded-3xl p-6 shadow-2xl relative">
-                            <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.08]">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">💾</span>
-                                <div>
-                                  <h4 className="text-base font-bold text-white">Salva come Nuovo Template</h4>
-                                  <p className="text-[11px] text-neutral-400">Salva il layout corrente nel database Turso</p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setIsSaveTemplateModalOpen(false)}
-                                className="p-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-400 hover:text-white"
-                              >
-                                <TiaIcon icon={Cancel01Icon} size={16} />
-                              </button>
-                            </div>
-
-                            <div className="flex flex-col gap-3">
-                              <div>
-                                <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
-                                  Nome Template *
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={newTemplateName}
-                                  onChange={(e) => setNewTemplateName(e.target.value)}
-                                  placeholder="Es. Preventivo E-Commerce, Sollecito, ..."
-                                  className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">
-                                  Icona Emoji
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                  {['✉️', '💼', '🚀', '⚡', '🔔', '🎯', '💡', '💰', '💎', '🌟'].map((emoji) => (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      onClick={() => setNewTemplateIcon(emoji)}
-                                      className={`w-9 h-9 rounded-xl text-base flex items-center justify-center transition-all cursor-pointer ${
-                                        newTemplateIcon === emoji
-                                          ? 'bg-teal-500/20 border border-teal-400 scale-110'
-                                          : 'bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]'
-                                      }`}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="p-3 rounded-xl bg-black/40 border border-white/[0.04] text-[11px] text-neutral-400 flex flex-col gap-1">
-                                <div><strong className="text-white">Oggetto:</strong> {composeSubject || '(Nessun oggetto specificato)'}</div>
-                                <div><strong className="text-white">Titolo:</strong> {composeTitle || 'Comunicazione Ufficiale'}</div>
-                                <div className="truncate"><strong className="text-white">Body:</strong> {composeBody ? composeBody.slice(0, 60) + '...' : '(Nessun testo)'}</div>
-                              </div>
-
-                              <div className="flex items-center gap-2 pt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setIsSaveTemplateModalOpen(false)}
-                                  className="flex-1 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-neutral-300 font-semibold text-xs transition-colors cursor-pointer"
-                                >
-                                  Annulla
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleSaveCustomTemplate}
-                                  disabled={isSavingCustomTemplate || !newTemplateName.trim()}
-                                  className="flex-1 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
-                                >
-                                  {isSavingCustomTemplate ? 'Salvataggio...' : 'Salva Template'}
-                                </button>
-                              </div>
-                            </div>
+                      {/* Optional Cc / Bcc */}
+                      {showCcBcc && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 animate-in fade-in duration-150">
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                            <span className="text-[11px] font-mono text-neutral-400 w-8">Cc:</span>
+                            <input
+                              type="text"
+                              value={composerCc}
+                              onChange={(e) => setComposerCc(e.target.value)}
+                              placeholder="altro@email.com"
+                              className="w-full bg-transparent text-white text-xs focus:outline-none font-mono"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                            <span className="text-[11px] font-mono text-neutral-400 w-8">Ccn:</span>
+                            <input
+                              type="text"
+                              value={composerBcc}
+                              onChange={(e) => setComposerBcc(e.target.value)}
+                              placeholder="invisibile@email.com"
+                              className="w-full bg-transparent text-white text-xs focus:outline-none font-mono"
+                            />
                           </div>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Email Destinatario *</label>
-                          <input
-                            type="email"
-                            required
-                            value={composeTo}
-                            onChange={(e) => setComposeTo(e.target.value)}
-                            placeholder="cliente@dominio.com"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 font-mono text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Nome Destinatario</label>
-                          <input
-                            type="text"
-                            value={composeRecipientName}
-                            onChange={(e) => setComposeRecipientName(e.target.value)}
-                            placeholder="Nome del cliente"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Oggetto Email *</label>
+                      {/* Subject Field */}
+                      <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-teal-400">
+                        <span className="text-xs font-mono font-bold text-neutral-400 w-16">Oggetto:</span>
                         <input
                           type="text"
                           required
                           value={composeSubject}
                           onChange={(e) => setComposeSubject(e.target.value)}
                           placeholder="Oggetto dell'email..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                          className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none font-semibold"
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Titolo Intestazione</label>
-                          <input
-                            type="text"
-                            value={composeTitle}
-                            onChange={(e) => setComposeTitle(e.target.value)}
-                            placeholder="Titolo interno al messaggio"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
-                          />
+                      {/* Quick Presets Strip */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-black/40 border border-white/[0.06]">
+                        <span className="text-[10px] font-mono uppercase text-teal-400 font-bold px-1.5 flex items-center gap-1">
+                          <TiaIcon icon={SparklesIcon} size={12} />
+                          Modelli:
+                        </span>
+                        {EMAIL_TEMPLATES.map((tmpl) => (
+                          <button
+                            key={tmpl.id}
+                            type="button"
+                            onClick={() => handleApplyEmailTemplate(tmpl)}
+                            className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.06] text-neutral-300 hover:text-teal-300 text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <span>{tmpl.icon}</span>
+                            <span>{tmpl.name}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* ── GMAIL-STYLE RICH TOOLBAR ── */}
+                      <div className="p-2 rounded-2xl bg-black/60 border border-white/[0.10] flex flex-wrap items-center justify-between gap-1.5 shadow-inner">
+                        {/* Text Styling */}
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('**', '**')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Grassetto (Bold)"
+                          >
+                            <LucideBold size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('*', '*')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Corsivo (Italic)"
+                          >
+                            <LucideItalic size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('<u>', '</u>')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Sottolineato"
+                          >
+                            <LucideUnderline size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('<s>', '</s>')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Barrato"
+                          >
+                            <LucideStrikethrough size={14} />
+                          </button>
+
+                          <div className="h-4 w-px bg-white/[0.1] mx-1" />
+
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('## ')}
+                            className="px-2 py-1 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white text-xs font-bold font-mono cursor-pointer"
+                            title="Titolo H2"
+                          >
+                            H2
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('- ')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Elenco puntato"
+                          >
+                            <LucideList size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('1. ')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Elenco numerato"
+                          >
+                            <LucideListOrdered size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => insertFormatting('> ')}
+                            className="p-1.5 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white cursor-pointer"
+                            title="Citazione"
+                          >
+                            <LucideQuote size={14} />
+                          </button>
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Badge Etichetta</label>
+
+                        {/* Media, GIF & Insert Buttons */}
+                        <div className="flex items-center gap-1">
+                          {/* Attach Document (PDF, ZIP, DOCX) */}
+                          <button
+                            type="button"
+                            onClick={() => composerFileInputRef.current?.click()}
+                            className="px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                            title="Allega documenti / file"
+                          >
+                            <Paperclip size={13} className="text-teal-400" />
+                            <span>Allega File</span>
+                          </button>
                           <input
-                            type="text"
-                            value={composeBadgeText}
-                            onChange={(e) => setComposeBadgeText(e.target.value)}
-                            placeholder="Tia Designs / Preventivo"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400"
+                            type="file"
+                            ref={composerFileInputRef}
+                            onChange={handleComposerFileUpload}
+                            multiple
+                            className="hidden"
                           />
+
+                          {/* Insert Image */}
+                          <button
+                            type="button"
+                            onClick={() => composerImageInputRef.current?.click()}
+                            className="p-1.5 rounded-xl hover:bg-white/[0.1] text-neutral-300 hover:text-teal-300 cursor-pointer transition-colors"
+                            title="Carica e inserisci immagine nel corpo"
+                          >
+                            <LucideImage size={15} />
+                          </button>
+                          <input
+                            type="file"
+                            ref={composerImageInputRef}
+                            onChange={handleComposerImageUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
+
+                          {/* GIF Picker Trigger */}
+                          <button
+                            type="button"
+                            onClick={() => setShowGifPicker(!showGifPicker)}
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+                            title="Inserisci GIF animate"
+                          >
+                            <span>🎭 GIF</span>
+                          </button>
+
+                          {/* Insert Link */}
+                          <button
+                            type="button"
+                            onClick={() => setShowLinkModal(true)}
+                            className="p-1.5 rounded-xl hover:bg-white/[0.1] text-neutral-300 hover:text-teal-300 cursor-pointer transition-colors"
+                            title="Inserisci link cliccabile"
+                          >
+                            <LucideLink size={15} />
+                          </button>
                         </div>
                       </div>
 
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400">Contenuto Messaggio (Markdown Supportato) *</label>
-                          <span className="text-[10px] text-neutral-500 font-mono">**grassetto**, *corsivo*, elenchi</span>
+                      {/* GIF Selector Modal / Drawer */}
+                      {showGifPicker && (
+                        <div className="p-4 rounded-2xl bg-[#061410] border border-teal-500/40 flex flex-col gap-3 animate-in fade-in duration-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                              <span>🎭</span> Seleziona GIF Animata
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowGifPicker(false)}
+                              className="text-neutral-400 hover:text-white text-xs cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-2">
+                            {[
+                              { label: 'Party', url: 'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif' },
+                              { label: 'High Five', url: 'https://media.giphy.com/media/3oz8xAFtqoOUUrsh7W/giphy.gif' },
+                              { label: 'Cheers', url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif' },
+                              { label: 'Thank You', url: 'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif' },
+                              { label: 'Working', url: 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif' },
+                              { label: 'Approved', url: 'https://media.giphy.com/media/l41lI4bYmcsPJX9Go/giphy.gif' },
+                              { label: 'Awesome', url: 'https://media.giphy.com/media/xT0xezQGU5xCDJuCPe/giphy.gif' },
+                              { label: 'Thumbs Up', url: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif' },
+                            ].map((g, gIdx) => (
+                              <button
+                                key={gIdx}
+                                type="button"
+                                onClick={() => handleInsertGif(g.url)}
+                                className="group relative rounded-xl overflow-hidden border border-white/[0.1] hover:border-teal-400 transition-all cursor-pointer h-18 bg-black"
+                              >
+                                <img src={g.url} alt={g.label} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                <span className="absolute bottom-1 left-1 px-1 rounded text-[9px] font-mono bg-black/80 text-white">
+                                  {g.label}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
+                      )}
+
+                      {/* Link Inserter Modal */}
+                      {showLinkModal && (
+                        <div className="p-4 rounded-2xl bg-[#061410] border border-teal-500/40 flex flex-col gap-3 animate-in fade-in duration-200">
+                          <span className="text-xs font-bold text-white">🔗 Inserisci Link Cliccabile</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={linkText}
+                              onChange={(e) => setLinkText(e.target.value)}
+                              placeholder="Testo del link (es. Clicca qui)"
+                              className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs"
+                            />
+                            <input
+                              type="url"
+                              value={linkUrl}
+                              onChange={(e) => setLinkUrl(e.target.value)}
+                              placeholder="URL (es. https://...)"
+                              className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowLinkModal(false)}
+                              className="px-3 py-1.5 rounded-xl bg-white/[0.04] text-xs text-neutral-400 cursor-pointer"
+                            >
+                              Annulla
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleApplyLink}
+                              className="px-4 py-1.5 rounded-xl bg-teal-400 text-black font-bold text-xs cursor-pointer shadow-md"
+                            >
+                              Inserisci
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Attached files chips list */}
+                      {composerAttachments.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-black/40 border border-white/[0.06]">
+                          <span className="text-[10px] font-mono text-neutral-400 font-bold px-1 flex items-center gap-1">
+                            <Paperclip size={12} className="text-teal-400" /> Allegati:
+                          </span>
+                          {composerAttachments.map((att, attIdx) => (
+                            <div
+                              key={attIdx}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-950/40 border border-teal-500/30 text-xs text-neutral-200"
+                            >
+                              <span className="truncate max-w-[150px] font-mono text-[11px]">{att.filename}</span>
+                              <span className="text-[10px] text-teal-400">({(att.size / 1024).toFixed(0)}KB)</span>
+                              <button
+                                type="button"
+                                onClick={() => setComposerAttachments((prev) => prev.filter((_, i) => i !== attIdx))}
+                                className="text-neutral-400 hover:text-red-400 text-xs cursor-pointer ml-1"
+                              >
+                                &times;
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Main Message Textarea */}
+                      <div>
                         <textarea
+                          ref={composeTextareaRef}
                           required
-                          rows={8}
+                          rows={9}
                           value={composeBody}
                           onChange={(e) => setComposeBody(e.target.value)}
-                          placeholder="Scrivi qui il messaggio per il cliente..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm focus:outline-none focus:border-teal-400 font-mono text-xs leading-relaxed resize-y"
+                          placeholder="Scrivi qui il corpo del tuo messaggio..."
+                          className="w-full p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-white text-xs leading-relaxed focus:outline-none focus:border-teal-400 font-sans resize-y"
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (Testo opzionale)</label>
-                          <input
-                            type="text"
-                            value={composeCtaText}
-                            onChange={(e) => setComposeCtaText(e.target.value)}
-                            placeholder="Es. Prenota una Call"
-                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400 mb-1">Pulsante CTA (URL)</label>
-                          <input
-                            type="url"
-                            value={composeCtaUrl}
-                            onChange={(e) => setComposeCtaUrl(e.target.value)}
-                            placeholder="https://tiadesigns.it#contatti"
-                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400"
-                          />
-                        </div>
-                      </div>
-
+                      {/* Bottom Send Action Button */}
                       <button
                         type="submit"
                         disabled={isSendingBrandedEmail}
-                        className="w-full py-3.5 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50 mt-2"
+                        className="w-full py-4 rounded-2xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50 mt-1"
                       >
-                        <TiaIcon icon={SentIcon} size={16} />
-                        <span>{isSendingBrandedEmail ? 'Invio in corso...' : 'Invia Email Ufficiale Branded'}</span>
+                        <LucideSend size={17} />
+                        <span>{isSendingBrandedEmail ? 'Invio in corso tramite Aruba SMTP...' : 'Invia Email da info@tiadesigns.it'}</span>
                       </button>
                     </form>
                   </div>
 
                   {/* Right Column: Live Email Preview */}
-                  <div className="lg:col-span-6 flex flex-col gap-4">
+                  <div className="lg:col-span-5 flex flex-col gap-4">
                     <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex items-center justify-between">
                       <span className="text-xs font-bold text-white flex items-center gap-2">
                         <TiaIcon icon={GaugeIcon} size={15} className="text-teal-400" />
-                        Anteprima Live Email (Come apparirà al cliente)
+                        Anteprima Reale per il Destinatario
                       </span>
-                      <span className="text-[10px] text-neutral-400 font-mono">620px Responsive</span>
+                      <span className="text-[10px] text-neutral-400 font-mono">Aruba SSL Delivery</span>
                     </div>
 
-                    {/* Email Mock Container */}
-                    <div className="bg-[#040d0a] border border-teal-500/30 rounded-3xl p-4 sm:p-6 shadow-2xl overflow-hidden text-neutral-100 flex flex-col gap-4">
-                      {/* Top Gradient Bar */}
+                    <div className="bg-[#040d0a] border border-teal-500/30 rounded-3xl p-5 shadow-2xl overflow-hidden text-neutral-100 flex flex-col gap-4">
                       <div className="h-1 w-full bg-gradient-to-r from-teal-500 via-teal-300 to-teal-500 rounded-full" />
 
-                      {/* Header */}
-                      <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                         <div>
-                          <div className="text-lg font-bold text-white tracking-tight">
+                          <div className="text-base font-bold text-white tracking-tight">
                             Tia <span className="text-teal-400">Designs</span>
                           </div>
-                          <p className="text-[10px] text-neutral-400">Designer • Sviluppatore App & Software • Videomaker</p>
+                          <p className="text-[10px] text-neutral-400">Mattia • Sviluppatore Web, App & Creative Designer</p>
                         </div>
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
-                          {composeBadgeText || 'Tia Designs'}
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 font-mono">
+                          info@tiadesigns.it
                         </span>
                       </div>
 
-                      {/* Content Area */}
                       <div className="py-2 flex flex-col gap-3">
-                        {composeTitle && <h4 className="text-base font-bold text-white">{composeTitle}</h4>}
-                        {composeRecipientName && <p className="text-xs font-bold text-teal-300">Ciao {composeRecipientName},</p>}
+                        {composeSubject && <h4 className="text-sm font-bold text-white">{composeSubject}</h4>}
+                        {composeTo && <p className="text-[11px] text-neutral-400 font-mono">A: {composeTo}</p>}
 
                         <div className="p-4 rounded-xl bg-black/40 border border-white/[0.06] border-l-2 border-l-teal-400 text-xs text-neutral-200 leading-relaxed whitespace-pre-wrap">
                           {composeBody || 'Scrivi il messaggio a sinistra per vedere l\'anteprima in tempo reale...'}
                         </div>
-
-                        {composeCtaText && (
-                          <div className="text-center my-3">
-                            <span className="inline-block px-6 py-2.5 rounded-xl bg-teal-400 text-black font-bold text-xs shadow-lg shadow-teal-400/20">
-                              {composeCtaText} &rarr;
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       {/* Signature */}
                       <div className="pt-4 border-t border-white/[0.08] text-xs">
-                        <p className="font-bold text-white">Tia Chinaglia</p>
-                        <p className="text-[11px] text-teal-400">Fondatore & Lead Creative Developer • Tia Designs</p>
-                        <p className="text-[10px] text-neutral-500 mt-1">info@tiadesigns.it • tiadesigns.it</p>
+                        <p className="font-bold text-white">Mattia</p>
+                        <p className="text-teal-400 text-[10px]">Tia Designs • info@tiadesigns.it</p>
                       </div>
                     </div>
                   </div>
