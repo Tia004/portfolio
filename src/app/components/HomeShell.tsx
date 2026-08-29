@@ -1140,8 +1140,13 @@ export default function HomeShell() {
     // "stops" and then restarts once the debounce finally runs.
     let mountRaf = 0;
     const onSectionMounted = () => {
+      if (isScrollingRef.current) return;
       cancelAnimationFrame(mountRaf);
-      mountRaf = requestAnimationFrame(() => lenis.current?.resize());
+      mountRaf = requestAnimationFrame(() => {
+        if (!isScrollingRef.current) {
+          lenis.current?.resize();
+        }
+      });
     };
     window.addEventListener('tia:section-mounted', onSectionMounted);
 

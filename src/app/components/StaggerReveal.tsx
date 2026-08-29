@@ -3,7 +3,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { loadGsap } from '@/lib/gsap-lazy';
 import { STAGGER_DEFAULTS } from '@/lib/animation-theme';
-import { refreshScrollTriggers } from '@/lib/scroll';
 
 interface StaggerRevealProps {
   children: ReactNode;
@@ -45,15 +44,6 @@ export default function StaggerReveal({
     const el = containerRef.current;
     if (!el) return;
 
-    // Fix: content-visibility: auto makes children 0×0 until near viewport,
-    // breaking ScrollTrigger position calculations. Refresh when visible — via
-    // refreshScrollTriggers() which skips refresh during an active scroll
-    // gesture (a mid-gesture refresh fights Lenis → jitter).
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { refreshScrollTriggers(); io.disconnect(); }
-    }, { rootMargin: '400px' });
-    io.observe(el);
-
     const targets = el.children;
     if (targets.length === 0) return;
 
@@ -90,7 +80,7 @@ export default function StaggerReveal({
       ctxRef.current = ctx;
     });
 
-    return () => { alive = false; ctxRef.current?.revert(); io.disconnect(); };
+    return () => { alive = false; ctxRef.current?.revert(); };
   }, [yOffset, duration, stagger, start, end, ease]);
 
   return (

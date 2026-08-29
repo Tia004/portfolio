@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, type ReactNode } from 'react';
 import { loadGsap } from '@/lib/gsap-lazy';
 import { REVEAL_DEFAULTS } from '@/lib/animation-theme';
-import { refreshScrollTriggers } from '@/lib/scroll';
 
 interface ScrollRevealProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -57,15 +56,6 @@ export default function ScrollReveal({
       return;
     }
 
-    // Fix: content-visibility: auto makes the element 0×0 until near viewport,
-    // breaking ScrollTrigger position calculations. Refresh when it gets
-    // dimensions — via refreshScrollTriggers() which skips refresh during an
-    // active scroll gesture (a mid-gesture refresh fights Lenis → jitter).
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { refreshScrollTriggers(); io.disconnect(); }
-    }, { rootMargin: '400px' });
-    io.observe(el);
-
     let alive = true;
     loadGsap().then((gsap) => {
       if (!alive) return;
@@ -96,7 +86,7 @@ export default function ScrollReveal({
       ctxRef.current = ctx;
     });
 
-    return () => { alive = false; ctxRef.current?.revert(); io.disconnect(); };
+    return () => { alive = false; ctxRef.current?.revert(); };
   }, [yOffset, xOffset, duration, delay, scrub, start, end]);
 
   return (

@@ -206,6 +206,7 @@ html.lenis body {
 @media (max-width: 767px) {
   .snap-x {
     scroll-padding-inline: 12px;
+    scroll-snap-type: x proximity !important;
   }
   .snap-x > *:last-child {
     scroll-snap-align: end;
