@@ -1326,6 +1326,10 @@ export default function HomeShell() {
             }
           }
 
+          if (p.pdfUrl && (!galleryList || galleryList.length === 0)) {
+            galleryList = [p.pdfUrl];
+          }
+
           const projectTitle = lang === 'en' ? (p.titleEn || p.title) : lang === 'es' ? (p.titleEs || p.title) : p.title;
           const projectDesc = lang === 'en' ? (p.descriptionEn || p.description) : lang === 'es' ? (p.descriptionEs || p.description) : p.description;
 

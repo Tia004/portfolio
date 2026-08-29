@@ -335,15 +335,26 @@ export async function GET() {
       },
       {
         title: 'Progetti di UI',
+        titleEn: 'UI Projects',
+        titleEs: 'Proyectos de UI',
         description: 'Portfolio PDF con progetti di UI/UX design: WCM (WeCanMake) e materiali per l\'Istituto Fermi. Raccolta di design editoriali, branding e interfacce.',
+        descriptionEn: 'PDF portfolio with UI/UX design projects: WCM (WeCanMake) and materials for the Fermi Institute. Collection of editorial designs, branding and interfaces.',
+        descriptionEs: 'Portfolio PDF con proyectos de diseño UI/UX: WCM (WeCanMake) y materiales para el Instituto Fermi. Colección de diseños editoriales, branding e interfaces.',
         longDescription: 'Portfolio completo in formato PDF con progetti di UI/UX, brand identity e prototipazione per WCM.',
-        thumbnail: '/uploads/design-works/Misti/CopertinaFlussiDiCoscienza-OUS.webp',
+        thumbnail: 'data:image/svg+xml,' + encodeURIComponent(
+          '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">' +
+          '<rect fill="%2307130f" width="960" height="540" rx="20"/>' +
+          '<rect fill="none" stroke="%232dd4bf" stroke-width="2" stroke-opacity="0.35" width="960" height="540" rx="20"/>' +
+          '<text fill="%232dd4bf" font-family="Outfit,sans-serif" font-size="52" font-weight="800" text-anchor="middle" x="480" y="255" letter-spacing="0.08em">WCM &bull; UI / UX App</text>' +
+          '<text fill="%2394a3b8" font-family="Outfit,sans-serif" font-size="24" text-anchor="middle" x="480" y="315">Portfolio &bull; Documento PDF</text>' +
+          '</svg>'
+        ),
         projectUrl: '',
         tags: 'Design, UI/UX, PDF, WCM',
         category: 'Design',
         featured: false,
         order: 21,
-        gallery: null,
+        gallery: JSON.stringify(['/uploads/design-works/Misti/WCM.pdf']),
         pdfUrl: '/uploads/design-works/Misti/WCM.pdf',
       },
     ];
@@ -353,12 +364,17 @@ export async function GET() {
       if (!existing) {
         await prisma.project.create({ data: p });
       } else {
-        // Ensure gallery and pdfUrl are up to date if they were null
-        if (!existing.gallery && p.gallery) {
-          await prisma.project.update({ where: { id: existing.id }, data: { gallery: p.gallery } });
+        // Ensure gallery and pdfUrl are up to date if they were null or mismatched
+        const updates: any = {};
+        if (!existing.gallery && p.gallery) updates.gallery = p.gallery;
+        if (!existing.pdfUrl && p.pdfUrl) updates.pdfUrl = p.pdfUrl;
+        if (existing.title === 'Progetti di UI' && (existing.thumbnail?.includes('FlussiDiCoscienza') || !existing.gallery)) {
+          updates.thumbnail = p.thumbnail;
+          updates.gallery = p.gallery;
+          updates.pdfUrl = p.pdfUrl;
         }
-        if (!existing.pdfUrl && p.pdfUrl) {
-          await prisma.project.update({ where: { id: existing.id }, data: { pdfUrl: p.pdfUrl } });
+        if (Object.keys(updates).length > 0) {
+          await prisma.project.update({ where: { id: existing.id }, data: updates });
         }
       }
     }
