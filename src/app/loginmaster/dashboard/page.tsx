@@ -338,6 +338,11 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Floating Toast Notification State
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [toastHiding, setToastHiding] = useState(false);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Availability state
   const [isOnline, setIsOnline] = useState(true);
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
@@ -522,9 +527,22 @@ export default function DashboardPage() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
 
+  const showToast = (text: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastHiding(false);
+    setToastMessage({ text, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastHiding(true);
+      setTimeout(() => {
+        setToastMessage(null);
+        setToastHiding(false);
+      }, 300);
+    }, 3500);
+  };
+
   const showTemporarySuccess = (msg: string) => {
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(null), 4000);
+    showToast(msg, 'success');
   };
 
   // Check auth & fetch all modules
@@ -1940,7 +1958,7 @@ export default function DashboardPage() {
         <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-4 no-print lg:sticky lg:top-8">
           
           {/* Brand & Master Status */}
-          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-5 flex items-center justify-between">
+          <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
                 <TiaIcon icon={CpuIcon} size={20} strokeWidth={1.8} />
@@ -1965,7 +1983,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Left Vertical Tabs Menu */}
-          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-3 flex flex-col gap-1.5">
+          <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-3 flex flex-col gap-1.5">
             {[
               { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, count: projects.length },
               { id: 'media', label: 'Media & Cloudflare CDN', icon: CloudIcon, count: mediaAssets.length },
@@ -2004,7 +2022,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Availability Switch */}
-          <div className="bg-[#081410]/90 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-4 flex flex-col gap-2">
+          <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-4 flex flex-col gap-2">
             <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">Disponibilità Live</span>
             <button
               type="button"
@@ -2024,31 +2042,13 @@ export default function DashboardPage() {
 
         {/* ── RIGHT MAIN DASHBOARD CONTENT AREA ── */}
         <main className="flex-1 min-w-0 w-full flex flex-col gap-6">
-          
-          {/* Global Alerts */}
-          {error && (
-            <div className="no-print p-4 rounded-2xl bg-red-950/70 border border-red-500/40 text-red-200 text-sm flex items-center justify-between gap-3 shadow-lg">
-              <div className="flex items-center gap-2.5">
-                <TiaIcon icon={AlertCircleIcon} size={18} className="text-red-400 shrink-0" />
-                <span>{error}</span>
-              </div>
-              <button onClick={() => setError(null)} className="text-red-400 hover:text-white cursor-pointer"><TiaIcon icon={Cancel01Icon} size={16} /></button>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="no-print p-4 rounded-2xl bg-teal-950/70 border border-teal-500/40 text-teal-200 text-sm flex items-center gap-2.5 shadow-lg">
-              <TiaIcon icon={CheckmarkCircle01Icon} size={18} className="text-teal-400 shrink-0" />
-              <span>{successMessage}</span>
-            </div>
-          )}
 
           {/* ── TAB 1: PROGETTI ── */}
           {activeTab === 'projects' && (
             <div className="flex flex-col gap-6">
               
               {/* Top Section Header & Primary Actions */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 sm:p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-6 sm:p-7 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
                 <div>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
@@ -2070,7 +2070,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <p className="text-xs text-neutral-400 mt-0.5">
-                        Griglia su 5 colonne fisse. Trascina la trama tattile ⠿ per riorganizzare l'ordine sul sito live o usa ★ per mettere in evidenza un progetto e portarlo in cima.
+                        Griglia su 5 colonne fisse. Trascina la trama tattile ⠿ per riorganizzare l&apos;ordine sul sito live o usa ★ per mettere in evidenza un progetto e portarlo in cima.
                       </p>
                     </div>
                   </div>
@@ -2101,7 +2101,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Filters & Search Toolbar */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-1">
+              <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {/* Category Filter Pills */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
@@ -2209,12 +2209,12 @@ export default function DashboardPage() {
                           onDragOver={(e) => handleDragOver(e, p.id)}
                           onDrop={(e) => handleDrop(e, p.id)}
                           onDragEnd={handleDragEnd}
-                          className={`group bg-[#081410]/95 backdrop-blur-2xl border rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 select-none ${
+                          className={`group bg-[#061410]/80 backdrop-blur-2xl border rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 select-none shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] ${
                             isDragged
                               ? 'opacity-30 scale-95 border-teal-500 shadow-2xl'
                               : isDragOver
-                              ? 'border-teal-400 bg-[#0d2a21] shadow-[0_0_25px_rgba(45,212,191,0.3)] scale-[1.02]'
-                              : 'border-white/[0.08] hover:border-teal-500/40 hover:shadow-xl'
+                              ? 'border-teal-400 bg-[#0d2a21]/90 shadow-[0_0_30px_rgba(45,212,191,0.35)] scale-[1.02]'
+                              : 'border-white/[0.10] hover:border-teal-400/40 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_25px_rgba(45,212,191,0.18)]'
                           }`}
                         >
                           <div>
@@ -2954,7 +2954,7 @@ export default function DashboardPage() {
           {activeTab === 'media' && (
             <div className="flex flex-col gap-6">
               {/* Media Overview & Stats Header */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse" />
@@ -2992,7 +2992,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Upload Dropzone & Actions Toolbar */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.09)] rounded-3xl p-5 flex flex-col gap-4">
+              <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-5 flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
                   {/* Category Filter Chips */}
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -3084,7 +3084,7 @@ export default function DashboardPage() {
 
                 if (filteredMedia.length === 0) {
                   return (
-                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-3">
+                    <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-3">
                       <span className="text-3xl">📁</span>
                       <p className="text-sm font-semibold text-white">Nessun asset trovato</p>
                       <p className="text-xs text-neutral-400 max-w-sm">
@@ -3106,7 +3106,7 @@ export default function DashboardPage() {
                       return (
                         <div
                           key={idx}
-                          className="group bg-[#081410]/95 backdrop-blur-2xl border border-white/[0.08] hover:border-teal-500/40 rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 hover:shadow-xl select-none"
+                          className="group bg-[#061410]/80 backdrop-blur-2xl border border-white/[0.10] hover:border-teal-400/40 shadow-[0_8px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_25px_rgba(45,212,191,0.18)] rounded-2xl p-3 flex flex-col justify-between transition-all duration-200 select-none"
                         >
                           <div>
                             {/* Preview Area (16:9 for images, dedicated card for PDF) */}
@@ -5636,6 +5636,49 @@ export default function DashboardPage() {
         </main>
 
       </div>
+
+      {/* ── FLOATING LIQUID GLASS TOAST NOTIFICATION (BOTTOM-CENTER) ── */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[10000] max-w-md w-auto px-5 py-3.5 rounded-2xl backdrop-blur-2xl border flex items-center gap-3 shadow-[0_16px_40px_rgba(0,0,0,0.7)] pointer-events-auto transition-all duration-300 select-none ${
+            toastMessage.type === 'error'
+              ? 'bg-[#1a0808]/90 border-red-500/40 text-red-100 shadow-red-950/50'
+              : 'bg-[#081410]/90 border-teal-400/40 text-teal-100 shadow-[0_12px_40px_rgba(0,0,0,0.7),0_0_30px_rgba(45,212,191,0.25)]'
+          } ${
+            toastHiding
+              ? 'opacity-0 translate-y-3 scale-95 duration-300 ease-in'
+              : 'animate-in fade-in slide-in-from-bottom-5 zoom-in-95 duration-300'
+          }`}
+        >
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+            toastMessage.type === 'error'
+              ? 'bg-red-500/20 border-red-500/30 text-red-300'
+              : 'bg-teal-500/20 border-teal-500/30 text-teal-300 shadow-[0_0_12px_rgba(45,212,191,0.3)]'
+          }`}>
+            <TiaIcon icon={toastMessage.type === 'error' ? AlertCircleIcon : CheckmarkCircle01Icon} size={18} strokeWidth={2} />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-white leading-tight">
+              {toastMessage.text}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setToastHiding(true);
+              setTimeout(() => setToastMessage(null), 300);
+            }}
+            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+          >
+            <TiaIcon icon={Cancel01Icon} size={14} />
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }
