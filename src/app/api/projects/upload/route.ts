@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { getSession } from '@/lib/session';
+import { isR2Configured, uploadToR2 } from '@/lib/r2';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,24 +24,30 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 4. Set directory inside next project 'public/uploads'
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-
-    // Create the directory if it does not exist
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    // 5. Generate a unique name
+    // 4. Generate a unique name
     const ext = path.extname(file.name) || '.png';
     const uniqueFilename = `${crypto.randomUUID()}${ext}`;
-    const filepath = path.join(uploadDir, uniqueFilename);
 
-    // 6. Write the file to disk
+    // 5. If Cloudflare R2 is configured, upload directly to R2 bucket
+    if (isR2Configured()) {
+      try {
+        const r2Key = `projects/${uniqueFilename}`;
+        const publicUrl = await uploadToR2(r2Key, buffer, file.type || 'application/octet-stream');
+        return NextResponse.json({ url: publicUrl, storage: 'r2' });
+      } catch (r2Err: any) {
+        console.error('R2 upload failed, falling back to local storage:', r2Err);
+      }
+    }
+
+    // 6. Fallback: Write file to local disk 'public/uploads'
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const filepath = path.join(uploadDir, uniqueFilename);
     await fs.writeFile(filepath, buffer);
 
-    // 7. Return the relative public path URL
     const fileUrl = `/uploads/${uniqueFilename}`;
-
-    return NextResponse.json({ url: fileUrl });
+    return NextResponse.json({ url: fileUrl, storage: 'local' });
   } catch (error: any) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

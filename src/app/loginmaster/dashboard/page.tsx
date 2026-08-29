@@ -86,12 +86,14 @@ interface Project {
 
 interface MediaAsset {
   filename: string;
+  key?: string;
   url: string;
   folder: string;
   size: number;
   ext: string;
   type: 'image' | 'pdf' | 'video' | 'other';
   updatedAt: string;
+  storage?: 'r2' | 'local';
 }
 
 interface ContactMessage {
@@ -395,6 +397,7 @@ export default function DashboardPage() {
   // Cloudflare Media Gallery & CDN State
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [mediaStats, setMediaStats] = useState<{ totalFiles: number; totalBytes: number; imageCount: number; pdfCount: number; webpCount: number } | null>(null);
+  const [r2Status, setR2Status] = useState<{ configured: boolean; bucket: string; accountId: string; publicUrl: string } | null>(null);
   const [mediaFilter, setMediaFilter] = useState<'all' | 'image' | 'pdf' | 'design'>('all');
   const [mediaSearch, setMediaSearch] = useState('');
   const [isMediaLoading, setIsMediaLoading] = useState(false);
@@ -829,6 +832,12 @@ export default function DashboardPage() {
         const data = await res.json();
         setMediaAssets(data.assets || []);
         setMediaStats(data.stats || null);
+        setR2Status({
+          configured: data.r2Configured ?? false,
+          bucket: data.r2Bucket || 'portfolio-assets',
+          accountId: data.r2AccountId || '86fdf5e2f4d450ad3d3644d9937eb0b8',
+          publicUrl: data.r2PublicUrl || 'https://assets.tiadesigns.it',
+        });
       }
     } catch {} finally {
       setIsMediaLoading(false);
@@ -858,7 +867,7 @@ export default function DashboardPage() {
         });
         if (res.ok) successCount++;
       }
-      showTemporarySuccess(`${successCount} file caricati ed elaborati su Cloudflare / CDN con successo!`);
+      showTemporarySuccess(`${successCount} file caricati su Cloudflare R2 / CDN con successo!`);
       await fetchMediaAssets();
     } catch (err: any) {
       setError(err.message || 'Errore durante il caricamento');
@@ -868,10 +877,11 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteMediaAsset = async (url: string, filename: string) => {
+  const handleDeleteMediaAsset = async (url: string, filename: string, key?: string) => {
     if (!confirm(`Sei sicuro di voler eliminare "${filename}"?`)) return;
     try {
-      const res = await fetch(`/api/master/media?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
+      const q = key ? `key=${encodeURIComponent(key)}&url=${encodeURIComponent(url)}` : `url=${encodeURIComponent(url)}`;
+      const res = await fetch(`/api/master/media?${q}`, { method: 'DELETE' });
       if (res.ok) {
         showTemporarySuccess(`File "${filename}" eliminato.`);
         await fetchMediaAssets();
@@ -2976,39 +2986,71 @@ export default function DashboardPage() {
               <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse" />
-                    <span className="text-[11px] font-mono uppercase tracking-widest text-teal-400">
-                      Cloudflare CDN & Asset Vault
+                    <span className={`w-2.5 h-2.5 rounded-full ${r2Status?.configured ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
+                    <span className={`text-[11px] font-mono uppercase tracking-widest ${r2Status?.configured ? 'text-teal-400' : 'text-amber-400'}`}>
+                      {r2Status?.configured ? 'Cloudflare R2 S3 Connected' : 'Cloudflare R2 Object Storage'}
                     </span>
                   </div>
-                  <h2 className="text-xl font-bold tracking-tight text-white">Media Hub & Cloudflare CDN</h2>
+                  <h2 className="text-xl font-bold tracking-tight text-white">Media Hub & Cloudflare R2 CDN</h2>
                   <p className="text-xs text-neutral-400 mt-1 max-w-xl">
-                    Gestione centralizzata degli asset multimediali, sincronizzazione con edge Cloudflare e conversione WebP automatica ad altissima definizione.
+                    Bucket: <strong className="text-white font-mono">{r2Status?.bucket || 'portfolio-assets'}</strong> • Account: <span className="font-mono text-neutral-300">86fdf5e2f4d450ad3d3644d9937eb0b8</span>
                   </p>
                 </div>
 
-                {/* KPI Metrics Strip */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
-                    <span className="text-[10px] text-neutral-400 font-medium">Asset Totali</span>
-                    <span className="text-base font-bold text-white font-mono">{mediaStats?.totalFiles ?? mediaAssets.length}</span>
-                  </div>
-                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
-                    <span className="text-[10px] text-neutral-400 font-medium">Dimensione Storage</span>
-                    <span className="text-base font-bold text-teal-300 font-mono">
-                      {mediaStats ? `${(mediaStats.totalBytes / (1024 * 1024)).toFixed(1)} MB` : '...'}
-                    </span>
-                  </div>
-                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
-                    <span className="text-[10px] text-neutral-400 font-medium">Immagini WebP</span>
-                    <span className="text-base font-bold text-cyan-300 font-mono">{mediaStats?.webpCount ?? 0}</span>
-                  </div>
-                  <div className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
-                    <span className="text-[10px] text-neutral-400 font-medium">Documenti PDF</span>
-                    <span className="text-base font-bold text-rose-300 font-mono">{mediaStats?.pdfCount ?? 0}</span>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <a
+                    href="https://dash.cloudflare.com/86fdf5e2f4d450ad3d3644d9937eb0b8/r2/default/buckets/portfolio-assets"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2.5 rounded-2xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.12] text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                  >
+                    <span>Apri Bucket Cloudflare R2</span>
+                    <span className="text-teal-400">↗</span>
+                  </a>
+
+                  {/* KPI Metrics Strip */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="px-3.5 py-2 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                      <span className="text-[9px] text-neutral-400 font-medium">Asset Totali</span>
+                      <span className="text-sm font-bold text-white font-mono">{mediaStats?.totalFiles ?? mediaAssets.length}</span>
+                    </div>
+                    <div className="px-3.5 py-2 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
+                      <span className="text-[9px] text-neutral-400 font-medium">Storage R2</span>
+                      <span className="text-sm font-bold text-teal-300 font-mono">
+                        {mediaStats ? `${(mediaStats.totalBytes / (1024 * 1024)).toFixed(1)} MB` : '0 MB'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* R2 Connection Guide Alert if not configured */}
+              {r2Status && !r2Status.configured && (
+                <div className="p-5 rounded-3xl bg-amber-950/20 border border-amber-500/30 flex flex-col sm:flex-row items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">⚠️</span>
+                    <div className="text-xs text-neutral-300 space-y-1">
+                      <p className="font-bold text-amber-300 text-sm">Configurazione API Token Cloudflare R2</p>
+                      <p>
+                        Per consentire a Next.js / Vercel di leggere e caricare direttamente i file nel tuo bucket <strong className="text-white">portfolio-assets</strong>, aggiungi le credenziali S3 R2 su Vercel (o in <code>.env</code>):
+                      </p>
+                      <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 font-mono text-[11px]">
+                        <li><code>R2_ACCESS_KEY_ID=&quot;&lt;il_tuo_access_key_id&gt;&quot;</code></li>
+                        <li><code>R2_SECRET_ACCESS_KEY=&quot;&lt;il_tuo_secret_access_key&gt;&quot;</code></li>
+                        <li><code>CLOUDFLARE_ACCOUNT_ID=&quot;86fdf5e2f4d450ad3d3644d9937eb0b8&quot;</code></li>
+                      </ul>
+                    </div>
+                  </div>
+                  <a
+                    href="https://dash.cloudflare.com/86fdf5e2f4d450ad3d3644d9937eb0b8/r2/default/buckets/portfolio-assets"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/40 text-xs font-semibold shrink-0 cursor-pointer transition-colors"
+                  >
+                    Crea R2 Token ↗
+                  </a>
+                </div>
+              )}
 
               {/* Upload Dropzone & Actions Toolbar */}
               <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-5 flex flex-col gap-4">
@@ -3043,7 +3085,7 @@ export default function DashboardPage() {
                       onClick={fetchMediaAssets}
                       disabled={isMediaLoading}
                       className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-neutral-300 hover:text-white transition-colors cursor-pointer"
-                      title="Aggiorna asset"
+                      title="Aggiorna asset da Cloudflare R2"
                     >
                       <TiaIcon icon={RefreshIcon} size={15} className={isMediaLoading ? 'animate-spin' : ''} />
                     </button>
@@ -3055,7 +3097,7 @@ export default function DashboardPage() {
                       className="px-4 py-2.5 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-xs flex items-center gap-2 shadow-lg shadow-teal-400/25 transition-all cursor-pointer disabled:opacity-50"
                     >
                       <TiaIcon icon={Upload01Icon} size={15} />
-                      <span>{isUploadingMedia ? 'Conversione & Invio...' : '+ Carica File (Auto-WebP)'}</span>
+                      <span>{isUploadingMedia ? 'Caricamento su R2...' : '+ Carica su Cloudflare R2'}</span>
                     </button>
                     <input
                       type="file"
@@ -3077,7 +3119,7 @@ export default function DashboardPage() {
                     type="text"
                     value={mediaSearch}
                     onChange={(e) => setMediaSearch(e.target.value)}
-                    placeholder="Cerca per nome file o cartella CDN..."
+                    placeholder="Cerca per nome file o cartella R2..."
                     className="w-full pl-10 pr-8 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs placeholder-neutral-500 focus:outline-none focus:border-teal-400"
                   />
                   {mediaSearch && (
@@ -3105,9 +3147,9 @@ export default function DashboardPage() {
                   return (
                     <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-3">
                       <span className="text-3xl">📁</span>
-                      <p className="text-sm font-semibold text-white">Nessun asset trovato</p>
+                      <p className="text-sm font-semibold text-white">Nessun asset presente</p>
                       <p className="text-xs text-neutral-400 max-w-sm">
-                        Nessun file multimediale corrisponde ai criteri di ricerca o alla cartella selezionata.
+                        Nessun file multimediale trovato nel bucket R2 o nella cartella locale. Puoi caricare nuovi file con il pulsante in alto.
                       </p>
                     </div>
                   );
@@ -3173,7 +3215,7 @@ export default function DashboardPage() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const fullUrl = `${window.location.origin}${asset.url}`;
+                                    const fullUrl = asset.url.startsWith('http') ? asset.url : `${window.location.origin}${asset.url}`;
                                     navigator.clipboard.writeText(fullUrl);
                                     showTemporarySuccess(`URL copiato: ${asset.filename}`);
                                   }}
@@ -3211,7 +3253,7 @@ export default function DashboardPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                const fullUrl = `${window.location.origin}${asset.url}`;
+                                const fullUrl = asset.url.startsWith('http') ? asset.url : `${window.location.origin}${asset.url}`;
                                 navigator.clipboard.writeText(fullUrl);
                                 showTemporarySuccess(`URL copiato negli appunti!`);
                               }}
@@ -3219,12 +3261,12 @@ export default function DashboardPage() {
                               title="Copia link"
                             >
                               <span>🔗</span>
-                              <span>Copia CDN</span>
+                              <span>Copia URL</span>
                             </button>
 
                             <button
                               type="button"
-                              onClick={() => handleDeleteMediaAsset(asset.url, asset.filename)}
+                              onClick={() => handleDeleteMediaAsset(asset.url, asset.filename, asset.key)}
                               className="px-2 py-1 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-[10px] text-red-300 font-semibold transition-colors cursor-pointer"
                               title="Elimina asset"
                             >

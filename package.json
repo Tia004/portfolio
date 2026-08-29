@@ -27,6 +27,7 @@
     "test:chat": "node --import ./scripts/alias-hooks.mjs scripts/test-chat.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1121.0",
     "@base-ui/react": "^1.6.0",
     "@hugeicons/core-free-icons": "^4.2.3",
     "@hugeicons/react": "^1.1.9",
