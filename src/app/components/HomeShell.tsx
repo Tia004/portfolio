@@ -2908,9 +2908,13 @@ export default function HomeShell() {
 
             {/* Featured Badge if featured */}
             {project.featured && (
-              <span className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-teal-400 text-black shadow-lg shadow-teal-400/25">
-                ★ In Evidenza
-              </span>
+              <div className="absolute top-4 left-4 z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#05110d]/85 backdrop-blur-xl border border-teal-400/40 text-teal-300 text-[10px] font-mono font-bold tracking-wider shadow-[0_4px_16px_rgba(45,212,191,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] group-hover:border-teal-400/70 transition-all duration-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-400" />
+                </span>
+                <span className="drop-shadow-sm">IN EVIDENZA</span>
+              </div>
             )}
           </div>
 

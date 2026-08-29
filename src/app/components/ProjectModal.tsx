@@ -138,7 +138,25 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
     };
   }, [onClose]);
   const embedUrl = getEmbedUrl(project.url, !!project.isVideo);
-  const gallery = project.gallery ?? [];
+  const isVideo = Boolean(project.isVideo);
+  const isWebSite = Boolean(
+    project.url &&
+    !isVideo &&
+    (project.url.startsWith('http://') || project.url.startsWith('https://')) &&
+    !project.url.match(/\.(png|jpe?g|webp|gif|svg|pdf)$/i) &&
+    (project.category?.toLowerCase() === 'sviluppo' ||
+     project.category?.toLowerCase() === 'web' ||
+     project.category?.toLowerCase() === 'app' ||
+     project.category?.toLowerCase() === 'software' ||
+     (project.tags && project.tags.some((t) => t.toLowerCase().includes('next.js') || t.toLowerCase().includes('react') || t.toLowerCase().includes('web') || t.toLowerCase().includes('e-commerce'))))
+  );
+
+  const gallery = (project.gallery && project.gallery.length > 0)
+    ? project.gallery
+    : (!isWebSite && !isVideo && project.thumbnail)
+      ? [project.thumbnail]
+      : [];
+
   const activeGalleryIndex = Math.min(galleryIndex, Math.max(0, gallery.length - 1));
   const hasGallery = gallery.length > 0;
   const activeMedia = hasGallery ? gallery[activeGalleryIndex] : '';
@@ -312,10 +330,20 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
               <span className="sr-only" aria-live="polite">
                 {project.title}, {activeGalleryIndex + 1} {galleryCountLabel} {gallery.length}
               </span>
-              <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-5 pb-10 pt-5">
-                <span className="text-xs font-medium tracking-[0.16em] text-white/70">{activeGalleryIndex + 1} / {gallery.length}</span>
-                <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/50">{carouselLabel}</span>
-              </div>
+              {gallery.length > 1 && (
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-5 pb-10 pt-5">
+                  <span className="text-xs font-medium tracking-[0.16em] text-white/70">{activeGalleryIndex + 1} / {gallery.length}</span>
+                  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/50">{carouselLabel}</span>
+                </div>
+              )}
+
+              {/* Ambient Background Glow */}
+              {isActiveImage && (
+                <div
+                  className="absolute inset-0 bg-cover bg-center blur-3xl opacity-20 scale-125 pointer-events-none transition-all duration-700"
+                  style={{ backgroundImage: `url(${activeMedia.replace(/\.(png|jpe?g)$/i, '.webp')})` }}
+                />
+              )}
 
               <div className="relative h-full w-full overflow-hidden">
                 <div
@@ -328,7 +356,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                     // galleries can otherwise create dozens of image decodes at once.
                     const isNearActive = Math.abs(index - activeGalleryIndex) <= 1;
                     return (
-                      <div key={image} className="flex h-full w-full shrink-0 items-center justify-center overflow-hidden p-4">
+                      <div key={image} className="flex h-full w-full shrink-0 items-center justify-center overflow-hidden p-4 sm:p-6 md:p-8">
                         {isNearActive && (image.toLowerCase().endsWith('.pdf') ? (
                           <PdfCarousel url={image} title={project.title} />
                         ) : (
@@ -343,12 +371,8 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                             <img
                               src={image.replace(/\.(png|jpe?g)$/i, '.webp')}
                               alt={`${project.title}, ${slideLabel} ${index + 1}`}
-                              className="min-h-0 max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/50"
+                              className="min-h-0 max-w-full max-h-full rounded-xl object-contain shadow-2xl shadow-black/80"
                               draggable="false"
-                              // Only ±1 slides are ever mounted, so eager loading
-                              // here == preloading the neighbours: the browser
-                              // starts fetching/decoding the next slide as soon
-                              // as it becomes adjacent, no pop-in on navigate.
                               loading="eager"
                               decoding="async"
                             />
@@ -360,38 +384,40 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                 </div>
               </div>
 
-              {activeGalleryIndex > 0 && (
+              {gallery.length > 1 && activeGalleryIndex > 0 && (
                 <button
                   type="button"
                   onClick={() => setGalleryIndex((index) => index - 1)}
                   aria-label={previousSlideLabel}
-                  className="absolute left-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70"
+                  className="absolute left-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70 cursor-pointer"
                 >
                   <span aria-hidden="true" className="text-2xl leading-none">‹</span>
                 </button>
               )}
-              {activeGalleryIndex < gallery.length - 1 && (
+              {gallery.length > 1 && activeGalleryIndex < gallery.length - 1 && (
                 <button
                   type="button"
                   onClick={() => setGalleryIndex((index) => index + 1)}
                   aria-label={nextSlideLabel}
-                  className="absolute right-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70"
+                  className="absolute right-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70 cursor-pointer"
                 >
                   <span aria-hidden="true" className="text-2xl leading-none">›</span>
                 </button>
               )}
 
-              <div className="absolute bottom-5 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md">
-                {gallery.map((image, index) => (
-                  <button
-                    type="button"
-                    key={image}
-                    onClick={() => setGalleryIndex(index)}
-                    aria-label={`${index + 1} ${image.toLowerCase().endsWith('.pdf') ? pdfLabel : slideLabel}`}
-                    className={`h-1.5 rounded-full transition-all ${index === activeGalleryIndex ? 'w-7 bg-teal-400' : 'w-1.5 bg-white/35 hover:bg-white/70'}`}
-                  />
-                ))}
-              </div>
+              {gallery.length > 1 && (
+                <div className="absolute bottom-5 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md">
+                  {gallery.map((image, index) => (
+                    <button
+                      type="button"
+                      key={image}
+                      onClick={() => setGalleryIndex(index)}
+                      aria-label={`${index + 1} ${image.toLowerCase().endsWith('.pdf') ? pdfLabel : slideLabel}`}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeGalleryIndex ? 'w-7 bg-teal-400' : 'w-1.5 bg-white/35 hover:bg-white/70'}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <>

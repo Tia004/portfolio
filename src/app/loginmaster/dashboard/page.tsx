@@ -2534,15 +2534,15 @@ export default function DashboardPage() {
                                     e.stopPropagation();
                                     handleToggleFeatured(p);
                                   }}
-                                  className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-0.5 cursor-pointer transition-all ${
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono flex items-center gap-1.5 cursor-pointer transition-all border ${
                                     p.featured
-                                      ? 'bg-amber-400 text-black shadow-sm shadow-amber-400/30'
-                                      : 'bg-white/[0.04] text-neutral-400 hover:text-amber-300 hover:bg-white/[0.08]'
+                                      ? 'bg-teal-950/80 border-teal-400/50 text-teal-300 shadow-[0_0_10px_rgba(45,212,191,0.25)]'
+                                      : 'bg-white/[0.03] border-white/[0.06] text-neutral-400 hover:text-teal-300 hover:border-teal-400/30'
                                   }`}
                                   title={p.featured ? 'In evidenza (clicca per rimuovere)' : 'Clicca per mettere in evidenza e portare in cima'}
                                 >
-                                  <span>★</span>
-                                  <span className="text-[9px] hidden 2xl:inline">{p.featured ? 'Featured' : 'Normale'}</span>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${p.featured ? 'bg-teal-400 animate-pulse' : 'bg-neutral-600'}`} />
+                                  <span className="text-[9px]">{p.featured ? 'In Evidenza' : 'Normale'}</span>
                                 </button>
 
                                 <span className={`px-1.5 py-0.2 rounded-md text-[9px] font-bold uppercase tracking-wider ${catStyle.bg} ${catStyle.text} border ${catStyle.border}`}>
