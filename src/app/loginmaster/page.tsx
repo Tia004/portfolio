@@ -68,6 +68,11 @@ function LoginMasterContent() {
         throw new Error(verifyData.error);
       }
 
+      try {
+        sessionStorage.setItem('master_authenticated', 'true');
+        localStorage.setItem('master_authenticated', 'true');
+      } catch {}
+
       router.push('/loginmaster/dashboard');
     } catch (err: any) {
       console.error(err);
@@ -103,6 +108,11 @@ function LoginMasterContent() {
         throw new Error(verifyData.error);
       }
 
+      try {
+        sessionStorage.setItem('master_authenticated', 'true');
+        localStorage.setItem('master_authenticated', 'true');
+      } catch {}
+
       router.push('/loginmaster/dashboard');
     } catch (err: any) {
       console.error(err);
@@ -130,6 +140,12 @@ function LoginMasterContent() {
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Codice non valido');
       }
+
+      try {
+        sessionStorage.setItem('master_authenticated', 'true');
+        localStorage.setItem('master_authenticated', 'true');
+      } catch {}
+
       router.push('/loginmaster/dashboard');
     } catch (err: any) {
       setError(err.message || 'Verifica codice fallita');

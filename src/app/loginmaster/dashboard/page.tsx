@@ -556,9 +556,19 @@ export default function DashboardPage() {
       try {
         const authRes = await fetch('/api/auth/status');
         if (!authRes.ok) {
+          try {
+            sessionStorage.removeItem('master_authenticated');
+            localStorage.removeItem('master_authenticated');
+          } catch {}
           router.replace('/loginmaster');
           return;
         }
+
+        // Set master flag so analytics tracker ignores the site owner everywhere
+        try {
+          sessionStorage.setItem('master_authenticated', 'true');
+          localStorage.setItem('master_authenticated', 'true');
+        } catch {}
 
         await Promise.allSettled([
           fetchAvailability(),
@@ -701,6 +711,10 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem('master_authenticated');
+      localStorage.removeItem('master_authenticated');
+    } catch {}
     await fetch('/api/auth/logout', { method: 'POST' });
     router.replace('/loginmaster');
   };

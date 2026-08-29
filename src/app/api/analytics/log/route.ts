@@ -24,17 +24,37 @@ function extractCity(req: NextRequest): string | null {
 
 export async function POST(req: NextRequest) {
   try {
+    // Exclude any requests coming from the authenticated admin
+    const masterToken = req.cookies.get('master_session')?.value;
+    if (masterToken) {
+      return NextResponse.json({ ok: true, ignored: true, reason: 'admin_session' });
+    }
+
     const body = await req.json();
-    const { events, consent } = body;
+    const { events } = body;
 
     if (events && Array.isArray(events) && events.length > 0) {
+      // Strictly exclude any admin / dashboard URLs
+      const filteredEvents = events.filter((e: { type: string; url: string }) => {
+        if (!e || !e.url) return false;
+        const u = e.url.toLowerCase();
+        if (u.includes('/loginmaster') || u.startsWith('/api/') || u.includes('/master/')) {
+          return false;
+        }
+        return true;
+      });
+
+      if (filteredEvents.length === 0) {
+        return NextResponse.json({ ok: true, count: 0, ignored: true });
+      }
+
       // Resolve geo once per batch — same IP for all events
       const country = extractCountry(req);
       const city = extractCity(req);
 
       // Persist analytics events to the database
       try {
-        const rows = events.map((e: { type: string; url: string; timestamp: number; sessionId: string; data?: Record<string, unknown> }) => {
+        const rows = filteredEvents.map((e: { type: string; url: string; timestamp: number; sessionId: string; data?: Record<string, unknown> }) => {
           let merged = e.data ? { ...e.data } : null;
           if (country) merged = { ...(merged || {}), _country: country };
           if (city) merged = { ...(merged || {}), _city: city };
@@ -52,7 +72,7 @@ export async function POST(req: NextRequest) {
         console.error('[analytics] DB write failed:', dbErr);
       }
 
-      return NextResponse.json({ ok: true, count: events.length });
+      return NextResponse.json({ ok: true, count: filteredEvents.length });
     }
 
     return NextResponse.json({ error: 'Missing events array' }, { status: 400 });

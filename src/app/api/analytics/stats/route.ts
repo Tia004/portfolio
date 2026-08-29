@@ -16,18 +16,27 @@ export async function GET(req: NextRequest) {
   const dayMs = 24 * 60 * 60 * 1000;
   const cutoff = BigInt(Date.now() - days * dayMs);
 
+  // Common filter to strictly exclude all dashboard and admin paths
+  const nonAdminFilter = {
+    AND: [
+      { NOT: { url: { contains: '/loginmaster' } } },
+      { NOT: { url: { contains: '/api/' } } },
+      { NOT: { url: { contains: '/master/' } } },
+    ],
+  };
+
   try {
     const [totalEvents, totalSessions, pageViews, totalClicks, trafficTodayYesterday, topClicked, recentEvents, scrollDepth, eventsByType, cookieConsentBreakdown, countries, dailyVisits, dailySessions, dailyConsent, topCities, todayConsentRate, consentSessionRate, cityAnalytics] =
       await Promise.all([
-        prisma.analyticsEvent.count(),
-        prisma.analyticsEvent.groupBy({ by: ['sessionId'], _count: true }).then((r: { sessionId: string; _count: number }[]) => r.length),
-        prisma.analyticsEvent.count({ where: { type: 'pageview' } }),
-        prisma.analyticsEvent.count({ where: { type: 'click' } }),
+        prisma.analyticsEvent.count({ where: nonAdminFilter }),
+        prisma.analyticsEvent.groupBy({ by: ['sessionId'], where: nonAdminFilter, _count: true }).then((r: { sessionId: string; _count: number }[]) => r.length),
+        prisma.analyticsEvent.count({ where: { ...nonAdminFilter, type: 'pageview' } }),
+        prisma.analyticsEvent.count({ where: { ...nonAdminFilter, type: 'click' } }),
 
         // Traffic comparison: today vs yesterday. Sessions are unique per day,
         // while the other metrics count their corresponding event types.
         prisma.analyticsEvent.findMany({
-          where: { timestamp: { gte: BigInt(Date.now() - 2 * dayMs) } },
+          where: { ...nonAdminFilter, timestamp: { gte: BigInt(Date.now() - 2 * dayMs) } },
           select: { type: true, timestamp: true, sessionId: true },
         }).then((rows: { type: string; timestamp: bigint; sessionId: string }[]) => {
           const today = new Date();
@@ -60,7 +69,7 @@ export async function GET(req: NextRequest) {
 
         // Top clicked elements
         prisma.analyticsEvent.findMany({
-          where: { type: 'click' },
+          where: { ...nonAdminFilter, type: 'click' },
           select: { data: true },
           take: 500,
         }).then((rows: { data: string | null }[]) => {
@@ -80,6 +89,7 @@ export async function GET(req: NextRequest) {
 
         // Recent events (last 50)
         prisma.analyticsEvent.findMany({
+          where: nonAdminFilter,
           orderBy: { timestamp: 'desc' },
           take: 50,
           select: { type: true, url: true, data: true, timestamp: true, sessionId: true },
@@ -90,7 +100,7 @@ export async function GET(req: NextRequest) {
 
         // Scroll depth
         prisma.analyticsEvent.findMany({
-          where: { type: { startsWith: 'scroll_' } },
+          where: { ...nonAdminFilter, type: { startsWith: 'scroll_' } },
           select: { type: true },
         }).then((rows: { type: string }[]) => {
           const counts: Record<string, number> = {};
@@ -103,6 +113,7 @@ export async function GET(req: NextRequest) {
         // Events by type
         prisma.analyticsEvent.groupBy({
           by: ['type'],
+          where: nonAdminFilter,
           _count: true,
         }).then((rows: { type: string; _count: number }[]) =>
           rows.map(r => ({ type: r.type, count: r._count })).sort((a, b) => b.count - a.count)
@@ -110,7 +121,7 @@ export async function GET(req: NextRequest) {
 
         // Cookie consent breakdown by level
         prisma.analyticsEvent.findMany({
-          where: { type: 'cookie_consent' },
+          where: { ...nonAdminFilter, type: 'cookie_consent' },
           select: { data: true },
           take: 1000,
         }).then((rows: { data: string | null }[]) => {
@@ -133,7 +144,7 @@ export async function GET(req: NextRequest) {
 
         // Country breakdown from pageview events
         prisma.analyticsEvent.findMany({
-          where: { type: 'pageview' },
+          where: { ...nonAdminFilter, type: 'pageview' },
           select: { data: true },
           take: 5000,
         }).then((rows: { data: string | null }[]) => {
@@ -156,6 +167,7 @@ export async function GET(req: NextRequest) {
         // Daily visits — last N days
         prisma.analyticsEvent.findMany({
           where: {
+            ...nonAdminFilter,
             type: 'pageview',
             timestamp: { gte: cutoff },
           },
@@ -181,6 +193,7 @@ export async function GET(req: NextRequest) {
         // Daily unique sessions — last N days
         prisma.analyticsEvent.findMany({
           where: {
+            ...nonAdminFilter,
             type: 'pageview',
             timestamp: { gte: cutoff },
           },
@@ -207,6 +220,7 @@ export async function GET(req: NextRequest) {
         // Daily consent trends — last N days, grouped by day + level
         prisma.analyticsEvent.findMany({
           where: {
+            ...nonAdminFilter,
             type: 'cookie_consent',
             timestamp: { gte: cutoff },
           },
@@ -242,7 +256,7 @@ export async function GET(req: NextRequest) {
 
         // Top cities from pageview events
         prisma.analyticsEvent.findMany({
-          where: { type: 'pageview' },
+          where: { ...nonAdminFilter, type: 'pageview' },
           select: { data: true },
           take: 5000,
         }).then((rows: { data: string | null }[]) => {
@@ -265,6 +279,7 @@ export async function GET(req: NextRequest) {
         // Today vs yesterday consent rate
         prisma.analyticsEvent.findMany({
           where: {
+            ...nonAdminFilter,
             type: 'cookie_consent',
             timestamp: { gte: BigInt(Date.now() - 2 * dayMs) },
           },
@@ -302,7 +317,7 @@ export async function GET(req: NextRequest) {
 
         // Sessions with consent — unique sessionIds that have cookie_consent events
         prisma.analyticsEvent.findMany({
-          where: { type: 'cookie_consent' },
+          where: { ...nonAdminFilter, type: 'cookie_consent' },
           select: { sessionId: true },
           distinct: ['sessionId'],
           take: 50000,
@@ -313,7 +328,7 @@ export async function GET(req: NextRequest) {
         // City analytics — one pageview scan feeds both the unique-city KPI
         // and the country → city drill-down panel.
         prisma.analyticsEvent.findMany({
-          where: { type: 'pageview' },
+          where: { ...nonAdminFilter, type: 'pageview' },
           select: { data: true },
           take: 50000,
         }).then((rows: { data: string | null }[]) => {
