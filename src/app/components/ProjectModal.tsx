@@ -468,12 +468,12 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
         {/* ── Side Panel: Project info (bento card) — data-lenis-prevent so Lenis skips preventDefault on wheel events ── */}
         <div className="flex flex-col lg:w-[320px] xl:w-[380px] shrink-0">
           {/* Scrollable content — glass blur only from sm+ (see main panel) */}
-          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.06] backdrop-blur-md sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 flex-1 overflow-y-auto relative overscroll-contain">
+          <div ref={sideContentRef} data-lenis-prevent data-lenis-prevent-touch className="bg-white/[0.06] backdrop-blur-md sm:bg-white/[0.03] sm:backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-teal-400/15 shadow-[0_0_20px_rgba(45,212,191,0.12),0_25px_50px_-12px_rgba(0,0,0,0.4)] p-5 sm:p-6 xl:p-8 pt-16 sm:pt-16 xl:pt-16 flex-1 overflow-y-auto relative overscroll-contain">
             {/* Content */}
-            <div>
+            <div className="pt-2">
             {/* ── Section 0: Title & Tags ── */}
             <div ref={registerSection(0)} data-section={0}>
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-3">{project.title}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 tracking-tight">{project.title}</h2>
               
               {project.tags && (
                 <div className="flex gap-2 flex-wrap mb-4">
