@@ -2870,72 +2870,98 @@ export default function HomeShell() {
   // ── Project card renderer — shared by the mobile snap slider (all
   //    filtered projects in a row) and the desktop paginated grid. ──
   const renderProjectCard = (project: ProjectData) => (
-    <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="group h-full">
-      <div className="bg-white/[0.03] rounded-[20px] h-full flex flex-col overflow-hidden">
-        <div className="relative aspect-video w-full bg-white/[0.02] p-2.5 sm:p-3">
-          <div className="w-full h-full overflow-hidden rounded-xl">
-            <picture>
-              {project.thumbnail.startsWith('/uploads/') && (
-                <>
-                  {/* Prefer the uniform 16:9 crop; fall back to the full uncropped variant. */}
-                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.avif')} type="image/avif" />
-                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.webp')} type="image/webp" />
-                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
-                  <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
-                </>
-              )}
-              <img
-                // The .png originals were removed from the repo/R2 — the
-                // picture <source> list already serves avif/webp, and this
-                // fallback also points at webp so a missing png can never
-                // render the broken-image placeholder.
-                src={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')}
-                alt={project.title}
-                loading="lazy"
-                decoding="async"
-                draggable="false"
-                onError={(e) => {
-                  if (project.isVideo) {
-                    (e.target as HTMLImageElement).src = 'https://img.youtube.com/vi/rc6GzCBa2LY/hqdefault.jpg';
-                  }
-                }}
-                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 select-none"
-              />
-            </picture>
+    <BorderGlow continuousHover borderRadius={24} glowRadius={32} glowIntensity={2.2} edgeSensitivity={0} className="group h-full">
+      <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-[24px] h-full flex flex-col justify-between overflow-hidden transition-all duration-300 group-hover:border-teal-500/30">
+        <div>
+          {/* Uniform Image Container (16:10 aspect ratio) with Ambient Blur & Object Cover */}
+          <div className="relative aspect-[16/10] w-full bg-black/40 p-2.5 sm:p-3 overflow-hidden">
+            {/* Ambient background glow for uncropped posters */}
+            <div
+              className="absolute inset-0 bg-cover bg-center blur-xl opacity-30 scale-110 pointer-events-none"
+              style={{ backgroundImage: `url(${project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')})` }}
+            />
+            <div className="relative w-full h-full overflow-hidden rounded-xl bg-black/60 border border-white/[0.06] flex items-center justify-center">
+              <picture className="block w-full h-full">
+                {project.thumbnail.startsWith('/uploads/') && (
+                  <>
+                    <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.avif')} type="image/avif" />
+                    <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '-thumb.webp')} type="image/webp" />
+                    <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.avif')} type="image/avif" />
+                    <source srcSet={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')} type="image/webp" />
+                  </>
+                )}
+                <img
+                  src={project.thumbnail.replace(/\.(png|jpe?g)$/i, '.webp')}
+                  alt={project.title}
+                  loading="lazy"
+                  decoding="async"
+                  draggable="false"
+                  onError={(e) => {
+                    if (project.isVideo) {
+                      (e.target as HTMLImageElement).src = 'https://img.youtube.com/vi/rc6GzCBa2LY/hqdefault.jpg';
+                    }
+                  }}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 select-none"
+                />
+              </picture>
+            </div>
+
+            {/* Featured Badge if featured */}
+            {project.featured && (
+              <span className="absolute top-4 left-4 z-10 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-teal-400 text-black shadow-lg shadow-teal-400/25">
+                ★ In Evidenza
+              </span>
+            )}
+          </div>
+
+          {/* Project Details */}
+          <div className="p-4 sm:p-5 flex flex-col gap-2">
+            <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-teal-300 transition-colors tracking-tight line-clamp-1">
+              {project.title}
+            </h3>
+            <p className="text-neutral-400 text-xs sm:text-[13px] line-clamp-2 leading-relaxed min-h-[2.5rem]">
+              {project.description}
+            </p>
+            {project.tags && project.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mt-1">
+                {project.tags.slice(0, 4).map((t) => (
+                  <span
+                    key={t}
+                    {...(tagTooltips[t] ? getSectionHandlers(tagTooltips[t]) : {})}
+                    className={`bg-white/[0.04] border border-white/[0.06] text-neutral-300 text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-lg ${tagTooltips[t] ? 'cursor-help hover:border-teal-500/30 hover:text-teal-300' : ''} transition-colors`}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        <div className="p-4 sm:p-6 flex-1 flex flex-col">
-          <h3 className="text-base sm:text-lg font-medium text-white group-hover:text-teal-400 transition-colors">{project.title}</h3>
-          <p className="text-neutral-400 text-[13px] sm:text-sm mt-1.5 sm:mt-2 line-clamp-2 leading-relaxed">{project.description}</p>
-          {project.tags && (
-            <div className="flex gap-2 flex-wrap mt-3 sm:mt-4">
-              {project.tags.map((t) => (
-                <span
-                  key={t}
-                  {...(tagTooltips[t] ? getSectionHandlers(tagTooltips[t]) : {})}
-                  className={`bg-white/5 text-neutral-400 text-[11px] sm:text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg ${tagTooltips[t] ? 'cursor-help' : ''}`}
-                >{t}</span>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-5">
-            {project.url && <a
+
+        {/* Card Footer Actions */}
+        <div className="p-4 sm:p-5 pt-0 mt-2 flex gap-2">
+          {project.url && (
+            <a
               href={project.url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 text-center px-2 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all border border-white/10 text-white hover:bg-white/5 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap"
+              className="flex-1 text-center px-3 py-2 rounded-xl text-xs font-semibold transition-all border border-white/[0.08] bg-white/[0.03] text-neutral-300 hover:text-white hover:bg-white/[0.07] hover:border-white/[0.15] inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
             >
-              {project.isVideo ? t('progetti.watch', lang) : t('progetti.visit', lang)}
-              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={15} strokeWidth={2} className="shrink-0" />
-            </a>}
-            <button
-              onClick={(e) => { e.stopPropagation(); scrollToContatti({ service: project.title, message: `Interesse per il progetto: ${project.title}` }); }}
-              className="flex-1 text-center px-2 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all bg-teal-600 text-white hover:bg-teal-500 whitespace-nowrap"
-            >
-              {t('progetti.quote', lang)}
-            </button>
-          </div>
+              <span>{project.isVideo ? t('progetti.watch', lang) : t('progetti.visit', lang)}</span>
+              <TiaIcon icon={project.isVideo ? PlayIcon : ExternalLinkIcon} size={13} strokeWidth={2} className="shrink-0 text-teal-400" />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              scrollToContatti({ service: project.title, message: `Interesse per il progetto: ${project.title}` });
+            }}
+            className="flex-1 text-center px-3 py-2 rounded-xl text-xs font-bold transition-all bg-teal-400 hover:bg-teal-300 text-black shadow-md shadow-teal-400/20 whitespace-nowrap cursor-pointer"
+          >
+            {t('progetti.quote', lang)}
+          </button>
         </div>
       </div>
     </BorderGlow>

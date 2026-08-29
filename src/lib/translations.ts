@@ -258,7 +258,7 @@ const it: Dict = {
   'footer.copyright': '© 2026 Tia Designs. Tutti i diritti riservati.',
   'footer.location': 'Mantova, Italia',
   'footer.timezone': 'GMT+2',
-  'footer.referral': 'Programma referral: porta un cliente e ricevi il 10% di sconto sul prossimo progetto',
+  'footer.referral': 'Programma referral: porta un cliente e ricevi il 20% di sconto sul prossimo progetto',
 
   // Chat
   'chat.open': 'Apri chat',
@@ -1108,10 +1108,13 @@ export type ProjectData = {
   id: string;
   title: string;
   description: string;
+  longDescription?: string;
   url: string;
+  githubUrl?: string;
   thumbnail: string;
   category: string;
   tags: string[];
+  featured?: boolean;
   isVideo?: boolean;
   /** Optional local gallery used by image-first portfolio projects. */
   gallery?: string[];
