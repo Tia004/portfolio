@@ -274,16 +274,16 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
       >
         
         {/* ── Floating actions (top-right, INSIDE the window): fullscreen + close ── */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-30 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setFullscreen(true)}
             aria-label={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
             title={lang === 'it' ? 'Schermo intero' : lang === 'es' ? 'Pantalla completa' : 'Fullscreen'}
-            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
+            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-[#081410]/80 hover:bg-[#0e241c]/90 text-white/80 hover:text-white transition-all duration-300 border border-white/[0.14] hover:border-teal-400/50 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(45,212,191,0.3)] cursor-pointer active:scale-95 group"
           >
             {/* Maximize icon */}
-            <svg aria-hidden="true" className="w-4 h-4 sm:w-[18px] sm:h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+            <svg aria-hidden="true" className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-white/70 group-hover:text-teal-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
             </svg>
           </button>
@@ -291,9 +291,9 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-white/[0.03] hover:bg-white/[0.06] text-white/70 hover:text-white transition-all border border-white/[0.08] backdrop-blur-xl"
+            className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-full bg-[#081410]/80 hover:bg-[#0e241c]/90 text-white/80 hover:text-white transition-all duration-300 border border-white/[0.14] hover:border-teal-400/50 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(45,212,191,0.3)] cursor-pointer active:scale-95 group"
           >
-            <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={2} />
+            <TiaIcon icon={Cancel01Icon} size={18} strokeWidth={2} className="text-white/70 group-hover:text-teal-300 transition-colors" />
           </button>
         </div>
 
@@ -333,9 +333,13 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                 {project.title}, {activeGalleryIndex + 1} {galleryCountLabel} {gallery.length}
               </span>
               {gallery.length > 1 && (
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-5 pb-10 pt-5">
-                  <span className="text-xs font-medium tracking-[0.16em] text-white/70">{activeGalleryIndex + 1} / {gallery.length}</span>
-                  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-white/50">{carouselLabel}</span>
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent px-5 pb-10 pt-5 pointer-events-none">
+                  <span className="pointer-events-auto text-xs font-semibold tracking-[0.16em] text-white/90 rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
+                    {activeGalleryIndex + 1} / {gallery.length}
+                  </span>
+                  <span className="pointer-events-auto rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-400 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
+                    {carouselLabel}
+                  </span>
                 </div>
               )}
 
@@ -377,7 +381,7 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                               draggable="false"
                               loading="eager"
                               decoding="async"
-                            />
+                              />
                           </picture>
                         ))}
                       </div>
@@ -391,9 +395,11 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                   type="button"
                   onClick={() => setGalleryIndex((index) => index - 1)}
                   aria-label={previousSlideLabel}
-                  className="absolute left-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70 cursor-pointer"
+                  className="absolute left-3 sm:left-5 top-1/2 z-20 flex h-11 w-11 sm:h-12 sm:w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[#081410]/80 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-teal-400/50 hover:bg-[#0e241c]/95 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_24px_rgba(45,212,191,0.35)] cursor-pointer active:scale-95 group"
                 >
-                  <span aria-hidden="true" className="text-2xl leading-none">‹</span>
+                  <svg aria-hidden="true" className="w-5 h-5 text-white/90 group-hover:text-teal-300 transition-all duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
               )}
               {gallery.length > 1 && activeGalleryIndex < gallery.length - 1 && (
@@ -401,21 +407,23 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                   type="button"
                   onClick={() => setGalleryIndex((index) => index + 1)}
                   aria-label={nextSlideLabel}
-                  className="absolute right-4 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white backdrop-blur-md transition hover:bg-black/70 cursor-pointer"
+                  className="absolute right-3 sm:right-5 top-1/2 z-20 flex h-11 w-11 sm:h-12 sm:w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[#081410]/80 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-teal-400/50 hover:bg-[#0e241c]/95 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_24px_rgba(45,212,191,0.35)] cursor-pointer active:scale-95 group"
                 >
-                  <span aria-hidden="true" className="text-2xl leading-none">›</span>
+                  <svg aria-hidden="true" className="w-5 h-5 text-white/90 group-hover:text-teal-300 transition-all duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               )}
 
               {gallery.length > 1 && (
-                <div className="absolute bottom-5 left-1/2 z-20 flex max-w-[80%] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-black/45 px-3 py-2 backdrop-blur-md">
+                <div className="absolute bottom-4 sm:bottom-5 left-1/2 z-20 flex max-w-[85%] -translate-x-1/2 gap-1.5 overflow-x-auto rounded-full border border-white/[0.14] bg-[#081410]/80 px-3.5 py-2 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_8px_24px_rgba(0,0,0,0.5)]">
                   {gallery.map((image, index) => (
                     <button
                       type="button"
                       key={image}
                       onClick={() => setGalleryIndex(index)}
                       aria-label={`${index + 1} ${image.toLowerCase().endsWith('.pdf') ? pdfLabel : slideLabel}`}
-                      className={`h-1.5 rounded-full transition-all cursor-pointer ${index === activeGalleryIndex ? 'w-7 bg-teal-400' : 'w-1.5 bg-white/35 hover:bg-white/70'}`}
+                      className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${index === activeGalleryIndex ? 'w-8 bg-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.7)]' : 'w-1.5 bg-white/30 hover:bg-white/70'}`}
                     />
                   ))}
                 </div>
@@ -548,11 +556,11 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
             type="button"
             onClick={() => setFullscreen(false)}
             aria-label={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
-                title={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
-                className="absolute top-1 sm:top-2 right-1 sm:right-2 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/80 hover:text-white transition-all border border-white/15 backdrop-blur-xl"
-              >
-                <TiaIcon icon={Cancel01Icon} size={20} strokeWidth={2} />
-              </button>
+            title={lang === 'it' ? 'Esci da schermo intero' : lang === 'es' ? 'Salir de pantalla completa' : 'Exit fullscreen'}
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-20 w-11 h-11 flex items-center justify-center rounded-full bg-[#081410]/80 hover:bg-[#0e241c]/95 text-white/80 hover:text-white transition-all duration-300 border border-white/[0.14] hover:border-teal-400/50 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(45,212,191,0.3)] cursor-pointer active:scale-95 group"
+          >
+            <TiaIcon icon={Cancel01Icon} size={20} strokeWidth={2} className="text-white/80 group-hover:text-teal-300 transition-colors" />
+          </button>
 
               {hasGallery ? (
                 <div className="w-full h-full relative flex items-center justify-center">
@@ -598,9 +606,11 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                       type="button"
                       onClick={() => setGalleryIndex((i) => i - 1)}
                       aria-label={previousSlideLabel}
-                      className="absolute left-2 sm:left-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80"
+                      className="absolute left-2 sm:left-4 top-1/2 z-20 flex h-12 w-12 sm:h-14 sm:w-14 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[#081410]/80 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-teal-400/50 hover:bg-[#0e241c]/95 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_24px_rgba(45,212,191,0.35)] cursor-pointer active:scale-95 group"
                     >
-                      <span aria-hidden="true" className="text-3xl leading-none">‹</span>
+                      <svg aria-hidden="true" className="w-6 h-6 text-white/90 group-hover:text-teal-300 transition-all duration-200 group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
                     </button>
                   )}
                   {activeGalleryIndex < gallery.length - 1 && (
@@ -608,22 +618,26 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                       type="button"
                       onClick={() => setGalleryIndex((i) => i + 1)}
                       aria-label={nextSlideLabel}
-                      className="absolute right-2 sm:right-3 top-1/2 z-10 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white backdrop-blur-md transition hover:bg-black/80"
+                      className="absolute right-2 sm:right-4 top-1/2 z-20 flex h-12 w-12 sm:h-14 sm:w-14 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.14] bg-[#081410]/80 text-white backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_24px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-teal-400/50 hover:bg-[#0e241c]/95 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_0_24px_rgba(45,212,191,0.35)] cursor-pointer active:scale-95 group"
                     >
-                      <span aria-hidden="true" className="text-3xl leading-none">›</span>
+                      <svg aria-hidden="true" className="w-6 h-6 text-white/90 group-hover:text-teal-300 transition-all duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.4}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
                   )}
                   {isActiveImage && (
-                    <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-1.5">
+                    <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-2">
                       <button
                         type="button"
                         onClick={zoomIn}
                         disabled={zoomScale >= 4}
                         aria-label={lang === 'it' ? 'Ingrandisci' : lang === 'es' ? 'Acercar' : 'Zoom in'}
                         title={lang === 'it' ? 'Ingrandisci' : lang === 'es' ? 'Acercar' : 'Zoom in'}
-                        className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/85 hover:text-white border border-white/15 backdrop-blur-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-[#081410]/80 hover:bg-[#0e241c]/95 text-white/85 hover:text-white border border-white/[0.14] hover:border-teal-400/50 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95 group"
                       >
-                        <span aria-hidden="true" className="text-2xl leading-none">+</span>
+                        <svg aria-hidden="true" className="w-5 h-5 text-white/90 group-hover:text-teal-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
                       </button>
                       <button
                         type="button"
@@ -631,9 +645,11 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
                         disabled={zoomScale <= 1}
                         aria-label={lang === 'it' ? 'Riduci zoom' : lang === 'es' ? 'Alejar' : 'Zoom out'}
                         title={lang === 'it' ? 'Riduci zoom' : lang === 'es' ? 'Alejar' : 'Zoom out'}
-                        className="w-11 h-11 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white/85 hover:text-white border border-white/15 backdrop-blur-xl transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-11 h-11 flex items-center justify-center rounded-full bg-[#081410]/80 hover:bg-[#0e241c]/95 text-white/85 hover:text-white border border-white/[0.14] hover:border-teal-400/50 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.4)] hover:shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-95 group"
                       >
-                        <span aria-hidden="true" className="text-2xl leading-none">−</span>
+                        <svg aria-hidden="true" className="w-5 h-5 text-white/90 group-hover:text-teal-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+                        </svg>
                       </button>
                     </div>
                   )}
