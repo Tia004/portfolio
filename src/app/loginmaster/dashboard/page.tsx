@@ -3681,9 +3681,9 @@ export default function DashboardPage() {
                         <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 pt-1">Cartelle Aruba</p>
                         
                         {[
-                          { id: 'INBOX', label: 'Posta in arrivo', icon: LucideInbox, count: arubaUnreadCount },
+                          { id: 'INBOX', label: 'Posta in arrivo', icon: Mail01Icon, count: arubaUnreadCount },
                           { id: 'Sent', label: 'Posta inviata', icon: SentIcon },
-                          { id: 'Trash', label: 'Cestino', icon: LucideTrash2 },
+                          { id: 'Trash', label: 'Cestino', icon: Delete02Icon },
                         ].map((box) => {
                           const active = arubaMailbox === box.id;
                           const IconComp = box.icon;
@@ -3702,7 +3702,7 @@ export default function DashboardPage() {
                               }`}
                             >
                               <div className="flex items-center gap-2.5">
-                                <TiaIcon icon={IconComp as any} size={15} />
+                                <TiaIcon icon={IconComp} size={15} />
                                 <span>{box.label}</span>
                               </div>
                               {typeof box.count === 'number' && box.count > 0 && (
@@ -3819,15 +3819,15 @@ export default function DashboardPage() {
                             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-teal-500/20 border border-teal-500/40 text-teal-300 font-bold flex items-center justify-center text-sm">
-                                  {selectedArubaEmail.from.name.charAt(0).toUpperCase()}
+                                  {(selectedArubaEmail.from?.name || selectedArubaEmail.from?.address || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-white">{selectedArubaEmail.from.name}</p>
-                                  <p className="text-neutral-400 font-mono text-[11px]">&lt;{selectedArubaEmail.from.address}&gt;</p>
+                                  <p className="font-bold text-white">{selectedArubaEmail.from?.name || selectedArubaEmail.from?.address || 'Mittente sconosciuto'}</p>
+                                  <p className="text-neutral-400 font-mono text-[11px]">&lt;{selectedArubaEmail.from?.address || 'info@tiadesigns.it'}&gt;</p>
                                 </div>
                               </div>
                               <div className="text-right text-neutral-400 text-[11px]">
-                                <div>{new Date(selectedArubaEmail.date).toLocaleString('it-IT')}</div>
+                                <div>{selectedArubaEmail.date ? new Date(selectedArubaEmail.date).toLocaleString('it-IT') : ''}</div>
                                 <span className="text-[10px] font-mono text-teal-400 bg-teal-950/40 px-2 py-0.5 rounded-md border border-teal-500/30">
                                   Aruba IMAP Verified
                                 </span>
@@ -3930,24 +3930,24 @@ export default function DashboardPage() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-0.5">
                                         <span className={`text-xs truncate ${!email.seen ? 'font-bold text-white' : 'font-medium text-neutral-300'}`}>
-                                          {email.from.name || email.from.address}
+                                          {email.from?.name || email.from?.address || 'Mittente'}
                                         </span>
                                         {email.hasAttachments && (
                                           <Paperclip size={12} className="text-teal-400 shrink-0" />
                                         )}
                                       </div>
                                       <p className={`text-xs truncate ${!email.seen ? 'font-semibold text-teal-200' : 'text-neutral-300'}`}>
-                                        {email.subject}
+                                        {email.subject || '(Nessun oggetto)'}
                                       </p>
                                       <p className="text-[11px] text-neutral-500 truncate mt-0.5">
-                                        {email.snippet}
+                                        {email.snippet || ''}
                                       </p>
                                     </div>
                                   </div>
 
                                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
                                     <span className="text-[10px] font-mono text-neutral-400">
-                                      {new Date(email.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
+                                      {email.date ? new Date(email.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }) : ''}
                                     </span>
                                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                       <button
