@@ -568,23 +568,23 @@ function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
   const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
 
   return (
-    <div className={`p-4 sm:p-5 h-full flex flex-col ${compact ? 'min-h-0' : 'min-h-[560px]'}`}>
+    <div className="p-4 sm:p-6 h-full flex flex-col min-h-0">
       <div className="flex items-center gap-3 mb-4 shrink-0">
-        <div className="w-9 h-9 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0 border border-teal-500/20 shadow-sm shadow-teal-950/40">
-          <TiaIcon icon={Calendar01Icon} size={16} className="text-teal-400" />
+        <div className="w-10 h-10 rounded-2xl bg-teal-500/15 flex items-center justify-center shrink-0 border border-teal-500/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_16px_rgba(0,0,0,0.4)]">
+          <TiaIcon icon={Calendar01Icon} size={18} className="text-teal-400" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-teal-400 text-[10px] font-medium uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
-          <p className="text-white text-sm font-bold leading-tight truncate">{t('contatti.call_title', lang)}</p>
+          <p className="text-teal-400 text-[10px] font-semibold uppercase tracking-[0.2em] mb-0.5">{t('contatti.call_label', lang)}</p>
+          <p className="text-white text-base font-bold leading-tight truncate">{t('contatti.call_title', lang)}</p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <a
             href={newtabHref}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('contatti.call_newtab', lang)}
             title={t('contatti.call_newtab', lang)}
-            className="group flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 hover:text-teal-300 border border-teal-500/25 hover:border-teal-400/50 text-[11px] sm:text-xs font-medium transition-all duration-300 shadow-sm shadow-teal-950/30 cursor-pointer"
+            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.14] bg-[#081410]/80 text-teal-300 hover:text-teal-200 hover:border-teal-400/50 hover:bg-[#0e241c]/95 text-xs font-semibold backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-pointer"
           >
             <span className="hidden sm:inline">{t('contatti.call_newtab', lang)}</span>
             <svg aria-hidden="true" className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -596,7 +596,7 @@ function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
             ref={closeBtnRef}
             onClick={onClose}
             aria-label={t('contatti.call_close', lang)}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
+            className="w-8 h-8 rounded-full border border-white/[0.14] bg-[#081410]/80 text-white/80 hover:text-white hover:border-teal-400/50 hover:bg-[#0e241c]/95 flex items-center justify-center backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)] transition-all duration-300 cursor-pointer"
           >
             <TiaIcon icon={Cancel01Icon} size={15} strokeWidth={2} />
           </button>
@@ -607,7 +607,7 @@ function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
         data-lenis-prevent
         data-lenis-prevent-wheel
         data-lenis-prevent-touch
-        className={`flex-1 rounded-xl overflow-y-auto overflow-x-hidden border border-white/[0.06] bg-[#0a0a0a]/60 overscroll-contain touch-pan-y ${compact ? 'min-h-0' : 'min-h-[500px] max-h-[75vh] lg:max-h-none'}`}
+        className="flex-1 rounded-2xl overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-[#050c09]/80 overscroll-contain touch-pan-y min-h-[480px] sm:min-h-[560px] max-h-[75vh]"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <CallEmbedHost key={lang} />
@@ -1174,59 +1174,30 @@ export default function HomeShell() {
   // - <lg (mobile/tablet): a centered closable MODAL over the page — on phones
   //   the inline column appeared BELOW the whole contacts section where users
   //   could not see it without hunting for it after tapping the button.
+  // Cal.com intro call — opens as a centered contextual modal window on all devices
+  // (callOpenedOnce keeps the embed mounted so opening is instant).
   const [callOpen, setCallOpen] = useState(false);
   const [callOpenedOnce, setCallOpenedOnce] = useState(false);
-  const callPanelRef = useRef<HTMLDivElement>(null);
-  const callTriggerRef = useRef<HTMLButtonElement>(null);
   const callModalBodyRef = useRef<HTMLDivElement>(null);
   const callModalCloseRef = useRef<HTMLButtonElement>(null);
-  // Same useSyncExternalStore pattern as isMobile below: subscription lives
-  // outside the render path, server snapshot false (nothing renders before a
-  // user interaction anyway) so hydration is safe. 1024px = Tailwind `lg`.
-  const subscribeIsDesktop = useCallback((onStoreChange: () => void) => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    mq.addEventListener('change', onStoreChange);
-    return () => mq.removeEventListener('change', onStoreChange);
-  }, []);
-  const getIsDesktopSnapshot = useCallback(() => window.matchMedia('(min-width: 1024px)').matches, []);
-  const isDesktopLayout = useSyncExternalStore(subscribeIsDesktop, getIsDesktopSnapshot, () => false);
-  // ESC + click-outside close for the booking UI — same UX as the other modals
-  // (LegalModal/ProjectModal close on Escape). On desktop, clicks outside the
-  // panel close it (the trigger button toggles instead); on mobile the modal
-  // closes via its backdrop, its ✕ button or Escape — never on inside clicks.
+
+  // ESC close for the booking modal — same UX as LegalModal & ProjectModal
   useEffect(() => {
     if (!callOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setCallOpen(false); };
     document.addEventListener('keydown', onKey);
-    if (!isDesktopLayout) {
-      if (callModalBodyRef.current) callModalBodyRef.current.scrollTop = 0;
-      // Keyboard users start on the modal's close button (LegalModal pattern).
-      const focusTimer = window.setTimeout(() => callModalCloseRef.current?.focus(), 80);
-      return () => {
-        window.clearTimeout(focusTimer);
-        document.removeEventListener('keydown', onKey);
-      };
-    }
-    if (callPanelRef.current) {
-      callPanelRef.current.scrollTop = 0;
-    }
-    const onOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (callPanelRef.current?.contains(target)) return;
-      if (callTriggerRef.current?.contains(target)) return;
-      setCallOpen(false);
-    };
-    document.addEventListener('mousedown', onOutside);
+    if (callModalBodyRef.current) callModalBodyRef.current.scrollTop = 0;
+    const focusTimer = window.setTimeout(() => callModalCloseRef.current?.focus(), 80);
     return () => {
+      window.clearTimeout(focusTimer);
       document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onOutside);
     };
-  }, [callOpen, isDesktopLayout]);
-  // Booking modal open (<lg): freeze the page behind — body position:fixed
-  // stops touch scrolling (Lenis on mobile falls back to native) and
-  // lenis.stop() blocks wheel; same proven technique as LegalModal.
+  }, [callOpen]);
+
+  // Booking modal open: freeze the page behind — body position:fixed
+  // stops touch scrolling and wheel scrolling (Lenis stopped) — same proven technique as LegalModal & ProjectModal.
   useEffect(() => {
-    if (!callOpen || isDesktopLayout) return;
+    if (!callOpen) return;
     const inst = lenis.current;
     const scrollY = window.scrollY;
     document.body.style.position = 'fixed';
@@ -1242,7 +1213,7 @@ export default function HomeShell() {
       window.scrollTo(0, scrollY);
       inst?.start();
     };
-  }, [callOpen, isDesktopLayout, lenis]);
+  }, [callOpen, lenis]);
   // ── "Prenotazione confermata" toast — fired by the Cal.com embed
   // 'bookingSuccessful' event (relayed as the 'tia:booking-confirmed'
   // CustomEvent from ensureCalEmbed). Auto-dismisses after 8s; the progress
@@ -4038,7 +4009,7 @@ export default function HomeShell() {
                 the extra 1fr of booking UI needs room, and the rest of the
                 layout (form + sidebar) shifts left, never overflowing the
                 viewport. */}
-            <div className={`mx-auto transition-[max-width] duration-500 ease-out ${callOpen ? 'max-w-7xl' : 'max-w-5xl'}`}>
+            <div className="mx-auto max-w-5xl">
               <ScrollReveal className="text-center mb-8 sm:mb-16" start="top 85%" end="bottom 25%">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('contatti.label', lang)}</p>
                 <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('contatti.title', lang)}</h2>
@@ -4047,12 +4018,9 @@ export default function HomeShell() {
                 </p>
               </ScrollReveal>
 
-              {/* ── Layout: form left, info right; the booking panel is a
-                   third column that slides in (0fr → 1.4fr) pushing the
-                   form and sidebar left. On mobile it appears below the
-                   sidebar when the call button is tapped. ── */}
+              {/* ── Layout: form left (2fr), info right (1fr) ── */}
               <StaggerReveal stagger={STAGGER_BY_SECTION.contatti}
-                className={`grid grid-cols-1 gap-3 transition-[grid-template-columns] duration-500 ease-out lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,0fr)] ${callOpen ? 'lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.6fr)]' : ''}`}>
+                className="grid grid-cols-1 gap-3 lg:[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)]">
                 {/* ── Form column ── */}
                 <div className="flex flex-col gap-3 min-w-0 h-full">
                   {/* Nome + Email + Servizio row */}
@@ -4250,10 +4218,10 @@ export default function HomeShell() {
                   <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="flex-1">
                     <button
                       type="button"
-                      ref={callTriggerRef}
-                      onClick={() => { if (!callOpen) trackClick('cal_booking_open'); setCallOpen(prev => !prev); setCallOpenedOnce(true); }}
+                      onClick={() => { if (!callOpen) trackClick('cal_booking_open'); setCallOpen(true); setCallOpenedOnce(true); }}
+                      aria-haspopup="dialog"
                       aria-expanded={callOpen}
-                      className="flex items-center gap-2.5 p-3 group h-full w-full text-left rounded-[18px] bg-teal-500/[0.08] hover:bg-teal-500/[0.14] transition-colors"
+                      className="flex items-center gap-2.5 p-3 group h-full w-full text-left rounded-[18px] bg-teal-500/[0.08] hover:bg-teal-500/[0.14] transition-colors cursor-pointer"
                     >
                       <div className="w-8 h-8 rounded-lg bg-teal-500/15 flex items-center justify-center shrink-0 group-hover:bg-teal-500/25 transition-all">
                         <TiaIcon icon={Calendar01Icon} size={15} className="text-teal-400" />
@@ -4262,7 +4230,11 @@ export default function HomeShell() {
                         <p className="text-white text-[11px] font-medium">{t('contatti.call_button', lang)}</p>
                         <p className="text-teal-400/70 text-[10px]">{t('contatti.call_button_sub', lang)}</p>
                       </div>
-                      <TiaIcon icon={ArrowRight01Icon} size={14} strokeWidth={2} className={`ml-auto shrink-0 text-teal-400 transition-transform duration-300 ${callOpen ? 'rotate-90' : ''}`} />
+                      <div className="ml-auto shrink-0 w-6 h-6 rounded-full bg-teal-500/10 group-hover:bg-teal-500/20 border border-teal-500/20 flex items-center justify-center transition-all duration-200 group-hover:scale-105">
+                        <svg aria-hidden="true" className="w-3.5 h-3.5 text-teal-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform duration-200" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </div>
                     </button>
                   </BorderGlow>
                   <BorderGlow continuousHover borderRadius={20} glowRadius={28} glowIntensity={2.0} edgeSensitivity={0} className="flex-1">
@@ -4282,63 +4254,32 @@ export default function HomeShell() {
                     </div>
                   </BorderGlow>
                 </div>
-
-                {/* ── Cal.com booking panel — DESKTOP (lg+): third grid
-                     column that slides in from the right, pushing form +
-                     sidebar left. Below lg the booking opens as a centered
-                     closable modal instead (portal right after this grid):
-                     on phones the inline column appeared BELOW the whole
-                     contacts section where it couldn't be seen after tapping
-                     the button. The embed mounts on first open and stays
-                     mounted so reopening is instant; it never loads until
-                     the user actually asks for it. ── */}
-                {isDesktopLayout && callOpenedOnce && (
-                  <div
-                    ref={callPanelRef}
-                    data-lenis-prevent
-                    data-lenis-prevent-wheel
-                    data-lenis-prevent-touch
-                    className={`min-w-0 transition-all duration-500 ease-out hidden lg:block ${callOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                    style={{
-                      visibility: callOpen ? 'visible' : 'hidden',
-                      transition: 'opacity 0.4s ease, visibility 0.4s ease',
-                    }}
-                  >
-                    <BorderGlow continuousHover borderRadius={20} glowRadius={30} glowIntensity={2.0} edgeSensitivity={0} className="h-full [&_.border-glow-inner]:h-full [&_.border-glow-inner]:min-h-0">
-                      <CallBookingCard onClose={() => setCallOpen(false)} />
-                    </BorderGlow>
-                  </div>
-                )}
               </StaggerReveal>
             </div>
           </section>
           </LazySection>
 
-          {/* ── Cal.com booking MODAL — mobile/tablet (<lg): a centered,
-               closable window over the page (portal + body scroll lock),
-               opened by the "Prenota una call" button. Kept mounted after
-               the first open so the embed stays warm and reopening is
-               instant; hidden with opacity/visibility (not unmount) for the
-               same reason. ── */}
-          {!isDesktopLayout && callOpenedOnce && typeof document !== 'undefined' && createPortal(
+          {/* ── Cal.com booking MODAL window — centered contextual window over the site
+               with backdrop blur and background scroll freeze (same as ProjectModal) ── */}
+          {callOpenedOnce && typeof document !== 'undefined' && createPortal(
             <div
               className={`fixed inset-0 z-[10004] flex items-center justify-center p-3 sm:p-6 ${callOpen ? '' : 'pointer-events-none'}`}
               aria-hidden={!callOpen}
             >
-              {/* Backdrop — click to close */}
+              {/* Backdrop — click to close with glass blur */}
               <div
                 aria-hidden="true"
                 onClick={() => setCallOpen(false)}
-                className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300 ${callOpen ? 'opacity-100' : 'opacity-0'}`}
+                className={`absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity duration-300 ${callOpen ? 'opacity-100' : 'opacity-0'}`}
               />
               <div
                 role="dialog"
                 aria-modal="true"
                 aria-label={t('contatti.call_title', lang)}
-                className={`relative w-full max-w-[560px] max-h-[min(86dvh,760px)] flex flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl shadow-black/80 transition-all duration-300 ${callOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
+                className={`relative w-full max-w-[620px] max-h-[min(90dvh,800px)] flex flex-col rounded-3xl border border-white/[0.14] bg-[#081410]/95 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_25px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(45,212,191,0.12)] transition-all duration-300 ${callOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
                 style={{ visibility: callOpen ? 'visible' : 'hidden' }}
               >
-                <CallBookingCard compact onClose={() => setCallOpen(false)} bodyRef={callModalBodyRef} closeBtnRef={callModalCloseRef} />
+                <CallBookingCard onClose={() => setCallOpen(false)} bodyRef={callModalBodyRef} closeBtnRef={callModalCloseRef} />
               </div>
             </div>,
             document.body
