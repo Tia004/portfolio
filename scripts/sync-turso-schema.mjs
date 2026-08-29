@@ -196,7 +196,7 @@ async function run() {
     `);
     console.log('Checked Quote table');
 
-    // 9. Project category check
+    // 9. Project category & multilingual check
     try {
       await client.execute('ALTER TABLE Project ADD COLUMN category TEXT DEFAULT \'Sviluppo\';');
       console.log('Added category to Project');
@@ -208,6 +208,22 @@ async function run() {
     try {
       await client.execute('ALTER TABLE Project ADD COLUMN pdfUrl TEXT;');
       console.log('Added pdfUrl to Project');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN titleEn TEXT;');
+      console.log('Added titleEn to Project');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN titleEs TEXT;');
+      console.log('Added titleEs to Project');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN descriptionEn TEXT;');
+      console.log('Added descriptionEn to Project');
+    } catch (e) {}
+    try {
+      await client.execute('ALTER TABLE Project ADD COLUMN descriptionEs TEXT;');
+      console.log('Added descriptionEs to Project');
     } catch (e) {}
 
     // 10. Create NewsletterCampaign

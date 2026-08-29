@@ -66,14 +66,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Domanda e Risposta (Italiano) sono obbligatorie' }, { status: 400 });
     }
 
+    let finalQEn = questionEn || null;
+    let finalQEs = questionEs || null;
+    let finalAEn = answerEn || null;
+    let finalAEs = answerEs || null;
+
+    if (!finalQEn || !finalAEn) {
+      try {
+        const { autoTranslateFaq } = await import('@/lib/auto-translate');
+        const auto = await autoTranslateFaq({ questionIt, answerIt });
+        if (!finalQEn) finalQEn = auto.questionEn;
+        if (!finalQEs) finalQEs = auto.questionEs;
+        if (!finalAEn) finalAEn = auto.answerEn;
+        if (!finalAEs) finalAEs = auto.answerEs;
+      } catch (err) {
+        console.warn('[FAQ API] Auto-translate error:', err);
+      }
+    }
+
     const created = await prisma.faqItem.create({
       data: {
         questionIt,
-        questionEn: questionEn || null,
-        questionEs: questionEs || null,
+        questionEn: finalQEn,
+        questionEs: finalQEs,
         answerIt,
-        answerEn: answerEn || null,
-        answerEs: answerEs || null,
+        answerEn: finalAEn,
+        answerEs: finalAEs,
         category: category || 'general',
         order: typeof order === 'number' ? order : 0,
         isPublished: typeof isPublished === 'boolean' ? isPublished : true,
@@ -99,6 +117,25 @@ export async function PATCH(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    if ((data.questionIt || data.answerIt) && (!data.questionEn || !data.answerEn)) {
+      try {
+        const existing = await prisma.faqItem.findUnique({ where: { id } });
+        if (existing) {
+          const { autoTranslateFaq } = await import('@/lib/auto-translate');
+          const auto = await autoTranslateFaq({
+            questionIt: data.questionIt || existing.questionIt,
+            answerIt: data.answerIt || existing.answerIt,
+          });
+          if (!data.questionEn) data.questionEn = auto.questionEn;
+          if (!data.questionEs) data.questionEs = auto.questionEs;
+          if (!data.answerEn) data.answerEn = auto.answerEn;
+          if (!data.answerEs) data.answerEs = auto.answerEs;
+        }
+      } catch (err) {
+        console.warn('[FAQ API] Auto-translate update error:', err);
+      }
     }
 
     const updated = await prisma.faqItem.update({

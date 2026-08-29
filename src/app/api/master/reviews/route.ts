@@ -9,7 +9,7 @@ export async function GET() {
       const defaultReviews = [
         { author: 'Laura Bertoni', role: 'PCS Mantova', company: 'PCS Mantova', companyLogo: '/uploads/pcsmantova.png', showLogo: true, quoteIt: 'Il nuovo sito di PCS Mantova è moderno, veloce e semplicissimo da navigare. Tia ha curato ogni dettaglio e ha valorizzato al meglio la nostra immagine. Collaborazione impeccabile.', rating: 5, order: 1 },
         { author: 'DestTime', role: 'Content Creator', company: 'DestTime Channel', companyLogo: null, showLogo: false, quoteIt: 'Tia ha trasformato la nostra pagina Instagram con post sempre curati e coerenti con il brand. La qualità grafica si vede, e i risultati pure. Super consigliato.', rating: 5, order: 2 },
-        { author: 'Gianluca Rigodanza', role: 'iPalBoyTV — YouTuber', company: 'iPalBoyTV', companyLogo: null, showLogo: false, quoteIt: 'Le copertine che Tia ha realizzato per il mio canale (Design Editoriale Vol. 2B) sono di un livello altissimo. Ha capito esattamente cosa volevo comunicare e lo ha trasformato in un\'immagine che mi rappresenta. Un vero professionista.', rating: 5, order: 3 },
+        { author: 'Gianluca Rigodanza', role: 'iPalBoyTV — YouTuber', company: 'iPalBoyTV', companyLogo: null, showLogo: false, quoteIt: 'Le copertine che Tia ha realizzato per il mio canale (Copertine per iPalBoyTV) sono di un livello altissimo. Ha capito esattamente cosa volevo comunicare e lo ha trasformato in un\'immagine che mi rappresenta. Un vero professionista.', rating: 5, order: 3 },
         { author: 'Ous', role: 'Artista musicale', company: 'OUS Records', companyLogo: null, showLogo: false, quoteIt: 'La copertina del mio pezzo ha superato ogni aspettativa. Tia ha colto l\'essenza della musica e l\'ha resa immagine, potente e memorabile. Lavoro straordinario.', rating: 5, order: 4 },
         { author: 'Stefano Golisano', role: 'GSA Hotels', company: 'GSA Hotels Group', companyLogo: '/uploads/gsahotels.png', showLogo: true, quoteIt: 'Il sito di GSA Hotels è elegante e di grande impatto, proprio come volevamo per la nostra struttura. Animazioni fluide e un\'attenzione maniacale ai dettagli. Esperienza impeccabile.', rating: 5, order: 5 },
         { author: 'Vergilius Nectar', role: 'Brand', company: 'Vergilius Nectar', companyLogo: '/uploads/vergiliusnectar.png', showLogo: true, quoteIt: 'Sito e grafiche coordinati alla perfezione: Tia ha costruito un\'identità visiva completa e coerente che ci rappresenta davvero. Comunicazione chiara e risultati oltre le aspettative.', rating: 5, order: 6 },
@@ -58,6 +58,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Autore, Ruolo e Testimonianza (Italiano) sono obbligatori' }, { status: 400 });
     }
 
+    let finalQEn = quoteEn || null;
+    let finalQEs = quoteEs || null;
+
+    if (!finalQEn) {
+      try {
+        const { autoTranslateReview } = await import('@/lib/auto-translate');
+        const auto = await autoTranslateReview({ quoteIt });
+        if (!finalQEn) finalQEn = auto.quoteEn;
+        if (!finalQEs) finalQEs = auto.quoteEs;
+      } catch (err) {
+        console.warn('[Reviews API] Auto-translate error:', err);
+      }
+    }
+
     const created = await prisma.clientReview.create({
       data: {
         author,
@@ -66,8 +80,8 @@ export async function POST(request: NextRequest) {
         companyLogo: companyLogo || null,
         showLogo: typeof showLogo === 'boolean' ? showLogo : true,
         quoteIt,
-        quoteEn: quoteEn || null,
-        quoteEs: quoteEs || null,
+        quoteEn: finalQEn,
+        quoteEs: finalQEs,
         rating: typeof rating === 'number' ? rating : 5,
         avatarUrl: avatarUrl || null,
         order: typeof order === 'number' ? order : 0,
@@ -94,6 +108,17 @@ export async function PATCH(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    if (data.quoteIt && !data.quoteEn) {
+      try {
+        const { autoTranslateReview } = await import('@/lib/auto-translate');
+        const auto = await autoTranslateReview({ quoteIt: data.quoteIt });
+        if (!data.quoteEn) data.quoteEn = auto.quoteEn;
+        if (!data.quoteEs) data.quoteEs = auto.quoteEs;
+      } catch (err) {
+        console.warn('[Reviews API] Auto-translate update error:', err);
+      }
     }
 
     const updated = await prisma.clientReview.update({

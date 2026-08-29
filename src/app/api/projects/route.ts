@@ -193,8 +193,12 @@ export async function GET() {
         pdfUrl: null,
       },
       {
-        title: 'Design Editoriale — Vol. 2B',
-        description: 'Volume fotografico artistico con finiture e contrasti monocromatici.',
+        title: 'Copertine per iPalBoyTV',
+        titleEn: 'Covers for iPalBoyTV',
+        titleEs: 'Portadas para iPalBoyTV',
+        description: 'Poster, banner e copertine YouTube per il canale iPalBoyTV con palette dal pastello al metallico.',
+        descriptionEn: 'Posters, banners, and YouTube covers for the iPalBoyTV channel with pastel to metallic palettes.',
+        descriptionEs: 'Pósters, banners y portadas de YouTube para el canal iPalBoyTV con paletas de pastel a metálico.',
         longDescription: 'Impaginato d\'autore a tiratura limitata, poster e grafiche social per iPalBoyTV.',
         thumbnail: '/uploads/design-works/Misti/IMG_20251017_202553_172.webp',
         projectUrl: '',
@@ -383,7 +387,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       title,
+      titleEn,
+      titleEs,
       description,
+      descriptionEn,
+      descriptionEs,
       longDescription,
       thumbnail,
       projectUrl,
@@ -400,10 +408,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Titolo, descrizione e thumbnail sono obbligatori' }, { status: 400 });
     }
 
+    // Auto-translate if English/Spanish versions are missing
+    let finalTitleEn = titleEn || null;
+    let finalTitleEs = titleEs || null;
+    let finalDescEn = descriptionEn || null;
+    let finalDescEs = descriptionEs || null;
+
+    if (!finalTitleEn || !finalDescEn) {
+      try {
+        const { autoTranslateProject } = await import('@/lib/auto-translate');
+        const auto = await autoTranslateProject({ title, description, longDescription });
+        if (!finalTitleEn) finalTitleEn = auto.titleEn;
+        if (!finalTitleEs) finalTitleEs = auto.titleEs;
+        if (!finalDescEn) finalDescEn = auto.descriptionEn;
+        if (!finalDescEs) finalDescEs = auto.descriptionEs;
+      } catch (err) {
+        console.warn('[Projects API] Auto-translate fallback:', err);
+      }
+    }
+
     const project = await prisma.project.create({
       data: {
         title,
+        titleEn: finalTitleEn,
+        titleEs: finalTitleEs,
         description,
+        descriptionEn: finalDescEn,
+        descriptionEs: finalDescEs,
         longDescription: longDescription || null,
         thumbnail,
         projectUrl: projectUrl || null,

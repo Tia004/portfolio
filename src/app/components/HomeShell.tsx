@@ -1309,26 +1309,49 @@ export default function HomeShell() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!active || !Array.isArray(data) || data.length === 0) return;
-        const mapped: ProjectData[] = data.map((p: any) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          longDescription: p.longDescription || p.description,
-          thumbnail: p.thumbnail,
-          url: p.projectUrl || undefined,
-          githubUrl: p.githubUrl || undefined,
-          tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
-          category: p.category || 'Sviluppo',
-          featured: p.featured,
-          isVideo: (p.category || '').toLowerCase() === 'video' || (p.tags || '').toLowerCase().includes('video'),
-        }));
+        const mapped: ProjectData[] = data.map((p: any) => {
+          let galleryList: string[] | undefined = undefined;
+          if (p.gallery) {
+            if (Array.isArray(p.gallery)) {
+              galleryList = p.gallery;
+            } else if (typeof p.gallery === 'string') {
+              try {
+                const parsed = JSON.parse(p.gallery);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  galleryList = parsed;
+                }
+              } catch {
+                galleryList = [p.gallery];
+              }
+            }
+          }
+
+          const projectTitle = lang === 'en' ? (p.titleEn || p.title) : lang === 'es' ? (p.titleEs || p.title) : p.title;
+          const projectDesc = lang === 'en' ? (p.descriptionEn || p.description) : lang === 'es' ? (p.descriptionEs || p.description) : p.description;
+
+          return {
+            id: p.id,
+            title: projectTitle,
+            description: projectDesc,
+            longDescription: p.longDescription || projectDesc,
+            thumbnail: p.thumbnail,
+            url: p.projectUrl || undefined,
+            githubUrl: p.githubUrl || undefined,
+            tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+            category: p.category || 'Sviluppo',
+            featured: p.featured,
+            isVideo: (p.category || '').toLowerCase() === 'video' || (p.tags || '').toLowerCase().includes('video'),
+            gallery: galleryList,
+            documents: p.pdfUrl ? [p.pdfUrl] : undefined,
+          };
+        });
         setLiveProjects(mapped);
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, []);
+  }, [lang]);
 
   const [tooltipInfo, setTooltipInfo] = useState<{ text: string; el: HTMLElement; hiding?: boolean } | null>(null);
   const hideTooltipTimerRef = useRef<number | null>(null);

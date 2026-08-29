@@ -1268,7 +1268,7 @@ export default function DashboardPage() {
       'Vergilius Nectar Poster',
       'Design Editoriale — Vol. 1',
       'Design Editoriale — Vol. 2',
-      'Design Editoriale — Vol. 2B',
+      'Copertine per iPalBoyTV',
       'Design Editoriale — Vol. 3',
       'Collage Digitale Astratto',
       'DestTime — Shaman King',

@@ -136,9 +136,9 @@ const DESIGN_WORK_GROUPS: DesignWorkGroup[] = [
   {
     id: 'design-editoriale-2b',
     copy: {
-      it: { title: 'Design Editoriale — Vol. 2B', description: 'Poster, banner e design per social media con palette dal pastello al metallico. Composizioni tipografiche, collage digitali e pattern organici realizzati in Photoshop.' },
-      en: { title: 'Editorial Design — Vol. 2B', description: 'Posters, banners and social media designs with palettes from pastel to metallic. Typographic compositions, digital collages and organic patterns crafted in Photoshop.' },
-      es: { title: 'Diseño Editorial — Vol. 2B', description: 'Pósteres, banners y diseños para redes sociales con paletas del pastel al metálico. Composiciones tipográficas, collages digitales y patrones orgánicos realizados en Photoshop.' },
+      it: { title: 'Copertine per iPalBoyTV', description: 'Poster, banner e copertine YouTube per il canale iPalBoyTV con palette dal pastello al metallico. Composizioni tipografiche, collage digitali e pattern organici realizzati in Photoshop.' },
+      en: { title: 'Covers for iPalBoyTV', description: 'Posters, banners, and YouTube covers for the iPalBoyTV channel with pastel to metallic palettes. Typographic compositions, digital collages, and organic patterns crafted in Photoshop.' },
+      es: { title: 'Portadas para iPalBoyTV', description: 'Pósters, banners y portadas de YouTube para el canal iPalBoyTV con paletas de pastel a metálico. Composiciones tipográficas, collages digitales y patrones orgánicos en Photoshop.' },
     },
     images: [
       'Misti/IMG_20251017_202553_172.webp',

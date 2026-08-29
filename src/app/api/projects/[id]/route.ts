@@ -16,7 +16,24 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
     const body = await request.json();
-    const { title, description, longDescription, thumbnail, projectUrl, githubUrl, tags, category, featured, order, gallery, pdfUrl } = body;
+    const {
+      title,
+      titleEn,
+      titleEs,
+      description,
+      descriptionEn,
+      descriptionEs,
+      longDescription,
+      thumbnail,
+      projectUrl,
+      githubUrl,
+      tags,
+      category,
+      featured,
+      order,
+      gallery,
+      pdfUrl,
+    } = body;
 
     const existingProject = await prisma.project.findUnique({
       where: { id },
@@ -26,12 +43,48 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const finalTitle = title !== undefined ? title : existingProject.title;
+    const finalDesc = description !== undefined ? description : existingProject.description;
+    const finalLongDesc = longDescription !== undefined ? longDescription : existingProject.longDescription;
+
+    let finalTitleEn = titleEn !== undefined ? titleEn : (existingProject as any).titleEn;
+    let finalTitleEs = titleEs !== undefined ? titleEs : (existingProject as any).titleEs;
+    let finalDescEn = descriptionEn !== undefined ? descriptionEn : (existingProject as any).descriptionEn;
+    let finalDescEs = descriptionEs !== undefined ? descriptionEs : (existingProject as any).descriptionEs;
+
+    // If title or description changed and translations are not explicitly passed, auto-translate
+    if ((title !== undefined && title !== existingProject.title && titleEn === undefined) ||
+        (description !== undefined && description !== existingProject.description && descriptionEn === undefined)) {
+      try {
+        const { autoTranslateProject } = await import('@/lib/auto-translate');
+        const auto = await autoTranslateProject({
+          title: finalTitle,
+          description: finalDesc,
+          longDescription: finalLongDesc,
+        });
+        if (titleEn === undefined) {
+          finalTitleEn = auto.titleEn;
+          finalTitleEs = auto.titleEs;
+        }
+        if (descriptionEn === undefined) {
+          finalDescEn = auto.descriptionEn;
+          finalDescEs = auto.descriptionEs;
+        }
+      } catch (err) {
+        console.warn('[Projects API] Auto-translate update fallback:', err);
+      }
+    }
+
     const updatedProject = await prisma.project.update({
       where: { id },
       data: {
-        title: title !== undefined ? title : existingProject.title,
-        description: description !== undefined ? description : existingProject.description,
-        longDescription: longDescription !== undefined ? longDescription : existingProject.longDescription,
+        title: finalTitle,
+        titleEn: finalTitleEn || null,
+        titleEs: finalTitleEs || null,
+        description: finalDesc,
+        descriptionEn: finalDescEn || null,
+        descriptionEs: finalDescEs || null,
+        longDescription: finalLongDesc || null,
         thumbnail: thumbnail !== undefined ? thumbnail : existingProject.thumbnail,
         projectUrl: projectUrl !== undefined ? projectUrl : existingProject.projectUrl,
         githubUrl: githubUrl !== undefined ? githubUrl : existingProject.githubUrl,

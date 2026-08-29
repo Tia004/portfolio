@@ -132,7 +132,11 @@ model AvailabilitySetting {
 model Project {
   id              String   @id @default(uuid())
   title           String
+  titleEn         String?
+  titleEs         String?
   description     String
+  descriptionEn   String?
+  descriptionEs   String?
   longDescription String?
   thumbnail       String
   projectUrl      String?
