@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, Component, type ReactNode } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 
 interface PdfCarouselProps {
@@ -14,38 +14,58 @@ interface PdfCarouselProps {
   title: string;
 }
 
-/**
- * Renders a PDF as a native page-by-page carousel.
- * Each page is a separate slide with its own dot in the navigation.
- * No flash/fade — the measured container width is passed directly to react-pdf
- * so the canvas is rendered at the correct size from the first paint.
- */
-interface PageDims { w: number; h: number }
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback: (error: Error) => ReactNode;
+}
 
-export default function PdfCarousel({ url, title }: PdfCarouselProps) {
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class PdfErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('PdfCarousel caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError && this.state.error) {
+      return this.props.fallback(this.state.error);
+    }
+    return this.props.children;
+  }
+}
+
+function PdfCarouselInner({ url }: PdfCarouselProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const pdfRef = useRef<any>(null);
+  const [pageAspect, setPageAspect] = useState<number | null>(null);
 
-  // ── Container measurement — track both width and height ──
+  // ── Container measurement ──
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
-
-  // Per-page intrinsic dimensions (scale-1 viewport) for "contain" fitting
-  const pageDims = useRef<Map<number, PageDims>>(new Map());
-  const [, triggerRender] = useState(0);
 
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    const pad = 32; // 16px padding top + bottom
+    const pad = 24;
     const update = () => {
       if (wrapperRef.current) {
         setContainerSize({
-          w: wrapperRef.current.clientWidth - pad,
-          h: wrapperRef.current.clientHeight - pad,
+          w: Math.max(100, wrapperRef.current.clientWidth - pad),
+          h: Math.max(100, wrapperRef.current.clientHeight - pad),
         });
       }
     };
@@ -55,83 +75,69 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
     return () => ro.disconnect();
   }, [loaded]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const pdf = await pdfjs.getDocument(url).promise;
-        if (!cancelled) {
-          pdfRef.current = pdf;
-          setNumPages(pdf.numPages);
-          setLoaded(true);
-        }
-      } catch {
-        if (!cancelled) setError(true);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [url]);
+  const onDocLoadSuccess = useCallback(({ numPages: total }: { numPages: number }) => {
+    setNumPages(total);
+    setLoaded(true);
+    setError(false);
+  }, []);
+
+  const onDocLoadError = useCallback((err: Error) => {
+    console.error('Failed to load PDF document:', err);
+    setError(true);
+    setLoaded(true);
+  }, []);
+
+  const onPageLoadSuccess = useCallback((page: { width: number; height: number; originalWidth?: number; originalHeight?: number }) => {
+    const w = page.originalWidth || page.width;
+    const h = page.originalHeight || page.height;
+    if (w > 0 && h > 0) {
+      setPageAspect(w / h);
+    }
+  }, []);
 
   const safeIndex = Math.min(pageIndex, Math.max(0, numPages - 1));
-
-  // Fetch per-page viewport on page change for "contain" sizing
-  useEffect(() => {
-    if (!pdfRef.current) return;
-    const pageNum = safeIndex + 1;
-    if (pageDims.current.has(pageNum)) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const page = await pdfRef.current.getPage(pageNum);
-        const vp = page.getViewport({ scale: 1 });
-        if (!cancelled) {
-          pageDims.current.set(pageNum, { w: vp.width, h: vp.height });
-          triggerRender((n) => n + 1);
-        }
-      } catch { /* viewport fetch failed — fall through to height-based */ }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeIndex, loaded]);
-
-  const prevPage = useCallback(() => setPageIndex(i => Math.max(0, i - 1)), []);
-  const nextPage = useCallback(() => setPageIndex(i => Math.min(numPages - 1, i + 1)), [numPages]);
+  const prevPage = useCallback(() => setPageIndex((i) => Math.max(0, i - 1)), []);
+  const nextPage = useCallback(() => setPageIndex((i) => Math.min(numPages - 1, i + 1)), [numPages]);
 
   const dots = useMemo(() => Array.from({ length: numPages }, (_, i) => i), [numPages]);
 
-  // Compute render size that fits the page entirely within the container.
-  // Falls back to height-only when container isn't measured yet or page
-  // viewport hasn't been fetched.
   const { cw, ch } = { cw: containerSize.w, ch: containerSize.h };
-  const fallbackH = Math.min((typeof window !== 'undefined' ? window.innerHeight : 900) * 0.65, 600);
-  const dims = pageDims.current.get(safeIndex + 1);
-  const renderWidth = (cw > 0 && ch > 0 && dims)
-    ? Math.round(Math.min(cw, ch * (dims.w / dims.h)))
-    : undefined;
-  const renderHeight = (renderWidth == null)
-    ? (ch > 0 ? ch : fallbackH)
-    : undefined;
+  let renderWidth: number | undefined = undefined;
+  let renderHeight: number | undefined = undefined;
+
+  if (cw > 0 && ch > 0) {
+    if (pageAspect && pageAspect > 0) {
+      const containerAspect = cw / ch;
+      if (containerAspect > pageAspect) {
+        // Limited by height
+        renderHeight = Math.min(ch, 850);
+      } else {
+        // Limited by width
+        renderWidth = Math.min(cw, 1200);
+      }
+    } else {
+      renderHeight = Math.min(ch, 750);
+    }
+  } else {
+    renderHeight = 520;
+  }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <p className="text-neutral-400 text-sm mb-2">Impossibile caricare il PDF</p>
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-teal-400 text-xs underline hover:text-teal-300">
-            Aprilo in una nuova scheda
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (!loaded) {
-    return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-full w-full items-center justify-center p-6 text-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
-          <span className="text-xs text-neutral-500">Caricamento PDF...</span>
+          <p className="text-neutral-400 text-sm font-medium">Impossibile visualizzare l&apos;anteprima del PDF</p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-teal-400/40 bg-teal-500/10 text-teal-300 hover:text-white hover:bg-teal-500/20 text-xs font-semibold backdrop-blur-xl shadow-lg transition-all duration-200 cursor-pointer"
+          >
+            <span>Apri PDF in una nuova scheda</span>
+            <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
         </div>
       </div>
     );
@@ -140,40 +146,51 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#090909]">
       {/* Page counter */}
-      <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent px-5 pb-10 pt-5 pointer-events-none">
-        <span className="pointer-events-auto text-xs font-semibold tracking-[0.16em] text-white/90 rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
-          {safeIndex + 1} / {numPages}
-        </span>
-        <span className="pointer-events-auto rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-400 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
-          PDF
-        </span>
-      </div>
+      {numPages > 0 && (
+        <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent px-5 pb-10 pt-5 pointer-events-none">
+          <span className="pointer-events-auto text-xs font-semibold tracking-[0.16em] text-white/90 rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
+            {safeIndex + 1} / {numPages}
+          </span>
+          <span className="pointer-events-auto rounded-full border border-white/[0.12] bg-[#081410]/80 px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-400 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_12px_rgba(0,0,0,0.4)]">
+            PDF
+          </span>
+        </div>
+      )}
 
-      {/* Page display — no flash, stable width from first render */}
+      {/* Page display */}
       <div
         ref={wrapperRef}
-        className="flex h-full w-full items-center justify-center p-6"
+        className="flex h-full w-full items-center justify-center p-4 sm:p-6"
       >
         <Document
           file={url}
-          loading={null}
-          error={null}
+          onLoadSuccess={onDocLoadSuccess}
+          onLoadError={onDocLoadError}
+          loading={
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-teal-400/30 border-t-teal-400" />
+              <span className="text-xs text-neutral-400 font-medium">Caricamento PDF...</span>
+            </div>
+          }
           className="flex items-center justify-center"
         >
-          <Page
-            key={`page_${safeIndex + 1}`}
-            pageNumber={safeIndex + 1}
-            width={renderWidth}
-            height={renderHeight}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            className="rounded-lg shadow-2xl shadow-black/50"
-          />
+          {numPages > 0 && (
+            <Page
+              key={`page_${safeIndex + 1}`}
+              pageNumber={safeIndex + 1}
+              width={renderWidth}
+              height={renderHeight}
+              onLoadSuccess={onPageLoadSuccess}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              className="rounded-lg shadow-2xl shadow-black/60 overflow-hidden"
+            />
+          )}
         </Document>
       </div>
 
       {/* Prev/Next buttons */}
-      {safeIndex > 0 && (
+      {numPages > 1 && safeIndex > 0 && (
         <button
           type="button"
           onClick={prevPage}
@@ -185,7 +202,7 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
           </svg>
         </button>
       )}
-      {safeIndex < numPages - 1 && (
+      {numPages > 1 && safeIndex < numPages - 1 && (
         <button
           type="button"
           onClick={nextPage}
@@ -213,5 +230,32 @@ export default function PdfCarousel({ url, title }: PdfCarouselProps) {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PdfCarousel(props: PdfCarouselProps) {
+  return (
+    <PdfErrorBoundary
+      fallback={(err) => (
+        <div className="flex h-full w-full items-center justify-center p-6 text-center">
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-neutral-400 text-sm font-medium">Impossibile caricare il documento PDF</p>
+            <a
+              href={props.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-teal-400/40 bg-teal-500/10 text-teal-300 hover:text-white hover:bg-teal-500/20 text-xs font-semibold backdrop-blur-xl shadow-lg transition-all duration-200 cursor-pointer"
+            >
+              <span>Apri PDF in una nuova scheda</span>
+              <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      )}
+    >
+      <PdfCarouselInner {...props} />
+    </PdfErrorBoundary>
   );
 }

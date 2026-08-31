@@ -1323,6 +1323,7 @@ export default function HomeShell() {
             isVideo: (p.category || '').toLowerCase() === 'video' || (p.tags || '').toLowerCase().includes('video'),
             gallery: galleryList,
             documents: p.pdfUrl ? [p.pdfUrl] : undefined,
+            pdfUrl: p.pdfUrl || undefined,
           };
         });
         setLiveProjects(mapped);

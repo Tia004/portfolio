@@ -153,11 +153,13 @@ export default function ProjectModal({ project, onClose, onQuote }: ProjectModal
 
   const gallery = (project.gallery && project.gallery.length > 0)
     ? project.gallery
-    : (project.documents && project.documents.length > 0)
-      ? project.documents
-      : (!isWebSite && !isVideo && project.thumbnail)
-        ? [project.thumbnail]
-        : [];
+    : (project.pdfUrl)
+      ? [project.pdfUrl]
+      : (project.documents && project.documents.length > 0)
+        ? project.documents
+        : (!isWebSite && !isVideo && project.thumbnail)
+          ? [project.thumbnail]
+          : [];
 
   const activeGalleryIndex = Math.min(galleryIndex, Math.max(0, gallery.length - 1));
   const hasGallery = gallery.length > 0;

@@ -1120,6 +1120,8 @@ export type ProjectData = {
   gallery?: string[];
   /** Optional supporting documents, such as a PDF portfolio. */
   documents?: string[];
+  /** Optional PDF URL for interactive document presentation. */
+  pdfUrl?: string;
 };
 export type PricingTier = {
   title: string;

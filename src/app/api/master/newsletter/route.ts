@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
-import { buildBrandedEmailHtml, sendEmail } from '../emails/send/route';
+import { buildBrandedEmailHtml, sendEmail } from '@/lib/branded-email';
 
 // GET /api/master/newsletter - Fetch campaigns and audience stats
 export async function GET() {
