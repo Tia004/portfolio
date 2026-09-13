@@ -75,8 +75,10 @@ export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get('authorization');
   const xCronSecret = req.headers.get('x-cron-secret');
+  const querySecret = req.nextUrl.searchParams.get('secret') || req.nextUrl.searchParams.get('key');
   const isSecretAuthorized =
-    Boolean(cronSecret) && (authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret);
+    Boolean(cronSecret) &&
+    (authHeader === `Bearer ${cronSecret}` || xCronSecret === cronSecret || querySecret === cronSecret);
   const session = await getSession();
   const isMasterSession = Boolean(session && session.username === 'master');
   const isDev = process.env.NODE_ENV !== 'production';

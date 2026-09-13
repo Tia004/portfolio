@@ -238,6 +238,7 @@ export default function AutoEmailSender() {
   };
 
   const [isLoading400Preset, setIsLoading400Preset] = useState(false);
+  const [isLoadingPartialPreset, setIsLoadingPartialPreset] = useState(false);
 
   // Process and ingest CSV text content
   const processCsvContent = (cleanText: string, fileName: string) => {
@@ -370,6 +371,22 @@ export default function AutoEmailSender() {
       showToast('Impossibile caricare il file preimpostato: ' + err.message, 'error');
     } finally {
       setIsLoading400Preset(false);
+    }
+  };
+
+  // 1-Click loader for campaign starting from Salesiani Verona (158 contacts)
+  const handleLoadPreloadedPartial = async () => {
+    setIsLoadingPartialPreset(true);
+    try {
+      const res = await fetch('/campaigns/campagna_da_salesianiverona.csv');
+      if (!res.ok) throw new Error('File della campagna non trovato su /campaigns');
+      const text = await res.text();
+      const cleanText = text.replace(/^\uFEFF/, '').trim();
+      processCsvContent(cleanText, 'campagna_da_salesianiverona.csv');
+    } catch (err: any) {
+      showToast('Impossibile caricare il file: ' + err.message, 'error');
+    } finally {
+      setIsLoadingPartialPreset(false);
     }
   };
 
@@ -963,6 +980,16 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     >
                       <span>⚡</span>
                       <span>{isLoading400Preset ? 'Caricamento...' : 'Carica Campagna 400'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLoadPreloadedPartial}
+                      disabled={isLoadingPartialPreset}
+                      className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                      title="Carica le rimanenti 158 aziende a partire da Salesiani Verona"
+                    >
+                      <span>📍</span>
+                      <span>{isLoadingPartialPreset ? 'Caricamento...' : 'Da Salesiani (158)'}</span>
                     </button>
                     <button
                       type="button"
