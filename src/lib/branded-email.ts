@@ -36,7 +36,7 @@ export async function sendEmail({
     cid?: string;
   }>;
 }): Promise<boolean> {
-  const from = process.env.EMAIL_FROM || 'Mattia Chinaglia <info@tiadesigns.it>';
+  const from = process.env.EMAIL_FROM || 'Tia Designs <info@tiadesigns.it>';
   const resendApiKey = process.env.RESEND_API_KEY;
 
   const mailAttachments = [...attachments];

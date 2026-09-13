@@ -225,6 +225,25 @@ export async function fetchArubaEmailDetail(
           dataBase64: att.content.toString('base64'),
         }));
 
+        let resolvedHtml = parsed.html || parsed.textAsHtml || `<pre>${parsed.text || ''}</pre>`;
+
+        // Convert inline CID attachments to base64 data URIs so web browsers (like the dashboard viewer) can render them immediately
+        if (parsed.attachments && parsed.attachments.length > 0) {
+          for (const att of parsed.attachments) {
+            const mimeType = att.contentType || 'image/png';
+            const base64Data = `data:${mimeType};base64,${att.content.toString('base64')}`;
+            if (att.contentId) {
+              const cleanCid = att.contentId.replace(/[<>]/g, '').trim();
+              resolvedHtml = resolvedHtml.replace(new RegExp(`cid:(<${cleanCid}>|${cleanCid})`, 'gi'), base64Data);
+            }
+            if (att.filename) {
+              resolvedHtml = resolvedHtml.replace(new RegExp(`cid:(<${att.filename}>|${att.filename})`, 'gi'), base64Data);
+            }
+          }
+        }
+        // Fallback for brand logo CID if missing from attachments
+        resolvedHtml = resolvedHtml.replace(/cid:(<?TiaDesignsLogo-white\.png>?)/gi, 'https://tiadesigns.it/TiaDesignsLogo-white.png');
+
         emailItem = {
           uid: msg.uid,
           seq: msg.seq,
@@ -233,7 +252,7 @@ export async function fetchArubaEmailDetail(
           to: toList,
           date: (msg.envelope?.date || parsed.date || new Date()).toISOString(),
           snippet: (parsed.text || '').slice(0, 160),
-          html: parsed.html || parsed.textAsHtml || `<pre>${parsed.text || ''}</pre>`,
+          html: resolvedHtml,
           text: parsed.text || '',
           flags,
           seen: flags.includes('\\Seen'),
@@ -390,7 +409,7 @@ export async function sendArubaEmail(options: {
   }
 
   const mailOptions = {
-    from: `Mattia Chinaglia <${ARUBA_EMAIL_USER}>`,
+    from: `Tia Designs <${ARUBA_EMAIL_USER}>`,
     to: options.to,
     cc: options.cc,
     bcc: options.bcc,

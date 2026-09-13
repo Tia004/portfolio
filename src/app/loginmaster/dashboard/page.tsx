@@ -3907,7 +3907,27 @@ export default function DashboardPage() {
                           <div className="p-5 rounded-2xl bg-black/60 border border-white/[0.06] text-xs text-neutral-200 leading-relaxed overflow-x-auto min-h-[220px]">
                             {selectedArubaEmail.html ? (
                               <div
-                                dangerouslySetInnerHTML={{ __html: selectedArubaEmail.html }}
+                                dangerouslySetInnerHTML={{
+                                  __html: (() => {
+                                    let h = selectedArubaEmail.html;
+                                    if (selectedArubaEmail.attachments && selectedArubaEmail.attachments.length > 0) {
+                                      selectedArubaEmail.attachments.forEach((att: any) => {
+                                        if (att.dataBase64) {
+                                          const mime = att.contentType || 'image/png';
+                                          const dataUri = `data:${mime};base64,${att.dataBase64}`;
+                                          if (att.contentId) {
+                                            const clean = att.contentId.replace(/[<>]/g, '').trim();
+                                            h = h.replace(new RegExp(`cid:(<${clean}>|${clean})`, 'gi'), dataUri);
+                                          }
+                                          if (att.filename) {
+                                            h = h.replace(new RegExp(`cid:(<${att.filename}>|${att.filename})`, 'gi'), dataUri);
+                                          }
+                                        }
+                                      });
+                                    }
+                                    return h.replace(/cid:(<?TiaDesignsLogo-white\.png>?)/gi, 'https://tiadesigns.it/TiaDesignsLogo-white.png');
+                                  })(),
+                                }}
                                 className="prose prose-invert max-w-none text-xs text-neutral-200"
                               />
                             ) : (
