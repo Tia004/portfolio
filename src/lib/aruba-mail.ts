@@ -1,6 +1,8 @@
 import { ImapFlow } from 'imapflow';
-import { simpleParser, ParsedMail } from 'mailparser';
+import { simpleParser, type ParsedMail } from 'mailparser';
 import nodemailer from 'nodemailer';
+// @ts-ignore
+import MailComposer from 'nodemailer/lib/mail-composer';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,9 +10,9 @@ export const ARUBA_IMAP_HOST = process.env.ARUBA_IMAP_HOST || 'imaps.aruba.it';
 export const ARUBA_IMAP_PORT = parseInt(process.env.ARUBA_IMAP_PORT || '993', 10);
 export const ARUBA_SMTP_HOST = process.env.ARUBA_SMTP_HOST || 'smtps.aruba.it';
 export const ARUBA_SMTP_PORT = parseInt(process.env.ARUBA_SMTP_PORT || '465', 10);
-export const ARUBA_EMAIL_USER = process.env.ARUBA_EMAIL_USER || process.env.SMTP_USER || 'info@tiadesigns.it';
+export const ARUBA_EMAIL_USER = process.env.ARUBA_EMAIL_USER || process.env.SMTP_USER || process.env.EMAIL_USER || 'info@tiadesigns.it';
 export const ARUBA_EMAIL_PASSWORD =
-  process.env.ARUBA_EMAIL_PASSWORD || process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || '';
+  process.env.ARUBA_EMAIL_PASSWORD || process.env.SMTP_PASS || process.env.EMAIL_PASSWORD || process.env.EMAIL_PASS || '';
 
 export function isArubaConfigured(): boolean {
   return Boolean(
@@ -422,5 +424,52 @@ export async function sendArubaEmail(options: {
 
   const info = await transporter.sendMail(mailOptions);
 
+  // Automatically save copy to Posta Inviata (Sent) via IMAP APPEND in background
+  appendArubaSentEmail(mailOptions).catch((err) =>
+    console.warn('[Aruba Mail] appendArubaSentEmail background error:', err)
+  );
+
   return { success: true, messageId: info.messageId };
+}
+
+/**
+ * Appends a copy of a sent email into the Aruba IMAP "Sent" / "Posta Inviata" folder.
+ */
+export async function appendArubaSentEmail(mailOptions: any): Promise<boolean> {
+  if (!isArubaConfigured()) return false;
+  try {
+    const rawBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const composer = new MailComposer(mailOptions).compile();
+      composer.build((err: any, buffer: Buffer) => {
+        if (err) reject(err);
+        else resolve(buffer);
+      });
+    });
+
+    const client = getImapClient();
+    await client.connect();
+
+    let sentMailbox = 'Sent';
+    try {
+      const boxes = await client.list();
+      const detected = boxes.find(
+        (b) =>
+          b.specialUse === '\\Sent' ||
+          /^(sent|inbox\.sent|posta inviata|inbox\.posta inviata)$/i.test(b.path) ||
+          /sent|inviata/i.test(b.name)
+      );
+      if (detected) {
+        sentMailbox = detected.path;
+      }
+    } catch {
+      // Keep 'Sent' fallback
+    }
+
+    await client.append(sentMailbox, rawBuffer, ['\\Seen']);
+    await client.logout();
+    return true;
+  } catch (err) {
+    console.warn('[Aruba Mail] Could not append sent email to Sent folder:', err);
+    return false;
+  }
 }

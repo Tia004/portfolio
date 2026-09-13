@@ -14,6 +14,7 @@ import nodemailer from 'nodemailer';
 export { buildBrandedEmailHtml } from './email-template';
 import fs from 'fs';
 import path from 'path';
+import { isArubaConfigured, appendArubaSentEmail } from './aruba-mail';
 
 export type { BrandedEmailOptions } from './email-template';
 
@@ -79,7 +80,19 @@ export async function sendEmail({
         html,
         attachments: resendAttachments.length > 0 ? resendAttachments : undefined,
       });
-      if (!error) return true;
+      if (!error) {
+        if (isArubaConfigured()) {
+          appendArubaSentEmail({
+            from,
+            to,
+            replyTo,
+            subject,
+            html,
+            attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
+          }).catch((err) => console.warn('[Branded Email] appendArubaSentEmail error:', err));
+        }
+        return true;
+      }
       console.error('Resend error:', error);
     } catch (e) {
       console.error('Resend exception:', e);
@@ -106,6 +119,16 @@ export async function sendEmail({
         html,
         attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
       });
+      if (isArubaConfigured()) {
+        appendArubaSentEmail({
+          from,
+          to,
+          replyTo,
+          subject,
+          html,
+          attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
+        }).catch((err) => console.warn('[Branded Email] appendArubaSentEmail error:', err));
+      }
       return true;
     } catch (smtpErr) {
       console.error('SMTP error:', smtpErr);
