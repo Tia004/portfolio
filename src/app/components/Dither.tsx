@@ -6,6 +6,12 @@ import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { reportWebGLContext } from '@/lib/webgl-telemetry';
 
+// Freeze watchdog sampling: 5 horizontal strips × 45 px = 225 pixels whose
+// raw bytes are compared between checks (12s of identical bytes while the tab
+// is visible means the canvas stopped producing frames).
+const SIGNATURE_ROWS = 5;
+const ROW_SAMPLES = 45;
+
 // ── Shaders (exact React Bits source) ────────────────────────
 
 const waveVertexShader = /* glsl */ `
@@ -307,6 +313,15 @@ export default function Dither({
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   const [glFailed, setGlFailed] = useState(false);
+  // Bumped to remount the <Canvas> with a BRAND NEW WebGL context when the
+  // current one is unusable (context lost and never restored, or a frozen
+  // frame). Chrome/Windows drivers can leave a lost context permanently
+  // black or, worse, showing the last garbage buffer — the "sfondo tutto
+  // noise" symptom — so a fresh context is the only reliable recovery.
+  const [canvasKey, setCanvasKey] = useState(0);
+  // True while the WebGL context is lost: the canvas is hidden so the dark
+  // static base (same palette) shows instead of the driver's garbage frame.
+  const [contextLost, setContextLost] = useState(false);
   // Canvas paints black: the context was created but the shader / EffectComposer
   // silently failed on this GPU (WebGL1 highp limits, unsupported float render
   // targets, driver quirks). When detected, the Canvas is unmounted and the
@@ -319,7 +334,12 @@ export default function Dither({
   // window, or we would permanently replace the dither with the static
   // fallback (the "TV noise" symptom).
   const contextLostRef = useRef(false);
+  const contextLostSinceRef = useRef(0);
   const brokenRetryTimerRef = useRef<number | undefined>(undefined);
+  // Latest frame signature (see the freeze watchdog) — a frozen canvas keeps
+  // painting the SAME bytes while time keeps advancing.
+  const frozenStreakRef = useRef(0);
+  const lastSignatureRef = useRef<string | null>(null);
 
   // The WebGL canvas runs on EVERY device — phones included — exactly like
   // the React Bits source this component is copied from (their demos run on
@@ -349,26 +369,33 @@ export default function Dither({
     }
   }, []);
 
-  // Black-output detection: sample the live canvas a few times after mount.
-  // If EVERY sampled point is still near-black on several consecutive passes
-  // while the hero is actually visible and rendering, the GPU is producing a
-  // uniform black field — drop the Canvas so the dithered static texture
-  // (guaranteed render, zero GPU) shows instead of a black hero.
+  // Dead-canvas detection: sample a GRID across the live canvas a few times
+  // after mount and declare the GPU dead only when the buffer is a FLAT fill.
+  //
+  // The previous heuristic ("5 spots near-black") was built for the old BRIGHT
+  // palette, where a dark hero meant a broken shader. With the current DEEP
+  // teal palette most of the wave field IS dark — so the detector regularly
+  // declared a perfectly healthy canvas broken and swapped the hero to the
+  // bright static fallback for 15s at a time: exactly the "sometimes it turns
+  // into TV static, then comes back" symptom. A flat buffer (max-min ≈ 0 over
+  // 96 samples) can only come from a canvas that paints one uniform colour
+  // (black shader, dead GPU), because the animated field always has both
+  // bright and dark areas.
   //
   // CRITICAL: only judge while the hero is on screen and the tab is focused.
   // When the frameloop is paused (hero scrolled away) or the tab is hidden,
   // the canvas keeps a stale/black buffer — reading it as a shader failure
-  // would permanently replace the real dither with the fallback (exactly the
-  // "goes to fallback on iPhone" symptom). A skipped sample is never counted,
-  // and ANY non-black sample resets the streak.
+  // would permanently replace the real dither with the fallback. A skipped
+  // sample is never counted, and ANY structured sample resets the streak.
   // preserveDrawingBuffer:true makes readPixels reliable.
   useEffect(() => {
     if (glFailed) return;
-    let blackPasses = 0;
+    let deadPasses = 0;
     let alive = true;
     let timer: number | undefined;
 
-    // Returns true when black, false when not, null when we can't judge yet.
+    // Returns true when the canvas is a flat fill, false when it shows
+    // structure, null when we can't judge yet.
     const sample = (): boolean | null => {
       const canvas = wrapperRef.current?.querySelector('canvas');
       if (!canvas || !canvas.width || !canvas.height) return null;
@@ -376,13 +403,21 @@ export default function Dither({
         const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
         if (!gl) return null;
         const px = new Uint8Array(4);
-        const spots = [[0.08, 0.08], [0.92, 0.08], [0.08, 0.92], [0.92, 0.92], [0.5, 0.5]];
-        let nearBlack = true;
-        for (const [sx, sy] of spots) {
-          gl.readPixels(Math.floor(canvas.width * sx), Math.floor(canvas.height * sy), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-          if (px[0] > 24 || px[1] > 24 || px[2] > 24) { nearBlack = false; break; }
+        const COLS = 12;
+        const ROWS = 8;
+        let min = 255;
+        let max = 0;
+        for (let ry = 0; ry < ROWS; ry++) {
+          for (let rx = 0; rx < COLS; rx++) {
+            const x = Math.min(canvas.width - 1, Math.floor(((rx + 0.5) / COLS) * canvas.width));
+            const y = Math.min(canvas.height - 1, Math.floor(((ry + 0.5) / ROWS) * canvas.height));
+            gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+            const l = 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
+            if (l < min) min = l;
+            if (l > max) max = l;
+          }
         }
-        return nearBlack;
+        return max - min < 4;
       } catch {
         return null; // context busy / readback error — not a verdict
       }
@@ -393,9 +428,9 @@ export default function Dither({
       if (pausedRef.current || document.hidden || contextLostRef.current) {
         // Can't judge right now (hero away / tab hidden / WebGL context lost)
         // — reschedule without counting, and never accumulate a streak from a
-        // stale or blank buffer. Counting a lost context as "black" would
+        // stale or blank buffer. Counting a lost context as "dead" would
         // replace the dither with the static fallback permanently.
-        blackPasses = 0;
+        deadPasses = 0;
         timer = window.setTimeout(run, 800);
         return;
       }
@@ -406,12 +441,12 @@ export default function Dither({
         timer = window.setTimeout(run, 800);
         return;
       }
-      blackPasses = verdict ? blackPasses + 1 : 0;
-      if (blackPasses >= 3) {
+      deadPasses = verdict ? deadPasses + 1 : 0;
+      if (deadPasses >= 5) {
         // Fall back to the static texture, but keep the detector alive and
         // auto-remount shortly after so a TRANSIENT failure recovers instead
         // of becoming permanent.
-        blackPasses = 0;
+        deadPasses = 0;
         setCanvasBroken(true);
         if (brokenRetryTimerRef.current) window.clearTimeout(brokenRetryTimerRef.current);
         brokenRetryTimerRef.current = window.setTimeout(() => setCanvasBroken(false), 15_000);
@@ -430,7 +465,81 @@ export default function Dither({
         brokenRetryTimerRef.current = undefined;
       }
     };
-  }, [glFailed]);
+  }, [glFailed, canvasKey]);
+
+  // ── Freeze watchdog + lost-context recovery ────────────────────────────
+  // Two failure modes left the hero stuck on a static (sometimes garbled)
+  // frame until a manual reload:
+  //   1. the rAF loop keeps running but the GPU stops producing new frames
+  //      (driver stall, GPU process restart) — the image just FREEZES;
+  //   2. the context is lost and the browser never restores it — the canvas
+  //      ends up blank or showing the driver's last garbage buffer, which on
+  //      some machines looks like pure TV noise.
+  // Both are fixed the same way: a fresh context (canvasKey bump). Freezing is
+  // detected by comparing a pixel signature across checks — a healthy dither
+  // never repeats 180 sampled bytes for 12s straight while the tab is visible.
+  useEffect(() => {
+    if (glFailed || canvasBroken) return;
+    let alive = true;
+    let timer: number | undefined;
+
+    const signature = (): string | null => {
+      const canvas = wrapperRef.current?.querySelector('canvas');
+      if (!canvas || !canvas.width || !canvas.height) return null;
+      try {
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return null;
+        const row = new Uint8Array(ROW_SAMPLES * 4);
+        let sig = '';
+        for (let i = 0; i < SIGNATURE_ROWS; i++) {
+          const y = Math.min(canvas.height - 1, Math.floor(((i + 0.5) / SIGNATURE_ROWS) * canvas.height));
+          gl.readPixels(0, y, ROW_SAMPLES, 1, gl.RGBA, gl.UNSIGNED_BYTE, row);
+          for (let k = 0; k < row.length; k++) sig += String.fromCharCode(row[k]);
+        }
+        return sig;
+      } catch {
+        return null;
+      }
+    };
+
+    const run = () => {
+      if (!alive) return;
+      const skip = pausedRef.current || document.hidden || contextLostRef.current || disableAnimation;
+      if (skip) {
+        frozenStreakRef.current = 0;
+        lastSignatureRef.current = null;
+      } else {
+        const sig = signature();
+        if (sig !== null) {
+          frozenStreakRef.current = sig === lastSignatureRef.current ? frozenStreakRef.current + 1 : 0;
+          lastSignatureRef.current = sig;
+          if (frozenStreakRef.current >= 6) {
+            frozenStreakRef.current = 0;
+            lastSignatureRef.current = null;
+            console.warn('[dither] frozen frame — remounting the WebGL canvas');
+            setCanvasKey((k) => k + 1);
+            timer = window.setTimeout(run, 4000);
+            return;
+          }
+        }
+      }
+      // A lost context that the browser never restores (or restores into a
+      // dead canvas) is just as stuck: remount after ~5s so the hero keeps
+      // animating instead of showing garbage.
+      if (contextLostRef.current && Date.now() - contextLostSinceRef.current > 5000) {
+        contextLostSinceRef.current = Date.now();
+        console.warn('[dither] WebGL context lost without restore — remounting');
+        setCanvasKey((k) => k + 1);
+      }
+      timer = window.setTimeout(run, 2000);
+    };
+
+    timer = window.setTimeout(run, 4000);
+    return () => {
+      alive = false;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [glFailed, canvasBroken, disableAnimation]);
 
   // Pause WebGL rendering when the hero is scrolled out of the viewport —
   // saves GPU/battery on mobile (the dither animates only when visible).
@@ -466,6 +575,9 @@ export default function Dither({
         // hide it on phones was removed — genuine GPU failures are handled
         // here by the WebGL probe + black-output detection instead.)
         <Canvas
+          // key: a bump remounts the whole Canvas with a FRESH WebGL context
+          // (freeze watchdog + lost-context recovery).
+          key={canvasKey}
           camera={{ position: [0, 0, 6] }}
           dpr={1}
           frameloop={paused ? 'never' : 'always'}
@@ -480,6 +592,12 @@ export default function Dither({
             const el = gl.domElement;
             el.addEventListener('webglcontextlost', (e) => {
               contextLostRef.current = true;
+              contextLostSinceRef.current = Date.now();
+              // Hide the canvas immediately: a lost context can keep showing the
+              // driver's last (garbage) buffer — the "TV noise" frame. The
+              // dark static base below has the same palette, so hiding is
+              // invisible, and the watchdog remounts if the restore never comes.
+              setContextLost(true);
               reportWebGLContext({
                 source: 'dither',
                 direction: 'lost',
@@ -489,6 +607,9 @@ export default function Dither({
             });
             el.addEventListener('webglcontextrestored', (e) => {
               contextLostRef.current = false;
+              frozenStreakRef.current = 0;
+              lastSignatureRef.current = null;
+              setContextLost(false);
               reportWebGLContext({
                 source: 'dither',
                 direction: 'restored',
@@ -503,6 +624,10 @@ export default function Dither({
             position: 'relative',
             // Pass vertical scroll to the page instead of trapping it.
             touchAction: 'pan-y',
+            // While the context is lost the canvas can display garbage: hide
+            // it (keeping it mounted, so the restore still happens) and let
+            // the palette-matched static base show through.
+            visibility: contextLost ? 'hidden' : 'visible',
           }}
         >
           <DitheredWaves

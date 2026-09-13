@@ -182,7 +182,18 @@ export default function ProcessTimeline() {
 
         <div
           ref={mobileTrackRef}
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pb-6 -mx-4"
+          // Same guards as MobileSnapSlider, whose cards had exactly this
+          // symptom until they were added: data-lenis-prevent* keeps Lenis off
+          // the track, overflow-y-hidden stops the track from computing an
+          // overflow-y:auto scrollport that can swallow the finger,
+          // overscroll-x-contain stops horizontal chaining, and pan-x pan-y
+          // (NOT pan-x alone) keeps the PAGE pannable vertically while the
+          // carousel still scrolls horizontally.
+          data-lenis-prevent
+          data-lenis-prevent-wheel
+          data-lenis-prevent-touch
+          style={{ touchAction: 'pan-x pan-y', overscrollBehaviorY: 'auto' }}
+          className="flex gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain snap-x snap-mandatory scrollbar-hide px-4 pb-6 -mx-4"
         >
           {STEPS.map((step, i) => (
             <article

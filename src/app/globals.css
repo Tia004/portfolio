@@ -310,11 +310,26 @@ html.lenis body {
   animation: booking-timer 8s linear both;
 }
 
-/* Cal.com inline embed — the embed auto-resizes the iframe to its content
-   height; inside the fixed-height booking panel/modal we want it to fill
-   the box and scroll INTERNALLY (like the previous bare iframe did). */
-.call-embed-host .cal-embed {
+/* Cal.com inline embed — the iframe is SLOTTED inside <cal-inline>'s shadow
+   root, where Cal's own styles give it a 300px min-height and park a skeleton
+   placeholder above it in the flow, and Cal's JS keeps writing an inline
+   content-based height (e.g. 956px) that never matches our modal. Taking both
+   cal-inline and the iframe out of the flow and pinning them to the host box
+   makes the calendar fill the whole modal body edge-to-edge and scroll
+   INTERNALLY (like the previous bare iframe did). */
+.call-embed-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.call-embed-host cal-inline,
+.call-embed-host iframe.cal-embed {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
   height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
 }
 
 /* ClickSpark fade-in on first mount — CSS-only, no hydration risk */

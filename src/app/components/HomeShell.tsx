@@ -521,10 +521,10 @@ function CallEmbedHost() {
   const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
 
   return (
-    <div className="relative w-full h-full min-h-[560px]">
-      <div ref={hostRef} className="call-embed-host h-full min-h-[560px]" />
+    <div className="relative w-full h-full min-h-0">
+      <div ref={hostRef} className="call-embed-host h-full min-h-0" />
       {status !== 'ready' && (
-        <div className={`absolute inset-0 flex flex-col items-center justify-center gap-3 ${status === 'loading' ? 'pointer-events-none' : ''}`}>
+        <div className={`absolute inset-0 bg-[#050c09] flex flex-col items-center justify-center gap-3 ${status === 'loading' ? 'pointer-events-none' : ''}`}>
           {status === 'loading' ? (
             <>
               <TiaIcon icon={LoaderPinwheelIcon} size={22} className="animate-spin text-teal-400" strokeWidth={2} />
@@ -553,13 +553,13 @@ function CallEmbedHost() {
   );
 }
 
-// ── Cal.com booking card — header + embed body, shared by the desktop
-// inline panel (lg+) and the mobile/tablet modal. compact=true lets the body
-// shrink inside the modal (the desktop panel keeps its fixed min-height so
-// the grid column matches the form + sidebar height).
-function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
+// ── Cal.com booking card — header + embed body of the booking modal window
+// (all viewports). The dialog carries a DEFINITE height (h-[min(90dvh,800px)]
+// on the dialog element) so the flex/percentage chain down to .call-embed-host
+// stays definite and the Cal iframe can fill the window edge-to-edge — the
+// sizing rules that make this work live in globals.css (.call-embed-host).
+function CallBookingCard({ onClose, bodyRef, closeBtnRef }: {
   onClose: () => void;
-  compact?: boolean;
   bodyRef?: React.Ref<HTMLDivElement>;
   closeBtnRef?: React.Ref<HTMLButtonElement>;
 }) {
@@ -607,7 +607,7 @@ function CallBookingCard({ onClose, compact, bodyRef, closeBtnRef }: {
         data-lenis-prevent
         data-lenis-prevent-wheel
         data-lenis-prevent-touch
-        className="flex-1 rounded-2xl overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-[#050c09]/80 overscroll-contain touch-pan-y min-h-[480px] sm:min-h-[560px] max-h-[75vh]"
+        className="relative flex-1 min-h-0 rounded-2xl overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-[#050c09]/80 overscroll-contain touch-pan-y"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <CallEmbedHost key={lang} />
@@ -1279,25 +1279,48 @@ export default function HomeShell() {
   const [projectsPage, setProjectsPage] = useState(0);
   const [liveProjects, setLiveProjects] = useState<ProjectData[] | null>(null);
 
+  // Row shape returned by /api/projects (DB columns plus the localized
+  // variants; gallery arrives either as a JSON array or a raw string).
+  type ProjectApiRow = {
+    id: string;
+    title: string;
+    titleEn?: string;
+    titleEs?: string;
+    description: string;
+    descriptionEn?: string;
+    descriptionEs?: string;
+    longDescription?: string;
+    thumbnail: string;
+    projectUrl?: string;
+    githubUrl?: string;
+    tags?: string;
+    category?: string;
+    featured?: boolean;
+    gallery?: string | string[];
+    pdfUrl?: string;
+  };
+
   useEffect(() => {
     let active = true;
     fetch('/api/projects')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!active || !Array.isArray(data) || data.length === 0) return;
-        const mapped: ProjectData[] = data.map((p: any) => {
+        const mapped: ProjectData[] = data.map((p: ProjectApiRow) => {
           let galleryList: string[] | undefined = undefined;
           if (p.gallery) {
             if (Array.isArray(p.gallery)) {
               galleryList = p.gallery;
             } else if (typeof p.gallery === 'string') {
+              // Hoisted so the catch branch keeps the narrowed string type.
+              const rawGallery = p.gallery;
               try {
-                const parsed = JSON.parse(p.gallery);
+                const parsed = JSON.parse(rawGallery);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                   galleryList = parsed;
                 }
               } catch {
-                galleryList = [p.gallery];
+                galleryList = [rawGallery];
               }
             }
           }
@@ -1315,7 +1338,9 @@ export default function HomeShell() {
             description: projectDesc,
             longDescription: p.longDescription || projectDesc,
             thumbnail: p.thumbnail,
-            url: p.projectUrl || undefined,
+            // '' instead of undefined: ProjectData.url is a required string and
+            // every consumer guards with `project.url &&` (same falsy branch).
+            url: p.projectUrl || '',
             githubUrl: p.githubUrl || undefined,
             tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
             category: p.category || 'Sviluppo',
@@ -4277,7 +4302,7 @@ export default function HomeShell() {
                 role="dialog"
                 aria-modal="true"
                 aria-label={t('contatti.call_title', lang)}
-                className={`relative w-full max-w-[620px] max-h-[min(90dvh,800px)] flex flex-col rounded-3xl border border-white/[0.14] bg-[#081410]/95 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_25px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(45,212,191,0.12)] transition-all duration-300 ${callOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
+                className={`relative w-full max-w-[620px] h-[min(90dvh,800px)] flex flex-col rounded-3xl border border-white/[0.14] bg-[#081410]/95 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_25px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(45,212,191,0.12)] transition-all duration-300 ${callOpen ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
                 style={{ visibility: callOpen ? 'visible' : 'hidden' }}
               >
                 <CallBookingCard onClose={() => setCallOpen(false)} bodyRef={callModalBodyRef} closeBtnRef={callModalCloseRef} />
@@ -4372,19 +4397,32 @@ export default function HomeShell() {
             <BorderGlow
               continuousHover
               singleBeam
-              borderRadius={16}
-              glowRadius={28}
-              glowIntensity={1.4}
+              // Same recipe as the site's cards (20px radius, intensity 2.0,
+              // no fill wash) — but glowRadius must stay INSIDE the widget's
+              // 16px screen margin or the halo gets chopped off on the
+              // right/bottom edge (it looked cut and "misplaced").
+              borderRadius={20}
+              glowRadius={16}
+              glowIntensity={2.0}
               edgeSensitivity={0}
+              // fillOpacity 0 = no translucent soft-light teal wash over the
+              // window: the card reads as a SOLID surface like every other
+              // card, with only the crisp traveling border beam on hover.
+              fillOpacity={0}
               backgroundColor="#081410"
               className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
-                  title-bar background to the rounded-2xl corners. The BorderGlow
+                  title-bar background to the rounded corners. The BorderGlow
                   lives on the parent card's pseudo-elements + .edge-light, which
-                  are siblings — clipping this child never touches the glow. */}
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#081410] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+                  are siblings — clipping this child never touches the glow.
+                  The radius MUST match the card's --border-radius (20px): a
+                  mismatch (rounded-2xl = 16px) left the opaque surface poking
+                  past the glowing ring at the corners, which read as a
+                  sloppy/"transparent" window. The surface itself is fully
+                  opaque (#081410) — no glass, no translucency. */}
+              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#081410] rounded-[20px] overflow-hidden flex flex-col shadow-2xl">
                 {/* Title bar */}
                 <div className="flex items-center px-4 py-3 border-b border-white/[0.08] bg-[#0c1c17] select-none">
                   {/* Centered title */}
