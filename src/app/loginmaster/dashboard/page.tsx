@@ -459,7 +459,7 @@ export default function DashboardPage() {
   const [composerBcc, setComposerBcc] = useState('');
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [composeSubject, setComposeSubject] = useState('');
-  const [composeTitle, setComposeTitle] = useState('Comunicazione Ufficiale');
+  const [composeTitle, setComposeTitle] = useState('Proposta');
   const [composeBody, setComposeBody] = useState('');
   const [composeCtaText, setComposeCtaText] = useState('');
   const [composeCtaUrl, setComposeCtaUrl] = useState('');
@@ -1580,7 +1580,7 @@ export default function DashboardPage() {
           name: newTemplateName.trim(),
           icon: newTemplateIcon.trim() || '✉️',
           badge: composeBadgeText.trim() || 'Tia Designs',
-          title: composeTitle.trim() || 'Comunicazione Ufficiale',
+          title: composeTitle.trim() || 'Proposta',
           subject: composeSubject.trim(),
           body: composeBody.trim(),
           ctaText: composeCtaText.trim() || null,
@@ -1619,7 +1619,7 @@ export default function DashboardPage() {
     setComposerCc('');
     setComposerBcc('');
     setComposeSubject('');
-    setComposeTitle('Comunicazione Ufficiale');
+    setComposeTitle('Proposta');
     setComposeBadgeText('Tia Designs');
     setComposeBody('');
     setComposeCtaText('');

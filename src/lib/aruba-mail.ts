@@ -1,6 +1,8 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser, ParsedMail } from 'mailparser';
 import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
 
 export const ARUBA_IMAP_HOST = process.env.ARUBA_IMAP_HOST || 'imaps.aruba.it';
 export const ARUBA_IMAP_PORT = parseInt(process.env.ARUBA_IMAP_PORT || '993', 10);
@@ -348,6 +350,7 @@ export async function sendArubaEmail(options: {
     content?: string | Buffer;
     path?: string;
     contentType?: string;
+    cid?: string;
   }[];
 }): Promise<{ success: boolean; messageId?: string }> {
   if (!isArubaConfigured()) {
@@ -364,8 +367,30 @@ export async function sendArubaEmail(options: {
     },
   });
 
+  const attachments = options.attachments ? [...options.attachments] : [];
+  const logoPath = path.join(process.cwd(), 'public', 'TiaDesignsLogo-white.png');
+
+  // Auto-embed logo as inline CID attachment if referenced in HTML so email clients don't block it
+  if (
+    options.html.includes('cid:TiaDesignsLogo-white.png') &&
+    !attachments.some((a) => a.cid === 'TiaDesignsLogo-white.png')
+  ) {
+    try {
+      if (fs.existsSync(logoPath)) {
+        attachments.push({
+          filename: 'TiaDesignsLogo-white.png',
+          path: logoPath,
+          cid: 'TiaDesignsLogo-white.png',
+          contentType: 'image/png',
+        });
+      }
+    } catch (e) {
+      console.warn('Could not attach inline logo for Aruba SMTP:', e);
+    }
+  }
+
   const mailOptions = {
-    from: `Mattia - Tia Designs <${ARUBA_EMAIL_USER}>`,
+    from: `Mattia Chinaglia <${ARUBA_EMAIL_USER}>`,
     to: options.to,
     cc: options.cc,
     bcc: options.bcc,
@@ -373,7 +398,7 @@ export async function sendArubaEmail(options: {
     subject: options.subject,
     text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
     html: options.html,
-    attachments: options.attachments,
+    attachments: attachments.length > 0 ? attachments : undefined,
   };
 
   const info = await transporter.sendMail(mailOptions);

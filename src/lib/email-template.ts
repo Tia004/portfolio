@@ -23,8 +23,11 @@ import { escapeEmailHtml, renderEmailMarkdown } from './email-markdown';
 
 const BRAND_URL = 'https://tiadesigns.it';
 const BRAND_NAME = 'Tia Designs';
-/** White (inverted) brand mark — see the note above. */
-const LOGO_URL = `${BRAND_URL}/TiaDesignsLogo-white.png`;
+/** White (inverted) brand mark — remote URL for web preview or external fallback. */
+export const REMOTE_LOGO_URL = `${BRAND_URL}/TiaDesignsLogo-white.png`;
+const LOGO_URL = REMOTE_LOGO_URL;
+/** Inline CID reference for automatic display in email clients without remote image prompts. */
+export const CID_LOGO_URL = 'cid:TiaDesignsLogo-white.png';
 /** Intrinsic size of the file; the display size is half of it (2× for retina). */
 const LOGO_WIDTH = 90;
 const LOGO_HEIGHT = 48;
@@ -42,6 +45,10 @@ export interface BrandedEmailOptions {
   bannerUrl?: string;
   /** Alt text for the banner; defaults to the brand name. */
   bannerAlt?: string;
+  /** Specific logo URL or CID override. */
+  logoUrl?: string;
+  /** Set to true when rendering in browser DOM to avoid unresolvable cid: scheme. */
+  forPreview?: boolean;
 }
 
 /** A badge that just repeats the logo adds nothing — only render informative ones. */
@@ -86,12 +93,17 @@ export function buildBrandedEmailHtml({
   preheaderText,
   bannerUrl,
   bannerAlt,
+  logoUrl,
+  forPreview,
 }: BrandedEmailOptions): string {
   const contentHtml = renderEmailMarkdown(bodyMarkdown);
   const safeName = recipientName ? escapeEmailHtml(recipientName) : '';
   const safeTitle = title ? escapeEmailHtml(title) : '';
   const safeCtaText = ctaText ? escapeEmailHtml(ctaText) : '';
   const safeCtaUrl = ctaUrl ? escapeEmailHtml(ctaUrl) : '';
+
+  const isBrowser = typeof window !== 'undefined';
+  const effectiveLogoSrc = logoUrl || (isBrowser || forPreview ? REMOTE_LOGO_URL : CID_LOGO_URL);
 
   return `
     <!DOCTYPE html>
@@ -120,7 +132,7 @@ ${bannerHtml(bannerUrl, bannerAlt)}
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                       <td valign="middle">
-                        <img src="${LOGO_URL}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="${BRAND_NAME}" style="display:block; width:${LOGO_WIDTH}px; height:${LOGO_HEIGHT}px; border:0; outline:none; text-decoration:none;" />
+                        <img src="${effectiveLogoSrc}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="${BRAND_NAME}" style="display:block; width:${LOGO_WIDTH}px; height:${LOGO_HEIGHT}px; border:0; outline:none; text-decoration:none;" />
                       </td>${badgeHtml(badgeText)}
                     </tr>
                   </table>
@@ -154,8 +166,8 @@ ${bannerHtml(bannerUrl, bannerAlt)}
               <tr>
                 <td style="padding:0 32px 28px 32px;">
                   <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:20px;">
-                    <p style="margin:0; color:#ffffff; font-size:14px; font-weight:700;">Tia Chinaglia</p>
-                    <p style="margin:3px 0 0 0; color:#2dd4bf; font-size:12px;">Fondatore & Lead Creative Developer • ${BRAND_NAME}</p>
+                    <p style="margin:0; color:#ffffff; font-size:14px; font-weight:700;">Mattia Chinaglia</p>
+                    <p style="margin:3px 0 0 0; color:#2dd4bf; font-size:12px;">Founder & Lead Creative Developer • ${BRAND_NAME}</p>
                     <p style="margin:8px 0 0 0; color:#9ca3af; font-size:12px; line-height:1.7;">
                       Email: <a href="mailto:info@tiadesigns.it" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">info@tiadesigns.it</a><br />
                       Web: <a href="${BRAND_URL}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">tiadesigns.it</a>
@@ -168,8 +180,8 @@ ${bannerHtml(bannerUrl, bannerAlt)}
               <tr>
                 <td style="background-color:#030b09; padding:18px 32px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
                   <p style="margin:0; color:#6b7280; font-size:11px; line-height:1.6;">
-                    Ricevi questa comunicazione ufficiale da ${BRAND_NAME} • Mantova, Italia<br />
-                    Questa email è confidenziale e protetta secondo gli standard di sicurezza e privacy.
+                    Proposta inviata da Mattia Chinaglia • ${BRAND_NAME} • Mantova, Italia<br />
+                    Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.
                   </p>
                 </td>
               </tr>

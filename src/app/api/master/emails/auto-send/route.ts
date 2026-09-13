@@ -35,7 +35,7 @@ function buildDirectEmailHtml(bodyMarkdown: string, name?: string): string {
   <div style="max-width: 600px; margin: 0 auto;">
     ${formattedParagraphs}
     <div style="margin-top: 28px; padding-top: 16px; border-top: 1px solid #eeeeee; font-size: 13px; color: #666666;">
-      <p style="margin: 0; font-weight: 600; color: #111111;">Tia Chinaglia</p>
+      <p style="margin: 0; font-weight: 600; color: #111111;">Mattia Chinaglia</p>
       <p style="margin: 2px 0 0 0;">Designer & Full-Stack Developer — <a href="https://tiadesigns.it" style="color: #0d9488; text-decoration: none;">tiadesigns.it</a></p>
       <p style="margin: 2px 0 0 0;">Email: <a href="mailto:info@tiadesigns.it" style="color: #0d9488; text-decoration: none;">info@tiadesigns.it</a></p>
     </div>
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       subject,
       body: emailBody,
       style = 'branded', // 'branded' | 'direct'
-      badgeText = 'Comunicazione Ufficiale',
+      badgeText = 'Proposta Dedicata',
       ctaText,
       ctaUrl,
       preferredChannel = 'auto', // 'auto' | 'aruba' | 'resend'

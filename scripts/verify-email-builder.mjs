@@ -120,7 +120,7 @@ console.log('\n── Template options ─────────────�
   const title = email('Corpo.', { title: 'Oggetto visivo' });
   check('title renders as an h1 in the body', title.includes('<h1 style="color:#ffffff'));
   check('every email is a full document', email('x').trim().startsWith('<!DOCTYPE html>'));
-  check('the signature names the professional', email('x').includes('Tia Chinaglia'));
+  check('the signature names the professional', email('x').includes('Mattia Chinaglia'));
   check('no street address anywhere in the email', !email('x').includes('Labriola'));
 }
 console.log('\n── Edge cases ─────────────────────────────────────────────────');

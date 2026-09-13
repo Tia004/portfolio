@@ -73,10 +73,10 @@ export default function AutoEmailSender() {
   // Template fields
   const [templateSubject, setTemplateSubject] = useState('Opportunità di collaborazione per {azienda}');
   const [templateBody, setTemplateBody] = useState(
-    `Ciao {nome},\n\nHo visto i progetti recenti di {azienda} e ho pensato potesse interessarti dare un'occhiata alle mie ultime realizzazioni di design e sviluppo web su misura.\n\nPossiamo organizzare una breve call conoscitiva senza impegno?\n\nA presto,\nTia Chinaglia — Designer & Developer`
+    `Ciao {nome},\n\nHo visto con grande interesse i progetti di {azienda} e credo ci sia un'ottima opportunità per valorizzare la vostra presenza online con una piattaforma web ad alte prestazioni, moderna e curata nei dettagli.\n\nHo pensato a una proposta su misura per voi. Possiamo organizzare una breve call conoscitiva senza impegno?\n\nA presto,\nMattia Chinaglia — Designer & Full-Stack Developer`
   );
   const [emailStyle, setEmailStyle] = useState<'branded' | 'direct'>('branded');
-  const [badgeText, setBadgeText] = useState('Comunicazione Ufficiale');
+  const [badgeText, setBadgeText] = useState('Proposta Dedicata');
   const [ctaText, setCtaText] = useState('Visita il Portfolio');
   const [ctaUrl, setCtaUrl] = useState('https://tiadesigns.it');
 
@@ -640,7 +640,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       return `<div style="padding: 24px; font-family: -apple-system, sans-serif; background: #ffffff; color: #222; border-radius: 12px;">
         ${paragraphs}
         <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; font-size: 13px; color: #666;">
-          <strong>Tia Chinaglia</strong> — Designer & Developer<br />
+          <strong>Mattia Chinaglia</strong> — Designer & Developer<br />
           <a href="https://tiadesigns.it" style="color: #0d9488;">tiadesigns.it</a>
         </div>
       </div>`;
@@ -652,6 +652,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       badgeText,
       ctaText: ctaText || undefined,
       ctaUrl: ctaUrl || undefined,
+      forPreview: true,
     });
   }, [previewItem, emailStyle, badgeText, ctaText, ctaUrl]);
 
@@ -1026,7 +1027,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     type="text"
                     value={badgeText}
                     onChange={(e) => setBadgeText(e.target.value)}
-                    placeholder="Comunicazione Ufficiale"
+                    placeholder="Proposta Dedicata"
                     className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none"
                   />
                 </div>
