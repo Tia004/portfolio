@@ -128,16 +128,11 @@ export function buildBrandedEmailHtml({
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#040d0a; padding:30px 15px;">
         <tr>
           <td align="center">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:620px; background-color:#071713; border:1px solid rgba(45,212,191,0.35); border-radius:20px; overflow:hidden;">
-
-              <!-- Top glow bar -->
-              <tr>
-                <td height="4" style="height:4px; line-height:4px; font-size:0; background-color:#2dd4bf; background-image:linear-gradient(90deg,#14b8a6,#2dd4bf,#5eead4,#14b8a6);">&nbsp;</td>
-              </tr>
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:620px; background-color:#081410; border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 48px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(45,212,191,0.05); border-radius:24px; overflow:hidden;">
 ${bannerHtml(bannerUrl, bannerAlt)}
               <!-- Header: the logo, and nothing else -->
               <tr>
-                <td style="padding:26px 32px 22px 32px; border-bottom:1px solid rgba(255,255,255,0.07); background-color:#040d0a;">
+                <td style="padding:28px 32px 22px 32px; border-bottom:1px solid rgba(255,255,255,0.07); background-color:#081410;">
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                       <td valign="middle">
@@ -150,11 +145,11 @@ ${bannerHtml(bannerUrl, bannerAlt)}
 
               <!-- Body -->
               <tr>
-                <td style="padding:32px 32px 26px 32px;">
+                <td style="padding:32px 32px 26px 32px; background-color:#081410;">
                   ${safeTitle ? `<h1 style="color:#ffffff; font-size:23px; font-weight:700; margin:0 0 18px 0; line-height:1.3;">${safeTitle}</h1>` : ''}
                   ${safeName ? `<p style="color:#5eead4; font-size:15px; font-weight:600; margin:0 0 18px 0;">Ciao ${safeName},</p>` : ''}
 
-                  <div style="background-color:#040d0a; border:1px solid rgba(255,255,255,0.06); border-left:3px solid #2dd4bf; border-radius:12px; padding:22px 26px;">
+                  <div style="background-color:#040c09; border:1px solid rgba(255,255,255,0.08); box-shadow:inset 0 1px 0 rgba(255,255,255,0.05); border-radius:14px; padding:22px 26px;">
                     ${contentHtml}
                   </div>
 
@@ -173,7 +168,7 @@ ${bannerHtml(bannerUrl, bannerAlt)}
 
               <!-- Signature -->
               <tr>
-                <td style="padding:0 32px 28px 32px;">
+                <td style="padding:0 32px 28px 32px; background-color:#081410;">
                   <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:20px;">
                     <p style="margin:0; color:#ffffff; font-size:14px; font-weight:700;">Mattia Chinaglia</p>
                     <p style="margin:3px 0 0 0; color:#2dd4bf; font-size:12px;">Founder & Lead Creative Developer • ${BRAND_NAME}</p>
@@ -187,7 +182,7 @@ ${bannerHtml(bannerUrl, bannerAlt)}
 
               <!-- Footer -->
               <tr>
-                <td style="background-color:#030b09; padding:18px 32px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
+                <td style="background-color:#040a08; padding:18px 32px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
                   <p style="margin:0; color:#6b7280; font-size:11px; line-height:1.6;">
                     Proposta inviata da Mattia Chinaglia • ${BRAND_NAME} • Mantova, Italia<br />
                     Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.
