@@ -108,8 +108,8 @@ export default function AutoEmailSender() {
   // Helper to substitute variables
   const substituteVariables = (template: string, row: RecipientRow): string => {
     let result = template;
-    const nameVal = row.name || 'Gentile Cliente';
-    const companyVal = row.company || 'la vostra azienda';
+    const nameVal = row.name || row.company || '';
+    const companyVal = row.company || row.name || 'la vostra azienda';
     const emailVal = row.email || '';
 
     result = result.replace(/\{nome\}|\{name\}/gi, nameVal);
@@ -463,6 +463,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
     const resolvedSubject = sampleRow.customSubject || substituteVariables(templateSubject, sampleRow);
     const resolvedBody = sampleRow.customBody || substituteVariables(templateBody, sampleRow);
+    const resolvedName = sampleRow.name || sampleRow.company || undefined;
 
     setIsSendingTest(true);
     try {
@@ -471,7 +472,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testEmailAddress,
-          name: sampleRow.name,
+          name: resolvedName,
           subject: `[TEST] ${resolvedSubject}`,
           body: resolvedBody,
           style: emailStyle,
@@ -494,6 +495,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
   const sendSingleRecipient = async (row: RecipientRow): Promise<{ success: boolean; error?: string }> => {
     const resolvedSubject = row.customSubject || substituteVariables(templateSubject, row);
     const resolvedBody = row.customBody || substituteVariables(templateBody, row);
+    const resolvedName = row.name || row.company || undefined;
 
     try {
       const res = await fetch('/api/master/emails/auto-send', {
@@ -501,7 +503,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: row.email,
-          name: row.name,
+          name: resolvedName,
           subject: resolvedSubject,
           body: resolvedBody,
           style: emailStyle,
@@ -643,9 +645,10 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       };
     }
     const found = recipients.find((r) => r.id === previewRecipientId) || recipients[0];
+    const resolvedName = found.name || found.company || undefined;
     return {
       email: found.email,
-      name: found.name || 'Gentile Cliente',
+      name: resolvedName,
       company: found.company || 'la vostra azienda',
       subject: found.customSubject || substituteVariables(templateSubject, found),
       body: found.customBody || substituteVariables(templateBody, found),
@@ -1135,7 +1138,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-neutral-400">
                 Anteprima per:{' '}
-                <strong className="text-teal-300">{previewItem.name}</strong> ({previewItem.email})
+                <strong className="text-teal-300">{previewItem.name || previewItem.company}</strong> ({previewItem.email})
               </span>
               <button
                 type="button"
@@ -1416,7 +1419,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
               <div>
                 <h4 className="font-bold text-white text-base">Anteprima Reale Destinatario</h4>
                 <p className="text-xs text-neutral-400">
-                  Per: <strong className="text-teal-300">{previewItem.name}</strong> ({previewItem.email})
+                  Per: <strong className="text-teal-300">{previewItem.name || previewItem.company}</strong> ({previewItem.email})
                 </p>
               </div>
               <button
