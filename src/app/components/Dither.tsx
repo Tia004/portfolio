@@ -4,13 +4,14 @@
 import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { reportWebGLContext } from '@/lib/webgl-telemetry';
+import { reportWebGLContext, isSoftwareRenderer } from '@/lib/webgl-telemetry';
 
-// Freeze watchdog sampling: 5 horizontal strips × 45 px = 225 pixels whose
-// raw bytes are compared between checks (12s of identical bytes while the tab
-// is visible means the canvas stopped producing frames).
-const SIGNATURE_ROWS = 5;
-const ROW_SAMPLES = 45;
+// Freeze watchdog: ONE small block of pixels whose raw bytes are compared
+// between checks. One readPixels call per check — each call on a
+// preserveDrawingBuffer canvas forces a GPU→CPU sync, so the watchdog must
+// never read more than a single rectangle per tick.
+const SIGNATURE_W = 160;
+const SIGNATURE_H = 48;
 
 // ── Shaders (exact React Bits source) ────────────────────────
 
@@ -197,7 +198,11 @@ function DitheredWaves({
   const mouseRef = useRef(new THREE.Vector2());
   const { viewport, gl } = useThree();
 
-  const uniformsRef = useRef({
+  // Created once per mount via useState's lazy initialiser (not useRef): the
+  // values are driven imperatively from useFrame through the material's cloned
+  // uniforms, so the object only needs to exist and be stable — reading a ref
+  // during render is exactly what the react-hooks/refs rule flags.
+  const [uniforms] = useState(() => ({
     time: new THREE.Uniform(0),
     resolution: new THREE.Uniform(new THREE.Vector2(0, 0)),
     waveSpeed: new THREE.Uniform(waveSpeed),
@@ -209,7 +214,7 @@ function DitheredWaves({
     mouseRadius: new THREE.Uniform(mouseRadius),
     colorNum: new THREE.Uniform(colorNum),
     pixelSize: new THREE.Uniform(pixelSize),
-  });
+  }));
 
   const prevColor = useRef([...waveColor]);
   const drawBufferSize = useRef(new THREE.Vector2());
@@ -220,7 +225,15 @@ function DitheredWaves({
   // the time the splash fades.
   const readyFiredRef = useRef(false);
 
-  useFrame(({ clock }) => {
+  // Own elapsed time instead of three's `clock`: three r183 deprecated
+  // THREE.Clock (the "THREE.Clock has been deprecated" warning in the console
+  // came from @react-three/fiber instantiating it), and accumulating a delta
+  // ourselves also avoids a time jump when the loop resumes after the hero
+  // scrolls back into view.
+  const elapsedRef = useRef(0);
+  const lastTickRef = useRef<number | null>(null);
+
+  useFrame(() => {
     if (!mesh.current) return;
     if (!readyFiredRef.current) {
       readyFiredRef.current = true;
@@ -238,7 +251,12 @@ function DitheredWaves({
     const res = mat.uniforms.resolution.value as THREE.Vector2;
     const db = gl.getDrawingBufferSize(drawBufferSize.current);
     if (res.x !== db.x || res.y !== db.y) res.copy(db);
-    if (!disableAnimation) mat.uniforms.time.value = clock.getElapsedTime();
+    const now = performance.now();
+    if (!disableAnimation && lastTickRef.current !== null) {
+      elapsedRef.current += Math.min(0.1, (now - lastTickRef.current) / 1000);
+    }
+    lastTickRef.current = now;
+    if (!disableAnimation) mat.uniforms.time.value = elapsedRef.current;
     mat.uniforms.waveSpeed.value = waveSpeed;
     mat.uniforms.waveFrequency.value = waveFrequency;
     mat.uniforms.waveAmplitude.value = waveAmplitude;
@@ -265,7 +283,7 @@ function DitheredWaves({
         <shaderMaterial
           vertexShader={waveVertexShader}
           fragmentShader={waveFragmentShader}
-          uniforms={uniformsRef.current}
+          uniforms={uniforms}
         />
       </mesh>
       <mesh
@@ -354,18 +372,23 @@ export default function Dither({
   // wait for), so fire tia:dither-ready immediately rather than letting the
   // splash hang until its safety cap.
   useEffect(() => {
-    try {
-      const probe = document.createElement('canvas');
-      const gl = probe.getContext('webgl2') || probe.getContext('webgl');
-      if (!gl) {
-        setGlFailed(true);
-        (window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady = true;
-        window.dispatchEvent(new Event('tia:dither-ready'));
-      }
-    } catch {
+    const bail = () => {
       setGlFailed(true);
       (window as Window & { __tiaDitherReady?: boolean }).__tiaDitherReady = true;
       window.dispatchEvent(new Event('tia:dither-ready'));
+    };
+    try {
+      const probe = document.createElement('canvas');
+      const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+      // No context, or a SOFTWARE one (SwiftShader / llvmpipe / "Microsoft
+      // Basic Render Driver"): a full-screen multi-octave noise shader on a
+      // CPU rasteriser runs at a handful of frames per second — that is the
+      // "site freezes on Windows" report — and its fast-math sin/cos can
+      // saturate the field into a flat colour wash. The static teal base below
+      // has the same palette, so skipping WebGL is both invisible and fast.
+      if (!gl || isSoftwareRenderer(gl)) bail();
+    } catch {
+      bail();
     }
   }, []);
 
@@ -402,19 +425,33 @@ export default function Dither({
       try {
         const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
         if (!gl) return null;
-        const px = new Uint8Array(4);
-        const COLS = 12;
-        const ROWS = 8;
+        // FOUR readPixels calls, not 96. Every gl.readPixels on a
+        // preserveDrawingBuffer canvas forces a GPU→CPU sync, so the old 96
+        // single-pixel grid flushed the pipeline ~96 times per 1.5s — a
+        // visible stall on integrated GPUs and the main cause of the
+        // "freezes on Windows" report. Four spread-out 64×24 blocks (6144
+        // pixels) still tell a structured field from a flat fill.
+        const REGION_W = 64;
+        const REGION_H = 24;
+        const buffer = new Uint8Array(REGION_W * REGION_H * 4);
         let min = 255;
         let max = 0;
-        for (let ry = 0; ry < ROWS; ry++) {
-          for (let rx = 0; rx < COLS; rx++) {
-            const x = Math.min(canvas.width - 1, Math.floor(((rx + 0.5) / COLS) * canvas.width));
-            const y = Math.min(canvas.height - 1, Math.floor(((ry + 0.5) / ROWS) * canvas.height));
-            gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-            const l = 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
-            if (l < min) min = l;
-            if (l > max) max = l;
+        for (const fy of [0.12, 0.88]) {
+          for (const fx of [0.08, 0.92]) {
+            const x = Math.min(
+              Math.max(0, Math.floor(canvas.width * fx) - REGION_W / 2),
+              Math.max(0, canvas.width - REGION_W)
+            );
+            const y = Math.min(
+              Math.max(0, Math.floor(canvas.height * fy) - REGION_H / 2),
+              Math.max(0, canvas.height - REGION_H)
+            );
+            gl.readPixels(x, y, REGION_W, REGION_H, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+            for (let i = 0; i < buffer.length; i += 4) {
+              const l = 0.2126 * buffer[i] + 0.7152 * buffer[i + 1] + 0.0722 * buffer[i + 2];
+              if (l < min) min = l;
+              if (l > max) max = l;
+            }
           }
         }
         return max - min < 4;
@@ -450,10 +487,10 @@ export default function Dither({
         setCanvasBroken(true);
         if (brokenRetryTimerRef.current) window.clearTimeout(brokenRetryTimerRef.current);
         brokenRetryTimerRef.current = window.setTimeout(() => setCanvasBroken(false), 15_000);
-        timer = window.setTimeout(run, 1500);
+        timer = window.setTimeout(run, 4000);
         return;
       }
-      timer = window.setTimeout(run, 1500);
+      timer = window.setTimeout(run, 4000);
     };
 
     timer = window.setTimeout(run, 2000);
@@ -489,12 +526,21 @@ export default function Dither({
       try {
         const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
         if (!gl) return null;
-        const row = new Uint8Array(ROW_SAMPLES * 4);
+        const w = Math.min(canvas.width, SIGNATURE_W);
+        const h = Math.min(canvas.height, SIGNATURE_H);
+        const block = new Uint8Array(w * h * 4);
+        gl.readPixels(
+          Math.max(0, (canvas.width - w) >> 1),
+          Math.max(0, (canvas.height - h) >> 1),
+          w,
+          h,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          block
+        );
         let sig = '';
-        for (let i = 0; i < SIGNATURE_ROWS; i++) {
-          const y = Math.min(canvas.height - 1, Math.floor(((i + 0.5) / SIGNATURE_ROWS) * canvas.height));
-          gl.readPixels(0, y, ROW_SAMPLES, 1, gl.RGBA, gl.UNSIGNED_BYTE, row);
-          for (let k = 0; k < row.length; k++) sig += String.fromCharCode(row[k]);
+        for (let k = 0; k < block.length; k += 4) {
+          sig += String.fromCharCode(block[k], block[k + 1], block[k + 2]);
         }
         return sig;
       } catch {
@@ -513,7 +559,7 @@ export default function Dither({
         if (sig !== null) {
           frozenStreakRef.current = sig === lastSignatureRef.current ? frozenStreakRef.current + 1 : 0;
           lastSignatureRef.current = sig;
-          if (frozenStreakRef.current >= 6) {
+          if (frozenStreakRef.current >= 8) {
             frozenStreakRef.current = 0;
             lastSignatureRef.current = null;
             console.warn('[dither] frozen frame — remounting the WebGL canvas');
@@ -581,7 +627,10 @@ export default function Dither({
           camera={{ position: [0, 0, 6] }}
           dpr={1}
           frameloop={paused ? 'never' : 'always'}
-          gl={{ antialias: true, preserveDrawingBuffer: true }}
+          // antialias:false — the shader quantises every channel to ~8 levels,
+          // so MSAA cannot smooth anything on this full-screen quad; it only
+          // adds a resolve pass per frame (measurable on integrated GPUs).
+          gl={{ antialias: false, preserveDrawingBuffer: true }}
           onCreated={({ gl }) => {
             // Track context loss so the black-output detector above doesn't
             // mistake a lost (blank) context for a broken shader. three.js

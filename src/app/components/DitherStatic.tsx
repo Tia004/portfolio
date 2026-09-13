@@ -23,8 +23,13 @@
 // output, not a boring regular grid. Two scales layered give the waves depth.
 // baseFrequency stays LOW (0.34 / 0.16): high frequencies (≥0.7) are exactly
 // what reads as "50s TV static" instead of dither grain.
-const DITHER_FINE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.34' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  16 0 0 0 -7.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
-const DITHER_COARSE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  14 0 0 0 -7.0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+// The dot density is set by the alpha row (slope + offset) of the colour
+// matrix: slope 9 / offset -5.6 keeps roughly a third of the noise field,
+// which is what reads as SPARSE dither grain. (The old slope 16 / offset -7.2
+// covered most of the field and, layered under the radial wash, turned the
+// fallback into a solid teal blanket.)
+const DITHER_FINE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.34' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  9 0 0 0 -5.6'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+const DITHER_COARSE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  8 0 0 0 -5.4'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
 
 export function StaticDitherTexture() {
   // Teal in CSS form (waveColor is normalized RGB ≈ 0.165, 0.718, 0.624).
@@ -37,19 +42,25 @@ export function StaticDitherTexture() {
       {/* Deep teal field — a soft, low-alpha wash that follows the shader's
           bright/dark balance (bright mass upper-centre, dimmer right and left)
           without ever approaching full mint. */}
+      {/* BRIGHTNESS BUDGET: the shader's own field measures (on a healthy GPU)
+          mean luminance ~61/255 with peaks around 150 — mostly dark, teal only
+          in the ridges. Anything brighter here is a visible defect, because
+          this layer is what shows on machines without usable WebGL. The alphas
+          below land the same ballpark (measured peak ~90, mean ~40): a dark
+          field with teal ridges, not a green wash over the hero. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            `radial-gradient(ellipse 85% 70% at 46% 32%, ${tealRgba(0.58)}, rgba(0,0,0,0) 72%),` +
-            `radial-gradient(ellipse 55% 45% at 78% 74%, ${tealRgba(0.38)}, rgba(0,0,0,0) 70%),` +
-            `radial-gradient(ellipse 40% 32% at 22% 62%, ${tealRgba(0.26)}, rgba(0,0,0,0) 68%)`,
+            `radial-gradient(ellipse 85% 70% at 46% 32%, ${tealRgba(0.30)}, rgba(0,0,0,0) 72%),` +
+            `radial-gradient(ellipse 55% 45% at 78% 74%, ${tealRgba(0.19)}, rgba(0,0,0,0) 70%),` +
+            `radial-gradient(ellipse 40% 32% at 22% 62%, ${tealRgba(0.13)}, rgba(0,0,0,0) 68%)`,
         }}
       />
       {/* Irregular dithered dots (fine + coarse) — the pixelated character of
           the shader output. Low opacity: this is texture, not noise. */}
-      <div className="absolute inset-0" style={{ backgroundImage: DITHER_FINE_URI, opacity: 0.45 }} />
-      <div className="absolute inset-0" style={{ backgroundImage: DITHER_COARSE_URI, opacity: 0.28 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_FINE_URI, opacity: 0.22 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_COARSE_URI, opacity: 0.13 }} />
     </div>
   );
 }

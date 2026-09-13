@@ -28,6 +28,38 @@ export interface WebGLContextEventInput {
   event?: Event | null;
 }
 
+// Renderer strings that mean "no GPU": Chromium's software rasteriser
+// (SwiftShader), Mesa's llvmpipe/softpipe and Windows' "Microsoft Basic
+// Render Driver". A full-screen shader on these runs at a few frames per
+// second (the site freezes) and their fragment precision/approximations can
+// blow the output up to a flat saturated field (the "green wash"). Detecting
+// them lets the background components skip WebGL entirely and use the static
+// layer instead — same look, no freeze.
+const SOFTWARE_RENDERER_PATTERNS = [
+  'swiftshader',
+  'software',
+  'llvmpipe',
+  'softpipe',
+  'basic render driver',
+  'microsoft basic',
+  'mesa offscreen',
+];
+
+export function isSoftwareRenderer(
+  gl: WebGLRenderingContext | WebGL2RenderingContext | null | undefined
+): boolean {
+  if (!gl) return true;
+  try {
+    const debug = gl.getExtension('WEBGL_debug_renderer_info');
+    if (!debug) return false; // extension hidden — assume real hardware
+    const renderer = String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '').toLowerCase();
+    if (!renderer) return false;
+    return SOFTWARE_RENDERER_PATTERNS.some((pattern) => renderer.includes(pattern));
+  } catch {
+    return false;
+  }
+}
+
 function asContextEvent(event?: Event | null): WebGLContextEvent | null {
   if (!event) return null;
   const evt = event as WebGLContextEvent;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { reportWebGLContext } from '@/lib/webgl-telemetry';
+import { reportWebGLContext, isSoftwareRenderer } from '@/lib/webgl-telemetry';
 
 export type MoltenMetalColorMode = 'molten' | 'ember' | 'frost';
 
@@ -108,7 +108,14 @@ void main() {
     p *= warp;
     float t = r - time / (n + 3.0);
     i -= p + vec2(cos(t - i.x - r) + sin(t + i.y), sin(t - i.y) + cos(t + i.x) + r);
-    c += glowCore / length(vec2(sin(i.x + t), cos(i.y + t)));
+    // The two components have DIFFERENT arguments, so this length can approach
+    // zero and 1/length can spike to enormous values. On some drivers (and
+    // with fast-math sin/cos) one spike was enough to push the accumulator past the
+    // clamp below and blow the whole background out into a flat saturated
+    // wash — the "green halo over the entire site" that only showed on some
+    // machines. Bounding the divisor keeps the filaments identical where the
+    // maths is well behaved and makes the blow-up impossible elsewhere.
+    c += glowCore / max(length(vec2(sin(i.x + t), cos(i.y + t))), 0.02);
   }
 
   c /= 6.0;
@@ -314,9 +321,13 @@ export default function MoltenMetal({
       powerPreference: 'low-power',
     }) as WebGL2RenderingContext | null;
 
-    if (!gl) {
-      // No WebGL2 — the CSS fallback is already visible. Resolve the splash
-      // immediately instead of waiting for a canvas that can never compile.
+    if (!gl || isSoftwareRenderer(gl)) {
+      // No WebGL2, or a SOFTWARE renderer (SwiftShader / llvmpipe / "Microsoft
+      // Basic Render Driver"): this full-screen shader on a CPU rasteriser runs
+      // at a few frames per second and freezes the page. The CSS fallback
+      // (.molten-metal-container gradients) is already visible, so skipping
+      // WebGL is invisible — and resolves the splash immediately instead of
+      // waiting for a canvas that can never be fast enough.
       container.removeChild(canvas);
       signalReady();
       return;

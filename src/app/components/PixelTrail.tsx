@@ -15,6 +15,10 @@ interface SceneProps {
   easingFunction: (x: number) => number;
   pixelColor: string;
   paused: boolean;
+  /** True only after a real pointer movement has been seen — see the arm gate
+   *  in PixelTrail below. Keeps the fullscreen layer perfectly transparent
+   *  until there is a legitimate trail to draw. */
+  armed: boolean;
 }
 
 interface PixelTrailProps {
@@ -37,6 +41,7 @@ const DotMaterial = shaderMaterial(
     pixelColor: new THREE.Color('#ffffff'),
     cursorGrid: new THREE.Vector2(-1, -1),
     time: 0,
+    uArmed: 0,
   },
   /* glsl vertex shader */ `
     varying vec2 vUv;
@@ -53,6 +58,7 @@ const DotMaterial = shaderMaterial(
     uniform vec3 pixelColor;
     uniform vec2 cursorGrid;
     uniform float time;
+    uniform float uArmed;
 
     vec2 coverUv(vec2 uv) {
       vec2 s = resolution.xy / max(resolution.x, resolution.y);
@@ -61,6 +67,15 @@ const DotMaterial = shaderMaterial(
     }
 
     void main() {
+      // Fail-safe: with a non-finite or zero resolution every uv becomes NaN
+      // and NaN behaviour is DRIVER-DEPENDENT — on some GPUs it collapses the
+      // whole quad into one flat colour, which is exactly how the fullscreen
+      // cursor layer turned into a teal wash over the entire site on some
+      // machines. Draw nothing instead of drawing garbage.
+      if (!(resolution.x > 0.0) || !(resolution.y > 0.0)) {
+        gl_FragColor = vec4(0.0);
+        return;
+      }
       vec2 screenUv = gl_FragCoord.xy / resolution;
       vec2 uv = coverUv(screenUv);
 
@@ -122,7 +137,15 @@ const DotMaterial = shaderMaterial(
       idleAlpha = max(dotAlpha, ringAlpha);
 
       float trailAlpha = pow(rawTrail, 0.55);
-      float alpha = max(trailAlpha, idleAlpha);
+      // uArmed is 0 until the pointer has actually moved. This layer covers
+      // the WHOLE viewport at z-index 99999, so before the first real pointer
+      // event there is nothing legitimate to show — while the trail render
+      // target, never written yet, can hold stale/uninitialised bytes on some
+      // drivers (Windows/ANGLE, software renderers) that read back as a broad
+      // teal field. That was the "green halo over the entire site" that only
+      // appeared on some machines. Arming the material on the first pointer
+      // event removes the whole class of failure.
+      float alpha = max(trailAlpha, idleAlpha) * uArmed;
 
       // Ring color — lighter and more saturated than the trail, so the
       // shockwave reads as a distinct visual layer (like a white flash).
@@ -136,7 +159,7 @@ const DotMaterial = shaderMaterial(
   `
 );
 
-function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused }: SceneProps) {
+function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused, armed }: SceneProps) {
   const size = useThree((s) => s.size);
   const viewport = useThree((s) => s.viewport);
   const invalidate = useThree((s) => s.invalidate);
@@ -323,6 +346,16 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
           lastIdlePaintRef.current = now;
           dotMaterialRef.current.uniforms.time.value = now / 1000;
           updateCursorGrid(lastUvRef.current);
+          // Re-stamp the trail at the pointer position on every idle tick.
+          // The trail texture only decays when its material repaints, and
+          // repainting needs a pointer event — so with the pointer held still
+          // the trail froze at whatever it last held, INCLUDING the broad
+          // glow its render target starts with. That frozen glow is what the
+          // fullscreen layer painted over the whole site. Repainting lets the
+          // trail decay to nothing, which is also the signal the idle dot's
+          // pop animation waits for (its comment always assumed the trail
+          // fades out here).
+          onMoveRef.current({ uv: lastUvRef.current } as unknown as ThreeEvent<PointerEvent>);
           invalidateRef.current();
         }
         // If mouse moved again, switch back to shared ticker
@@ -375,6 +408,29 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
     };
   }, [paused, trail]);
 
+  // Arm gate: alpha 0 until a real pointer movement has been seen.
+  useEffect(() => {
+    dotMaterial.uniforms.uArmed.value = armed ? 1 : 0;
+    invalidate();
+  }, [armed, dotMaterial, invalidate]);
+
+  // ── resolution MUST be a THREE.Vector2 ────────────────────────────────
+  // It used to be handed to the material as a plain [w, h] array (the
+  // <primitive resolution={...}> prop below). drei's shaderMaterial defines a
+  // setter per uniform that stores the raw value, so the vec2 uniform held an
+  // ARRAY — and three's vec2 upload reads v.x / v.y, which arrays do not have.
+  // The shader therefore received NaN, computed NaN uv for every fragment and
+  // painted ONE flat colour across the fullscreen quad: the teal wash that
+  // covered the whole site (this layer sits at z-index 99999) on some GPUs and
+  // drivers but not others. Setting the Vector2 explicitly removes the NaN.
+  useEffect(() => {
+    (dotMaterial.uniforms.resolution.value as THREE.Vector2).set(
+      Math.max(1, size.width * viewport.dpr),
+      Math.max(1, size.height * viewport.dpr)
+    );
+    invalidate();
+  }, [size.width, size.height, viewport.dpr, dotMaterial, invalidate]);
+
   const scale = Math.max(viewport.width, viewport.height) / 2;
 
   return (
@@ -383,7 +439,6 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
       <primitive
         object={dotMaterial}
         gridSize={gridSize}
-        resolution={[size.width * viewport.dpr, size.height * viewport.dpr]}
         mouseTrail={trail ?? emptyTrailTexture}
       />
     </mesh>
@@ -409,6 +464,30 @@ export default function PixelTrail({
   const [paused, setPaused] = useState(false);
   // Sync check — isLowEndDevice() is cached, zero-cost after first call
   const [lowEnd, setLowEnd] = useState(false);
+
+  // ── Arm gate ─────────────────────────────────────────────────────────
+  // The cursor canvas is a FULL-VIEWPORT layer at z-index 99999: whatever it
+  // paints is painted over the entire site (nav, hero, modals — everything).
+  // Until the pointer has actually moved, its trail render target has no
+  // legitimate content, and on some drivers (Windows/ANGLE, software
+  // renderers) reading it back yields stale/uninitialised bytes that the
+  // shader turns into a broad teal wash — the "green halo over the whole
+  // site" that only showed up on some machines. Arming on the first real
+  // pointer event removes that failure mode completely; the trail is a hover
+  // decoration, so it is invisible until a mouse actually moves anyway.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (armed) return;
+    const arm = (e: PointerEvent) => {
+      // Touch has no cursor: a finger drag must not paint a trail.
+      if (e.pointerType === 'touch') return;
+      setArmed(true);
+    };
+    // Capture phase: must run BEFORE the bubble-phase mousemove handler that
+    // paints the first trail point, so the very first movement is drawn.
+    window.addEventListener('pointermove', arm, true);
+    return () => window.removeEventListener('pointermove', arm, true);
+  }, [armed]);
 
   // isLowEndDevice() uses browser-only APIs — defer to client to avoid
   // hydration mismatch (same pattern as ClickSpark).
@@ -442,6 +521,10 @@ export default function PixelTrail({
         height: '100vh',
         pointerEvents: 'none',
         zIndex: 99999,
+        // Belt and braces on top of the shader's uArmed gate: while unarmed the
+        // layer is not just transparent, it is invisible.
+        opacity: armed ? 1 : 0,
+        transition: 'opacity 200ms ease',
       }}
     >
       <Canvas
@@ -472,6 +555,7 @@ export default function PixelTrail({
           easingFunction={easingFunction}
           pixelColor={color}
           paused={paused}
+          armed={armed}
         />
       </Canvas>
     </div>

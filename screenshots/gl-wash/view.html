@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>GL wash inspection</title>
+    <style>
+      body { margin: 0; background: #222; color: #eee; font: 13px/1.4 -apple-system, sans-serif; }
+      figure { margin: 0 0 18px; }
+      figcaption { padding: 6px 10px; background: #111; font-weight: 600; }
+      img { display: block; width: 100%; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; }
+    </style>
+  </head>
+  <body>
+    <figure>
+      <figcaption>1 · hero, GPU (macOS) — baseline</figcaption>
+      <img src="./gpu-hero.png" />
+    </figure>
+    <figure>
+      <figcaption>2 · mid page (scroll 2200) — baseline</figcaption>
+      <img src="./gpu-mid.png" />
+    </figure>
+    <div class="grid">
+      <figure>
+        <figcaption>3 · hero, all canvases hidden</figcaption>
+        <img src="./diag/y0-no-both.png" />
+      </figure>
+      <figure>
+        <figcaption>4 · hero, dither hidden</figcaption>
+        <img src="./diag/y0-no-dither.png" />
+      </figure>
+    </div>
+  </body>
+</html>
