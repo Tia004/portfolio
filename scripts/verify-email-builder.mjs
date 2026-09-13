@@ -110,6 +110,8 @@ console.log('\n── Template options ─────────────�
 {
   const greeting = email('Corpo.', { recipientName: 'Marco' });
   check('greeting uses the recipient name', greeting.includes('Ciao Marco,'));
+  const dupCheck = email('Ciao Marco,\n\nHo visto i tuoi progetti.', { recipientName: 'Marco' });
+  check('greeting is not duplicated when body already starts with Ciao', count(dupCheck, 'Ciao Marco,') === 1, String(count(dupCheck, 'Ciao Marco,')));
   check('a name with markup is escaped', email('Corpo.', { recipientName: '<b>x</b>' }).includes('&lt;b&gt;x&lt;/b&gt;'));
   const pre = email('Corpo.', { preheaderText: 'Anteprima in inbox' });
   check('hidden preheader is rendered', pre.includes('display:none') && pre.includes('Anteprima in inbox'));

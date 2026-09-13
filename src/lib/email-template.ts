@@ -96,11 +96,20 @@ export function buildBrandedEmailHtml({
   logoUrl,
   forPreview,
 }: BrandedEmailOptions): string {
-  const contentHtml = renderEmailMarkdown(bodyMarkdown);
   const safeName = recipientName ? escapeEmailHtml(recipientName) : '';
   const safeTitle = title ? escapeEmailHtml(title) : '';
   const safeCtaText = ctaText ? escapeEmailHtml(ctaText) : '';
   const safeCtaUrl = ctaUrl ? escapeEmailHtml(ctaUrl) : '';
+
+  // Prevent duplicate greeting (e.g. "Ciao Marco," above the card AND "Ciao Marco," inside the card).
+  // If safeName is provided, strip any redundant greeting line from the start of bodyMarkdown.
+  let cleanBodyMarkdown = bodyMarkdown;
+  if (safeName) {
+    const leadingGreetingRegex = /^\s*(?:ciao|salve|buongiorno|buonasera|gentile|egregio|hey|hi|hello|dear)\b[^\n]*?(?:[,!:]|\s)\s*(?:\r?\n)+/i;
+    cleanBodyMarkdown = cleanBodyMarkdown.replace(leadingGreetingRegex, '');
+  }
+
+  const contentHtml = renderEmailMarkdown(cleanBodyMarkdown);
 
   const isBrowser = typeof window !== 'undefined';
   const effectiveLogoSrc = logoUrl || (isBrowser || forPreview ? REMOTE_LOGO_URL : CID_LOGO_URL);

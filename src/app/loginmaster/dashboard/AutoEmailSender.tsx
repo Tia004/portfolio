@@ -434,7 +434,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     const sampleRow: RecipientRow = recipients[0] || {
       id: 'test-preview',
       email: testEmailAddress,
-      name: 'Marco Rossi (Test)',
+      name: 'Marco Rossi',
       company: 'Azienda Esempio Srl',
       status: 'idle',
     };
