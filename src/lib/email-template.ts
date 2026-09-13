@@ -34,6 +34,8 @@ const LOGO_HEIGHT = 48;
 
 export interface BrandedEmailOptions {
   recipientName?: string;
+  /** Optional custom greeting override (e.g. "Spett.le Mantova Motor Giardino," or "Ciao Marco,") */
+  greeting?: string;
   title?: string;
   bodyMarkdown: string;
   ctaText?: string;
@@ -85,6 +87,7 @@ function bannerHtml(url?: string, alt?: string): string {
 
 export function buildBrandedEmailHtml({
   recipientName,
+  greeting,
   title,
   bodyMarkdown,
   ctaText,
@@ -97,15 +100,16 @@ export function buildBrandedEmailHtml({
   forPreview,
 }: BrandedEmailOptions): string {
   const safeName = recipientName ? escapeEmailHtml(recipientName) : '';
+  const safeGreeting = greeting ? escapeEmailHtml(greeting) : (safeName ? `Ciao ${safeName},` : '');
   const safeTitle = title ? escapeEmailHtml(title) : '';
   const safeCtaText = ctaText ? escapeEmailHtml(ctaText) : '';
   const safeCtaUrl = ctaUrl ? escapeEmailHtml(ctaUrl) : '';
 
   // Prevent duplicate greeting (e.g. "Ciao Marco," above the card AND "Ciao Marco," inside the card).
-  // If safeName is provided, strip any redundant greeting line from the start of bodyMarkdown.
+  // If safeGreeting or safeName is provided, strip any redundant greeting line from the start of bodyMarkdown.
   let cleanBodyMarkdown = bodyMarkdown;
-  if (safeName) {
-    const leadingGreetingRegex = /^\s*(?:ciao|salve|buongiorno|buonasera|gentile|egregio|hey|hi|hello|dear)\b[^\n]*?(?:[,!:]|\s)\s*(?:\r?\n)+/i;
+  if (safeGreeting || safeName) {
+    const leadingGreetingRegex = /^\s*(?:ciao|salve|buongiorno|buonasera|gentile|egregio|spett\.?le?|all['’]attenzione)\b[^\n]*?(?:[,!:]|\s)\s*(?:\r?\n)+/i;
     cleanBodyMarkdown = cleanBodyMarkdown.replace(leadingGreetingRegex, '');
   }
 
@@ -147,7 +151,7 @@ ${bannerHtml(bannerUrl, bannerAlt)}
               <tr>
                 <td style="padding:32px 32px 26px 32px; background-color:#081410;">
                   ${safeTitle ? `<h1 style="color:#ffffff; font-size:23px; font-weight:700; margin:0 0 18px 0; line-height:1.3;">${safeTitle}</h1>` : ''}
-                  ${safeName ? `<p style="color:#5eead4; font-size:15px; font-weight:600; margin:0 0 18px 0;">Ciao ${safeName},</p>` : ''}
+                  ${safeGreeting ? `<p style="color:#5eead4; font-size:15px; font-weight:600; margin:0 0 18px 0;">${safeGreeting}</p>` : ''}
 
                   <div style="background-color:#040c09; border:1px solid rgba(255,255,255,0.08); box-shadow:inset 0 1px 0 rgba(255,255,255,0.05); border-radius:14px; padding:22px 26px;">
                     ${contentHtml}

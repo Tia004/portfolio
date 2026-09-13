@@ -79,6 +79,7 @@ export default function AutoEmailSender() {
   const [badgeText, setBadgeText] = useState('Proposta Dedicata');
   const [ctaText, setCtaText] = useState('Visita il Portfolio');
   const [ctaUrl, setCtaUrl] = useState('https://tiadesigns.it');
+  const [companyGreetingFormat, setCompanyGreetingFormat] = useState<'spett_le' | 'team_di' | 'ciao'>('spett_le');
 
   // Sending configuration
   const [delayMs, setDelayMs] = useState<number>(600); // ms between emails
@@ -103,6 +104,24 @@ export default function AutoEmailSender() {
   const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage(null), 4000);
+  };
+
+  const resolveGreeting = (name?: string, company?: string): string | undefined => {
+    const cleanName = (name || '').trim();
+    const cleanCompany = (company || '').trim();
+    if (cleanName) {
+      return `Ciao ${cleanName},`;
+    }
+    if (cleanCompany) {
+      if (companyGreetingFormat === 'team_di') {
+        return `All'attenzione del team di ${cleanCompany},`;
+      }
+      if (companyGreetingFormat === 'ciao') {
+        return `Ciao ${cleanCompany},`;
+      }
+      return `Spett.le ${cleanCompany},`;
+    }
+    return undefined;
   };
 
   // Helper to substitute variables
@@ -464,6 +483,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     const resolvedSubject = sampleRow.customSubject || substituteVariables(templateSubject, sampleRow);
     const resolvedBody = sampleRow.customBody || substituteVariables(templateBody, sampleRow);
     const resolvedName = sampleRow.name || sampleRow.company || undefined;
+    const resolvedGreeting = resolveGreeting(sampleRow.name, sampleRow.company);
 
     setIsSendingTest(true);
     try {
@@ -473,6 +493,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
         body: JSON.stringify({
           to: testEmailAddress,
           name: resolvedName,
+          greeting: resolvedGreeting,
           subject: `[TEST] ${resolvedSubject}`,
           body: resolvedBody,
           style: emailStyle,
@@ -496,6 +517,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     const resolvedSubject = row.customSubject || substituteVariables(templateSubject, row);
     const resolvedBody = row.customBody || substituteVariables(templateBody, row);
     const resolvedName = row.name || row.company || undefined;
+    const resolvedGreeting = resolveGreeting(row.name, row.company);
 
     try {
       const res = await fetch('/api/master/emails/auto-send', {
@@ -504,6 +526,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
         body: JSON.stringify({
           to: row.email,
           name: resolvedName,
+          greeting: resolvedGreeting,
           subject: resolvedSubject,
           body: resolvedBody,
           style: emailStyle,
@@ -646,14 +669,16 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     }
     const found = recipients.find((r) => r.id === previewRecipientId) || recipients[0];
     const resolvedName = found.name || found.company || undefined;
+    const resolvedGreeting = resolveGreeting(found.name, found.company);
     return {
       email: found.email,
       name: resolvedName,
       company: found.company || 'la vostra azienda',
+      greeting: resolvedGreeting,
       subject: found.customSubject || substituteVariables(templateSubject, found),
       body: found.customBody || substituteVariables(templateBody, found),
     };
-  }, [recipients, previewRecipientId, templateSubject, templateBody]);
+  }, [recipients, previewRecipientId, templateSubject, templateBody, companyGreetingFormat]);
 
   // Rendered HTML preview
   const livePreviewHtml = useMemo(() => {
@@ -672,6 +697,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     }
     return buildBrandedEmailHtml({
       recipientName: previewItem.name,
+      greeting: previewItem.greeting,
       title: previewItem.subject,
       bodyMarkdown: previewItem.body,
       badgeText,
@@ -1060,7 +1086,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
             {/* Optional Branded Options */}
             {emailStyle === 'branded' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-black/30 border border-white/[0.04]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-black/30 border border-white/[0.04]">
                 <div>
                   <label className="block text-[10px] text-neutral-400 mb-1">Badge Superiore</label>
                   <input
@@ -1090,6 +1116,18 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     placeholder="https://tiadesigns.it"
                     className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-400 mb-1">Saluto Azienda (Senza Nome)</label>
+                  <select
+                    value={companyGreetingFormat}
+                    onChange={(e) => setCompanyGreetingFormat(e.target.value as any)}
+                    className="w-full px-2 py-1.5 rounded-lg bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-400"
+                  >
+                    <option value="spett_le">Spett.le [Azienda]</option>
+                    <option value="team_di">All'attenzione del team di [Azienda]</option>
+                    <option value="ciao">Ciao [Azienda]</option>
+                  </select>
                 </div>
               </div>
             )}

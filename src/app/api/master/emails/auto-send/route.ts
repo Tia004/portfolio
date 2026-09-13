@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
     const {
       to,
       name,
+      greeting,
       subject,
       body: emailBody,
       style = 'branded', // 'branded' | 'direct'
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     } else {
       html = buildBrandedEmailHtml({
         recipientName: name || undefined,
+        greeting: greeting || undefined,
         title: subject,
         bodyMarkdown: emailBody,
         badgeText,
