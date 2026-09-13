@@ -135,29 +135,46 @@ export default function AutoEmailSender() {
     return ',';
   };
 
-  // Parse CSV line handling quotes
-  const parseCsvLine = (line: string, delimiter: string): string[] => {
-    const result: string[] = [];
-    let current = '';
+  // Parse entire CSV respecting RFC 4180 rules (quotes, multiline fields, commas/semicolons/tabs)
+  const parseFullCsv = (text: string, delimiter: string): string[][] => {
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentCell = '';
     let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"' || char === "'") {
-        if (inQuotes && line[i + 1] === char) {
-          current += char;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"') {
+        if (inQuotes && text[i + 1] === '"') {
+          currentCell += '"';
           i++;
         } else {
           inQuotes = !inQuotes;
         }
       } else if (char === delimiter && !inQuotes) {
-        result.push(current.trim());
-        current = '';
+        currentRow.push(currentCell.trim());
+        currentCell = '';
+      } else if ((char === '\r' || char === '\n') && !inQuotes) {
+        if (char === '\r' && text[i + 1] === '\n') {
+          i++;
+        }
+        currentRow.push(currentCell.trim());
+        if (currentRow.some((c) => c !== '')) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentCell = '';
       } else {
-        current += char;
+        currentCell += char;
       }
     }
-    result.push(current.trim());
-    return result;
+    if (currentCell || currentRow.length > 0) {
+      currentRow.push(currentCell.trim());
+      if (currentRow.some((c) => c !== '')) {
+        rows.push(currentRow);
+      }
+    }
+    return rows;
   };
 
   // Handle CSV file upload
@@ -171,29 +188,35 @@ export default function AutoEmailSender() {
         const text = (e.target?.result as string) || '';
         // Remove BOM if present
         const cleanText = text.replace(/^\uFEFF/, '').trim();
-        const lines = cleanText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-
-        if (lines.length === 0) {
+        if (!cleanText) {
           showToast('Il file CSV è vuoto.', 'error');
           return;
         }
 
-        const delimiter = detectDelimiter(lines[0]);
-        const firstLineParsed = parseCsvLine(lines[0], delimiter);
+        const firstLineEnd = cleanText.search(/[\r\n]/);
+        const headerSample = firstLineEnd !== -1 ? cleanText.slice(0, firstLineEnd) : cleanText;
+        const delimiter = detectDelimiter(headerSample);
 
+        const allRows = parseFullCsv(cleanText, delimiter);
+        if (allRows.length === 0) {
+          showToast('Nessun dato valido trovato nel CSV.', 'error');
+          return;
+        }
+
+        const firstRow = allRows[0];
         // Check if first line contains headers or direct email
-        const hasEmailInFirst = firstLineParsed.some((cell) => cell.includes('@'));
+        const hasEmailInFirst = firstRow.some((cell) => cell.includes('@'));
 
         let headers: string[] = [];
-        let dataLines: string[] = [];
+        let dataRows: string[][] = [];
 
         if (hasEmailInFirst) {
           // No header line, generate synthetic headers
-          headers = firstLineParsed.map((_, idx) => (idx === 0 ? 'email' : idx === 1 ? 'nome' : `colonna_${idx + 1}`));
-          dataLines = lines;
+          headers = firstRow.map((_, idx) => (idx === 0 ? 'email' : idx === 1 ? 'nome' : `colonna_${idx + 1}`));
+          dataRows = allRows;
         } else {
-          headers = firstLineParsed.map((h) => h.toLowerCase().replace(/[^a-z0-9_]/gi, '_'));
-          dataLines = lines.slice(1);
+          headers = firstRow.map((h) => h.toLowerCase().replace(/[^a-z0-9_]/gi, '_'));
+          dataRows = allRows.slice(1);
         }
 
         setCsvHeaders(headers);
@@ -218,8 +241,7 @@ export default function AutoEmailSender() {
         const parsedRaw: Record<string, string>[] = [];
         const builtRecipients: RecipientRow[] = [];
 
-        dataLines.forEach((line, lineIdx) => {
-          const cells = parseCsvLine(line, delimiter);
+        dataRows.forEach((cells, lineIdx) => {
           const rowObj: Record<string, string> = {};
           headers.forEach((h, idx) => {
             rowObj[h] = cells[idx] || '';
@@ -233,8 +255,8 @@ export default function AutoEmailSender() {
               email: emailVal,
               name: nameCol ? rowObj[nameCol] || '' : '',
               company: companyCol ? rowObj[companyCol] || '' : '',
-              customSubject: subjectCol ? rowObj[subjectCol] : undefined,
-              customBody: bodyCol ? rowObj[bodyCol] : undefined,
+              customSubject: subjectCol && rowObj[subjectCol] ? rowObj[subjectCol] : undefined,
+              customBody: bodyCol && rowObj[bodyCol] ? rowObj[bodyCol] : undefined,
               extraData: rowObj,
               status: 'idle',
             });
@@ -265,8 +287,8 @@ export default function AutoEmailSender() {
           email: emailVal,
           name: newMapping.name ? rowObj[newMapping.name] || '' : '',
           company: newMapping.company ? rowObj[newMapping.company] || '' : '',
-          customSubject: newMapping.subject ? rowObj[newMapping.subject] : undefined,
-          customBody: newMapping.body ? rowObj[newMapping.body] : undefined,
+          customSubject: newMapping.subject && rowObj[newMapping.subject] ? rowObj[newMapping.subject] : undefined,
+          customBody: newMapping.body && rowObj[newMapping.body] ? rowObj[newMapping.body] : undefined,
           extraData: rowObj,
           status: 'idle',
         };
@@ -849,6 +871,21 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                         <select
                           value={columnMapping.subject}
                           onChange={(e) => applyColumnMapping({ ...columnMapping, subject: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-400"
+                        >
+                          <option value="">-- Usa Template --</option>
+                          {csvHeaders.map((h) => (
+                            <option key={h} value={h}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-neutral-400 mb-1">Corpo / Testo Custom</label>
+                        <select
+                          value={columnMapping.body}
+                          onChange={(e) => applyColumnMapping({ ...columnMapping, body: e.target.value })}
                           className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs focus:outline-none focus:border-teal-400"
                         >
                           <option value="">-- Usa Template --</option>
