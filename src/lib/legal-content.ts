@@ -135,7 +135,7 @@ export const TERMS_CONDITIONS: LegalDoc = {
     },
     {
       heading: '12. Informazioni sul Professionista e Contatti',
-      body: 'I presenti Termini e Condizioni sono resi da:\n\nTia Chinaglia — attività professionale esercitata in forma individuale\nSede operativa: Mantova, Italia\nEmail: info@tiadesigns.it\nSito: tiadesigns.it\nPartita IVA / Codice Fiscale: disponibile su richiesta scritta a info@tiadesigns.it e comunque indicato su ogni fattura e documento commerciale.\n\nPer qualsiasi domanda relativa a questi Termini e Condizioni, al preventivo o a un progetto in corso, è possibile scrivere all\'indirizzo email sopra indicato. Le comunicazioni si intendono ricevute quando inviate a tale indirizzo.',
+      body: 'I presenti Termini e Condizioni sono resi da:\n\nTia Chinaglia — attività professionale esercitata in forma individuale\nSede operativa: Mantova (MN), Italia — l\'indirizzo civico completo è comunicato per iscritto su richiesta e indicato nei contratti, nei preventivi firmati e nei documenti fiscali; non viene pubblicato online perché coincide con il domicilio del professionista.\nEmail: info@tiadesigns.it\nSito: tiadesigns.it\nPartita IVA / Codice Fiscale: disponibile su richiesta scritta a info@tiadesigns.it e comunque indicato su ogni fattura e documento commerciale.\n\nPer qualsiasi domanda relativa a questi Termini e Condizioni, al preventivo o a un progetto in corso, è possibile scrivere all\'indirizzo email sopra indicato. Le comunicazioni si intendono ricevute quando inviate a tale indirizzo.',
     },
     {
       heading: '13. Diritto di Recesso del Consumatore',
@@ -272,7 +272,7 @@ export const TERMS_CONDITIONS_EN: LegalDoc = {
     },
     {
       heading: '12. Information about the Professional and Contact',
-      body: 'These Terms and Conditions are issued by:\n\nTia Chinaglia — professional activity carried on as a sole practitioner\nOperating base: Mantua, Italy\nEmail: info@tiadesigns.it\nSite: tiadesigns.it\nVAT / Tax code: available on written request to info@tiadesigns.it and in any case stated on every invoice and commercial document.\n\nFor any question regarding these Terms and Conditions, a quote, or a project in progress, write to the email address above. Communications are deemed received when sent to that address.',
+      body: 'These Terms and Conditions are issued by:\n\nTia Chinaglia — professional activity carried on as a sole practitioner\nOperating base: Mantua (MN), Italy — the full street address is provided in writing on request and stated in contracts, signed quotes and tax documents; it is not published online because it coincides with the professional\'s private residence.\nEmail: info@tiadesigns.it\nSite: tiadesigns.it\nVAT / Tax code: available on written request to info@tiadesigns.it and in any case stated on every invoice and commercial document.\n\nFor any question regarding these Terms and Conditions, a quote, or a project in progress, write to the email address above. Communications are deemed received when sent to that address.',
     },
     {
       heading: '13. Consumer Right of Withdrawal',
@@ -409,7 +409,7 @@ export const TERMS_CONDITIONS_ES: LegalDoc = {
     },
     {
       heading: '12. Información sobre el Profesional y Contacto',
-      body: 'Estos Términos y Condiciones son emitidos por:\n\nTia Chinaglia — actividad profesional ejercida como profesional individual\nSede operativa: Mantua, Italia\nEmail: info@tiadesigns.it\nSitio: tiadesigns.it\nIVA / CIF: disponible previa solicitud escrita a info@tiadesigns.it y, en todo caso, indicado en cada factura y documento comercial.\n\nPara cualquier pregunta sobre estos Términos y Condiciones, el presupuesto o un proyecto en curso, escriba a la dirección de correo indicada. Las comunicaciones se entienden recibidas cuando se envían a esa dirección.',
+      body: 'Estos Términos y Condiciones son emitidos por:\n\nTia Chinaglia — actividad profesional ejercida como profesional individual\nSede operativa: Mantua (MN), Italia — la dirección completa se comunica por escrito a petición y se indica en los contratos, en los presupuestos firmados y en los documentos fiscales; no se publica online porque coincide con el domicilio del profesional.\nEmail: info@tiadesigns.it\nSitio: tiadesigns.it\nIVA / CIF: disponible previa solicitud escrita a info@tiadesigns.it y, en todo caso, indicado en cada factura y documento comercial.\n\nPara cualquier pregunta sobre estos Términos y Condiciones, el presupuesto o un proyecto en curso, escriba a la dirección de correo indicada. Las comunicaciones se entienden recibidas cuando se envían a esa dirección.',
     },
     {
       heading: '13. Derecho de Desistimiento del Consumidor',

@@ -89,6 +89,8 @@ async function processScheduledNewsletters(req: NextRequest) {
           title: campaign.subject,
           bodyMarkdown: campaign.bodyContent,
           badgeText: 'Newsletter Ufficiale',
+          // Stored with the campaign, rendered for the first time here.
+          preheaderText: campaign.previewText || undefined,
         });
 
         for (const email of resolvedEmails) {

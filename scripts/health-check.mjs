@@ -84,6 +84,22 @@ async function checkChatAi(sessionId) {
   }
 }
 
+// Domain-verification files served from public/.well-known/. They have no
+// extension and no route handles them, so a change to the static setup (a new
+// rewrite, a moved public folder, a CDN rule) can break them silently — and the
+// damage only shows up when Discord/Search Console re-checks the domain. The
+// check is cheap: fetch the file and compare the body byte for byte.
+async function checkWellKnownFiles() {
+  const started = Date.now();
+  const res = await fetch(`${BASE}/.well-known/discord`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`/.well-known/discord returned ${res.status}`);
+  const body = (await res.text()).trim();
+  if (!/^dh=[a-f0-9]{32,64}$/.test(body)) {
+    throw new Error(`/.well-known/discord has an unexpected body: ${body.slice(0, 24)}…`);
+  }
+  console.log(`  ✅ Domain verify   (${Date.now() - started}ms)  → discord ${body.slice(3, 11)}…`);
+}
+
 // ── Main ────────────────────────────────────────────────────────
 
 let exitCode = 0;
@@ -93,6 +109,7 @@ console.log(`\n🔍 Health check — ${BASE}\n`);
 try {
   await waitForServer();
   await checkHomepage();
+  await checkWellKnownFiles();
   const sessionId = await checkChatSession();
   await checkChatAi(sessionId);
 } catch (err) {

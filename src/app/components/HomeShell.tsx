@@ -8,9 +8,12 @@ import type Lenis from 'lenis';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
 import ProcessTimeline from './ProcessTimeline';
-import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, getPackages, type ProjectData, type Review } from '@/lib/translations';
+import QuoteEstimator from './QuoteEstimator';
+import ReferralCard from './ReferralCard';
+import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
 import { trackClick, trackConversion } from '@/lib/analytics';
 import { setVisitorContext, bookingPrefillQuery } from '@/lib/booking-context';
+import { captureReferral } from '@/lib/referral';
 import { type ChatCategory } from '@/lib/chat-categories';
 import { moltenModulePromise } from './molten-preload';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
@@ -664,6 +667,21 @@ function StaggerMount({ index, children }: { index: number; children: React.Reac
 
 // ── PriceCard ─────────────────────────────────────────────────
 
+/**
+ * Instalments are offered on everything from this amount up. The number lives
+ * here, in ONE place: the cards only carry a "Rateizzabile" badge (no
+ * threshold repeated twelve times) and the rule is stated once, under the
+ * grid, via prezzi.installment_note. Change this constant to move the line.
+ */
+const INSTALLMENT_MIN = 1000;
+
+/** Euro value of a price label ('1.750', 'Da €3.250', 'from €1,200') → 1750. */
+function euroValue(label?: string): number {
+  if (!label) return 0;
+  const digits = label.replace(/[^\d]/g, '');
+  return digits ? Number(digits) : 0;
+}
+
 function PriceCard({
   title,
   price,
@@ -676,6 +694,7 @@ function PriceCard({
   hours,
   features,
   slotsNote,
+  installment,
   onTooltipShow,
   onTooltipHide,
   onRequestQuote,
@@ -691,6 +710,8 @@ function PriceCard({
   hours?: string;
   features: string[];
   slotsNote?: string;
+  /** True when the price qualifies for instalments (see INSTALLMENT_MIN). */
+  installment?: boolean;
   onTooltipShow: (text: string, el: HTMLElement) => void;
   onTooltipHide: () => void;
   onRequestQuote?: (serviceTitle: string) => void;
@@ -700,6 +721,7 @@ function PriceCard({
   const { getHandlers } = useTooltip(onTooltipShow, onTooltipHide, { showDelay: 300, hideDelay: 100 });
   const dlvHandlers = getHandlers(t('tooltip.enterprise_deadline', lang));
   const rapidaHandlers = getHandlers(t('tooltip.rapid_delivery', lang));
+  const installmentHandlers = getHandlers(t('prezzi.installment_tip', lang));
 
   // ── Position-based cascade delay ──
   // Cards further left start counting sooner. Delay computed once via IO.
@@ -788,6 +810,17 @@ function PriceCard({
               </span>
             )}
             {period && <span className="text-neutral-500 text-sm ml-1">{period}</span>}
+            {installment && (
+              // The badge says WHO qualifies; the tooltip (and the single note
+              // under the grid) says HOW it works. Neither repeats the €1.000
+              // threshold card by card.
+              <span
+                {...installmentHandlers}
+                className="ml-2 inline-flex items-center align-middle rounded-full bg-teal-500/15 border border-teal-500/25 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-teal-400 leading-none cursor-help"
+              >
+                {t('prezzi.installment_badge', lang)}
+              </span>
+            )}
           </div>
           <ul className="space-y-2.5 flex-1 mb-4">
             {features.map((f, i) => {
@@ -1371,6 +1404,13 @@ export default function HomeShell() {
       active = false;
     };
   }, [lang]);
+
+  // Referral attribution: read `?ref=` from the landing URL once, so every
+  // analytics event fired during this visit carries the code that brought the
+  // visitor (see lib/referral + lib/analytics).
+  useEffect(() => {
+    captureReferral();
+  }, []);
 
   const [tooltipInfo, setTooltipInfo] = useState<{ text: string; el: HTMLElement; hiding?: boolean } | null>(null);
   const hideTooltipTimerRef = useRef<number | null>(null);
@@ -2783,7 +2823,6 @@ export default function HomeShell() {
   };
 
   const pricing = useMemo(() => isMonthly ? getPricingMonthly(lang) : getPricingOnetime(lang), [isMonthly, lang]);
-  const packages = useMemo(() => getPackages(lang), [lang]);
   const reviews = useMemo(() => getReviews(lang), [lang]);
 
   // Pricing badge — "N slot liberi a {month}". Uses the live Cal.com count when
@@ -3601,7 +3640,7 @@ export default function HomeShell() {
             <div className="relative z-10 max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-16">
                 <p className="text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-4">{t('chisono.label', lang)}</p>
-                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">Tia Chinaglia</h2>
+                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white">{t('chisono.title', lang)}</h2>
                 <p className="text-neutral-400 mt-4 max-w-lg mx-auto text-base leading-relaxed">
                   {t('chisono.bio', lang)}
                 </p>
@@ -3965,8 +4004,15 @@ export default function HomeShell() {
           </section>
           </LazySection>
 
-          {/* ============ PREZZI ============ */}
-          <LazySection rootMargin={400} placeholderHeight={900}>
+          {/* ============ PREZZI ============
+              NOT inside a LazySection, unlike the sections around it. The
+              packages, the instant estimate and the whole price list are the
+              content a search engine (or an AI assistant answering "quanto
+              costa un sito a Mantova") needs to read WITHOUT running JS: while
+              it was lazy-mounted, none of those numbers existed in the served
+              HTML — the crawler saw an empty placeholder div. The cards are
+              static markup (no count-up, no canvas), so rendering them eagerly
+              costs layout, not JavaScript. */}
           <section id="prezzi" className="py-10 sm:py-24 px-4">
             <div className="max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-12">
@@ -3980,48 +4026,27 @@ export default function HomeShell() {
                 </p>
               </ScrollReveal>
 
-              {/* ── Pacchetti "prodotto" — three offers with a STARTING price and
-                  a declared lead time, above the detailed tiers. This is the
-                  part that shortens a sales conversation: it filters the
-                  curious and lets a ready buyer self-select before writing.
-                  Same cards (BorderGlow + glass rim) as the rest of the page. */}
+              {/* ── Preventivo istantaneo ──
+                  Tre scelte → fascia di prezzo + tempi, senza chiedere l'email.
+                  È il punto in cui un visitatore curioso diventa un lead
+                  qualificato: la scelta (servizio, dimensione, tempi) finisce
+                  nel visitor context condiviso, quindi viaggia già dentro il
+                  prefill di Cal.com e nel messaggio in chat. */}
               <ScrollReveal className="mb-8 sm:mb-12">
-                <p className="text-center text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-2">{packages.label}</p>
-                <p className="text-center text-white/90 text-sm font-semibold mb-4">{packages.title}</p>
-                <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
-                  {packages.cards.map((card) => (
-                    <BorderGlow
-                      key={card.title}
-                      continuousHover
-                      borderRadius={20}
-                      glowRadius={24}
-                      glowIntensity={2.0}
-                      edgeSensitivity={0}
-                      className="h-full"
-                    >
-                      <div className="p-5 h-full flex flex-col">
-                        <p className="text-white font-semibold text-[15px] leading-tight">{card.title}</p>
-                        <p className="mt-2 text-2xl font-bold text-teal-300 leading-none">{card.from}</p>
-                        <span className="mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-teal-400/25 bg-teal-400/[0.08] px-2.5 py-1 text-[11px] font-medium text-teal-300">
-                          <TiaIcon icon={Clock01Icon} size={11} strokeWidth={2} className="shrink-0" />
-                          {card.lead}
-                        </span>
-                        <ul className="mt-3.5 space-y-1.5 text-xs leading-relaxed text-neutral-400">
-                          {card.bullets.map((bullet) => (
-                            <li key={bullet} className="flex gap-2">
-                              <span aria-hidden="true" className="text-teal-400/80">•</span>
-                              <span>{bullet}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="mt-auto pt-4 text-[11px] text-neutral-500">{card.installment}</p>
-                      </div>
-                    </BorderGlow>
-                  ))}
-                </div>
-                <p className="mx-auto mt-4 max-w-2xl text-center text-[11px] leading-relaxed text-neutral-500">
-                  {packages.note}
-                </p>
+                <QuoteEstimator
+                  lang={lang}
+                  onBookCall={() => {
+                    if (!callOpen) trackClick('cal_booking_open');
+                    setCallOpen(true);
+                    setCallOpenedOnce(true);
+                  }}
+                  onChatBrief={(text) => {
+                    setChatMessage(text);
+                    setChatClosing(false);
+                    setChatOpen(true);
+                    logAnalytics('chat_open');
+                  }}
+                />
               </ScrollReveal>
 
               {/* ── Toggle ── */}
@@ -4072,6 +4097,7 @@ export default function HomeShell() {
                         price={tier.price}
                         priceLabel={tier.priceLabel}
                         period={tier.period}
+                        installment={!isMonthly && euroValue(tier.priceLabel ?? tier.price) >= INSTALLMENT_MIN}
                         popular={tier.popular}
                         premium={tier.premium}
                         description={tier.description}
@@ -4092,9 +4118,14 @@ export default function HomeShell() {
               {isMonthly && (
                 <p className="text-center text-xs text-neutral-500 mt-10 sm:mt-14">{t('prezzi.flex_note', lang)}</p>
               )}
+              {/* One line, once: the rule behind every "Rateizzabile" badge. */}
+              {!isMonthly && (
+                <p className="mx-auto mt-10 max-w-xl text-center text-xs leading-relaxed text-neutral-500 sm:mt-14">
+                  {t('prezzi.installment_note', lang)}
+                </p>
+              )}
             </div>
           </section>
-          </LazySection>
 
           {/* ============ FAQ ============ */}
           <LazySection rootMargin={400} placeholderHeight={900}>
@@ -4380,6 +4411,14 @@ export default function HomeShell() {
                   </BorderGlow>
                 </div>
               </StaggerReveal>
+            </div>
+
+            {/* ── Passaparola ──
+                La promessa referral era già nel footer ma non era misurata:
+                da qui in poi ogni visitatore può inoltrare un link con il suo
+                codice, e il codice viaggia su tutti gli eventi analytics. */}
+            <div className="mt-6 sm:mt-10">
+              <ReferralCard lang={lang} />
             </div>
           </section>
           </LazySection>

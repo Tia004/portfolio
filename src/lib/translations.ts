@@ -133,6 +133,12 @@ const it: Dict = {
   'prezzi.popular': 'Più scelto',
   'prezzi.from': 'da',
   'prezzi.rapid': 'Consegna rapida',
+  // Installments: the badge marks the cards that qualify, the note (shown once,
+  // under the grid) explains the rule. Never repeat the threshold on every
+  // card — the badge and the note together say it without shouting it.
+  'prezzi.installment_badge': 'Rateizzabile',
+  'prezzi.installment_tip': 'Rateizzabile: paghi in 2-4 rate, senza interessi.',
+  'prezzi.installment_note': 'Tutti i progetti da 1.000 € in su si possono pagare a rate, senza interessi: ne parliamo in call e lo scriviamo nel preventivo.',
   'prezzi.custom': 'Su misura per te',
   'prezzi.slots_note': 'Solo 2 slot liberi a {month}',
   'prezzi.slots_one': 'Solo 1 slot libero a {month}',
@@ -141,7 +147,9 @@ const it: Dict = {
   'prezzi.flex_note': 'Piani flessibili: termini chiari concordati in fase di contratto. Puoi interrompere la collaborazione quando vuoi.',
 
   // Chi sono
-  'chisono.title': 'Tia Chinaglia',
+  // Brand, not the legal name: the site introduces the studio. The real name
+  // lives in the legal documents, the JSON-LD legalName and the invoices.
+  'chisono.title': 'Tia Designs',
   'chisono.label': 'Chi sono',
   'chisono.bio': 'Libero professionista con sede a Mantova, opero in tutta Italia e all\'estero. Nessun template, nessun compromesso: ogni progetto è costruito su misura, dal design allo sviluppo, con le tecnologie più adatte al caso specifico. Credo nella trasparenza totale e nella comunicazione diretta — per questo garantisco risposte rapide, preventivi chiari e aggiornamenti costanti in ogni fase del lavoro. Unisco competenze tecniche avanzate a una forte sensibilità estetica, portando ogni progetto dal concept iniziale fino alla pubblicazione.',
   'chisono.why_title': 'Perché scegliere un freelance',
@@ -258,7 +266,16 @@ const it: Dict = {
   'footer.copyright': '© 2026 Tia Designs. Tutti i diritti riservati.',
   'footer.location': 'Mantova, Italia',
   'footer.timezone': 'GMT+2',
-  'footer.referral': 'Programma referral: porta un cliente e ricevi il 20% di sconto sul prossimo progetto',
+  // NOTE: the discount is the same number in all three languages — it used to
+  // be 20% here and 10% in EN/ES, two different promises on the same site.
+  'footer.referral': 'Programma referral: porta un cliente e ricevi il 10% di sconto sul prossimo progetto',
+  'referral.label': 'Passaparola',
+  'referral.title': 'Conosci qualcuno a cui serve?',
+  'referral.note': 'Chi arriva da te ha il preventivo gratuito; tu ricevi il 10% di sconto sul prossimo progetto.',
+  'referral.copy': 'Copia il link',
+  'referral.copied': 'Link copiato ✓',
+  'referral.share': 'Condividi su WhatsApp',
+  'referral.message': 'Ciao! Ti passo il contatto di Tia Designs: siti web, app e video. Dai un occhio qui: {link}',
 
   // Chat
   'chat.open': 'Apri chat',
@@ -471,6 +488,9 @@ const en: Dict = {
   'prezzi.popular': 'Most popular',
   'prezzi.from': 'from',
   'prezzi.rapid': 'Fast delivery',
+  'prezzi.installment_badge': 'Instalments',
+  'prezzi.installment_tip': 'Payable in instalments: 2-4 payments, no interest.',
+  'prezzi.installment_note': 'Every project from €1,000 up can be paid in instalments, with no interest: we agree it on the call and write it into the quote.',
   'prezzi.custom': 'Tailored for you',
   'prezzi.slots_note': 'Only 2 slots left in {month}',
   'prezzi.slots_one': 'Only 1 slot left in {month}',
@@ -478,7 +498,7 @@ const en: Dict = {
   'prezzi.vat_note': 'Prices are indicative and exclusive of VAT and applicable charges. Every project gets a dedicated, free quote.',
   'prezzi.flex_note': 'Flexible plans: clear terms agreed at contract time. You can cancel the collaboration whenever you want.',
 
-  'chisono.title': 'Tia Chinaglia',
+  'chisono.title': 'Tia Designs',
   'chisono.label': 'About',
   'chisono.bio': 'Independent professional based in Mantova, Italy, working with clients across Europe. No templates, no compromises: every project is custom-built, from design to development, using the technology stack that best fits the specific case. I believe in total transparency and direct communication — that means fast responses, clear quotes, and constant updates at every stage. I combine advanced technical skills with a strong aesthetic sense, taking every project from initial concept to final launch.',
   'chisono.why_title': 'Why choose a freelancer',
@@ -589,6 +609,13 @@ const en: Dict = {
   'footer.location': 'Mantua, Italy',
   'footer.timezone': 'GMT+2',
   'footer.referral': 'Referral program: bring a client and get 10% off your next project',
+  'referral.label': 'Word of mouth',
+  'referral.title': 'Know someone who needs this?',
+  'referral.note': 'Anyone who comes from you gets a free quote; you get 10% off your next project.',
+  'referral.copy': 'Copy the link',
+  'referral.copied': 'Link copied ✓',
+  'referral.share': 'Share on WhatsApp',
+  'referral.message': 'Hi! Passing you Tia Designs: websites, apps and video. Have a look here: {link}',
 
   'chat.open': 'Open chat',
   'chat.title': 'Chat with me in real time',
@@ -796,6 +823,9 @@ const es: Dict = {
   'prezzi.popular': 'Más elegido',
   'prezzi.from': 'desde',
   'prezzi.rapid': 'Entrega rápida',
+  'prezzi.installment_badge': 'A plazos',
+  'prezzi.installment_tip': 'Se puede pagar a plazos: 2-4 pagos, sin intereses.',
+  'prezzi.installment_note': 'Todos los proyectos desde 1.000 € se pueden pagar a plazos, sin intereses: lo acordamos en la llamada y lo escribimos en el presupuesto.',
   'prezzi.custom': 'A tu medida',
   'prezzi.slots_note': 'Solo quedan 2 huecos en {month}',
   'prezzi.slots_one': 'Solo queda 1 hueco en {month}',
@@ -803,7 +833,7 @@ const es: Dict = {
   'prezzi.vat_note': 'Los precios son orientativos y no incluyen IVA ni cargos aplicables. Cada proyecto recibe un presupuesto dedicado y gratuito.',
   'prezzi.flex_note': 'Planes flexibles: términos claros acordados al firmar el contrato. Puedes cancelar la colaboración cuando quieras.',
 
-  'chisono.title': 'Tia Chinaglia',
+  'chisono.title': 'Tia Designs',
   'chisono.label': 'Sobre mí',
   'chisono.bio': 'Profesional independiente con base en Mantua, Italia, colaborando con clientes en toda Europa. Sin plantillas, sin compromisos: cada proyecto se construye a medida, desde el diseño hasta el desarrollo, con las tecnologías más adecuadas para cada caso. Creo en la transparencia total y la comunicación directa — por eso garantizo respuestas rápidas, presupuestos claros y actualizaciones constantes en cada fase. Combino habilidades técnicas avanzadas con una fuerte sensibilidad estética, llevando cada proyecto desde el concepto inicial hasta su lanzamiento.',
   'chisono.why_title': 'Por qué elegir un freelance',
@@ -913,6 +943,13 @@ const es: Dict = {
   'footer.copyright': '© 2026 Tia Designs. Todos los derechos reservados.',
   'footer.location': 'Mantua, Italia',
   'footer.timezone': 'GMT+2',
+  'referral.label': 'Boca a boca',
+  'referral.title': '¿Conoces a alguien que lo necesite?',
+  'referral.note': 'Quien venga de tu parte tiene presupuesto gratuito; tú obtienes el 10% de descuento en tu próximo proyecto.',
+  'referral.copy': 'Copiar el enlace',
+  'referral.copied': 'Enlace copiado ✓',
+  'referral.share': 'Compartir en WhatsApp',
+  'referral.message': '¡Hola! Te paso el contacto de Tia Designs: webs, apps y vídeo. Echa un vistazo aquí: {link}',
   'footer.referral': 'Programa de referidos: trae un cliente y obtén un 10% de descuento en tu próximo proyecto',
 
   'chat.open': 'Abrir chat',
@@ -1400,121 +1437,147 @@ export function getPricingMonthly(lang: Lang): PricingCategory[] {
   return PRICING_MONTHLY_BY_LANG[lang] || PRICING_MONTHLY_BY_LANG.it;
 }
 
-// ─── Productised packages ─────────────────────────────────────────────────
-// Three offers with a STARTING price and a declared lead time, shown above the
-// detailed price list. A visitor who sees no number writes to ten freelancers
-// and disappears; a visitor who sees "da €1.200 — online in 2 settimane" either
-// self-selects in or self-selects out, and both save a round of negotiation.
-// The detailed tiers below stay the authoritative breakdown.
-export interface PackageCard {
-  title: string;
-  /** "da €1.200" — the starting price, always with a currency. */
-  from: string;
-  /** Declared lead time, e.g. "Online in 2 settimane". */
-  lead: string;
-  bullets: string[];
-  /** Monthly-installment alternative, e.g. "o 3 rate da €400". */
-  installment: string;
-}
+// ─── Productised packages — REMOVED ───────────────────────────────────────
+// The three "package" cards (Sito vetrina / E-commerce / Video) are gone: their
+// starting prices never matched the real price list (they advertised "da
+// €1.200" while the tiers below start at €600), and two competing price scales
+// on the same page destroy trust instead of building it.
+//
+// What replaced them is smaller and more useful to a buyer: a
+// "Rateizzabile" badge on every tier that qualifies for instalments (one
+// constant decides the threshold, see INSTALLMENT_MIN in HomeShell) plus a
+// single note under the grid that explains the rule once
+// (prezzi.installment_badge / _tip / _note).
 
-export interface PackagesBlock {
+// ─── Instant estimate (QuoteEstimator) ────────────────────────────────────
+// Copy for the three-chip configurator that returns a price range and a lead
+// time without asking for an email. The numbers themselves live in
+// src/lib/estimate.ts, anchored to the published tiers.
+export interface EstimatorBlock {
   label: string;
   title: string;
+  subtitle: string;
+  stepService: string;
+  stepSize: string;
+  stepTiming: string;
+  services: Record<'site' | 'ecommerce' | 'software' | 'video', string>;
+  sizes: Record<'essential' | 'standard' | 'complete', string>;
+  timings: Record<'flexible' | 'month' | 'asap', string>;
+  resultLabel: string;
+  resultDelivery: string;
+  /** "3-5 settimane" — the two numbers are the estimate's week window. */
+  weeks: (min: number, max: number) => string;
+  rushNote: string;
   note: string;
-  cta: string;
-  cards: PackageCard[];
+  ctaCall: string;
+  ctaChat: string;
+  reset: string;
+  /** Chat handoff, {…} placeholders filled from the selection. */
+  chatBrief: string;
 }
 
-const PACKAGES_BY_LANG: Record<Lang, PackagesBlock> = {
+const ESTIMATOR_BY_LANG: Record<Lang, EstimatorBlock> = {
   it: {
-    label: 'Pacchetti',
-    title: 'Prezzo chiaro, tempi chiari',
-    note: 'Prezzi di partenza, IVA esclusa. Il preventivo finale dipende dallo scope: dopo una call di 20 minuti hai un numero fermo per iscritto.',
-    cta: 'Blocca il tuo posto',
-    cards: [
-      {
-        title: 'Sito vetrina',
-        from: 'da €1.200',
-        lead: 'Online in 2 settimane',
-        bullets: ['Fino a 5 pagine su misura', 'Form contatti + WhatsApp', 'SEO di base e deploy'],
-        installment: 'o 3 rate da €400',
-      },
-      {
-        title: 'E-commerce',
-        from: 'da €2.800',
-        lead: 'Online in 4-6 settimane',
-        bullets: ['Catalogo e varianti', 'Pagamenti e spedizioni', 'Formazione per gestirlo da solo'],
-        installment: 'o 4 rate da €700',
-      },
-      {
-        title: 'Video',
-        from: 'da €600',
-        lead: 'Consegna in 3-5 giorni',
-        bullets: ['Editing e color grading', 'Audio e sound design', 'Export per social e sito'],
-        installment: 'o 2 rate da €300',
-      },
-    ],
+    label: 'Preventivo istantaneo',
+    title: 'Quanto costa? Calcolalo in 20 secondi',
+    subtitle: 'Tre scelte, nessuna email. Poi decidi se parlarne con me.',
+    stepService: 'Cosa ti serve',
+    stepSize: 'Quanto è grande',
+    stepTiming: 'Quando lo vuoi online',
+    services: {
+      site: 'Sito vetrina',
+      ecommerce: 'E-commerce',
+      software: 'Software / App',
+      video: 'Video',
+    },
+    sizes: {
+      essential: 'Essenziale',
+      standard: 'Standard',
+      complete: 'Completo',
+    },
+    timings: {
+      flexible: 'Senza fretta',
+      month: 'Entro un mese',
+      asap: 'Prima possibile',
+    },
+    resultLabel: 'Fascia indicativa',
+    resultDelivery: 'Consegna stimata',
+    weeks: (min, max) => `${min}-${max} settimane`,
+    rushNote: 'Comprende la priorità di consegna (+25%).',
+    note: 'Stima indicativa, IVA esclusa. Il preventivo finale è a corpo e arriva dopo una call gratuita di 20 minuti.',
+    ctaCall: 'Prenota una call di 20 min',
+    ctaChat: 'Porta la stima in chat',
+    reset: 'Ricomincia',
+    chatBrief: 'Ciao! Ho usato il calcolatore: {service} · {size} · {timing} → {range} ({weeks}). Ne parliamo?',
   },
   en: {
-    label: 'Packages',
-    title: 'Clear price, clear timeline',
-    note: 'Starting prices, VAT excluded. The final quote depends on scope: after a 20-minute call you have a fixed number in writing.',
-    cta: 'Claim your slot',
-    cards: [
-      {
-        title: 'Showcase site',
-        from: 'from €1,200',
-        lead: 'Live in 2 weeks',
-        bullets: ['Up to 5 bespoke pages', 'Contact form + WhatsApp', 'Basic SEO and deployment'],
-        installment: 'or 3 payments of €400',
-      },
-      {
-        title: 'E-commerce',
-        from: 'from €2,800',
-        lead: 'Live in 4-6 weeks',
-        bullets: ['Catalogue and variants', 'Payments and shipping', 'Training to run it yourself'],
-        installment: 'or 4 payments of €700',
-      },
-      {
-        title: 'Video',
-        from: 'from €600',
-        lead: 'Delivered in 3-5 days',
-        bullets: ['Editing and colour grading', 'Audio and sound design', 'Exports for social and site'],
-        installment: 'or 2 payments of €300',
-      },
-    ],
+    label: 'Instant estimate',
+    title: 'What does it cost? Work it out in 20 seconds',
+    subtitle: 'Three choices, no email. Then you decide whether to talk to me.',
+    stepService: 'What you need',
+    stepSize: 'How big it is',
+    stepTiming: 'When you need it live',
+    services: {
+      site: 'Showcase site',
+      ecommerce: 'E-commerce',
+      software: 'Software / App',
+      video: 'Video',
+    },
+    sizes: {
+      essential: 'Essential',
+      standard: 'Standard',
+      complete: 'Complete',
+    },
+    timings: {
+      flexible: 'No rush',
+      month: 'Within a month',
+      asap: 'As soon as possible',
+    },
+    resultLabel: 'Indicative range',
+    resultDelivery: 'Estimated delivery',
+    weeks: (min, max) => `${min}-${max} weeks`,
+    rushNote: 'Includes delivery priority (+25%).',
+    note: 'Indicative estimate, VAT excluded. The final quote is fixed-scope and comes after a free 20-minute call.',
+    ctaCall: 'Book a 20-min call',
+    ctaChat: 'Send this estimate to the chat',
+    reset: 'Start over',
+    chatBrief: 'Hi! I used the calculator: {service} · {size} · {timing} → {range} ({weeks}). Can we talk?',
   },
   es: {
-    label: 'Paquetes',
-    title: 'Precio claro, plazos claros',
-    note: 'Precios de partida, IVA excluido. El presupuesto final depende del alcance: tras una llamada de 20 minutos tienes una cifra firme por escrito.',
-    cta: 'Reserva tu plaza',
-    cards: [
-      {
-        title: 'Web de presentación',
-        from: 'desde €1.200',
-        lead: 'Online en 2 semanas',
-        bullets: ['Hasta 5 páginas a medida', 'Formulario + WhatsApp', 'SEO básico y despliegue'],
-        installment: 'o 3 pagos de €400',
-      },
-      {
-        title: 'E-commerce',
-        from: 'desde €2.800',
-        lead: 'Online en 4-6 semanas',
-        bullets: ['Catálogo y variantes', 'Pagos y envíos', 'Formación para gestionarlo tú'],
-        installment: 'o 4 pagos de €700',
-      },
-      {
-        title: 'Vídeo',
-        from: 'desde €600',
-        lead: 'Entrega en 3-5 días',
-        bullets: ['Edición y corrección de color', 'Audio y diseño sonoro', 'Exportaciones para redes y web'],
-        installment: 'o 2 pagos de €300',
-      },
-    ],
+    label: 'Presupuesto instantáneo',
+    title: '¿Cuánto cuesta? Calcúlalo en 20 segundos',
+    subtitle: 'Tres elecciones, sin email. Luego decides si hablamos.',
+    stepService: 'Qué necesitas',
+    stepSize: 'Qué tamaño tiene',
+    stepTiming: 'Cuándo lo quieres online',
+    services: {
+      site: 'Web de presentación',
+      ecommerce: 'E-commerce',
+      software: 'Software / App',
+      video: 'Vídeo',
+    },
+    sizes: {
+      essential: 'Esencial',
+      standard: 'Estándar',
+      complete: 'Completo',
+    },
+    timings: {
+      flexible: 'Sin prisa',
+      month: 'En un mes',
+      asap: 'Cuanto antes',
+    },
+    resultLabel: 'Rango indicativo',
+    resultDelivery: 'Entrega estimada',
+    weeks: (min, max) => `${min}-${max} semanas`,
+    rushNote: 'Incluye prioridad de entrega (+25%).',
+    note: 'Estimación indicativa, IVA excluido. El presupuesto final es a precio cerrado y llega tras una llamada gratuita de 20 minutos.',
+    ctaCall: 'Reserva una llamada de 20 min',
+    ctaChat: 'Envía este cálculo al chat',
+    reset: 'Empezar de nuevo',
+    chatBrief: '¡Hola! Usé la calculadora: {service} · {size} · {timing} → {range} ({weeks}). ¿Hablamos?',
   },
 };
 
-export function getPackages(lang: Lang): PackagesBlock {
-  return PACKAGES_BY_LANG[lang] || PACKAGES_BY_LANG.it;
+export function getEstimator(lang: Lang): EstimatorBlock {
+  return ESTIMATOR_BY_LANG[lang] || ESTIMATOR_BY_LANG.it;
 }

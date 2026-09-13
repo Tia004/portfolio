@@ -85,36 +85,34 @@ async function main() {
 
     await scrollToSection(page, 'prezzi');
 
-    const packagesDom = await page.evaluate(() => {
+    // The packages strip was removed (its starting prices contradicted the
+    // list). What is verified now is the price list plus the instalment rule
+    // that replaced it.
+    const pricingDom = await page.evaluate(() => {
       const section = document.getElementById('prezzi');
       if (!section) return { foundSection: false };
 
-      const cards = Array.from(section.querySelectorAll('.grid.sm\\:grid-cols-3 .border-glow-card'));
-
-      const titles = cards.map((c) => {
-        const heading = c.querySelector('p.font-semibold');
-        return heading ? heading.textContent?.trim() : '';
-      });
-
-      const sectionText = section.textContent || '';
-      const hasTitle = sectionText.includes('Prezzo chiaro, tempi chiari');
-      const hasNote = sectionText.includes('Prezzi di partenza, IVA esclusa');
+      const text = section.textContent || '';
+      const badges = Array.from(section.querySelectorAll('span')).filter(
+        (el) => (el.textContent ?? '').trim() === 'Rateizzabile',
+      );
 
       return {
         foundSection: true,
-        hasTitle,
-        hasNote,
-        cardCount: cards.length,
-        titles,
+        cardCount: section.querySelectorAll('.border-glow-card').length,
+        badgeCount: badges.length,
+        hasRule: text.includes('da 1.000 € in su'),
+        packagesGone: !text.includes('Prezzo chiaro, tempi chiari'),
       };
     });
 
-    report(packagesDom.foundSection, 'Sezione #prezzi montata nel DOM');
-    report(packagesDom.hasTitle, 'Titolo blocco pacchetti presente ("Prezzo chiaro, tempi chiari")');
-    report(packagesDom.cardCount === 3, 'Tutti e 3 i pacchetti renderizzati', packagesDom.titles?.join(', '));
-    report(packagesDom.hasNote, 'Nota di trasparenza sui prezzi presente');
+    report(pricingDom.foundSection, 'Sezione #prezzi montata nel DOM');
+    report(pricingDom.cardCount >= 9, 'Listino completo renderizzato', `${pricingDom.cardCount} card`);
+    report(pricingDom.badgeCount >= 6, 'Badge "Rateizzabile" sulle card idonee', `x${pricingDom.badgeCount}`);
+    report(pricingDom.hasRule, 'Regola rateizzazione dichiarata una volta (da 1.000 € in su)');
+    report(pricingDom.packagesGone, 'Blocco pacchetti rimosso');
 
-    await page.screenshot({ path: join(OUT_DIR, '01-packages-desktop.png') });
+    await page.screenshot({ path: join(OUT_DIR, '01-pricing-desktop.png') });
 
     // ──────────────────────────────────────────────────────────────────────────
     // PARTE 2: TEST PREFILL CONTESTUALE SU DESKTOP (1440x900)
@@ -370,7 +368,7 @@ async function main() {
   <div class="grid">
     <div class="card">
       <h4>01. Sezione Pacchetti Desktop</h4>
-      <img src="01-packages-desktop.png" alt="Pacchetti Desktop">
+      <img src="01-pricing-desktop.png" alt="Listino Desktop">
     </div>
     <div class="card">
       <h4>02. Modale Booking Prefill Desktop</h4>

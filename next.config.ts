@@ -18,6 +18,23 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "/*": ["./public/**"],
   },
+  // Domain-verification files live in public/.well-known/ (see
+  // public/.well-known/discord): a static file has no routing edge cases and
+  // is served by the CDN. They have no extension, so the server would guess
+  // application/octet-stream; verification services expect the raw text, so the
+  // type is pinned per file — and the cache is kept short so a re-verification
+  // never reads a stale copy.
+  async headers() {
+    return [
+      {
+        source: "/.well-known/:file",
+        headers: [
+          { key: "Content-Type", value: "text/plain; charset=utf-8" },
+          { key: "Cache-Control", value: "public, max-age=300" },
+        ],
+      },
+    ];
+  },
   ...(assetsCdn
     ? {
         async rewrites() {

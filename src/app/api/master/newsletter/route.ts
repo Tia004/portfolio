@@ -138,6 +138,9 @@ export async function POST(request: NextRequest) {
         ctaText: ctaText || undefined,
         ctaUrl: ctaUrl || undefined,
         badgeText: 'Newsletter Ufficiale',
+        // Collected in the dashboard and stored, but never actually rendered:
+        // the inbox list showed the first words of the greeting instead.
+        preheaderText: previewText || undefined,
       });
 
       // Send to each recipient in background / batch

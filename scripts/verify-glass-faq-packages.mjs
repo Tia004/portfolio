@@ -95,19 +95,28 @@ const faq = await p.evaluate(() => {
 });
 check('FAQ card is chunky (>= 64px tall)', !!faq && faq.h >= 64, faq ? `${faq.w}×${faq.h}px` : 'not found');
 
-// ── 3. packages strip ────────────────────────────────────────────────────
-const packs = await p.evaluate(() => {
+// ── 3. instalments on the price cards ────────────────────────────────────
+// The packages strip is gone (its prices contradicted the list). What must be
+// true now: a badge on every onetime tier from €1.000 up, and the rule stated
+// ONCE under the grid — never on every card.
+const installments = await p.evaluate(() => {
   const section = document.querySelector('#prezzi');
   if (!section) return null;
   const text = section.textContent ?? '';
-  const priceLike = (text.match(/da €\s?[\d.,]+/g) ?? []).length;
-  const leadLike = (text.match(/Online in \d|Consegna in \d|Live in \d|Delivered in \d/g) ?? []).length;
-  const installments = (text.match(/o \d rate da €|or \d payments of €|o \d pagos de €/g) ?? []).length;
-  return { priceLike, leadLike, installments };
+  const badges = Array.from(section.querySelectorAll('span')).filter(
+    (el) => (el.textContent ?? '').trim() === 'Rateizzabile',
+  );
+  return {
+    badges: badges.length,
+    rule: text.includes('da 1.000 € in su'),
+    packagesGone: !text.includes('Prezzo chiaro, tempi chiari'),
+  };
 });
-check('packages show a starting price', !!packs && packs.priceLike >= 3, `“da €…” x${packs?.priceLike}`);
-check('packages declare a lead time', !!packs && packs.leadLike >= 3, `timelines x${packs?.leadLike}`);
-check('packages offer the monthly installment', !!packs && packs.installments >= 3, `installments x${packs?.installments}`);
+// Onetime tiers ≥ €1.000: 1.750 + 3.250 (web), 2.800 (design), 1.900 + 4.000 +
+// 7.500 (software), 2.200 + 4.500 (video) = 8 cards.
+check('instalment badge on the eligible tiers', !!installments && installments.badges >= 6, `badges x${installments?.badges}`);
+check('€1.000 rule stated once (not per card)', !!installments?.rule);
+check('old packages block removed', !!installments?.packagesGone);
 
 // ── 4. chat window card stays opaque (regression guard) ──────────────────
 await p.evaluate(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { hasAnalyticsConsent, getConsent } from './cookie-consent';
+import { getReferral } from './referral';
 
 const ENDPOINT = '/api/analytics/log';
 const BATCH_SIZE = 5;
@@ -38,7 +39,14 @@ interface AnalyticsEvent {
  * `source` records WHERE the conversion happened, so in two weeks you can see
  * which entry point (and which headline/CTA above it) closes.
  */
-export type ConversionName = 'preventivo_inviato' | 'call_prenotata' | 'chat_primo_messaggio';
+export type ConversionName =
+  | 'preventivo_inviato'
+  | 'call_prenotata'
+  | 'chat_primo_messaggio'
+  // The price estimator is a funnel step of its own: it is the first moment a
+  // visitor commits to a service, a size and a deadline, and the drop-off
+  // after it is the difference between a curious visit and a real lead.
+  | 'stima_calcolata';
 
 export interface ConversionSource {
   /** 'ai_quote' | 'contact_form' | 'inline_form' | 'cal_embed' | 'chatbot' | … */
@@ -110,8 +118,15 @@ function enqueue(event: Omit<AnalyticsEvent, 'timestamp' | 'sessionId'>) {
   // Only track if public visitor gave full consent
   if (!hasAnalyticsConsent()) return;
 
+  // Referral attribution, applied centrally so EVERY event (page view, click,
+  // scroll, conversion, WebGL diagnostic) carries the code that brought the
+  // visitor: in two weeks the dashboard can answer "did the shared links
+  // actually produce leads?" instead of guessing.
+  const ref = getReferral();
+
   queue.push({
     ...event,
+    data: ref ? { ...(event.data ?? {}), ref } : event.data,
     timestamp: Date.now(),
     sessionId: getSessionId(),
   });

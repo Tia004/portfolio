@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -8,6 +8,10 @@ import { startRegistration } from '@simplewebauthn/browser';
 import BorderGlow from '@/app/components/BorderGlow';
 import TiaIcon from '@/app/components/TiaIcon';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
+// Same template the server sends: the preview and the delivered email are one
+// piece of code, not two that look alike.
+import { buildBrandedEmailHtml } from '@/lib/email-template';
+import AutoEmailSender from './AutoEmailSender';
 import {
   CodeFolderIcon,
   Mail01Icon,
@@ -70,6 +74,7 @@ import {
   ChevronDown as LucideChevronDown,
   Inbox as LucideInbox,
   Archive as LucideArchive,
+  MousePointerClick as LucideMousePointerClick,
 } from 'lucide-react';
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
@@ -429,7 +434,7 @@ export default function DashboardPage() {
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
   // Messages Inbox & Email/Newsletter state
-  const [inboxSubTab, setInboxSubTab] = useState<'aruba' | 'compose' | 'messages' | 'newsletter'>('aruba');
+  const [inboxSubTab, setInboxSubTab] = useState<'aruba' | 'compose' | 'auto-sender' | 'messages' | 'newsletter'>('aruba');
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [messageFilter, setMessageFilter] = useState<string>('all');
   const [messageSearch, setMessageSearch] = useState<string>('');
@@ -468,7 +473,26 @@ export default function DashboardPage() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const [composerColorOpen, setComposerColorOpen] = useState(false);
+  /** Insert the link as a rounded, spaced CTA button instead of inline text. */
+  const [linkAsButton, setLinkAsButton] = useState(false);
   const composerFileInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * The exact HTML that will be sent. Built by the same pure function the server
+   * uses, so the preview cannot drift from the delivered email — the previous
+   * preview was a hand-written lookalike made of React divs.
+   */
+  const composerPreviewHtml = useMemo(
+    () =>
+      buildBrandedEmailHtml({
+        title: composeTitle || undefined,
+        bodyMarkdown: composeBody || 'Scrivi il messaggio per vedere qui l\u2019anteprima reale.',
+        ctaText: composeCtaText || undefined,
+        ctaUrl: composeCtaUrl || undefined,
+        badgeText: composeBadgeText,
+      }),
+    [composeTitle, composeBody, composeCtaText, composeCtaUrl, composeBadgeText],
+  );
   const composerImageInputRef = useRef<HTMLInputElement>(null);
   const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -1736,12 +1760,21 @@ export default function DashboardPage() {
   const handleApplyLink = () => {
     if (!linkUrl.trim()) return;
     const txt = linkText.trim() || linkUrl.trim();
-    const linkHtml = `<a href="${linkUrl.trim()}" target="_blank" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${txt}</a>`;
-    setComposeBody((prev) => `${prev} ${linkHtml} `);
+    const asButton = linkAsButton;
+    // Both variants go into the message as Markdown, not as raw HTML: the
+    // renderer turns them into inline-styled anchors, forces every link to the
+    // brand teal, and gives a button its own vertical space instead of letting
+    // it sit glued to the paragraph above.
+    setComposeBody((prev) =>
+      asButton
+        ? `${prev}\n\n[Bottone: ${txt}](${linkUrl.trim()})\n\n`
+        : `${prev} [${txt}](${linkUrl.trim()}) `,
+    );
     setShowLinkModal(false);
     setLinkUrl('');
     setLinkText('');
-    showTemporarySuccess('Link inserito!');
+    setLinkAsButton(false);
+    showTemporarySuccess(asButton ? 'Bottone inserito!' : 'Link inserito!');
   };
 
   const handleSendGmailStyleEmail = async (e: React.FormEvent) => {
@@ -1759,27 +1792,19 @@ export default function DashboardPage() {
       if (composerCc.trim()) formData.append('cc', composerCc.trim());
       if (composerBcc.trim()) formData.append('bcc', composerBcc.trim());
 
-      const htmlBody = `
-        <div style="background-color:#060d0b; color:#e5e7eb; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; padding:32px 20px; min-height:100%;">
-          <div style="max-width:620px; margin:0 auto; background-color:#0b1915; border:1px solid rgba(255,255,255,0.12); border-radius:24px; padding:36px 32px; box-shadow:0 20px 40px rgba(0,0,0,0.4);">
-            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:20px; margin-bottom:28px;">
-              <span style="font-size:18px; font-weight:bold; color:#ffffff; letter-spacing:-0.5px;">Tia <span style="color:#2dd4bf;">Designs</span></span>
-              <span style="font-size:11px; font-family:monospace; color:#2dd4bf; background-color:rgba(45,212,191,0.12); border:1px solid rgba(45,212,191,0.25); padding:4px 10px; border-radius:999px;">${composeBadgeText || 'info@tiadesigns.it'}</span>
-            </div>
-            ${composeTitle ? `<h1 style="color:#ffffff; font-size:22px; font-weight:700; margin:0 0 20px 0; line-height:1.3;">${composeTitle}</h1>` : ''}
-            <div style="font-size:14px; line-height:1.7; color:#d1d5db; white-space:pre-wrap;">${composeBody}</div>
-            ${composeCtaText && composeCtaUrl ? `
-              <div style="margin-top:32px; text-align:center;">
-                <a href="${composeCtaUrl}" target="_blank" style="display:inline-block; background-color:#2dd4bf; color:#000000; font-weight:700; font-size:13px; text-decoration:none; padding:12px 28px; border-radius:12px; box-shadow:0 4px 16px rgba(45,212,191,0.25);">${composeCtaText} &rarr;</a>
-              </div>
-            ` : ''}
-            <div style="margin-top:40px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.08); font-size:11px; color:#6b7280; text-align:center;">
-              <p style="margin:0;">Mattia • <strong>Tia Designs</strong> • <a href="https://tiadesigns.it" style="color:#2dd4bf; text-decoration:none;">tiadesigns.it</a></p>
-              <p style="margin:4px 0 0 0;">Inviata da <a href="mailto:info@tiadesigns.it" style="color:#9ca3af; text-decoration:none;">info@tiadesigns.it</a></p>
-            </div>
-          </div>
-        </div>
-      `;
+      // The email is built by the SAME function the API routes and the preview
+      // pane use, so what you see on the right is literally what leaves here.
+      //
+      // The old inline template printed "Tia Designs" twice — a text wordmark on
+      // the left plus the badge on the right, both defaulting to the brand name,
+      // with nothing between them. The header is now the white logo, alone.
+      const htmlBody = buildBrandedEmailHtml({
+        title: composeTitle || undefined,
+        bodyMarkdown: composeBody,
+        ctaText: composeCtaText || undefined,
+        ctaUrl: composeCtaUrl || undefined,
+        badgeText: composeBadgeText,
+      });
       formData.append('html', htmlBody);
 
       for (const att of composerAttachments) {
@@ -3583,6 +3608,23 @@ export default function DashboardPage() {
                     )}
                   </button>
 
+                  {/* Sub-tab: Inviatore Automatico CSV */}
+                  <button
+                    type="button"
+                    onClick={() => setInboxSubTab('auto-sender')}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      inboxSubTab === 'auto-sender'
+                        ? 'bg-teal-400 text-black shadow-lg shadow-teal-400/20'
+                        : 'bg-white/[0.03] text-neutral-400 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <TiaIcon icon={WorkflowSquare01Icon} size={16} />
+                    <span>Inviatore Automatico CSV</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-teal-500/20 text-teal-300 font-bold">
+                      Batch
+                    </span>
+                  </button>
+
                   {/* Sub-tab 3: Website Form Messages */}
                   <button
                     type="button"
@@ -4013,6 +4055,22 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
+                    {/* Quick switch to Auto Email Sender banner */}
+                    <div className="p-3 rounded-2xl bg-teal-500/[0.06] border border-teal-500/20 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs text-teal-200">
+                        <TiaIcon icon={WorkflowSquare01Icon} size={16} className="text-teal-400 shrink-0" />
+                        <span>Devi inviare a molti destinatari o importare un CSV?</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setInboxSubTab('auto-sender')}
+                        className="px-3 py-1 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-[11px] cursor-pointer transition-colors shadow-sm shrink-0 flex items-center gap-1"
+                      >
+                        <span>Usa Inviatore Automatico CSV</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+
                     <form onSubmit={handleSendGmailStyleEmail} className="flex flex-col gap-3.5">
                       {/* Recipient Field A: */}
                       <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-teal-400">
@@ -4208,11 +4266,22 @@ export default function DashboardPage() {
                           {/* Insert Link */}
                           <button
                             type="button"
-                            onClick={() => setShowLinkModal(true)}
+                            onClick={() => { setLinkAsButton(false); setShowLinkModal(true); }}
                             className="p-1.5 rounded-xl hover:bg-white/[0.1] text-neutral-300 hover:text-teal-300 cursor-pointer transition-colors"
                             title="Inserisci link cliccabile"
                           >
                             <LucideLink size={15} />
+                          </button>
+
+                          {/* Insert CTA button — sits on its own line, rounded */}
+                          <button
+                            type="button"
+                            onClick={() => { setLinkAsButton(true); setShowLinkModal(true); }}
+                            className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                            title="Inserisci un bottone rotondo con spazio proprio"
+                          >
+                            <LucideMousePointerClick size={13} />
+                            <span>Bottone</span>
                           </button>
                         </div>
                       </div>
@@ -4263,13 +4332,15 @@ export default function DashboardPage() {
                       {/* Link Inserter Modal */}
                       {showLinkModal && (
                         <div className="p-4 rounded-2xl bg-[#061410] border border-teal-500/40 flex flex-col gap-3 animate-in fade-in duration-200">
-                          <span className="text-xs font-bold text-white">🔗 Inserisci Link Cliccabile</span>
+                          <span className="text-xs font-bold text-white">
+                            {linkAsButton ? '🔘 Inserisci Bottone' : '🔗 Inserisci Link Cliccabile'}
+                          </span>
                           <div className="grid grid-cols-2 gap-2">
                             <input
                               type="text"
                               value={linkText}
                               onChange={(e) => setLinkText(e.target.value)}
-                              placeholder="Testo del link (es. Clicca qui)"
+                              placeholder={linkAsButton ? 'Testo del bottone (es. Prenota una call)' : 'Testo del link (es. Clicca qui)'}
                               className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs"
                             />
                             <input
@@ -4280,10 +4351,19 @@ export default function DashboardPage() {
                               className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs"
                             />
                           </div>
+                          <label className="flex items-center gap-2 cursor-pointer text-[11px] text-neutral-300">
+                            <input
+                              type="checkbox"
+                              checked={linkAsButton}
+                              onChange={(e) => setLinkAsButton(e.target.checked)}
+                              className="accent-teal-400 cursor-pointer"
+                            />
+                            <span>Inserisci come bottone rotondo (con spazio sopra e sotto)</span>
+                          </label>
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => setShowLinkModal(false)}
+                              onClick={() => { setShowLinkModal(false); setLinkAsButton(false); }}
                               className="px-3 py-1.5 rounded-xl bg-white/[0.04] text-xs text-neutral-400 cursor-pointer"
                             >
                               Annulla
@@ -4356,42 +4436,68 @@ export default function DashboardPage() {
                         <TiaIcon icon={GaugeIcon} size={15} className="text-teal-400" />
                         Anteprima Reale per il Destinatario
                       </span>
-                      <span className="text-[10px] text-neutral-400 font-mono">Aruba SSL Delivery</span>
+                      {/* Toggle that used to be dead state: seeing the raw HTML is
+                          how you find out that a marker did (or did not) survive
+                          the trip. */}
+                      <div className="flex items-center gap-1 p-0.5 rounded-full bg-black/40 border border-white/[0.08]">
+                        {(['preview', 'code'] as const).map((tab) => (
+                          <button
+                            key={tab}
+                            type="button"
+                            onClick={() => setEmailPreviewTab(tab)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-colors ${
+                              emailPreviewTab === tab
+                                ? 'bg-teal-500/20 text-teal-300'
+                                : 'text-neutral-500 hover:text-neutral-300'
+                            }`}
+                          >
+                            {tab === 'preview' ? 'Anteprima' : 'HTML'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
-                    <div className="bg-[#040d0a] border border-teal-500/30 rounded-3xl p-5 shadow-2xl overflow-hidden text-neutral-100 flex flex-col gap-4">
+                    <div className="bg-[#040d0a] border border-teal-500/30 rounded-3xl p-4 shadow-2xl overflow-hidden text-neutral-100 flex flex-col gap-3">
                       <div className="h-1 w-full bg-gradient-to-r from-teal-500 via-teal-300 to-teal-500 rounded-full" />
 
-                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                        <div>
-                          <div className="text-base font-bold text-white tracking-tight">
-                            Tia <span className="text-teal-400">Designs</span>
-                          </div>
-                          <p className="text-[10px] text-neutral-400">Mattia • Sviluppatore Web, App & Creative Designer</p>
-                        </div>
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40 font-mono">
-                          info@tiadesigns.it
-                        </span>
-                      </div>
-
-                      <div className="py-2 flex flex-col gap-3">
+                      {/* Envelope only: the card, the header and the signature are
+                          inside the iframe now — they used to be re-drawn here by
+                          hand, which is how the preview kept showing a version of
+                          the email that no longer existed. */}
+                      <div className="flex flex-col gap-1 px-1">
                         {composeSubject && <h4 className="text-sm font-bold text-white">{composeSubject}</h4>}
                         {composeTo && <p className="text-[11px] text-neutral-400 font-mono">A: {composeTo}</p>}
-
-                        <div className="p-4 rounded-xl bg-black/40 border border-white/[0.06] border-l-2 border-l-teal-400 text-xs text-neutral-200 leading-relaxed whitespace-pre-wrap">
-                          {composeBody || 'Scrivi il messaggio a sinistra per vedere l\'anteprima in tempo reale...'}
-                        </div>
                       </div>
 
-                      {/* Signature */}
-                      <div className="pt-4 border-t border-white/[0.08] text-xs">
-                        <p className="font-bold text-white">Mattia</p>
-                        <p className="text-teal-400 text-[10px]">Tia Designs • info@tiadesigns.it</p>
-                      </div>
+                      {emailPreviewTab === 'preview' ? (
+                        <iframe
+                          title="Anteprima reale dell'email"
+                          srcDoc={composerPreviewHtml}
+                          sandbox=""
+                          className="w-full h-[620px] rounded-2xl border border-white/[0.08] bg-[#040d0a]"
+                        />
+                      ) : (
+                        <pre className="w-full h-[620px] overflow-auto p-3 rounded-2xl border border-white/[0.08] bg-black/50 text-[10px] leading-relaxed text-neutral-400 font-mono whitespace-pre-wrap break-all">
+                          {composerPreviewHtml}
+                        </pre>
+                      )}
+
+                      <p className="text-[10px] text-neutral-500 px-1 leading-relaxed">
+                        Rendering del client: quello che vedi è l&apos;HTML esatto inviato, non una ricostruzione.
+                        Formattazione supportata: <span className="font-mono text-teal-400">## titolo</span>,{' '}
+                        <span className="font-mono text-teal-400">- elenco</span>,{' '}
+                        <span className="font-mono text-teal-400">1. elenco numerato</span>,{' '}
+                        <span className="font-mono text-teal-400">&gt; citazione</span>,{' '}
+                        <span className="font-mono text-teal-400">**grassetto**</span>,{' '}
+                        <span className="font-mono text-teal-400">[Bottone: testo](url)</span>.
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
+
+              {/* ── SUB-TAB: INVIATORE AUTOMATICO & CSV ── */}
+              {inboxSubTab === 'auto-sender' && <AutoEmailSender />}
 
               {/* ── SUB-TAB 3: NEWSLETTER & CAMPAGNE ── */}
               {inboxSubTab === 'newsletter' && (

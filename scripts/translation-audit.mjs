@@ -222,7 +222,6 @@ const byLangChecks = [
   { name: 'PROJECTS_BY_LANG', file: 'translations.ts', constName: 'PROJECTS_BY_LANG', kind: 'array' },
   { name: 'PRICING_ONETIME', file: 'translations.ts', constName: 'PRICING_ONETIME_BY_LANG', kind: 'pricing' },
   { name: 'PRICING_MONTHLY', file: 'translations.ts', constName: 'PRICING_MONTHLY_BY_LANG', kind: 'pricing' },
-  { name: 'PACKAGES_BY_LANG', file: 'translations.ts', constName: 'PACKAGES_BY_LANG', kind: 'packages' },
   { name: 'LEGAL_DOCS_BY_LANG', file: 'legal-content.ts', constName: 'LEGAL_DOCS_BY_LANG', kind: 'record' },
 ];
 

@@ -66,33 +66,62 @@ interface PixelTrailProps {
 // and the shader derives uv from gl_FragCoord, i.e. v = 0 at the BOTTOM of the
 // screen — which is exactly where the pointer uv comes from (`1 - clientY / h`).
 // No extra flip is applied.
-const TRAIL_PEAK = 0.8; // centre intensity of a freshly stamped point (0..1)
+//
+// Dab intensity, 0..1. drei's useTrailTexture defaulted to 0.2; the old build
+// looked stronger than that only because it abused the compositor (see the
+// blend-factor note in Scene), so with correct blending 0.2 read as barely
+// there on a dark hero. 0.5 puts a single dab's centre at pow(0.5, 0.55) ≈ 0.68
+// alpha with overlapping dabs reaching ~0.85, which is the weight the August
+// trail had on screen. Tune this ONE constant to taste.
+const TRAIL_INTENSITY = 0.5;
+/** drei's default easing: a dab grows to full size in the first 30% of its
+ *  life, then shrinks again — that growing/fading dot is the trail's pulse. */
+const easeCircleOut = (x: number) => Math.sqrt(Math.max(0, 1 - Math.pow(x - 1, 2)));
+
+interface TrailPoint {
+  /** Position in uv space (0..1), y-up like the shader. */
+  ux: number;
+  uy: number;
+  /** Age in milliseconds. */
+  age: number;
+  /** 0..1 — how hard the pointer was moving when the dab was laid down. */
+  force: number;
+}
 
 class TrailBuffer {
   readonly texture: THREE.DataTexture;
   private readonly data: Uint8Array;
   private readonly size: number;
-  /** Stamp radius in grid cells. */
-  private readonly radius: number;
-  /** Exponential decay time constant, in seconds. */
-  private readonly tau: number;
-  private last: { x: number; y: number } | null = null;
-  /** True while every cell is already zero — skips pointless GPU uploads. */
+  /** Brush radius in uv units at full growth (trailSize, e.g. 0.05). */
+  private readonly radiusUv: number;
+  private readonly maxAge: number;
+  private readonly interpolate: number;
+  /** Live dabs. Each one is re-drawn (and aged) every frame, like the canvas
+   *  texture drei repainted from scratch — the difference is that the field is
+   *  a grid WE own, with no 2D canvas and no driver-managed fallback texture. */
+  private points: TrailPoint[] = [];
+  /** Last pointer position in uv space (null right after a reset/arm). */
+  private last: { ux: number; uy: number } | null = null;
+  /** Smoothed movement force (drei's `this.force`). */
+  private force = 0;
+  /** True while there is nothing to draw — skips pointless GPU uploads. */
   private clean = true;
 
   constructor({
     size,
     trailSize,
     maxAge,
+    interpolate,
   }: {
     size: number;
     trailSize: number;
     maxAge: number;
+    interpolate: number;
   }) {
     this.size = size;
-    this.radius = Math.max(1, trailSize * size);
-    // A point should be gone in ~maxAge ms: exp(-maxAge/tau) ≈ 5%.
-    this.tau = Math.max(0.02, maxAge / 3000);
+    this.radiusUv = Math.max(1 / size, trailSize);
+    this.maxAge = Math.max(20, maxAge);
+    this.interpolate = Math.max(0, interpolate);
     this.data = new Uint8Array(size * size); // all zeros -> the layer is invisible
     this.texture = new THREE.DataTexture(
       this.data,
@@ -111,85 +140,111 @@ class TrailBuffer {
     this.texture.needsUpdate = true;
   }
 
-  /** Stamp the pointer position (uv in 0..1, bottom-left origin). */
+  /**
+   * Lay down a dab at the pointer position (uv in 0..1, bottom-left origin).
+   *
+   * Movement force is computed exactly like drei did: how far the pointer
+   * travelled since the previous event, normalised so that a move of 1% of the
+   * screen already counts as a full-force dab. `interpolate` then fills the gap
+   * with further dabs when the pointer moved faster than one dab per frame, so
+   * the trail stays continuous instead of turning into a dotted line.
+   */
   addTouch(uv: { x: number; y: number }) {
-    const x = uv.x * this.size;
-    const y = uv.y * this.size;
     if (this.last) {
-      this.stampSegment(this.last.x, this.last.y, x, y);
-    } else {
-      this.stampSegment(x, y, x, y);
+      const dx = this.last.ux - uv.x;
+      const dy = this.last.uy - uv.y;
+      const dd = dx * dx + dy * dy;
+      this.force = Math.max(0.3, Math.min(dd * 10000, 1));
+      if (this.interpolate > 0) {
+        const step = Math.pow((this.radiusUv * 0.5) / this.interpolate, 2);
+        const lines = step > 0 ? Math.ceil(dd / step) : 1;
+        if (lines > 1) {
+          for (let i = 1; i < lines; i++) {
+            this.points.push({
+              ux: this.last.ux - (dx / lines) * i,
+              uy: this.last.uy - (dy / lines) * i,
+              age: 0,
+              force: this.force,
+            });
+          }
+        }
+      }
     }
-    this.last = { x, y };
+    this.points.push({ ux: uv.x, uy: uv.y, age: 0, force: this.force });
+    this.last = { ux: uv.x, uy: uv.y };
     this.clean = false;
   }
 
-  /** Forget the last point so the next stamp cannot connect to it. */
+  /** Forget the last point (and every dab) so the layer is truly empty. */
   reset() {
     this.last = null;
+    this.force = 0;
+    this.points.length = 0;
+    this.data.fill(0);
+    this.clean = true;
   }
 
   /**
-   * Stamp a capsule between two grid-space points: every cell within `radius`
-   * of the segment gets the peak value scaled by a linear falloff. Doing the
-   * whole segment in one pass is what `interpolate` did in drei — it keeps the
-   * trail continuous at high cursor speeds — but in a single sweep instead of
-   * dozens of interpolated dabs.
+   * Age every dab by `deltaMs`, drop the expired ones and repaint the field.
+   * Running on FRAMES (not pointer events) is what makes the trail always fade
+   * out on its own: the old canvas texture only repainted on pointer events, so
+   * it froze in its last shape when the pointer stopped.
    */
-  private stampSegment(x0: number, y0: number, x1: number, y1: number) {
-    const r = this.radius;
-    const minX = Math.max(0, Math.floor(Math.min(x0, x1) - r));
-    const maxX = Math.min(this.size - 1, Math.ceil(Math.max(x0, x1) + r));
-    const minY = Math.max(0, Math.floor(Math.min(y0, y1) - r));
-    const maxY = Math.min(this.size - 1, Math.ceil(Math.max(y0, y1) + r));
-
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const lenSq = dx * dx + dy * dy;
-
-    for (let cy = minY; cy <= maxY; cy++) {
-      const py = cy + 0.5;
-      const row = cy * this.size;
-      for (let cx = minX; cx <= maxX; cx++) {
-        const px = cx + 0.5;
-        // Distance from the cell centre to the segment.
-        let t = 0;
-        if (lenSq > 0) {
-          t = ((px - x0) * dx + (py - y0) * dy) / lenSq;
-          t = t < 0 ? 0 : t > 1 ? 1 : t;
-        }
-        const ox = px - (x0 + t * dx);
-        const oy = py - (y0 + t * dy);
-        const d = Math.sqrt(ox * ox + oy * oy) / r;
-        if (d >= 1) continue;
-        const value = (1 - d) * TRAIL_PEAK * 255;
-        const index = row + cx;
-        if (value > this.data[index]) this.data[index] = value;
-      }
+  update(deltaMs: number) {
+    if (this.clean && this.points.length === 0) return;
+    // Clamp: with frameloop="demand" a long idle gap would otherwise age the
+    // whole trail away in one step (a hard pop instead of a fade).
+    const dt = Math.min(80, Math.max(0, deltaMs));
+    const alive: TrailPoint[] = [];
+    for (const p of this.points) {
+      p.age += dt;
+      if (p.age < this.maxAge) alive.push(p);
     }
+    this.points = alive;
+
+    this.data.fill(0);
+    for (const p of this.points) this.drawDab(p);
+    this.clean = this.points.length === 0;
     this.texture.needsUpdate = true;
   }
 
-  /** Age the whole field and upload it when anything changed. */
-  update(delta: number) {
-    if (this.clean) return;
-    // Clamp: with frameloop="demand" a long idle gap would otherwise decay the
-    // whole trail to zero in one step and read as a hard pop.
-    const dt = Math.min(0.1, delta || 0);
-    const factor = Math.exp(-dt / this.tau);
-    const data = this.data;
-    let max = 0;
-    for (let i = 0; i < data.length; i++) {
-      const next = data[i] * factor;
-      const quantised = next < 1 ? 0 : next;
-      data[i] = quantised;
-      if (quantised > max) max = quantised;
+  /**
+   * One dab: a radial gradient in a 2×2 cell block around the point, added with
+   * the same `screen` accumulation drei's canvas used, so overlapping dabs build
+   * up instead of simply overwriting. Full strength inside 25% of the radius,
+   * then a linear falloff — the profile of drei's createRadialGradient.
+   */
+  private drawDab(p: TrailPoint) {
+    const t = p.age / this.maxAge;
+    // Grow during the first 30% of the dab's life, fade during the rest.
+    const life = t < 0.3 ? easeCircleOut(t / 0.3) : easeCircleOut(1 - (t - 0.3) / 0.7);
+    const intensity = life * p.force * TRAIL_INTENSITY;
+    if (intensity <= 0.001) return;
+
+    const rCells = this.radiusUv * intensity * this.size;
+    if (rCells <= 0.5) return;
+    const cx = p.ux * this.size;
+    const cy = p.uy * this.size;
+    const minX = Math.max(0, Math.floor(cx - rCells));
+    const maxX = Math.min(this.size - 1, Math.ceil(cx + rCells));
+    const minY = Math.max(0, Math.floor(cy - rCells));
+    const maxY = Math.min(this.size - 1, Math.ceil(cy + rCells));
+    const invR = 1 / rCells;
+
+    for (let y = minY; y <= maxY; y++) {
+      const dy = y + 0.5 - cy;
+      const row = y * this.size;
+      for (let x = minX; x <= maxX; x++) {
+        const dx = x + 0.5 - cx;
+        const d = Math.sqrt(dx * dx + dy * dy) * invR;
+        if (d >= 1) continue;
+        const profile = d <= 0.25 ? 1 : 1 - (d - 0.25) / 0.75;
+        const a = this.data[row + x] / 255;
+        const b = intensity * profile;
+        // screen: 1 - (1 - a)(1 - b)
+        this.data[row + x] = (a + b - a * b) * 255;
+      }
     }
-    if (max === 0) {
-      this.clean = true;
-      // Zeroing already happened above — one last upload clears the GPU copy.
-    }
-    this.texture.needsUpdate = true;
   }
 }
 
@@ -344,19 +399,34 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
     material.transparent = true;
     material.depthTest = false;
     material.depthWrite = false;
+    // ── Blend factors: ONE + ONE_MINUS_SRC_ALPHA ───────────────────────────
+    // The fragment shader outputs PREMULTIPLIED colour (vec4(color * alpha,
+    // alpha)), which is what the premultipliedAlpha canvas expects. three's
+    // default NormalBlending, however, multiplies the source by its alpha
+    // AGAIN (blendSrc = SRC_ALPHA), so every fragment landed in the framebuffer
+    // as color·alpha². Squaring is invisible at the trail's core (alpha 0.88 →
+    // 0.78) but destroys the whole TAIL: at alpha 0.3 the pixel reached the
+    // screen at 0.09 instead of 0.30, so the trail lost its soft, lingering
+    // fade and read as a thin, weak smudge — nothing like the August version.
+    // With ONE / ONE_MINUS_SRC_ALPHA the framebuffer holds exactly color·alpha
+    // and the canvas composites with normal alpha blending, which IS the
+    // August look, achieved correctly (no un-premultiplied write, so no
+    // site-wide wash either).
+    material.blending = THREE.CustomBlending;
+    material.blendSrc = THREE.OneFactor;
+    material.blendDst = THREE.OneMinusSrcAlphaFactor;
+    material.blendEquation = THREE.AddEquation;
     return material;
   }, [pixelColor]);
 
-  // `interpolate` and `easingFunction` are kept in the public props for API
-  // stability: the capsule stamp below already interpolates the whole segment
-  // (so fast cursor moves never leave gaps) and the falloff is linear, which
-  // is the same curve drei's radial gradient used.
-  void interpolate;
+  // `easingFunction` stays in the public props for API stability: the dab
+  // growth curve is the one drei's texture used (see easeCircleOut) and cannot
+  // be swapped without changing the trail's character.
   void easingFunction;
 
   const trail = useMemo(
-    () => new TrailBuffer({ size: gridSize, trailSize, maxAge }),
-    [gridSize, trailSize, maxAge],
+    () => new TrailBuffer({ size: gridSize, trailSize, maxAge, interpolate }),
+    [gridSize, trailSize, maxAge, interpolate],
   );
   const trailRef = useRef(trail);
   trailRef.current = trail;
@@ -370,7 +440,8 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
   const onFirstFrameRef = useRef(onFirstFrame);
   onFirstFrameRef.current = onFirstFrame;
   useFrame((_, delta) => {
-    trail.update(delta);
+    // delta is in SECONDS (three); the dab ages are in milliseconds.
+    trail.update(delta * 1000);
     if (!firstFrameRef.current) {
       firstFrameRef.current = true;
       onFirstFrameRef.current();
