@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Report Verifica Booking Prefill & Nuovi Pacchetti</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #081410; color: #f0fdf4; margin: 0; padding: 2rem; }
+    h1 { color: #2dd4bf; margin-bottom: 0.5rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+    .card { background: rgba(12, 28, 23, 0.7); border: 1px solid rgba(45, 212, 191, 0.2); border-radius: 16px; padding: 1.25rem; }
+    .card img { width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-top: 0.75rem; }
+    ul { list-style: none; padding: 0; }
+    li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>Report Verifica: Booking Prefill & Nuovi Pacchetti</h1>
+  <p style="color: #94a3b8">Data test: 13/09/2026, 06:00:31</p>
+  <div class="card" style="margin-top: 1rem;">
+    <h3>Risultati Test: 23/23 Superati</h3>
+    <ul>
+      <li>✅ <strong>Sezione #prezzi montata nel DOM</strong> </li><li>✅ <strong>Titolo blocco pacchetti presente ("Prezzo chiaro, tempi chiari")</strong> </li><li>✅ <strong>Tutti e 3 i pacchetti renderizzati</strong> — <span style="color:#94a3b8">Sito vetrina, E-commerce, Video</span></li><li>✅ <strong>Nota di trasparenza sui prezzi presente</strong> </li><li>✅ <strong>Desktop: pulsante prenotazione call trovato e cliccato</strong> </li><li>✅ <strong>Desktop: modale Cal.com aperta come dialog centrato</strong> </li><li>✅ <strong>Desktop prefill: parametro name correttamente codificato nel link</strong> — <span style="color:#94a3b8">Marco Rossi</span></li><li>✅ <strong>Desktop prefill: parametro email correttamente codificato nel link</strong> — <span style="color:#94a3b8">marco.rossi@example.com</span></li><li>✅ <strong>Desktop prefill: note contengono il servizio qualificato</strong> — <span style="color:#94a3b8">E-commerce</span></li><li>✅ <strong>Desktop prefill: note contengono il budget concordato</strong> — <span style="color:#94a3b8">€3.500</span></li><li>✅ <strong>Desktop: chiusura modale con tasto ESC verificata</strong> </li><li>✅ <strong>Mobile: pulsante prenotazione call trovato e cliccato</strong> </li><li>✅ <strong>Mobile: modale Cal.com aperta</strong> </li><li>✅ <strong>Mobile: la modale rispetta il viewport 390x844 (no overflow)</strong> — <span style="color:#94a3b8">366x760px</span></li><li>✅ <strong>Mobile prefill: parametro name presente nel link Cal.com</strong> — <span style="color:#94a3b8">Giulia Bianchi</span></li><li>✅ <strong>Mobile prefill: parametro email presente nel link Cal.com</strong> — <span style="color:#94a3b8">giulia.bianchi@gmail.com</span></li><li>✅ <strong>Mobile prefill: note qualificate presenti (Sito vetrina, €1.200)</strong> </li><li>✅ <strong>Mobile: cliccato pulsante di chiusura (X)</strong> </li><li>✅ <strong>Mobile: modale chiusa correttamente</strong> </li><li>✅ <strong>Inglese (/en): titolo pacchetti ("Clear price, clear timeline")</strong> </li><li>✅ <strong>Inglese (/en): 3 pacchetti con copy e prezzi localizzati</strong> </li><li>✅ <strong>Spagnolo (/es): titolo pacchetti ("Precio claro, plazos claros")</strong> </li><li>✅ <strong>Spagnolo (/es): 3 pacchetti con copy e prezzi localizzati</strong> </li>
+    </ul>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h4>01. Sezione Pacchetti Desktop</h4>
+      <img src="01-packages-desktop.png" alt="Pacchetti Desktop">
+    </div>
+    <div class="card">
+      <h4>02. Modale Booking Prefill Desktop</h4>
+      <img src="02-desktop-modal-prefilled.png" alt="Booking Prefill Desktop">
+    </div>
+    <div class="card">
+      <h4>03. Modale Booking Prefill Mobile</h4>
+      <img src="03-mobile-modal-prefilled.png" alt="Booking Prefill Mobile">
+    </div>
+    <div class="card">
+      <h4>04. Modale Chiusa Mobile</h4>
+      <img src="04-mobile-modal-closed.png" alt="Chiusura Mobile">
+    </div>
+  </div>
+</body>
+</html>

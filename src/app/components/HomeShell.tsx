@@ -619,7 +619,7 @@ function CallBookingCard({ onClose, bodyRef, closeBtnRef }: {
         className="relative flex-1 min-h-0 rounded-2xl overflow-y-auto overflow-x-hidden border border-white/[0.08] bg-[#050c09]/80 overscroll-contain touch-pan-y"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        <CallEmbedHost key={lang} />
+        <CallEmbedHost key={`${lang}-${prefill}`} />
       </div>
     </div>
   );
