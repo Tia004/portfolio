@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { buildBrandedEmailHtml, sendEmail } from '@/lib/branded-email';
+import { recordSentEmail } from '@/lib/email-dedup';
 
 // POST /api/master/emails/send - Protected
 export async function POST(request: NextRequest) {
@@ -46,6 +47,13 @@ export async function POST(request: NextRequest) {
     if (!sent) {
       return NextResponse.json({ error: 'Impossibile recapitare l\'email. Verifica le credenziali SMTP / Resend in .env.' }, { status: 502 });
     }
+
+    await recordSentEmail({
+      email: to,
+      name: recipientName,
+      subject,
+      source: 'dashboard_single_send',
+    });
 
     // If connected to a contact message, update its status and note
     if (contactMessageId) {

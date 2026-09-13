@@ -31,6 +31,9 @@ import {
   Clock,
   ChevronRight,
   Info,
+  Shield,
+  ShieldCheck,
+  Trash2,
 } from 'lucide-react';
 import { buildBrandedEmailHtml } from '@/lib/email-template';
 
@@ -98,6 +101,44 @@ export default function AutoEmailSender() {
 
   // Toast / Status Message
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // Anti-duplication sent registry state
+  const [sentRegistry, setSentRegistry] = useState<Set<string>>(new Set());
+  const [excludedAlreadySent, setExcludedAlreadySent] = useState<{ email: string; company?: string }[]>([]);
+  const [showExcludedModal, setShowExcludedModal] = useState(false);
+  const [isLoadingRegistry, setIsLoadingRegistry] = useState(false);
+
+  // Addresses strictly exempt from duplication blocks (test / developer accounts)
+  const EXEMPT_EMAILS = useMemo(
+    () =>
+      new Set([
+        'info@tiadesigns.it',
+        'tiachinaglia@gmail.com',
+        'latitiante@gmail.com',
+      ]),
+    []
+  );
+
+  const fetchSentRegistry = async () => {
+    setIsLoadingRegistry(true);
+    try {
+      const res = await fetch('/api/master/emails/sent-registry');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.sentEmails)) {
+        const s = new Set<string>();
+        data.sentEmails.forEach((e: string) => s.add(e.toLowerCase().trim()));
+        setSentRegistry(s);
+      }
+    } catch (err) {
+      console.warn('Could not load sent registry:', err);
+    } finally {
+      setIsLoadingRegistry(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSentRegistry();
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -259,6 +300,7 @@ export default function AutoEmailSender() {
         // Parse rows
         const parsedRaw: Record<string, string>[] = [];
         const builtRecipients: RecipientRow[] = [];
+        const newlyExcluded: { email: string; company?: string }[] = [];
 
         dataRows.forEach((cells, lineIdx) => {
           const rowObj: Record<string, string> = {};
@@ -268,7 +310,17 @@ export default function AutoEmailSender() {
           parsedRaw.push(rowObj);
 
           const emailVal = (rowObj[emailCol] || '').trim();
+          const cleanEmail = emailVal.toLowerCase();
           if (emailVal) {
+            // Anti-duplication check: if already sent and not exempt, exclude
+            if (!EXEMPT_EMAILS.has(cleanEmail) && sentRegistry.has(cleanEmail)) {
+              newlyExcluded.push({
+                email: emailVal,
+                company: companyCol ? rowObj[companyCol] || '' : '',
+              });
+              return;
+            }
+
             builtRecipients.push({
               id: `csv-${lineIdx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
               email: emailVal,
@@ -284,7 +336,16 @@ export default function AutoEmailSender() {
 
         setRawRows(parsedRaw);
         setRecipients(builtRecipients);
-        showToast(`Importate con successo ${builtRecipients.length} righe dal CSV!`, 'success');
+        setExcludedAlreadySent(newlyExcluded);
+
+        if (newlyExcluded.length > 0) {
+          showToast(
+            `Importate ${builtRecipients.length} righe (${newlyExcluded.length} già inviate escluse per prevenire spam)`,
+            'info'
+          );
+        } else {
+          showToast(`Importate con successo ${builtRecipients.length} righe dal CSV!`, 'success');
+        }
       } catch (err: any) {
         console.error('Error parsing CSV:', err);
         showToast('Errore nella lettura del file CSV: ' + err.message, 'error');
@@ -298,22 +359,35 @@ export default function AutoEmailSender() {
     setColumnMapping(newMapping);
     if (!rawRows.length) return;
 
-    const rebuilt: RecipientRow[] = rawRows
-      .map((rowObj, lineIdx): RecipientRow => {
-        const emailVal = (rowObj[newMapping.email] || '').trim();
-        return {
-          id: `csv-${lineIdx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          email: emailVal,
-          name: newMapping.name ? rowObj[newMapping.name] || '' : '',
-          company: newMapping.company ? rowObj[newMapping.company] || '' : '',
-          customSubject: newMapping.subject && rowObj[newMapping.subject] ? rowObj[newMapping.subject] : undefined,
-          customBody: newMapping.body && rowObj[newMapping.body] ? rowObj[newMapping.body] : undefined,
-          extraData: rowObj,
-          status: 'idle',
-        };
-      })
-      .filter((r) => Boolean(r.email));
+    const newlyExcluded: { email: string; company?: string }[] = [];
+    const rebuilt: RecipientRow[] = [];
 
+    rawRows.forEach((rowObj, lineIdx) => {
+      const emailVal = (rowObj[newMapping.email] || '').trim();
+      const cleanEmail = emailVal.toLowerCase();
+      if (!emailVal) return;
+
+      if (!EXEMPT_EMAILS.has(cleanEmail) && sentRegistry.has(cleanEmail)) {
+        newlyExcluded.push({
+          email: emailVal,
+          company: newMapping.company ? rowObj[newMapping.company] || '' : '',
+        });
+        return;
+      }
+
+      rebuilt.push({
+        id: `csv-${lineIdx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        email: emailVal,
+        name: newMapping.name ? rowObj[newMapping.name] || '' : '',
+        company: newMapping.company ? rowObj[newMapping.company] || '' : '',
+        customSubject: newMapping.subject && rowObj[newMapping.subject] ? rowObj[newMapping.subject] : undefined,
+        customBody: newMapping.body && rowObj[newMapping.body] ? rowObj[newMapping.body] : undefined,
+        extraData: rowObj,
+        status: 'idle',
+      });
+    });
+
+    setExcludedAlreadySent(newlyExcluded);
     setRecipients(rebuilt);
     showToast('Mappatura colonne aggiornata!', 'info');
   };
@@ -327,60 +401,59 @@ export default function AutoEmailSender() {
 
     const lines = manualText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const parsed: RecipientRow[] = [];
+    const newlyExcluded: { email: string; company?: string }[] = [];
 
-    lines.forEach((line, idx) => {
-      // Check format "Name <email@domain.com>"
+    const addRecipientIfValid = (emailVal: string, nameVal = '', companyVal = '') => {
+      const clean = emailVal.trim();
+      const lower = clean.toLowerCase();
+      if (!clean) return;
+      if (!EXEMPT_EMAILS.has(lower) && sentRegistry.has(lower)) {
+        newlyExcluded.push({ email: clean, company: companyVal });
+        return;
+      }
+      parsed.push({
+        id: `man-${parsed.length}-${Date.now()}`,
+        email: clean,
+        name: nameVal,
+        company: companyVal,
+        status: 'idle',
+      });
+    };
+
+    lines.forEach((line) => {
       const bracketMatch = line.match(/^([^<]+)<([^>]+)>$/);
       if (bracketMatch) {
-        parsed.push({
-          id: `man-${idx}-${Date.now()}`,
-          email: bracketMatch[2].trim(),
-          name: bracketMatch[1].trim(),
-          status: 'idle',
-        });
+        addRecipientIfValid(bracketMatch[2], bracketMatch[1].trim());
         return;
       }
 
-      // Check format "email, Name" or "email; Name"
       const delimiter = line.includes(';') ? ';' : ',';
       const parts = line.split(delimiter).map((p) => p.trim());
       if (parts[0].includes('@')) {
-        parsed.push({
-          id: `man-${idx}-${Date.now()}`,
-          email: parts[0],
-          name: parts[1] || '',
-          company: parts[2] || '',
-          status: 'idle',
-        });
+        addRecipientIfValid(parts[0], parts[1] || '', parts[2] || '');
       } else if (parts[1] && parts[1].includes('@')) {
-        parsed.push({
-          id: `man-${idx}-${Date.now()}`,
-          email: parts[1],
-          name: parts[0] || '',
-          company: parts[2] || '',
-          status: 'idle',
-        });
+        addRecipientIfValid(parts[1], parts[0] || '', parts[2] || '');
       } else {
-        // Just extract any email from the string
         const emailMatch = line.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi);
         if (emailMatch) {
-          parsed.push({
-            id: `man-${idx}-${Date.now()}`,
-            email: emailMatch[0],
-            name: '',
-            status: 'idle',
-          });
+          addRecipientIfValid(emailMatch[0]);
         }
       }
     });
 
-    if (parsed.length === 0) {
+    setExcludedAlreadySent(newlyExcluded);
+    setRecipients(parsed);
+
+    if (parsed.length === 0 && newlyExcluded.length === 0) {
       showToast('Nessun indirizzo email valido trovato nel testo.', 'error');
       return;
     }
 
-    setRecipients(parsed);
-    showToast(`Caricate ${parsed.length} email dalla lista manuale!`, 'success');
+    if (newlyExcluded.length > 0) {
+      showToast(`Caricate ${parsed.length} email (${newlyExcluded.length} già inviate escluse per prevenire spam)`, 'info');
+    } else {
+      showToast(`Caricate ${parsed.length} email dalla lista manuale!`, 'success');
+    }
   };
 
   // Download sample CSV
@@ -466,6 +539,56 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     setRecipients((prev) => prev.filter((r) => r.id !== id));
   };
 
+  // Unblock / re-admit an email from the anti-spam sent registry
+  const handleUnblockEmail = async (email: string) => {
+    try {
+      const res = await fetch(`/api/master/emails/sent-registry?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore');
+
+      const clean = email.toLowerCase().trim();
+      setSentRegistry((prev) => {
+        const next = new Set(prev);
+        next.delete(clean);
+        return next;
+      });
+      setExcludedAlreadySent((prev) =>
+        prev.filter((item) => item.email.toLowerCase().trim() !== clean)
+      );
+
+      // Re-insert into recipients if available from rawRows
+      const foundRow = rawRows.find(
+        (r) => (r[columnMapping.email] || '').toLowerCase().trim() === clean
+      );
+      if (foundRow) {
+        setRecipients((prev) => [
+          ...prev,
+          {
+            id: `restored-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            email,
+            name: columnMapping.name ? foundRow[columnMapping.name] || '' : '',
+            company: columnMapping.company ? foundRow[columnMapping.company] || '' : '',
+            customSubject:
+              columnMapping.subject && foundRow[columnMapping.subject]
+                ? foundRow[columnMapping.subject]
+                : undefined,
+            customBody:
+              columnMapping.body && foundRow[columnMapping.body]
+                ? foundRow[columnMapping.body]
+                : undefined,
+            status: 'idle',
+          },
+        ]);
+      }
+
+      showToast(`Indirizzo ${email} sbloccato dallo storico!`, 'success');
+    } catch (err: any) {
+      showToast(`Errore durante lo sblocco: ${err.message}`, 'error');
+    }
+  };
+
   // Single test send
   const handleSendTestEmail = async () => {
     if (!testEmailAddress || !testEmailAddress.includes('@')) {
@@ -514,6 +637,11 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
   // Execution Engine: Send one email
   const sendSingleRecipient = async (row: RecipientRow): Promise<{ success: boolean; error?: string }> => {
+    const cleanTo = row.email.toLowerCase().trim();
+    if (!EXEMPT_EMAILS.has(cleanTo) && sentRegistry.has(cleanTo)) {
+      return { success: false, error: 'Email già presente nello storico invii (bloccata per prevenire spam)' };
+    }
+
     const resolvedSubject = row.customSubject || substituteVariables(templateSubject, row);
     const resolvedBody = row.customBody || substituteVariables(templateBody, row);
     const resolvedName = row.name || row.company || undefined;
@@ -539,6 +667,8 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       if (!res.ok) {
         return { success: false, error: data.error || 'Errore invio' };
       }
+      // Update local sent registry
+      setSentRegistry((prev) => new Set([...prev, cleanTo]));
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Errore di rete' };
@@ -1221,6 +1351,25 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 ❌ {stats.failed} fallite
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setShowExcludedModal(true)}
+              className="px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Registro anti-duplicazione email già inviate"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{sentRegistry.size} registrate anti-spam</span>
+            </button>
+            {excludedAlreadySent.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowExcludedModal(true)}
+                className="px-2.5 py-1 rounded-full text-xs font-mono bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 flex items-center gap-1.5 cursor-pointer transition-colors animate-pulse"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-300" />
+                <span>{excludedAlreadySent.length} già inviate escluse</span>
+              </button>
+            )}
           </div>
 
           {/* Quick Tools */}
@@ -1267,6 +1416,38 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
             )}
           </div>
         </div>
+
+        {/* Anti-Spam Excluded Banner */}
+        {excludedAlreadySent.length > 0 && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-200 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-300 shrink-0">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-300 flex items-center gap-2">
+                  <span>Protezione Anti-Spam attiva</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                    {excludedAlreadySent.length} {excludedAlreadySent.length === 1 ? 'esclusa' : 'escluse'}
+                  </span>
+                </p>
+                <p className="text-amber-200/70 text-[11px]">
+                  {excludedAlreadySent.length === 1
+                    ? "1 email a cui hai già inviato dal sito è stata automaticamente esclusa dalla lista per non risultare spam."
+                    : `${excludedAlreadySent.length} email a cui hai già inviato dal sito sono state automaticamente escluse dalla lista per non risultare spam.`}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowExcludedModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 font-semibold cursor-pointer transition-colors border border-amber-500/30 text-xs flex items-center gap-1.5"
+            >
+              <span>Vedi o sblocca ({excludedAlreadySent.length})</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Live Progress Bar during execution */}
         {isRunning && (
@@ -1491,6 +1672,85 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 className="px-5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold cursor-pointer transition-colors"
               >
                 Chiudi Anteprima
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Excluded Anti-Spam Modal */}
+      {showExcludedModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#081410] border border-white/20 rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-white text-base">Registro Anti-Spam & Contatti Esclusi</h4>
+                  <p className="text-xs text-neutral-400">
+                    {sentRegistry.size} email registrate nello storico • {excludedAlreadySent.length} escluse dal file attuale
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowExcludedModal(false)}
+                className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="py-4 overflow-y-auto flex-1 flex flex-col gap-4">
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-neutral-300 flex items-start gap-2">
+                <Info className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                <span>
+                  Per proteggere la tua reputazione mittente e non risultare spam, il sistema esclude automaticamente tutti i contatti a cui hai già inviato un'email dal sito. Gli account di test (<strong className="text-white">info@tiadesigns.it</strong>, <strong className="text-white">tiachinaglia@gmail.com</strong>, <strong className="text-white">latitiante@gmail.com</strong>) sono sempre ammessi e non vengono mai bloccati.
+                </span>
+              </div>
+
+              {excludedAlreadySent.length > 0 ? (
+                <div>
+                  <h5 className="text-xs font-semibold text-amber-300 mb-2 uppercase tracking-wider">
+                    Contatti esclusi automaticamente ({excludedAlreadySent.length}):
+                  </h5>
+                  <div className="border border-white/10 rounded-2xl overflow-hidden divide-y divide-white/5 bg-black/40 max-h-72 overflow-y-auto">
+                    {excludedAlreadySent.map((item, idx) => (
+                      <div key={idx} className="p-3 flex items-center justify-between gap-2 hover:bg-white/[0.02]">
+                        <div className="min-w-0">
+                          <p className="text-xs font-mono text-white truncate">{item.email}</p>
+                          {item.company && (
+                            <p className="text-[11px] text-neutral-400 truncate">{item.company}</p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUnblockEmail(item.email)}
+                          className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 text-[11px] font-medium border border-red-500/20 cursor-pointer shrink-0 transition-colors"
+                          title="Rimuovi dallo storico e riammetti nella lista di invio"
+                        >
+                          Sblocca e riammetti
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center text-xs text-neutral-400">
+                  Nessun contatto del file attuale è presente nello storico invii. Tutti i destinatari sono nuovi.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowExcludedModal(false)}
+                className="px-5 py-2 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-xs font-bold cursor-pointer transition-colors"
+              >
+                Chiudi
               </button>
             </div>
           </div>

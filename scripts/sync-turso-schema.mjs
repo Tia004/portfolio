@@ -1,31 +1,10 @@
 import { createClient } from '@libsql/client';
-import fs from 'fs';
-import path from 'path';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 
-// Parse .env
-let tursoUrl = process.env.TURSO_DATABASE_URL;
-let tursoToken = process.env.TURSO_AUTH_TOKEN;
-
-if (!tursoUrl || !tursoToken) {
-  try {
-    const envPath = path.join(process.cwd(), '.env');
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf8');
-      for (const line of content.split('\n')) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('TURSO_DATABASE_URL=')) {
-          tursoUrl = trimmed.split('=')[1].replace(/["']/g, '');
-        }
-        if (trimmed.startsWith('TURSO_AUTH_TOKEN=')) {
-          tursoToken = trimmed.split('=')[1].replace(/["']/g, '');
-        }
-      }
-    }
-  } catch (e) {}
-}
-
-if (!tursoUrl) tursoUrl = "libsql://portfoliodb-tia004.aws-eu-west-1.turso.io";
-if (!tursoToken) tursoToken = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzkzMzU2MzgsImlkIjoiMDE5ZTQ4YWEtZjMwMS03YmExLTg5NmUtNGIwNzkwYjFhMGM0IiwicmlkIjoiZTY2MDc2MzktOTllNS00NzE5LTgwOTUtM2FiNDRiMTg3M2NlIn0.EHhH5KQQqjEWg-sqN230LSjcAT5gJyBLeFBAnvVKthMvy28I5GMeo7idq2se_agilOQj2FLJ2qg62PzIqMCLCg";
+// Credentials come from the environment (or .env) only — this script runs in
+// `npm run build`, so a missing value must stop the build with a message that
+// names the variable instead of silently using a committed token.
+const { url: tursoUrl, authToken: tursoToken } = tursoCredentials();
 
 console.log('Connecting to Turso:', tursoUrl);
 const client = createClient({
@@ -261,6 +240,52 @@ async function run() {
       );
     `);
     console.log('Checked CustomEmailTemplate table');
+
+    // 12. Create NewsletterSubscriber (public double opt-in signup)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS NewsletterSubscriber (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        name TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        locale TEXT NOT NULL DEFAULT 'it',
+        source TEXT NOT NULL DEFAULT 'website',
+        consentText TEXT,
+        consentAt DATETIME,
+        confirmToken TEXT,
+        unsubscribeToken TEXT NOT NULL,
+        confirmedAt DATETIME,
+        unsubscribedAt DATETIME,
+        ipHash TEXT,
+        userAgent TEXT,
+        lastEmailAt DATETIME,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    // Unique indexes: email is the identity, the tokens are capabilities.
+    // CREATE INDEX IF NOT EXISTS keeps this idempotent on every deploy.
+    await client.execute('CREATE UNIQUE INDEX IF NOT EXISTS NewsletterSubscriber_email_key ON NewsletterSubscriber(email);');
+    await client.execute('CREATE UNIQUE INDEX IF NOT EXISTS NewsletterSubscriber_confirmToken_key ON NewsletterSubscriber(confirmToken);');
+    await client.execute('CREATE UNIQUE INDEX IF NOT EXISTS NewsletterSubscriber_unsubscribeToken_key ON NewsletterSubscriber(unsubscribeToken);');
+    await client.execute('CREATE INDEX IF NOT EXISTS NewsletterSubscriber_status_createdAt_idx ON NewsletterSubscriber(status, createdAt);');
+    console.log('Checked NewsletterSubscriber table');
+
+    // 13. Create SentEmailLog (Registry of sent emails to prevent duplication and spam)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS SentEmailLog (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        name TEXT,
+        company TEXT,
+        subject TEXT,
+        source TEXT NOT NULL DEFAULT 'auto_sender',
+        sentAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.execute('CREATE INDEX IF NOT EXISTS SentEmailLog_email_idx ON SentEmailLog(email);');
+    await client.execute('CREATE INDEX IF NOT EXISTS SentEmailLog_sentAt_idx ON SentEmailLog(sentAt);');
+    console.log('Checked SentEmailLog table');
 
     console.log('✅ Turso schema synchronization complete!');
   } catch (err) {

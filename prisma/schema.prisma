@@ -195,12 +195,46 @@ model Quote {
   @@index([clientEmail])
 }
 
+/// A newsletter subscriber collected through the public double opt-in form.
+/// The record is the proof of consent: `consentText` stores the exact wording
+/// the visitor accepted, and `status` only becomes "confirmed" after they click
+/// the confirmation link that arrives by email.
+model NewsletterSubscriber {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  name             String?
+  /// "pending" (waiting for the email confirmation) | "confirmed" | "unsubscribed"
+  status           String    @default("pending")
+  /// Locale of the signup, so the confirmation email goes out in their language.
+  locale           String    @default("it")
+  /// Where the signup came from ("website", "dashboard", …).
+  source           String    @default("website")
+  /// The consent wording shown next to the checkbox, stored verbatim.
+  consentText      String?
+  consentAt        DateTime?
+  /// Cleared once used, so a leaked confirmation link cannot be replayed.
+  confirmToken     String?   @unique
+  /// Survives confirmation: it is the opt-out link inside every campaign.
+  unsubscribeToken String    @unique
+  confirmedAt      DateTime?
+  unsubscribedAt   DateTime?
+  /// SHA-256 of the address with the server secret — never the raw IP.
+  ipHash           String?
+  userAgent        String?
+  /// Throttles repeated confirmation emails to the same address.
+  lastEmailAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, createdAt])
+}
+
 model NewsletterCampaign {
   id             String    @id @default(uuid())
   subject        String
   previewText    String?
   bodyContent    String
-  recipients     String    @default("all_contacts") // 'all_contacts' | 'all_leads' | JSON array or comma separated
+  recipients     String    @default("all_contacts") // 'all_contacts' | 'all_leads' | 'all_audience' | 'subscribers' | comma separated emails
   recipientCount Int       @default(0)
   status         String    @default("draft") // "draft" | "scheduled" | "sent" | "failed"
   scheduledFor   DateTime?
@@ -225,6 +259,19 @@ model CustomEmailTemplate {
   updatedAt DateTime @updatedAt
 
   @@index([createdAt])
+}
+
+model SentEmailLog {
+  id        String   @id @default(uuid())
+  email     String
+  name      String?
+  company   String?
+  subject   String?
+  source    String   @default("auto_sender") // "auto_sender" | "single_send" | "aruba_webmail" | "seed"
+  sentAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([sentAt])
 }
 
 

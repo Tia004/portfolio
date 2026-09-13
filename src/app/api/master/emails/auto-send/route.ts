@@ -3,6 +3,7 @@ import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { buildBrandedEmailHtml, sendEmail } from '@/lib/branded-email';
 import { sendArubaEmail, isArubaConfigured } from '@/lib/aruba-mail';
+import { isEmailAlreadySent, recordSentEmail } from '@/lib/email-dedup';
 
 /**
  * Clean direct/personal email template (high deliverability for outreach).
@@ -73,6 +74,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Anti-duplication check (unless exempt e.g. info@tiadesigns.it, tiachinaglia@gmail.com, latitiante@gmail.com)
+    if (await isEmailAlreadySent(to)) {
+      return NextResponse.json(
+        {
+          error: `Email già inviata in precedenza a ${to}. Invio bloccato per prevenire invii doppi e salvaguardare la reputazione anti-spam.`,
+          to,
+          alreadySent: true,
+        },
+        { status: 409 }
+      );
+    }
+
     // Build the corresponding HTML
     let html = '';
     if (style === 'direct') {
@@ -125,6 +138,14 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
+
+    // Record in sent registry
+    await recordSentEmail({
+      email: to,
+      name,
+      subject,
+      source: 'auto_sender',
+    });
 
     return NextResponse.json({
       success: true,
