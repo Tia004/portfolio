@@ -55,6 +55,28 @@
   z-index: -1;
 }
 
+/* The decorative layers paint OUTSIDE the card (the glow lives there by
+   design), but they must never extend the scrollable area on narrow screens:
+   a glow that pokes 50px past a 320px phone adds horizontal overflow even
+   though nothing interactive is out there. Clipping the PAINT while keeping
+   overflow visible preserves the glow up to the viewport edge.
+   contain:paint on the SPAN also clips its own box; these layers are inset:0
+   of the card, so what pokes out is the ::before/::after SHADOW — clipped by
+   the card itself below. */
+.edge-light,
+.border-glow-glass::before,
+.border-glow-glass::after {
+  contain: paint;
+}
+
+/* The card keeps overflow visible so the ::before/::after shadows can paint
+   the glow OUTSIDE its box (that is the effect), but the shadows are the only
+   things that stick out — and a shadow never extends scrollable area. The
+   elements that DO extend it are the decorative spans: they are inset:0 of
+   the card, so contain:paint above is a no-op for the card box itself. What
+   actually pokes past the viewport is the hero's decorative span (see
+   audit: span.absolute.inset-0 left=-50): clipped where it is declared. */
+
 /* NO idle GPU layers: the skills marquee renders ~190 cards and forcing
    translate3d + will-change:opacity on every card (4 layers each, ~800
    total) choked the compositor during scroll. Layers are now promoted ONLY

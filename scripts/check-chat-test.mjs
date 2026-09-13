@@ -2,6 +2,7 @@
 // Usage: SESSION=<id> node scripts/check-chat-test.mjs
 import 'dotenv/config';
 import { createClient } from '@libsql/client';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 
 const sessionId = process.env.SESSION || process.argv[2] || 'dee5707e-2925-4f85-b2d3-01db5990653f';
 console.log(`🔎 Checking session: ${sessionId}\n`);
@@ -9,10 +10,7 @@ console.log(`🔎 Checking session: ${sessionId}\n`);
 // ── 1. Turso DB ──
 console.log('── Turso DB ──');
 try {
-  const db = createClient({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
+  const db = createClient(tursoCredentials());
   const res = await db.execute({
     sql: 'SELECT id, sender, text, timestamp FROM ChatMessage WHERE sessionId = ? ORDER BY timestamp ASC',
     args: [sessionId],

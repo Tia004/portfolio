@@ -1,50 +1,20 @@
 import type { MetadataRoute } from 'next';
+import { sitemapEntry } from '@/lib/seo';
+import { caseStudyPath, caseStudySlugs } from '@/lib/case-studies';
 
-const BASE_URL = 'https://tiadesigns.it';
-
+// Generated from the content, not written by hand.
+//
+// The previous version listed three URLs — the three home pages — which was
+// correct while the site WAS three URLs. A hand-written list does not fail
+// loudly when the site grows: it just silently stops mentioning the new pages,
+// and nothing is ever discovered. Now every case study added to the project
+// list appears here, with its whole hreflang cluster, automatically.
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
-      alternates: {
-        languages: {
-          it: `${BASE_URL}/`,
-          en: `${BASE_URL}/en`,
-          es: `${BASE_URL}/es`,
-          'x-default': `${BASE_URL}/`,
-        },
-      },
-    },
-    {
-      url: `${BASE_URL}/en`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-      alternates: {
-        languages: {
-          en: `${BASE_URL}/en`,
-          it: `${BASE_URL}/`,
-          es: `${BASE_URL}/es`,
-          'x-default': `${BASE_URL}/`,
-        },
-      },
-    },
-    {
-      url: `${BASE_URL}/es`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-      alternates: {
-        languages: {
-          es: `${BASE_URL}/es`,
-          it: `${BASE_URL}/`,
-          en: `${BASE_URL}/en`,
-          'x-default': `${BASE_URL}/`,
-        },
-      },
-    },
-  ];
+  const home = sitemapEntry('', { priority: 1, changeFrequency: 'weekly' });
+
+  const caseStudies = caseStudySlugs().flatMap((slug) =>
+    sitemapEntry(caseStudyPath(slug), { priority: 0.7, changeFrequency: 'monthly' }),
+  );
+
+  return [...home, ...caseStudies];
 }

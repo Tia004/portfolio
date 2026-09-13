@@ -42,11 +42,7 @@ interface AnalyticsEvent {
 export type ConversionName =
   | 'preventivo_inviato'
   | 'call_prenotata'
-  | 'chat_primo_messaggio'
-  // The price estimator is a funnel step of its own: it is the first moment a
-  // visitor commits to a service, a size and a deadline, and the drop-off
-  // after it is the difference between a curious visit and a real lead.
-  | 'stima_calcolata';
+  | 'chat_primo_messaggio';
 
 export interface ConversionSource {
   /** 'ai_quote' | 'contact_form' | 'inline_form' | 'cal_embed' | 'chatbot' | … */

@@ -6,6 +6,11 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // Lets a module import a sibling as './env.ts' (legal only with noEmit, and
+    // already the convention at HEAD). The plain-node scripts in scripts/
+    // import src/lib modules DIRECTLY, and Node's ESM resolver does not guess a
+    // missing extension the way the bundler does.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

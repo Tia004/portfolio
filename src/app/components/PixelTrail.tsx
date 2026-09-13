@@ -67,16 +67,17 @@ interface PixelTrailProps {
 // screen — which is exactly where the pointer uv comes from (`1 - clientY / h`).
 // No extra flip is applied.
 //
-// Dab intensity, 0..1. drei's useTrailTexture defaulted to 0.2; the old build
-// looked stronger than that only because it abused the compositor (see the
-// blend-factor note in Scene), so with correct blending 0.2 read as barely
-// there on a dark hero. 0.5 puts a single dab's centre at pow(0.5, 0.55) ≈ 0.68
-// alpha with overlapping dabs reaching ~0.85, which is the weight the August
-// trail had on screen. Tune this ONE constant to taste.
-const TRAIL_INTENSITY = 0.5;
-/** drei's default easing: a dab grows to full size in the first 30% of its
- *  life, then shrinks again — that growing/fading dot is the trail's pulse. */
-const easeCircleOut = (x: number) => Math.sqrt(Math.max(0, 1 - Math.pow(x - 1, 2)));
+// Core alpha of ONE dab — this is drei's `intensity` default (0.2), which is
+// what the August build used because it never overrode it. It is deliberately
+// low: the envelope and the movement force modulate the dab's RADIUS, not its
+// alpha (see drawDab). Raising this does not make the trail "stronger", it
+// makes it solid — the dabs stop reading as dabs.
+const DAB_ALPHA = 0.2;
+// Trail field resolution. drei rasterised the trail into a 512×512 canvas and
+// the shader samples that field at the centre of every `gridSize` cell, so 512
+// reproduces the rounded dab edges of the original; the visible grid is still
+// `gridSize` cells, this is only how finely the dabs themselves are drawn.
+const TRAIL_RESOLUTION = 512;
 
 interface TrailPoint {
   /** Position in uv space (0..1), y-up like the shader. */
@@ -216,12 +217,18 @@ class TrailBuffer {
    */
   private drawDab(p: TrailPoint) {
     const t = p.age / this.maxAge;
-    // Grow during the first 30% of the dab's life, fade during the rest.
-    const life = t < 0.3 ? easeCircleOut(t / 0.3) : easeCircleOut(1 - (t - 0.3) / 0.7);
-    const intensity = life * p.force * TRAIL_INTENSITY;
-    if (intensity <= 0.001) return;
+    // Identity easing, exactly what the August build passed as `ease`: a linear
+    // triangle — the dab grows to full size over the first 30% of its life, then
+    // shrinks to nothing over the remaining 70%.
+    const envelope = t < 0.3 ? t / 0.3 : 1 - (t - 0.3) / 0.7;
+    // drei scaled the dab's RADIUS by the envelope and the movement force, and
+    // kept the gradient's core alpha constant (DAB_ALPHA). That combination is
+    // the trail's whole character: soft round dabs that bulge and contract,
+    // instead of a smear whose opacity rises and falls.
+    const scale = envelope * p.force;
+    if (scale <= 0.001) return;
 
-    const rCells = this.radiusUv * intensity * this.size;
+    const rCells = this.radiusUv * scale * this.size;
     if (rCells <= 0.5) return;
     const cx = p.ux * this.size;
     const cy = p.uy * this.size;
@@ -238,9 +245,11 @@ class TrailBuffer {
         const dx = x + 0.5 - cx;
         const d = Math.sqrt(dx * dx + dy * dy) * invR;
         if (d >= 1) continue;
+        // The canvas gradient held `intensity` (0.2) from the centre out to 25%
+        // of the radius, then ramped linearly to zero at the edge.
         const profile = d <= 0.25 ? 1 : 1 - (d - 0.25) / 0.75;
         const a = this.data[row + x] / 255;
-        const b = intensity * profile;
+        const b = DAB_ALPHA * profile;
         // screen: 1 - (1 - a)(1 - b)
         this.data[row + x] = (a + b - a * b) * 255;
       }
@@ -420,13 +429,16 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
   }, [pixelColor]);
 
   // `easingFunction` stays in the public props for API stability: the dab
-  // growth curve is the one drei's texture used (see easeCircleOut) and cannot
-  // be swapped without changing the trail's character.
+  // growth curve is the linear triangle the August build passed as `ease`
+  // (see drawDab) and cannot be swapped without changing the trail's character.
   void easingFunction;
 
+  // NOTE: the field resolution is deliberately NOT gridSize. The visible trail
+  // grid stays coarse (gridSize cells, blocky by design); the dabs are drawn at
+  // three times that resolution, exactly like the 512 canvas it replaces.
   const trail = useMemo(
-    () => new TrailBuffer({ size: gridSize, trailSize, maxAge, interpolate }),
-    [gridSize, trailSize, maxAge, interpolate],
+    () => new TrailBuffer({ size: TRAIL_RESOLUTION, trailSize, maxAge, interpolate }),
+    [trailSize, maxAge, interpolate],
   );
   const trailRef = useRef(trail);
   trailRef.current = trail;

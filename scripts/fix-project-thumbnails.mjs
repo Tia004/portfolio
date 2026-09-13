@@ -1,11 +1,9 @@
 import { createClient } from '@libsql/client';
 import dotenv from 'dotenv';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 dotenv.config();
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+const client = createClient(tursoCredentials());
 
 async function main() {
   // Delete duplicate 'Studio Ingegnere Davide Moretti' if exists

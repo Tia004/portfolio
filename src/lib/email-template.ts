@@ -51,6 +51,16 @@ export interface BrandedEmailOptions {
   logoUrl?: string;
   /** Set to true when rendering in browser DOM to avoid unresolvable cid: scheme. */
   forPreview?: boolean;
+  /**
+   * One-click opt-out for campaigns. When present it REPLACES the generic
+   * reply-to footer: a newsletter needs a real unsubscribe link, not an
+   * invitation to answer an email.
+   */
+  unsubscribeUrl?: string;
+  /** Localized "do you no longer want the newsletter?" line above the link. */
+  unsubscribeNote?: string;
+  /** Localized anchor text for the opt-out link. */
+  unsubscribeLinkText?: string;
 }
 
 /** A badge that just repeats the logo adds nothing — only render informative ones. */
@@ -98,12 +108,16 @@ export function buildBrandedEmailHtml({
   bannerAlt,
   logoUrl,
   forPreview,
+  unsubscribeUrl,
+  unsubscribeNote,
+  unsubscribeLinkText,
 }: BrandedEmailOptions): string {
   const safeName = recipientName ? escapeEmailHtml(recipientName) : '';
   const safeGreeting = greeting ? escapeEmailHtml(greeting) : (safeName ? `Ciao ${safeName},` : '');
   const safeTitle = title ? escapeEmailHtml(title) : '';
   const safeCtaText = ctaText ? escapeEmailHtml(ctaText) : '';
   const safeCtaUrl = ctaUrl ? escapeEmailHtml(ctaUrl) : '';
+  const safeUnsubscribeUrl = unsubscribeUrl ? escapeEmailHtml(unsubscribeUrl) : '';
 
   // Prevent duplicate greeting (e.g. "Ciao Marco," above the card AND "Ciao Marco," inside the card).
   // If safeGreeting or safeName is provided, strip any redundant greeting line from the start of bodyMarkdown.
@@ -188,8 +202,14 @@ ${bannerHtml(bannerUrl, bannerAlt)}
               <tr>
                 <td style="background-color:#040a08; padding:18px 32px; border-top:1px solid rgba(255,255,255,0.07); text-align:center;">
                   <p style="margin:0; color:#6b7280; font-size:11px; line-height:1.6;">
-                    Proposta inviata da Mattia Chinaglia • ${BRAND_NAME} • Mantova, Italia<br />
-                    Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.
+                    ${
+                      safeUnsubscribeUrl
+                        ? `${escapeEmailHtml(unsubscribeNote || 'Non vuoi pi\u00f9 ricevere la newsletter?')}<br />
+                    <a href="${safeUnsubscribeUrl}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${escapeEmailHtml(unsubscribeLinkText || 'Disiscriviti con un clic')}</a><br />
+                    ${BRAND_NAME} • Mantova, Italia`
+                        : `Proposta inviata da Mattia Chinaglia • ${BRAND_NAME} • Mantova, Italia<br />
+                    Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.`
+                    }
                   </p>
                 </td>
               </tr>

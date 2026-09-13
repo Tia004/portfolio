@@ -102,6 +102,7 @@ export {
 export {
   CheckmarkCircle01Icon,
   AlertCircleIcon,
+  Notification01Icon,
   LoaderPinwheelIcon,
   FilePenIcon,
   DollarSignIcon,
@@ -136,4 +137,8 @@ export {
   DashboardSquare01Icon,
   Shield01Icon,
   Activity01Icon,
+  // 404 / error pages (components/ErrorShell)
+  Home01Icon,
+  // Referral attribution (dashboard ConversionsView)
+  Link01Icon,
 } from '@hugeicons/core-free-icons';

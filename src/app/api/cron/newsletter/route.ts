@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { buildBrandedEmailHtml, sendEmail } from '@/lib/branded-email';
+import { loadCampaignAudience } from '@/lib/newsletter-audience';
+import { unsubscribeFooterCopy } from '@/lib/newsletter';
 
 async function processScheduledNewsletters(req: NextRequest) {
   try {
@@ -51,54 +53,37 @@ async function processScheduledNewsletters(req: NextRequest) {
     const results = [];
 
     for (const campaign of pendingCampaigns) {
-      let resolvedEmails: string[] = [];
-      const target = campaign.recipients;
-
-      if (target === 'all_contacts' || target === 'all_audience') {
-        const contacts = await prisma.contactMessage.findMany({ select: { email: true } });
-        for (const c of contacts) {
-          if (c.email?.includes('@')) resolvedEmails.push(c.email.trim().toLowerCase());
-        }
-      }
-
-      if (target === 'all_leads' || target === 'all_audience') {
-        const leads = await prisma.chatSessionLead.findMany({
-          where: { clientEmail: { not: null } },
-          select: { clientEmail: true },
-        });
-        for (const l of leads) {
-          if (l.clientEmail?.includes('@')) resolvedEmails.push(l.clientEmail.trim().toLowerCase());
-        }
-      }
-
-      if (target !== 'all_contacts' && target !== 'all_leads' && target !== 'all_audience') {
-        resolvedEmails = target
-          .split(/[\n,;]+/)
-          .map((e) => e.trim().toLowerCase())
-          .filter((e) => e.includes('@') && e.includes('.'));
-      }
-
-      // Deduplicate
-      resolvedEmails = Array.from(new Set(resolvedEmails));
+      // Same shared loader as the dashboard send: one set of rules, one list.
+      const audience = await loadCampaignAudience(campaign.recipients);
+      const resolvedEmails = audience.emails;
 
       let successCount = 0;
       let failCount = 0;
 
       if (resolvedEmails.length > 0) {
-        const brandedHtml = buildBrandedEmailHtml({
-          title: campaign.subject,
-          bodyMarkdown: campaign.bodyContent,
-          badgeText: 'Newsletter Ufficiale',
-          // Stored with the campaign, rendered for the first time here.
-          preheaderText: campaign.previewText || undefined,
-        });
+        // Per recipient, so a subscriber gets their own one-click opt-out and
+        // contacts/leads keep the generic footer.
+        const htmlFor = (email: string) => {
+          const optOut = audience.unsubscribeByEmail.get(email);
+          const copy = optOut ? unsubscribeFooterCopy(optOut.lang) : null;
+          return buildBrandedEmailHtml({
+            title: campaign.subject,
+            bodyMarkdown: campaign.bodyContent,
+            badgeText: 'Newsletter Ufficiale',
+            // Stored with the campaign, rendered for the first time here.
+            preheaderText: campaign.previewText || undefined,
+            ...(optOut && copy
+              ? { unsubscribeUrl: optOut.url, unsubscribeNote: copy.note, unsubscribeLinkText: copy.link }
+              : {}),
+          });
+        };
 
         for (const email of resolvedEmails) {
           try {
             const sent = await sendEmail({
               to: email,
               subject: campaign.subject,
-              html: brandedHtml,
+              html: htmlFor(email),
             });
             if (sent) successCount++;
             else failCount++;
@@ -125,12 +110,13 @@ async function processScheduledNewsletters(req: NextRequest) {
           data: {
             source: 'cron',
             level: 'info',
-            message: `Newsletter "${campaign.subject}" inviata tramite Cron automatizzato a ${successCount} destinatari (${failCount} falliti).`,
+            message: `Newsletter "${campaign.subject}" inviata tramite Cron automatizzato a ${successCount} destinatari (${failCount} falliti${audience.suppressed > 0 ? `, ${audience.suppressed} disiscritti esclusi` : ''}).`,
             metadata: JSON.stringify({
               campaignId: campaign.id,
               totalRecipients: resolvedEmails.length,
               successCount,
               failCount,
+              suppressed: audience.suppressed,
               scheduledFor: campaign.scheduledFor,
               sentAt: new Date(),
             }),
@@ -144,6 +130,7 @@ async function processScheduledNewsletters(req: NextRequest) {
         recipientsTotal: resolvedEmails.length,
         sentSuccess: successCount,
         failed: failCount,
+        suppressed: audience.suppressed,
       });
     }
 

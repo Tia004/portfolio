@@ -7,11 +7,9 @@
 import 'dotenv/config';
 import { randomUUID } from 'crypto';
 import { createClient } from '@libsql/client';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 
-const db = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+const db = createClient(tursoCredentials());
 
 // Checksums exactly as produced by `prisma migrate resolve --applied`
 // against a scratch database (sha256 of each migration file).

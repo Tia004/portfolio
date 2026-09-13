@@ -1,23 +1,21 @@
 'use client';
 
 // ── Referral attribution ──────────────────────────────────────────────────
-// The footer has promised a referral discount since the first release, but
-// nothing measured it: a shared link arrived at the site looking exactly like
-// any other visit, so "word of mouth" was invisible in the analytics — the one
-// channel a small studio can actually scale.
+// The site promises a word-of-mouth discount (20% off, see the hero promo and
+// `footer.referral`). A promise you cannot measure is a promise you cannot
+// honour cheaply, so this module does the one cheap half that matters: it reads
+// `?ref=<code>` from the landing URL and keeps it for the session, so every
+// analytics event (see lib/analytics) carries the code that brought the
+// visitor — and so does the conversion that code produced.
 //
-// This module does the two cheap halves of that loop:
-//   • capture `?ref=<code>` from the landing URL and keep it for the session,
-//     so every analytics event (see lib/analytics) carries the code that
-//     brought the visitor — and the conversion that code produced;
-//   • hand every visitor a stable share link (`?ref=<their own code>`), so the
-//     referral they generate is attributable too.
+// It used to also hand every visitor a personal share link. That card lived
+// under the contact section and was removed: the offer belongs in the hero, one
+// line, not as a widget competing with the contact form. If the share-card ever
+// comes back, this is where the generator goes.
 //
-// Session-scoped on purpose: the code belongs to THIS visit. The share code,
-// however, lives in localStorage so the same person keeps the same link.
+// Session-scoped on purpose: a code belongs to THIS visit, not to the device.
 
 const REF_KEY = 'tia-ref';
-const CODE_KEY = 'tia-share-code';
 const MAX_LENGTH = 32;
 
 let cached: string | null | undefined;
@@ -41,6 +39,17 @@ export function captureReferral(search?: string): string | null {
     if (incoming) {
       window.sessionStorage.setItem(REF_KEY, incoming);
       cached = incoming;
+      // Record visit hit in background for attribution metrics
+      try {
+        fetch('/api/referral/hit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ref: incoming }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {
+        /* ignore network failures on hit tracking */
+      }
       return incoming;
     }
   } catch {
@@ -59,25 +68,4 @@ export function getReferral(): string | null {
     cached = null;
   }
   return cached;
-}
-
-/** Stable per-device share code (created on first use). */
-export function myShareCode(): string {
-  if (typeof window === 'undefined') return '';
-  try {
-    const stored = sanitize(window.localStorage.getItem(CODE_KEY));
-    if (stored) return stored;
-    const code = Math.random().toString(36).slice(2, 8);
-    window.localStorage.setItem(CODE_KEY, code);
-    return code;
-  } catch {
-    return '';
-  }
-}
-
-/** Absolute URL to share, carrying a referral code. */
-export function shareLink(code?: string): string {
-  const base = typeof window !== 'undefined' ? `${window.location.origin}/` : 'https://tiadesigns.it/';
-  const chosen = sanitize(code) ?? myShareCode();
-  return chosen ? `${base}?ref=${chosen}` : base;
 }

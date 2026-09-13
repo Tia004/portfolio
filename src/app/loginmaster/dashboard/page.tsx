@@ -19,6 +19,7 @@ import {
   CpuIcon,
   Settings01Icon,
   GaugeIcon,
+  AnalyticsUpIcon,
   DollarSignIcon,
   LoaderPinwheelIcon,
   CheckmarkCircle01Icon,
@@ -79,6 +80,22 @@ import {
 
 const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr: false });
 
+// The alerts bell lives in the sidebar, so it is loaded the same lazy way as the
+// heavy panels: it polls on its own and must never delay the dashboard's first
+// paint.
+const AlertsBell = dynamic(() => import('@/app/components/dashboard/AlertsBell'), { ssr: false });
+
+const ConversionsView = dynamic(() => import('@/app/components/dashboard/ConversionsView'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-12 flex flex-col items-center justify-center text-center">
+      <div className="w-8 h-8 rounded-full border-2 border-teal-400 border-t-transparent animate-spin mb-4" />
+      <p className="text-sm font-bold text-white">Caricamento Conversioni...</p>
+      <p className="text-xs text-neutral-400 mt-1">Preventivi, call e chat del periodo</p>
+    </div>
+  ),
+});
+
 const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepAnalyticsView'), {
   ssr: false,
   loading: () => (
@@ -90,7 +107,7 @@ const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepA
   ),
 });
 
-type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'cms' | 'health' | 'passkeys';
+type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'conversions' | 'cms' | 'health' | 'passkeys';
 
 // ── Models & Interfaces ──────────────────────────────────────────
 
@@ -504,7 +521,7 @@ export default function DashboardPage() {
   const [isSavingCustomTemplate, setIsSavingCustomTemplate] = useState(false);
 
   // Newsletter & Campaigns State
-  const [newsletterTarget, setNewsletterTarget] = useState<'all_contacts' | 'all_leads' | 'all_audience' | 'custom'>('all_audience');
+  const [newsletterTarget, setNewsletterTarget] = useState<'subscribers' | 'all_contacts' | 'all_leads' | 'all_audience' | 'custom'>('all_audience');
   const [newsletterCustomEmails, setNewsletterCustomEmails] = useState('');
   const [newsletterSubject, setNewsletterSubject] = useState('');
   const [newsletterPreviewText, setNewsletterPreviewText] = useState('');
@@ -514,8 +531,12 @@ export default function DashboardPage() {
   const [newsletterScheduleMode, setNewsletterScheduleMode] = useState<'now' | 'schedule'>('now');
   const [newsletterScheduledFor, setNewsletterScheduledFor] = useState('');
   const [newsletterCampaigns, setNewsletterCampaigns] = useState<any[]>([]);
-  const [newsletterStats, setNewsletterStats] = useState<{ totalAudience: number; contactsCount: number; leadsCount: number } | null>(null);
+  const [newsletterStats, setNewsletterStats] = useState<{ totalAudience: number; contactsCount: number; leadsCount: number; subscribersConfirmed?: number; subscribersPending?: number; subscribersUnsubscribed?: number } | null>(null);
   const [audienceList, setAudienceList] = useState<Array<{ email: string; name: string }>>([]);
+  // Newsletter subscribers: the double opt-in list. `confirmed` is the real
+  // audience, `pending` never got the confirmation click, `unsubscribed` is the
+  // suppression list that no campaign may touch.
+  const [newsletterSubscribers, setNewsletterSubscribers] = useState<Array<{ id: string; email: string; name: string | null; status: string; locale: string; source: string | null; createdAt: string; confirmedAt: string | null; unsubscribedAt: string | null }>>([]);
   const [isSendingNewsletter, setIsSendingNewsletter] = useState(false);
   const [isExecutingCron, setIsExecutingCron] = useState(false);
   const [selectedNewsletterPreview, setSelectedNewsletterPreview] = useState<any | null>(null);
@@ -780,6 +801,7 @@ export default function DashboardPage() {
         setNewsletterCampaigns(data.campaigns || []);
         setNewsletterStats(data.stats || null);
         setAudienceList(data.audienceList || []);
+        setNewsletterSubscribers(data.subscribers || []);
       }
     } catch {}
   };
@@ -2280,14 +2302,17 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs transition-colors cursor-pointer"
-              title="Logout"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-2">
+              <AlertsBell />
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs transition-colors cursor-pointer"
+                title="Logout"
+              >
+                Logout
+              </button>
+            </div>
           </div>
 
           {/* Left Vertical Tabs Menu */}
@@ -2299,6 +2324,12 @@ export default function DashboardPage() {
               { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatLeads.length },
               { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
+              // Funnel steps (quote / call / chat) with their source and the
+              // ?ref= codes behind the 20% word-of-mouth offer. Kept separate
+              // from Deep Analytics on purpose: traffic and conversions are
+              // read in different moments, and mixing them buries the three
+              // numbers that decide anything.
+              { id: 'conversions', label: 'Conversioni', icon: AnalyticsUpIcon },
               { id: 'cms', label: 'CMS Contenuti', icon: FilePenIcon },
               { id: 'health', label: 'System Health', icon: WorkflowSquare01Icon },
               { id: 'passkeys', label: 'Passkey & Sicurezza', icon: CpuIcon, count: passkeys.length },
@@ -4560,6 +4591,7 @@ export default function DashboardPage() {
                           onChange={(e) => setNewsletterTarget(e.target.value as any)}
                           className="w-full px-3.5 py-2.5 rounded-xl bg-[#081410] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 cursor-pointer"
                         >
+                          <option value="subscribers">Iscritti Newsletter confermati ({newsletterStats?.subscribersConfirmed ?? 0})</option>
                           <option value="all_audience">Tutti i Contatti & Lead ({audienceList.length || messages.length})</option>
                           <option value="all_contacts">Solo Richieste Form Sito ({messages.length})</option>
                           <option value="all_leads">Solo Preventivi AI ({chatLeads.length})</option>
@@ -4696,8 +4728,64 @@ export default function DashboardPage() {
                     </form>
                   </div>
 
-                  {/* Right Column: Campaigns History with Status Badges & Engagement Metrics */}
+                  {/* Right Column: Subscribers + Campaigns History */}
                   <div className="lg:col-span-5 flex flex-col gap-4">
+                    {/* Subscribers — the double opt-in list itself. Confirmed is
+                        the audience; pending never pressed the link;
+                        unsubscribed is suppressed from every campaign. */}
+                    <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
+                      <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                        <div>
+                          <h3 className="font-bold text-white text-sm">Iscritti Newsletter</h3>
+                          <p className="text-[11px] text-neutral-400">Doppio opt-in: solo i confermati ricevono le campagne</p>
+                        </div>
+                        <span className="text-xs text-neutral-400 font-mono">{newsletterSubscribers.length} totali</span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Confermati', value: newsletterStats?.subscribersConfirmed ?? 0, tone: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' },
+                          { label: 'In attesa', value: newsletterStats?.subscribersPending ?? 0, tone: 'text-amber-300 border-amber-500/30 bg-amber-500/10' },
+                          { label: 'Disiscritti', value: newsletterStats?.subscribersUnsubscribed ?? 0, tone: 'text-neutral-300 border-white/[0.08] bg-white/[0.04]' },
+                        ].map((kpi) => (
+                          <div key={kpi.label} className={`rounded-xl border px-2.5 py-2 text-center ${kpi.tone}`}>
+                            <div className="text-base font-bold font-mono leading-none">{kpi.value}</div>
+                            <div className="text-[10px] uppercase tracking-wider mt-1 opacity-80">{kpi.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {newsletterSubscribers.length === 0 ? (
+                        <p className="text-xs text-neutral-500 py-4 text-center">
+                          Nessun iscritto ancora. Il form di iscrizione è in fondo al sito.
+                        </p>
+                      ) : (
+                        <div className="flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-1">
+                          {newsletterSubscribers.slice(0, 60).map((sub) => (
+                            <div key={sub.id} className="flex items-center justify-between gap-2 rounded-xl bg-black/30 border border-white/[0.05] px-3 py-2">
+                              <div className="min-w-0">
+                                <p className="text-[11px] text-white truncate">{sub.email}</p>
+                                <p className="text-[10px] text-neutral-500 truncate">
+                                  {sub.name ? `${sub.name} · ` : ''}{sub.source || 'website'} · {sub.locale.toUpperCase()}
+                                </p>
+                              </div>
+                              <span
+                                className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold border ${
+                                  sub.status === 'confirmed'
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : sub.status === 'pending'
+                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                    : 'bg-white/[0.04] text-neutral-400 border-white/[0.08]'
+                                }`}
+                              >
+                                {sub.status === 'confirmed' ? '✓' : sub.status === 'pending' ? '⏱' : '✕'} {sub.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
                       <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                         <div>
@@ -5911,6 +5999,11 @@ export default function DashboardPage() {
           {/* ── TAB 5: DEEP ANALYTICS ── */}
           {activeTab === 'analytics' && (
             <DeepAnalyticsView />
+          )}
+
+          {/* ── TAB 6b: CONVERSIONI ── */}
+          {activeTab === 'conversions' && (
+            <ConversionsView />
           )}
 
           {/* ── TAB 6: CMS CONTENUTI ── */}

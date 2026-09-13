@@ -237,121 +237,140 @@ export default function AutoEmailSender() {
     return rows;
   };
 
+  const [isLoading400Preset, setIsLoading400Preset] = useState(false);
+
+  // Process and ingest CSV text content
+  const processCsvContent = (cleanText: string, fileName: string) => {
+    try {
+      setCsvFileName(fileName);
+      const firstLineEnd = cleanText.search(/[\r\n]/);
+      const headerSample = firstLineEnd !== -1 ? cleanText.slice(0, firstLineEnd) : cleanText;
+      const delimiter = detectDelimiter(headerSample);
+
+      const allRows = parseFullCsv(cleanText, delimiter);
+      if (allRows.length === 0) {
+        showToast('Nessun dato valido trovato nel CSV.', 'error');
+        return;
+      }
+
+      const firstRow = allRows[0];
+      const hasEmailInFirst = firstRow.some((cell) => cell.includes('@'));
+
+      let headers: string[] = [];
+      let dataRows: string[][] = [];
+
+      if (hasEmailInFirst) {
+        headers = firstRow.map((_, idx) => (idx === 0 ? 'email' : idx === 1 ? 'nome' : `colonna_${idx + 1}`));
+        dataRows = allRows;
+      } else {
+        headers = firstRow.map((h) => h.toLowerCase().replace(/[^a-z0-9_]/gi, '_'));
+        dataRows = allRows.slice(1);
+      }
+
+      setCsvHeaders(headers);
+
+      // Auto map columns
+      const emailCol = headers.find((h) => /email|e_mail|mail|indirizzo|destinatario/i.test(h)) || headers[0] || '';
+      const nameCol = headers.find((h) => /nome|name|cliente|contatto|referente/i.test(h)) || '';
+      const companyCol = headers.find((h) => /azienda|company|societa|business|studio/i.test(h)) || '';
+      const subjectCol = headers.find((h) => /oggetto|subject|titolo/i.test(h)) || '';
+      const bodyCol = headers.find((h) => /corpo|body|messaggio|message|testo/i.test(h)) || '';
+
+      const mapping = {
+        email: emailCol,
+        name: nameCol,
+        company: companyCol,
+        subject: subjectCol,
+        body: bodyCol,
+      };
+      setColumnMapping(mapping);
+
+      // Parse rows
+      const parsedRaw: Record<string, string>[] = [];
+      const builtRecipients: RecipientRow[] = [];
+      const newlyExcluded: { email: string; company?: string }[] = [];
+
+      dataRows.forEach((cells, lineIdx) => {
+        const rowObj: Record<string, string> = {};
+        headers.forEach((h, idx) => {
+          rowObj[h] = cells[idx] || '';
+        });
+        parsedRaw.push(rowObj);
+
+        const emailVal = (rowObj[emailCol] || '').trim();
+        const cleanEmail = emailVal.toLowerCase();
+        if (emailVal) {
+          // Anti-duplication check: if already sent and not exempt, exclude
+          if (!EXEMPT_EMAILS.has(cleanEmail) && sentRegistry.has(cleanEmail)) {
+            newlyExcluded.push({
+              email: emailVal,
+              company: companyCol ? rowObj[companyCol] || '' : '',
+            });
+            return;
+          }
+
+          builtRecipients.push({
+            id: `csv-${lineIdx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            email: emailVal,
+            name: nameCol ? rowObj[nameCol] || '' : '',
+            company: companyCol ? rowObj[companyCol] || '' : '',
+            customSubject: subjectCol && rowObj[subjectCol] ? rowObj[subjectCol] : undefined,
+            customBody: bodyCol && rowObj[bodyCol] ? rowObj[bodyCol] : undefined,
+            extraData: rowObj,
+            status: 'idle',
+          });
+        }
+      });
+
+      setRawRows(parsedRaw);
+      setRecipients(builtRecipients);
+      setExcludedAlreadySent(newlyExcluded);
+
+      if (newlyExcluded.length > 0) {
+        showToast(
+          `Importate ${builtRecipients.length} righe (${newlyExcluded.length} già inviate escluse per prevenire spam)`,
+          'info'
+        );
+      } else {
+        showToast(`Importate con successo ${builtRecipients.length} righe dal CSV!`, 'success');
+      }
+    } catch (err: any) {
+      console.error('Error parsing CSV:', err);
+      showToast('Errore nella lettura del file CSV: ' + err.message, 'error');
+    }
+  };
+
   // Handle CSV file upload
   const handleFileUpload = (file: File) => {
     if (!file) return;
-    setCsvFileName(file.name);
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
-        const text = (e.target?.result as string) || '';
-        // Remove BOM if present
-        const cleanText = text.replace(/^\uFEFF/, '').trim();
-        if (!cleanText) {
-          showToast('Il file CSV è vuoto.', 'error');
-          return;
-        }
-
-        const firstLineEnd = cleanText.search(/[\r\n]/);
-        const headerSample = firstLineEnd !== -1 ? cleanText.slice(0, firstLineEnd) : cleanText;
-        const delimiter = detectDelimiter(headerSample);
-
-        const allRows = parseFullCsv(cleanText, delimiter);
-        if (allRows.length === 0) {
-          showToast('Nessun dato valido trovato nel CSV.', 'error');
-          return;
-        }
-
-        const firstRow = allRows[0];
-        // Check if first line contains headers or direct email
-        const hasEmailInFirst = firstRow.some((cell) => cell.includes('@'));
-
-        let headers: string[] = [];
-        let dataRows: string[][] = [];
-
-        if (hasEmailInFirst) {
-          // No header line, generate synthetic headers
-          headers = firstRow.map((_, idx) => (idx === 0 ? 'email' : idx === 1 ? 'nome' : `colonna_${idx + 1}`));
-          dataRows = allRows;
-        } else {
-          headers = firstRow.map((h) => h.toLowerCase().replace(/[^a-z0-9_]/gi, '_'));
-          dataRows = allRows.slice(1);
-        }
-
-        setCsvHeaders(headers);
-
-        // Auto map columns
-        const emailCol = headers.find((h) => /email|e_mail|mail|indirizzo|destinatario/i.test(h)) || headers[0] || '';
-        const nameCol = headers.find((h) => /nome|name|cliente|contatto|referente/i.test(h)) || '';
-        const companyCol = headers.find((h) => /azienda|company|societa|business|studio/i.test(h)) || '';
-        const subjectCol = headers.find((h) => /oggetto|subject|titolo/i.test(h)) || '';
-        const bodyCol = headers.find((h) => /corpo|body|messaggio|message|testo/i.test(h)) || '';
-
-        const mapping = {
-          email: emailCol,
-          name: nameCol,
-          company: companyCol,
-          subject: subjectCol,
-          body: bodyCol,
-        };
-        setColumnMapping(mapping);
-
-        // Parse rows
-        const parsedRaw: Record<string, string>[] = [];
-        const builtRecipients: RecipientRow[] = [];
-        const newlyExcluded: { email: string; company?: string }[] = [];
-
-        dataRows.forEach((cells, lineIdx) => {
-          const rowObj: Record<string, string> = {};
-          headers.forEach((h, idx) => {
-            rowObj[h] = cells[idx] || '';
-          });
-          parsedRaw.push(rowObj);
-
-          const emailVal = (rowObj[emailCol] || '').trim();
-          const cleanEmail = emailVal.toLowerCase();
-          if (emailVal) {
-            // Anti-duplication check: if already sent and not exempt, exclude
-            if (!EXEMPT_EMAILS.has(cleanEmail) && sentRegistry.has(cleanEmail)) {
-              newlyExcluded.push({
-                email: emailVal,
-                company: companyCol ? rowObj[companyCol] || '' : '',
-              });
-              return;
-            }
-
-            builtRecipients.push({
-              id: `csv-${lineIdx}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-              email: emailVal,
-              name: nameCol ? rowObj[nameCol] || '' : '',
-              company: companyCol ? rowObj[companyCol] || '' : '',
-              customSubject: subjectCol && rowObj[subjectCol] ? rowObj[subjectCol] : undefined,
-              customBody: bodyCol && rowObj[bodyCol] ? rowObj[bodyCol] : undefined,
-              extraData: rowObj,
-              status: 'idle',
-            });
-          }
-        });
-
-        setRawRows(parsedRaw);
-        setRecipients(builtRecipients);
-        setExcludedAlreadySent(newlyExcluded);
-
-        if (newlyExcluded.length > 0) {
-          showToast(
-            `Importate ${builtRecipients.length} righe (${newlyExcluded.length} già inviate escluse per prevenire spam)`,
-            'info'
-          );
-        } else {
-          showToast(`Importate con successo ${builtRecipients.length} righe dal CSV!`, 'success');
-        }
-      } catch (err: any) {
-        console.error('Error parsing CSV:', err);
-        showToast('Errore nella lettura del file CSV: ' + err.message, 'error');
+      const text = (e.target?.result as string) || '';
+      const cleanText = text.replace(/^\uFEFF/, '').trim();
+      if (!cleanText) {
+        showToast('Il file CSV è vuoto.', 'error');
+        return;
       }
+      processCsvContent(cleanText, file.name);
     };
     reader.readAsText(file);
+  };
+
+  // 1-Click loader for the converted 400 companies campaign
+  const handleLoadPreloaded400 = async () => {
+    setIsLoading400Preset(true);
+    try {
+      const res = await fetch('/campaigns/campagna_400_aziende.csv');
+      if (!res.ok) throw new Error('File della campagna non trovato su /campaigns');
+      const text = await res.text();
+      const cleanText = text.replace(/^\uFEFF/, '').trim();
+      processCsvContent(cleanText, 'campagna_400_aziende_tiadesigns.csv');
+    } catch (err: any) {
+      showToast('Impossibile caricare il file preimpostato: ' + err.message, 'error');
+    } finally {
+      setIsLoading400Preset(false);
+    }
   };
 
   // Re-apply column mapping if user changes dropdown
@@ -929,20 +948,32 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
           <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 shadow-xl flex flex-col gap-4">
             {inputMode === 'csv' ? (
               <>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <FileSpreadsheet className="w-4 h-4 text-teal-400" />
                     <span>Carica File CSV</span>
                   </h3>
-                  <button
-                    type="button"
-                    onClick={handleDownloadSampleCsv}
-                    className="text-[11px] font-mono text-teal-400 hover:text-teal-300 underline flex items-center gap-1 cursor-pointer"
-                    title="Scarica un file CSV di esempio già pronto"
-                  >
-                    <TiaIcon icon={Download01Icon} size={13} />
-                    <span>Scarica Template CSV</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleLoadPreloaded400}
+                      disabled={isLoading400Preset}
+                      className="px-2.5 py-1 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                      title="Carica istantaneamente la campagna 400 aziende convertita"
+                    >
+                      <span>⚡</span>
+                      <span>{isLoading400Preset ? 'Caricamento...' : 'Carica Campagna 400'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDownloadSampleCsv}
+                      className="text-[11px] font-mono text-neutral-400 hover:text-white underline flex items-center gap-1 cursor-pointer"
+                      title="Scarica un file CSV di esempio già pronto"
+                    >
+                      <TiaIcon icon={Download01Icon} size={13} />
+                      <span>Template</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Drag and drop zone */}

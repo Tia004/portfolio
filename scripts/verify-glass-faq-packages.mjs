@@ -2,8 +2,8 @@
 //   1. every BorderGlow card carries the liquid-glass rim (.border-glow-glass)
 //      with an opaque inner fill (--card-fill) so the hover mesh cannot bleed;
 //   2. FAQ cards are noticeably taller than the old ~48-56px bar;
-//   3. the new "Pacchetti" strip renders 3 cards with a starting price, a
-//      declared lead time and an installment line.
+//   3. the price grid still renders, with the "Rateizzabile" badge only on the
+//      tiers that qualify (the "Pacchetti" strip was removed on purpose).
 // Run with the site on :3100  →  node scripts/verify-glass-faq-packages.mjs
 import puppeteer from 'puppeteer-core';
 import fs from 'node:fs';

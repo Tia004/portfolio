@@ -1,23 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-
-// Parse .env directly
-const envPath = path.resolve(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  for (const line of envContent.split('\n')) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
-      const idx = trimmed.indexOf('=');
-      const key = trimmed.slice(0, idx).trim();
-      let val = trimmed.slice(idx + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-        val = val.slice(1, -1);
-      }
-      process.env[key] = val;
-    }
-  }
-}
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 
 async function runTest() {
   console.log('--- TEST /api/cron/newsletter full cycle simulation ---');
@@ -25,10 +6,7 @@ async function runTest() {
   const { PrismaClient } = await import('@prisma/client');
   const { PrismaLibSql } = await import('@prisma/adapter-libsql');
 
-  const adapter = new PrismaLibSql({
-    url: process.env.TURSO_DATABASE_URL,
-    authToken: process.env.TURSO_AUTH_TOKEN,
-  });
+  const adapter = new PrismaLibSql(tursoCredentials());
 
   const prisma = new PrismaClient({ adapter });
 

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { addMessage, closeSession, getLatestActiveSessionId, getRecentMessages, getSystemDiagnostics } from '@/lib/chatStore';
 import { isInappropriateChatMessage } from '@/lib/chat-moderation';
 import { runTurnstileDiagnostics, sanitizeChatText } from '@/lib/chat-security';
+import { sanitizeTiaText } from '@/lib/tia-text';
 import { getAvailability, setAvailability } from '@/lib/availability';
 
 function isValidWebhookSecret(req: NextRequest): boolean {
@@ -245,7 +246,10 @@ export async function POST(req: NextRequest) {
     const replyMatch = msg.text.match(/^\/reply\s+([0-9a-f-]{36})\s+(.+)$/is);
     if (replyMatch) {
       const sessionId = replyMatch[1];
-      const replyText = sanitizeChatText(replyMatch[2], 8_000);
+      // Tia's text comes from the owner's own channel: paragraphs are part of
+      // the message, so they survive (sanitizeTiaText, not the collapsing
+      // visitor sanitizer).
+      const replyText = sanitizeTiaText(replyMatch[2], 8_000);
       if (replyText && !isInappropriateChatMessage(replyText)) {
         await addMessage(sessionId, {
           text: replyText,
@@ -297,7 +301,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true }); // No session to deliver to
     }
 
-    const replyText = sanitizeChatText(msg.text, 8_000);
+    const replyText = sanitizeTiaText(msg.text, 8_000);
     if (!replyText || isInappropriateChatMessage(replyText)) {
       return NextResponse.json({ ok: true });
     }

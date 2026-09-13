@@ -1,12 +1,20 @@
-import './env.ts';
+// Explicit .ts extension, as at HEAD: this module is imported directly by the
+// plain-node scripts in scripts/ (verify-turso, test-prisma), where Node's ESM
+// resolver does not guess extensions the way the Next bundler does.
+import { getTursoConfig } from './env.ts';
 import { PrismaClient } from '@prisma/client';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+// Throws a named, actionable error when the credentials are missing instead of
+// building an adapter with `undefined` (which only fails later, at query time,
+// with a Turso authentication error that says nothing about the real cause).
+const { url: tursoUrl, authToken: tursoAuthToken } = getTursoConfig();
+
 const adapter = new PrismaLibSql({
-  url: process.env.TURSO_DATABASE_URL!,
-  authToken: process.env.TURSO_AUTH_TOKEN!,
+  url: tursoUrl,
+  authToken: tursoAuthToken,
 });
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });

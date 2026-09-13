@@ -37,15 +37,61 @@ try {
   // Silent fallback
 }
 
-// Programmatic guarantees for Turso credentials at process level
-if (!process.env.DATABASE_URL || process.env.DATABASE_URL === "undefined") {
-  process.env.DATABASE_URL = "file:./prisma/dev.db";
+// ── Credentials: environment only, never a value baked into the repo ──────
+// These used to have hardcoded fallbacks. That is how a read-write database
+// token ended up in git, and it is also why a ROTATED token could keep
+// "working": the app quietly fell back to the committed copy instead of
+// telling anyone the environment was incomplete. Nothing is invented here any
+// more — a missing credential fails with a message that says exactly which
+// variable is missing and where to set it.
+
+/** A required value, or an error naming the variable and where it comes from. */
+export function requireEnv(name: string, hint?: string): string {
+  const value = process.env[name];
+  if (!value || value === "undefined" || value.trim() === "") {
+    throw new Error(
+      `Missing required environment variable ${name}.\n` +
+      `Set it in .env for local development and in the Vercel project settings for deployments.` +
+      (hint ? `\n${hint}` : "")
+    );
+  }
+  return value;
 }
-if (!process.env.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL === "undefined") {
-  process.env.TURSO_DATABASE_URL = "libsql://portfoliodb-tia004.aws-eu-west-1.turso.io";
+
+/** True when a value is present — for health checks that must not throw. */
+export function hasEnv(name: string): boolean {
+  const value = process.env[name];
+  return typeof value === "string" && value !== "undefined" && value.trim() !== "";
 }
-if (!process.env.TURSO_AUTH_TOKEN || process.env.TURSO_AUTH_TOKEN === "undefined") {
-  process.env.TURSO_AUTH_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzkzMzU2MzgsImlkIjoiMDE5ZTQ4YWEtZjMwMS03YmExLTg5NmUtNGIwNzkwYjFhMGM0IiwicmlkIjoiZTY2MDc2MzktOTllNS00NzE5LTgwOTUtM2FiNDRiMTg3M2NlIn0.EHhH5KQQqjEWg-sqN230LSjcAT5gJyBLeFBAnvVKthMvy28I5GMeo7idq2se_agilOQj2FLJ2qg62PzIqMCLCg";
+
+export interface TursoConfig {
+  url: string;
+  authToken: string;
+}
+
+/**
+ * Turso credentials. Throws when either half is missing: a half-configured
+ * database is never "close enough", and the error must reach the log at the
+ * moment something tries to use the database.
+ */
+export function getTursoConfig(): TursoConfig {
+  return {
+    url: requireEnv(
+      "TURSO_DATABASE_URL",
+      "Turso dashboard → your database → Connect → copy the libsql:// URL."
+    ),
+    authToken: requireEnv(
+      "TURSO_AUTH_TOKEN",
+      "Turso dashboard → your database → Create token (read-write) → copy it into .env."
+    ),
+  };
+}
+
+/** The same credentials without throwing — undefined when the setup is incomplete. */
+export function getTursoConfigOrNull(): TursoConfig | null {
+  return hasEnv("TURSO_DATABASE_URL") && hasEnv("TURSO_AUTH_TOKEN")
+    ? { url: process.env.TURSO_DATABASE_URL as string, authToken: process.env.TURSO_AUTH_TOKEN as string }
+    : null;
 }
 
 // Warn at startup if AI keys are missing

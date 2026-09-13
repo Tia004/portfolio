@@ -55,8 +55,14 @@ export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'c
     // Suppress geo banner for this session
     try { sessionStorage.setItem('lang-banner-dismissed', '1'); } catch { /* noop */ }
 
-    // Navigate to clean route starting from Hero
-    const targetUrl = code === 'it' ? '/' : `/${code}`;
+    // Stay on the page you are reading. Switching language used to always land
+    // on the home page, which loses the visitor's place the moment it matters:
+    // from /progetti/pcs, "English" went to /en and the case study was gone.
+    // The current path is translated instead — only the language prefix moves.
+    const currentPath = window.location.pathname;
+    const withoutLang = currentPath.replace(/^\/(en|es)(?=\/|$)/, '') || '/';
+    const targetUrl =
+      code === 'it' ? withoutLang : `/${code}${withoutLang === '/' ? '' : withoutLang}`;
     window.location.href = targetUrl;
   };
 
@@ -68,7 +74,7 @@ export default function LanguageSwitcher({ variant }: { variant?: 'desktop' | 'c
           onClick={() => setOpen(!open)}
           aria-expanded={open}
           aria-haspopup="listbox"
-          className="group flex items-center gap-1 text-white/70 hover:text-white text-sm font-medium transition-colors tracking-wide cursor-pointer"
+          className="group flex min-h-[28px] py-0.5 items-center gap-1 text-white/70 hover:text-white text-sm font-medium transition-colors tracking-wide cursor-pointer"
         >
           <span className="relative">
             {FULL_NAMES[lang]}

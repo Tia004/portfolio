@@ -255,7 +255,14 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10">
             {/* "Tia Designs" — letter by letter drop (pure CSS keyframes,
                 per-index animation-delay replicates the GSAP stagger) */}
-            <h1
+            {/* Not an <h1>: this is the brand animation, not the heading of
+                the page. As an h1 it shipped a duplicate top-level heading on
+                EVERY page — the splash wordmark plus the real page title —
+                which makes the outline ambiguous for crawlers and screen
+                readers alike. Styling is by class, so the animation is
+                untouched. */}
+            <div
+              aria-hidden="true"
               className="flex flex-wrap justify-center gap-[0.02em] text-6xl sm:text-7xl md:text-8xl max-[450px]:text-5xl max-[374px]:text-4xl font-black tracking-tight text-white select-none"
               style={{ fontFamily: 'var(--font-sans), Outfit, sans-serif' }}
             >
@@ -272,7 +279,7 @@ export default function SplashScreen({ children }: { children: React.ReactNode }
                   {char === ' ' ? '\u00A0' : char}
                 </span>
               ))}
-            </h1>
+            </div>
 
             {/* Percentage counter */}
             <div className="mt-8 flex items-center gap-3">

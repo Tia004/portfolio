@@ -34,7 +34,13 @@ export function loadTsModules(names) {
       },
       fileName: `${name}.ts`,
     });
-    writeFileSync(resolve(OUT_DIR, `${name}.js`), outputText);
+    // The compiler output keeps the tsconfig "@/lib/x" specifier verbatim, and
+    // these files are required from a FLAT temp folder where that alias means
+    // nothing. Rewrite it to a sibling require so a module can pull in another
+    // one from this same batch (e.g. newsletter.ts → seo.ts). Dependencies must
+    // still be listed BEFORE the module that imports them.
+    const flatOutput = outputText.replace(/require\("@\/lib\/([\w.-]+)"\)/g, 'require("./$1")');
+    writeFileSync(resolve(OUT_DIR, `${name}.js`), flatOutput);
     loaded[name] = require(resolve(OUT_DIR, `${name}.js`));
   }
   return loaded;

@@ -135,3 +135,52 @@ export function scrollToElementAfterLayout(
     });
   });
 }
+
+/**
+ * Scroll to a lazily-mounted section and KEEP it in place while the layout
+ * settles.
+ *
+ * `scrollToElementAfterLayout` computes the target from the document as it is
+ * at that instant and then stops — but the LazySection blocks ABOVE the target
+ * mount a beat later and push it hundreds of pixels further down, so the click
+ * lands short of the section it aimed at. This variant re-aims whenever the
+ * target moves: the first frame is already responsive, and the final position
+ * is correct. Corrections use a short duration so they read as the page
+ * settling rather than as a second navigation.
+ */
+export function scrollToElementFollowingLayout(
+  target: string | HTMLElement,
+  controller?: ScrollControllerSource,
+  options: ScrollOptions = {},
+): void {
+  window.dispatchEvent(new Event('tia:force-mount'));
+  const deadline = Date.now() + 2000;
+  let lastTop = Number.NaN;
+  let stableTicks = 0;
+  let scrolledOnce = false;
+  const tick = () => {
+    const element = resolveElement(target);
+    if (element) {
+      const top = Math.round(element.getBoundingClientRect().top + window.scrollY);
+      if (top !== lastTop) {
+        lastTop = top;
+        stableTicks = 0;
+        scrollToElement(target, controller, {
+          ...options,
+          duration: scrolledOnce ? 0.35 : (options.duration ?? 0.7),
+        });
+        scrolledOnce = true;
+      } else {
+        stableTicks += 1;
+      }
+    }
+    // Four quiet ticks (~480ms) mean the layout has stopped growing; the 2s
+    // deadline is the escape hatch for a page that keeps repainting.
+    if (Date.now() < deadline && stableTicks < 4) {
+      window.setTimeout(tick, 120);
+    } else if (options.onComplete) {
+      options.onComplete();
+    }
+  };
+  tick();
+}

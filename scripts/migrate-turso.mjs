@@ -1,14 +1,7 @@
 import { createClient } from '@libsql/client';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 
-const url = process.env.TURSO_DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
-
-if (!url || !authToken) {
-  console.error("Error: Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN in environment variables.");
-  process.exit(1);
-}
-
-const client = createClient({ url, authToken });
+const client = createClient(tursoCredentials());
 
 const statements = [
   `CREATE TABLE IF NOT EXISTS "User" (

@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
       lang?: unknown;
       sessionId?: unknown;
       captchaToken?: unknown;
+      ref?: unknown;
     };
     const ip = getClientIp(req);
     // Contact form is public — allow requests with or without a chat session
@@ -215,15 +216,47 @@ export async function POST(req: NextRequest) {
     const tiaChipsHtml = buildChipsHtml(details, 'it');
     const clientChipsHtml = buildChipsHtml(details, clientLang);
 
+    // ── Referral Attribution ──────────────────────────────────────────────────
+    const incomingRef = typeof body.ref === 'string' ? body.ref.trim().toLowerCase() : null;
+    let attributedReferral: any = null;
+    if (incomingRef) {
+      try {
+        const { attributeReferralLead } = await import('@/lib/client-referrals');
+        attributedReferral = await attributeReferralLead(incomingRef, {
+          name,
+          email,
+          service: typeof service === 'string' ? service : undefined,
+          source: typeof source === 'string' ? source : 'contact_form',
+          notes: message,
+        });
+      } catch (refErr) {
+        console.error('Failed to attribute referral lead:', refErr);
+      }
+    }
+
+    const referralBannerHtml = attributedReferral
+      ? `
+        <div style="background: rgba(45, 212, 191, 0.12); border: 1px solid #2dd4bf; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px;">
+          <div style="color: #2dd4bf; font-weight: bold; font-size: 14px; margin-bottom: 4px;">🎁 CLIENTE DA PROGRAMMA REFERRAL (20% AUTOMATICO)</div>
+          <div style="font-size: 13px; color: #e5e7eb; line-height: 1.5;">
+            Portato da: <strong>${escapeHtml(attributedReferral.clientName)}</strong> (${escapeHtml(attributedReferral.clientEmail)}${attributedReferral.clientCompany ? ` - ${escapeHtml(attributedReferral.clientCompany)}` : ''})<br/>
+            Codice Referral: <code style="background: #111; padding: 2px 6px; border-radius: 4px; color: #2dd4bf;">?ref=${escapeHtml(attributedReferral.code)}</code><br/>
+            Sconto / Ricompensa: <strong>${attributedReferral.discountPercent}%</strong> attribuito e tracciato in automatico nel sistema!
+          </div>
+        </div>
+      `
+      : '';
+
     // Email to Tia (ALWAYS formatted in Italian)
     const mailOptions = {
       from: `${sender.name} <${senderEmail}>`,
       to: recipientEmail,
       replyTo: email,
-      subject: `${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} da ${name} [${clientLang.toUpperCase()}] - Portfolio`,
+      subject: `${attributedReferral ? '[REFERRAL 20%] ' : ''}${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} da ${name} [${clientLang.toUpperCase()}] - Portfolio`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #0a0a0a; color: #fff; border-radius: 12px; border: 1px solid #1e293b;">
           <h2 style="color: #2dd4bf; margin-bottom: 20px;">${source === 'ai-quote' ? 'Nuovo preventivo AI' : 'Nuovo messaggio'} dal Portfolio</h2>
+          ${referralBannerHtml}
           <div style="background: #111; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
             <p style="margin: 4px 0;"><strong>Nome Cliente:</strong> ${safeName}</p>
             <p style="margin: 4px 0;"><strong>Email Cliente:</strong> ${safeEmail}</p>
@@ -250,6 +283,9 @@ export async function POST(req: NextRequest) {
           service: typeof service === 'string' && service.trim() ? service.trim() : 'Generale',
           message,
           status: 'new',
+          notes: attributedReferral
+            ? `Referral: portato da ${attributedReferral.clientName} (?ref=${attributedReferral.code}) - Sconto 20% attribuito`
+            : null,
         },
       });
     } catch (dbErr) {

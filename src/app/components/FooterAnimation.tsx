@@ -7,6 +7,7 @@ import { SECTION_OFFSETS } from '@/lib/animation-theme';
 import { type Lang, t } from '@/lib/translations';
 import { CHAT_CATEGORY_OPTIONS, type ChatCategory } from '@/lib/chat-categories';
 import LanguageSwitcher from './LanguageSwitcher';
+import NewsletterSignup from './NewsletterSignup';
 import TiaIcon from './TiaIcon';
 import { Discount01Icon } from './icons';
 import { useLenis } from './SmoothScroll';
@@ -31,7 +32,11 @@ import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
  * The gradient glow + content parallax keep their GSAP scrub (subtle; if
  * positions drift they simply sit at the final state — visually fine).
  */
-export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onOpenLegal?: (doc: string) => void }) {
+// `onHome` mirrors the navbar's flag: on the home page the footer's section
+// links are real anchors and the click scrolls to them; anywhere else they must
+// become '/#servizi' and simply navigate. Without it the whole "Link" column of
+// the footer is dead on every page that is not the home page.
+export default function FooterAnimation({ lang, onOpenLegal, onHome = true }: { lang: Lang; onOpenLegal?: (doc: string) => void; onHome?: boolean }) {
   const sectionRef = useRef<HTMLElement>(null);
   const wordmarkRef = useRef<HTMLDivElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -40,13 +45,16 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
 
   // Intercept internal section links — use the shared scroll system with arrival glow
   const handleSectionClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Not on the home page: the section is not here, so let the browser follow
+    // the (already prefixed) link instead of swallowing the click.
+    if (!onHome) return;
     e.preventDefault();
     const sectionId = href.replace(/^#/, '');
     scrollToElementAfterLayout(href, () => lenis.current, {
       offsetPx: SECTION_OFFSETS[sectionId] ?? 0,
       onComplete: () => triggerArrivalGlow(sectionId),
     });
-  }, [lenis]);
+  }, [lenis, onHome]);
 
   useLayoutEffect(() => {
     const section = sectionRef.current;
@@ -313,7 +321,7 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
                         window.dispatchEvent(new CustomEvent('tia:footer-chat-category', { detail: { category: option.value as ChatCategory } }));
                       }, 100);
                     }}
-                    className="text-neutral-400 hover:text-white transition-colors text-xs"
+                    className="inline-flex min-h-[28px] py-0.5 items-center text-neutral-400 hover:text-white transition-colors text-xs"
                   >
                     {t(option.labelKey, lang)}
                   </button>
@@ -333,8 +341,15 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
                 { key: 'footer.recensioni', href: '#recensioni' },
                 { key: 'footer.faq_link', href: '#faq' },
                 { key: 'footer.contatti', href: '#contatti' },
-              ].map(({ key, href }) => (
-                <li key={key}><a href={href} onClick={(e) => handleSectionClick(e, href)} className="text-neutral-400 hover:text-white transition-colors text-xs">{t(key, lang)}</a></li>
+              ]
+                // Same items, pointed at the home page when we are not on it —
+                // and at the home page IN THIS LANGUAGE, so an English visitor
+                // is not sent back to the Italian site by the footer.
+                .map((item) =>
+                  onHome ? item : { ...item, href: `${lang === 'it' ? '' : `/${lang}`}/${item.href}` },
+                )
+                .map(({ key, href }) => (
+                <li key={key}><a href={href} onClick={(e) => handleSectionClick(e, href)} className="inline-flex min-h-[28px] min-w-[28px] py-0.5 items-center text-neutral-400 hover:text-white transition-colors text-xs">{t(key, lang)}</a></li>
               ))}
             </ul>
           </div>
@@ -342,12 +357,16 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
             <h4 className="text-white text-sm font-medium mb-4">{t('footer.contatti', lang)}</h4>
             <ul className="space-y-2 text-neutral-400 text-xs">
               <li>{t('footer.location', lang)}</li>
-              <li><a href="mailto:info@tiadesigns.it" className="hover:text-white transition-colors">info@tiadesigns.it</a></li>
-              <li><a href="tel:+393318821334" className="hover:text-white transition-colors">+39 331 882 1334</a></li>
+              <li><a href="mailto:info@tiadesigns.it" className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors">info@tiadesigns.it</a></li>
+              <li><a href="tel:+393318821334" className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors">+39 331 882 1334</a></li>
               <li>{t('contatti.vat_invoice', lang)}</li>
             </ul>
           </div>
         </div>
+
+        {/* Public newsletter signup — double opt-in: this form only creates a
+            PENDING subscriber and sends the confirmation email. */}
+        <NewsletterSignup lang={lang} onOpenLegal={onOpenLegal} />
 
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-6 sm:pt-8 flex flex-col items-center gap-3">
@@ -360,17 +379,17 @@ export default function FooterAnimation({ lang, onOpenLegal }: { lang: Lang; onO
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-neutral-500 text-xs">
             {onOpenLegal && (
               <>
-                <button onClick={() => onOpenLegal('privacy')} className="hover:text-white transition-colors" aria-label={t('footer.privacy', lang)}>{t('footer.privacy', lang)}</button>
+                <button onClick={() => onOpenLegal('privacy')} className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors" aria-label={t('footer.privacy', lang)}>{t('footer.privacy', lang)}</button>
                 <span className="w-1 h-1 rounded-full bg-neutral-600" />
-                <button onClick={() => onOpenLegal('cookies')} className="hover:text-white transition-colors" aria-label={t('footer.cookie', lang)}>{t('footer.cookie', lang)}</button>
+                <button onClick={() => onOpenLegal('cookies')} className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors" aria-label={t('footer.cookie', lang)}>{t('footer.cookie', lang)}</button>
                 <span className="w-1 h-1 rounded-full bg-neutral-600" />
-                <button onClick={() => onOpenLegal('terms')} className="hover:text-white transition-colors" aria-label={t('footer.termini', lang)}>{t('footer.termini', lang)}</button>
+                <button onClick={() => onOpenLegal('terms')} className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors" aria-label={t('footer.termini', lang)}>{t('footer.termini', lang)}</button>
                 <span className="w-1 h-1 rounded-full bg-neutral-600" />
               </>
             )}
             <button
               onClick={() => window.dispatchEvent(new Event('open-cookie-settings'))}
-              className="hover:text-white transition-colors"
+              className="inline-flex min-h-[28px] py-0.5 items-center hover:text-white transition-colors"
               aria-label={t('footer.cookie_prefs', lang)}
             >
               {t('footer.cookie_prefs', lang)}

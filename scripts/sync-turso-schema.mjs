@@ -287,6 +287,53 @@ async function run() {
     await client.execute('CREATE INDEX IF NOT EXISTS SentEmailLog_sentAt_idx ON SentEmailLog(sentAt);');
     console.log('Checked SentEmailLog table');
 
+    // 14. Create ClientReferral (Personal client referral links with automatic 20% attribution)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS ClientReferral (
+        id TEXT PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        clientName TEXT NOT NULL,
+        clientEmail TEXT NOT NULL,
+        clientCompany TEXT,
+        discountPercent INTEGER NOT NULL DEFAULT 20,
+        visitsCount INTEGER NOT NULL DEFAULT 0,
+        leadsCount INTEGER NOT NULL DEFAULT 0,
+        conversionsCount INTEGER NOT NULL DEFAULT 0,
+        totalRewardAttributed REAL NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'active',
+        notes TEXT,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.execute('CREATE UNIQUE INDEX IF NOT EXISTS ClientReferral_code_key ON ClientReferral(code);');
+    await client.execute('CREATE INDEX IF NOT EXISTS ClientReferral_code_idx ON ClientReferral(code);');
+    await client.execute('CREATE INDEX IF NOT EXISTS ClientReferral_clientEmail_idx ON ClientReferral(clientEmail);');
+    await client.execute('CREATE INDEX IF NOT EXISTS ClientReferral_status_idx ON ClientReferral(status);');
+    console.log('Checked ClientReferral table');
+
+    // 15. Create ReferralLeadLog (Attribution logs for every lead brought by a referral)
+    await client.execute(`
+      CREATE TABLE IF NOT EXISTS ReferralLeadLog (
+        id TEXT PRIMARY KEY,
+        referralId TEXT NOT NULL,
+        referralCode TEXT NOT NULL,
+        leadName TEXT NOT NULL,
+        leadEmail TEXT NOT NULL,
+        service TEXT,
+        source TEXT NOT NULL DEFAULT 'contact',
+        dealValue REAL,
+        attributedReward REAL,
+        notes TEXT,
+        createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (referralId) REFERENCES ClientReferral(id) ON DELETE CASCADE
+      );
+    `);
+    await client.execute('CREATE INDEX IF NOT EXISTS ReferralLeadLog_referralId_idx ON ReferralLeadLog(referralId);');
+    await client.execute('CREATE INDEX IF NOT EXISTS ReferralLeadLog_referralCode_idx ON ReferralLeadLog(referralCode);');
+    await client.execute('CREATE INDEX IF NOT EXISTS ReferralLeadLog_createdAt_idx ON ReferralLeadLog(createdAt);');
+    console.log('Checked ReferralLeadLog table');
+
     console.log('✅ Turso schema synchronization complete!');
   } catch (err) {
     console.error('❌ Error updating Turso database:', err);

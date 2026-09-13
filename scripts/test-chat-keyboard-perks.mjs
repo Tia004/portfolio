@@ -85,11 +85,13 @@ try {
   b = await getBottom();
   check(b?.style === '260px', 'Visual viewport pan compensated (300 − 40)', `bottom=${b?.style}`);
 
-  // Keyboard closes → back to the CTA base offset
+  // Keyboard closes → back to the CTA base offset. The consent banner may add
+  // a lift on top of it (the widget stacks above the banner so its input
+  // stays tappable), so the base is a floor, not an exact value.
   await page.evaluate(() => window.__setKeyboard(0));
   await sleep(600);
   b = await getBottom();
-  check(b?.style === '124px', 'Keyboard closed: back to base 124px (CTA visible)', `bottom=${b?.style}`);
+  check(Number.parseFloat(b?.style || '0') >= 124, 'Keyboard closed: back to the CTA base offset (>= 124px)', `bottom=${b?.style}`);
   await page.screenshot({ path: join(OUT_DIR, 'chat-no-keyboard.png') });
 
   // ── Perks: 2×2 square grid on mobile ─────────────────────────

@@ -1,11 +1,9 @@
 import { createClient } from '@libsql/client';
 import dotenv from 'dotenv';
+import { tursoCredentials } from './lib/turso-credentials.mjs';
 dotenv.config();
 
-const client = createClient({
-  url: process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-});
+const client = createClient(tursoCredentials());
 
 async function main() {
   const res = await client.execute('SELECT id, title, thumbnail, category, featured, "order", createdAt FROM Project ORDER BY "order" ASC, createdAt DESC');

@@ -52,6 +52,12 @@ const it: Dict = {
   'hero.line2d': 'ingegneria',
   'hero.line2e': '.',
   'hero.subtitle': 'Progetto e sviluppo app, software, siti web e produzioni video. Design, codice e immagine in un unico professionista.',
+  // The ONLY discount promise on the site: stated in the hero with its terms,
+  // repeated once in the footer, always with the same number (20%). Time-boxed
+  // and non-cumulative on purpose — a vague "sconto" is not a defensible offer.
+  // Change the date here and in hero.promo_terms (EN/ES) when it lapses.
+  'hero.promo': 'Porta un cliente: 20% di sconto sul tuo prossimo progetto',
+  'hero.promo_terms': 'Non cumulabile · valida fino al 31/12/2026',
   'hero.cta_quote': 'Richiedi preventivo',
   'hero.cta_prices': 'Vedi i prezzi',
   'hero.cta_work': 'Vedi i lavori',
@@ -85,7 +91,7 @@ const it: Dict = {
   'servizi.audit': 'Audit Gratuito',
   'servizi.audit_desc': 'Analisi gratuita di velocità, SEO e mobile del tuo sito attuale, con un report concreto dei miglioramenti possibili.',
   'servizi.perf': 'Performance & Velocità',
-  'servizi.perf_desc': 'Sito lento? Ottimizzo caricamento e Core Web Vitals (LCP, CLS, TBT) con risultati garantiti e misurabili.',
+  'servizi.perf_desc': 'Sito lento? Ottimizzo caricamento e Core Web Vitals (LCP, INP, CLS). Ti consegno i punteggi prima e dopo, così la differenza la verifichi tu.',
   'servizi.multilingua': 'Siti Multilingua',
   'servizi.multilingua_desc': 'Traduco e adatto il tuo sito in più lingue con hreflang, URL dedicate e SEO per-lingua, come su questo sito.',
   'servizi.chatbot': 'Chatbot & AI',
@@ -124,8 +130,8 @@ const it: Dict = {
 
   // Prezzi
   'prezzi.title': 'Prezzi',
-  'prezzi.subtitle': 'Ogni progetto ha un preventivo dedicato. Qui trovi una stima indicativa per orientarti.',
-  'prezzi.slider_label': 'Pacchetti — scorri orizzontalmente',
+  'prezzi.subtitle': 'Ogni progetto ha un preventivo dedicato. Qui trovi le tariffe di partenza.',
+  'prezzi.slider_label': 'Tariffe — scorri orizzontalmente',
   'prezzi.label': 'Tariffe trasparenti',
   'prezzi.onetime': 'Una tantum',
   'prezzi.monthly': 'Collaborazione',
@@ -238,6 +244,45 @@ const it: Dict = {
   'contatti.booking_confirmed_sub': 'Riceverai a breve l\'email con tutti i dettagli.',
 
   // Footer
+  // ── Newsletter: the public signup form and the double opt-in pages ──
+  'newsletter.title': 'Iscriviti alla newsletter',
+  'newsletter.subtitle': 'Una email ogni tanto, solo quando ho qualcosa che vale il tuo tempo. Niente spam.',
+  'newsletter.email_placeholder': 'La tua email',
+  'newsletter.submit': 'Iscrivimi',
+  'newsletter.sending': 'Invio…',
+  'newsletter.consent_prefix': 'Acconsento a ricevere la newsletter e ho letto la ',
+  'newsletter.consent_suffix': '. Posso disiscrivermi in qualsiasi momento.',
+  // Il nome del documento legale, non l'etichetta della voce di menu: il
+  // consenso deve dire cosa si è letto ("Privacy Policy"), non la sezione del
+  // sito che la contiene.
+  'newsletter.privacy_link': 'Privacy Policy',
+  'newsletter.check_email': 'Controlla la posta: ti ho inviato il link per confermare. Se non lo trovi, guarda nello spam.',
+  'newsletter.invalid_email': 'Inserisci un indirizzo email valido.',
+  'newsletter.consent_required': 'Serve il consenso per iscriverti.',
+  'newsletter.error': 'Qualcosa è andato storto. Riprova tra qualche istante.',
+  'newsletter.rate_limited': 'Troppi tentativi. Riprova tra qualche minuto.',
+  'newsletter.privacy_note': 'Niente spam, mai. Solo aggiornamenti reali.',
+  'newsletter.confirm_title': 'Conferma la tua iscrizione',
+  'newsletter.confirm_text': 'Un ultimo passaggio: premi il pulsante per confermare che sei tu. Così nessuno può iscriverti senza il tuo permesso.',
+  'newsletter.confirm_button': 'Confermo l\'iscrizione',
+  'newsletter.confirm_secure': 'Doppia conferma: senza il tuo clic non attivo nessuna iscrizione.',
+  'newsletter.unsub_title': 'Vuoi disiscriverti?',
+  'newsletter.unsub_text': 'Mi dispiace. Premi il pulsante e non riceverai più email.',
+  'newsletter.unsub_button': 'Disiscrivimi',
+  'newsletter.unsub_email_placeholder': 'Il tuo indirizzo email',
+  'newsletter.unsub_email_hint': 'Se hai ricevuto una email, usa il link in fondo: è un clic solo.',
+  'newsletter.confirmed_title': 'Iscrizione confermata',
+  'newsletter.confirmed_text': 'Ci sei. Ti scrivo solo quando ho qualcosa che vale il tuo tempo.',
+  'newsletter.already_title': 'Era già confermata',
+  'newsletter.already_text': 'Questa iscrizione era già attiva: non c\'è altro da fare.',
+  'newsletter.unsubscribed_title': 'Disiscrizione completata',
+  'newsletter.unsubscribed_text': 'Non riceverai altre email. Se cambi idea, il form sul sito è sempre lì.',
+  'newsletter.invalid_title': 'Link non più valido',
+  'newsletter.invalid_text': 'Questo link è scaduto o è già stato usato. Puoi richiedere un nuovo invio dal form sul sito.',
+  'newsletter.failed_title': 'Qualcosa è andato storto',
+  'newsletter.failed_text': 'Riprova tra qualche istante. Se continua, scrivimi a info@tiadesigns.it.',
+  'newsletter.back_home': 'Torna al sito',
+  'newsletter.sections': 'Intanto, dai un\'occhiata:',
   'footer.desc': 'Designer, sviluppatore app e software, videomaker. Trasformo idee in prodotti digitali completi.',
   'footer.servizi': 'Servizi',
   'footer.links': 'Link',
@@ -266,21 +311,37 @@ const it: Dict = {
   'footer.copyright': '© 2026 Tia Designs. Tutti i diritti riservati.',
   'footer.location': 'Mantova, Italia',
   'footer.timezone': 'GMT+2',
-  // NOTE: the discount is the same number in all three languages — it used to
-  // be 20% here and 10% in EN/ES, two different promises on the same site.
-  'footer.referral': 'Programma referral: porta un cliente e ricevi il 10% di sconto sul prossimo progetto',
-  'referral.label': 'Passaparola',
-  'referral.title': 'Conosci qualcuno a cui serve?',
-  'referral.note': 'Chi arriva da te ha il preventivo gratuito; tu ricevi il 10% di sconto sul prossimo progetto.',
-  'referral.copy': 'Copia il link',
-  'referral.copied': 'Link copiato ✓',
-  'referral.share': 'Condividi su WhatsApp',
-  'referral.message': 'Ciao! Ti passo il contatto di Tia Designs: siti web, app e video. Dai un occhio qui: {link}',
+  // Same number in all three languages (see the hero promo above): one promise,
+  // stated once, in the same words everywhere.
+  'footer.referral': 'Programma passaparola: porta un cliente e ricevi il 20% di sconto sul prossimo progetto',
+
+  // ── 404 + error pages ─────────────────────────────────────────────────
+  // Shared by app/not-found.tsx and app/error.tsx (components/ErrorShell).
+  // The section links reuse the existing nav.* keys on purpose: the labels of
+  // the 404 chips and the ones in the navbar can never drift apart.
+  '404.label': 'Errore 404',
+  '404.title': 'Questa pagina non esiste',
+  '404.text': 'Il link è vecchio, oppure l\'indirizzo ha un refuso. Da qui raggiungi in un click tutto il resto del sito.',
+  '404.home': 'Torna alla home',
+  '404.sections': 'Vai diretto a',
+  '404.path': 'Percorso richiesto',
+  'error.label': 'Errore imprevisto',
+  'error.title': 'Qualcosa è andato storto',
+  'error.text': 'Il resto del sito funziona: riprova a caricare questa pagina oppure torna alla home. Se succede di nuovo, scrivimi e lo sistemo.',
+  'error.retry': 'Riprova',
+  'error.home': 'Torna alla home',
+  'error.digest': 'Codice errore',
 
   // Chat
   'chat.open': 'Apri chat',
   'chat.title': 'Chatta con me in tempo reale',
   'chat.ai_title': 'Chatta con la AI di Tia Designs',
+  // Direct-chat action buttons — Tia writes [CAL] or [AI] in a reply and the
+  // visitor sees a tappable button instead of the raw marker.
+  'chat.cal_cta': 'Prenota una call',
+  'chat.ai_cta': 'Continua con l\'AI',
+  'chat.ai_handoff_label': 'Preferisco continuare con l\'AI',
+  'chat.ai_handoff_prompt': 'Un cliente ha scritto nella chat diretta con Tia Chinaglia. Prendi tu in carico la conversazione: riassumi in 2-3 righe quello che ha chiesto, poi proponi il passo successivo (preventivo o call). Sii concreto e non chiedere informazioni che ha già dato.\n\nConversazione:\n{transcript}',
   'chat.placeholder': 'Scrivi un messaggio...',
   'chat.auto_reply': 'Grazie per avermi scritto! Ti risponderò a breve.',
   'chat.welcome': 'Ciao! Questa è una chat diretta con me, Tia Chinaglia. Raccontami cosa hai in mente e ti risponderò personalmente.',
@@ -383,6 +444,35 @@ const it: Dict = {
   'cookie.necessary': 'Solo necessari',
   'cookie.reject': 'Rifiuta',
   'cookie.saved': 'La tua scelta sarà salvata per 12 mesi',
+
+  // Case study pages — /progetti/[slug]
+  'progetto.breadcrumb': 'Progetti',
+  'progetto.back': 'Torna alla home',
+  'progetto.intro_label': 'Caso di studio',
+  'progetto.category': 'Categoria',
+  'progetto.tags': 'Tecnologie',
+  'progetto.visit': 'Vedi il sito',
+  'progetto.code': 'Codice sorgente',
+  'progetto.gallery': 'Galleria',
+  'progetto.others': 'Altri progetti',
+  'progetto.cta_title': 'Ti serve qualcosa del genere?',
+  'progetto.cta_text': 'Raccontami il progetto e ti dico come lo affronterei, con tempi e costi chiari.',
+  'progetto.cta_button': 'Parliamone',
+
+  // "Verify it yourself" — proof the visitor can re-run, not a claim.
+  'progetto.verify_label': 'Verifica tu stesso',
+  'progetto.verify_text': 'I punteggi di velocità e accessibilità di questo sito sono pubblici e li misura Google. Puoi rifare il test quando vuoi.',
+  'progetto.verify_cta': 'Misura questo sito',
+
+  // Live measurement of THIS site, read from the visitor's own browser.
+  'perf.label': 'Questo sito, misurato adesso',
+  'perf.text': 'Numeri letti dal tuo browser in questa visita, non dichiarati da me: ricarica la pagina e cambiano.',
+  'perf.lcp': 'LCP — quando appare il contenuto principale',
+  'perf.cls': 'CLS — spostamenti di layout',
+  'perf.ttfb': 'TTFB — prima risposta del server',
+  'perf.weight': 'Peso trasferito',
+  'perf.cta': 'Verifica con PageSpeed Insights',
+  'perf.unavailable': 'Il tuo browser non espone queste misure.',
 };
 
 const en: Dict = {
@@ -410,6 +500,8 @@ const en: Dict = {
   'hero.line2d': 'engineering',
   'hero.line2e': '.',
   'hero.subtitle': 'I design and develop apps, software, websites, and video productions. Design, code, and imagery in a single professional.',
+  'hero.promo': 'Refer a client: 20% off your next project',
+  'hero.promo_terms': 'Not combinable with other offers · valid until 31/12/2026',
   'hero.cta_quote': 'Request a quote',
   'hero.cta_prices': 'See pricing',
   'hero.cta_work': 'See my work',
@@ -442,7 +534,7 @@ const en: Dict = {
   'servizi.audit': 'Free Audit',
   'servizi.audit_desc': 'Free analysis of speed, SEO, and mobile experience of your current site, with a concrete report of possible improvements.',
   'servizi.perf': 'Performance & Speed',
-  'servizi.perf_desc': 'Slow site? I optimize loading and Core Web Vitals (LCP, CLS, TBT) with guaranteed, measurable results.',
+  'servizi.perf_desc': 'Slow site? I optimize loading and Core Web Vitals (LCP, INP, CLS). You get the scores before and after, so you can check the difference yourself.',
   'servizi.multilingua': 'Multilingual Websites',
   'servizi.multilingua_desc': 'I translate and adapt your site into multiple languages with hreflang, dedicated URLs, and per-language SEO — just like this site.',
   'servizi.chatbot': 'Chatbot & AI',
@@ -479,8 +571,8 @@ const en: Dict = {
   'processo.step6_desc': 'I deliver everything: source files, documentation and post-delivery support. The project is 100% yours.',
 
   'prezzi.title': 'Pricing',
-  'prezzi.subtitle': 'Every project gets a custom quote. Here is an indicative estimate to guide you.',
-  'prezzi.slider_label': 'Packages — scroll horizontally',
+  'prezzi.subtitle': 'Every project gets a custom quote. Here are the starting prices.',
+  'prezzi.slider_label': 'Rates — scroll horizontally',
   'prezzi.label': 'Transparent pricing',
   'prezzi.onetime': 'One-time',
   'prezzi.monthly': 'Retainer',
@@ -581,6 +673,42 @@ const en: Dict = {
   'contatti.booking_confirmed': 'Booking confirmed!',
   'contatti.booking_confirmed_sub': 'You\'ll receive an email with all the details shortly.',
 
+  // ── Newsletter: the public signup form and the double opt-in pages ──
+  'newsletter.title': 'Subscribe to the newsletter',
+  'newsletter.subtitle': 'An email now and then, only when I have something worth your time. No spam.',
+  'newsletter.email_placeholder': 'Your email',
+  'newsletter.submit': 'Subscribe me',
+  'newsletter.sending': 'Sending…',
+  'newsletter.consent_prefix': 'I agree to receive the newsletter and I have read the ',
+  'newsletter.consent_suffix': '. I can unsubscribe at any time.',
+  'newsletter.privacy_link': 'Privacy Policy',
+  'newsletter.check_email': 'Check your inbox: I sent you the confirmation link. If you cannot find it, look in spam.',
+  'newsletter.invalid_email': 'Enter a valid email address.',
+  'newsletter.consent_required': 'Consent is required to subscribe.',
+  'newsletter.error': 'Something went wrong. Try again in a moment.',
+  'newsletter.rate_limited': 'Too many attempts. Try again in a few minutes.',
+  'newsletter.privacy_note': 'No spam, ever. Only real updates.',
+  'newsletter.confirm_title': 'Confirm your subscription',
+  'newsletter.confirm_text': 'One last step: press the button to confirm it is you. That way nobody can subscribe you without your permission.',
+  'newsletter.confirm_button': 'Confirm my subscription',
+  'newsletter.confirm_secure': 'Double confirmation: nothing is activated without your click.',
+  'newsletter.unsub_title': 'Do you want to unsubscribe?',
+  'newsletter.unsub_text': 'Sorry to see you go. Press the button and you will not receive any more emails.',
+  'newsletter.unsub_button': 'Unsubscribe me',
+  'newsletter.unsub_email_placeholder': 'Your email address',
+  'newsletter.unsub_email_hint': 'If you received an email, use the link at the bottom: it takes one click.',
+  'newsletter.confirmed_title': 'Subscription confirmed',
+  'newsletter.confirmed_text': 'You are in. I only write when I have something worth your time.',
+  'newsletter.already_title': 'It was already confirmed',
+  'newsletter.already_text': 'This subscription was already active: there is nothing else to do.',
+  'newsletter.unsubscribed_title': 'Unsubscribed',
+  'newsletter.unsubscribed_text': 'You will not receive any more emails. If you change your mind, the form on the site is always there.',
+  'newsletter.invalid_title': 'Link no longer valid',
+  'newsletter.invalid_text': 'This link has expired or has already been used. You can request a new one from the form on the site.',
+  'newsletter.failed_title': 'Something went wrong',
+  'newsletter.failed_text': 'Try again in a moment. If it keeps happening, email me at info@tiadesigns.it.',
+  'newsletter.back_home': 'Back to the site',
+  'newsletter.sections': 'In the meantime, have a look:',
   'footer.desc': 'Designer, app & software developer, videomaker. I turn ideas into complete digital products.',
   'footer.servizi': 'Services',
   'footer.links': 'Links',
@@ -608,18 +736,31 @@ const en: Dict = {
   'footer.copyright': '© 2026 Tia Designs. All rights reserved.',
   'footer.location': 'Mantua, Italy',
   'footer.timezone': 'GMT+2',
-  'footer.referral': 'Referral program: bring a client and get 10% off your next project',
-  'referral.label': 'Word of mouth',
-  'referral.title': 'Know someone who needs this?',
-  'referral.note': 'Anyone who comes from you gets a free quote; you get 10% off your next project.',
-  'referral.copy': 'Copy the link',
-  'referral.copied': 'Link copied ✓',
-  'referral.share': 'Share on WhatsApp',
-  'referral.message': 'Hi! Passing you Tia Designs: websites, apps and video. Have a look here: {link}',
+  'footer.referral': 'Word-of-mouth programme: refer a client and get 20% off your next project',
+
+  // ── 404 + error pages ─────────────────────────────────────────────────
+  '404.label': 'Error 404',
+  '404.title': 'This page does not exist',
+  '404.text': 'The link is old, or the address has a typo. From here you can reach the rest of the site in one click.',
+  '404.home': 'Back to home',
+  '404.sections': 'Go straight to',
+  '404.path': 'Requested path',
+  'error.label': 'Unexpected error',
+  'error.title': 'Something went wrong',
+  'error.text': 'The rest of the site works: try loading this page again, or head back home. If it happens again, write to me and I will fix it.',
+  'error.retry': 'Try again',
+  'error.home': 'Back to home',
+  'error.digest': 'Error code',
 
   'chat.open': 'Open chat',
   'chat.title': 'Chat with me in real time',
   'chat.ai_title': 'Chat with Tia\'s AI',
+  // Direct-chat action buttons — Tia writes [CAL] or [AI] in a reply and the
+  // visitor sees a tappable button instead of the raw marker.
+  'chat.cal_cta': 'Book a call',
+  'chat.ai_cta': 'Continue with the AI',
+  'chat.ai_handoff_label': 'I\'d rather continue with the AI',
+  'chat.ai_handoff_prompt': 'A client wrote in the direct chat with Tia Chinaglia. Take over the conversation: summarise in 2-3 lines what they asked for, then propose the next step (quote or call). Be concrete and do not ask again for information they already gave.\n\nConversation:\n{transcript}',
   'chat.placeholder': 'Write a message...',
   'chat.auto_reply': 'Thanks for writing! I\'ll get back to you soon.',
   'chat.welcome': 'Hey! This is a direct chat with me, Tia Chinaglia. Tell me what you have in mind and I\'ll reply personally.',
@@ -718,6 +859,35 @@ const en: Dict = {
   'cookie.necessary': 'Necessary only',
   'cookie.reject': 'Reject',
   'cookie.saved': 'Your choice will be saved for 12 months',
+
+  // Case study pages — /en/progetti/[slug]
+  'progetto.breadcrumb': 'Projects',
+  'progetto.back': 'Back to home',
+  'progetto.intro_label': 'Case study',
+  'progetto.category': 'Category',
+  'progetto.tags': 'Technologies',
+  'progetto.visit': 'Visit the site',
+  'progetto.code': 'Source code',
+  'progetto.gallery': 'Gallery',
+  'progetto.others': 'More projects',
+  'progetto.cta_title': 'Need something like this?',
+  'progetto.cta_text': 'Tell me about the project and I will tell you how I would approach it, with clear timelines and costs.',
+  'progetto.cta_button': "Let's talk",
+
+  // "Verify it yourself" — proof the visitor can re-run, not a claim.
+  'progetto.verify_label': 'Check it yourself',
+  'progetto.verify_text': 'The speed and accessibility scores of this site are public and measured by Google. You can re-run the test whenever you like.',
+  'progetto.verify_cta': 'Measure this site',
+
+  // Live measurement of THIS site, read from the visitor's own browser.
+  'perf.label': 'This site, measured right now',
+  'perf.text': 'Numbers read by your browser during this visit, not declared by me: reload the page and they change.',
+  'perf.lcp': 'LCP — when the main content appears',
+  'perf.cls': 'CLS — layout shift',
+  'perf.ttfb': 'TTFB — first server response',
+  'perf.weight': 'Transferred weight',
+  'perf.cta': 'Verify with PageSpeed Insights',
+  'perf.unavailable': 'Your browser does not expose these measurements.',
 };
 
 const es: Dict = {
@@ -745,6 +915,8 @@ const es: Dict = {
   'hero.line2d': 'ingeniería',
   'hero.line2e': '.',
   'hero.subtitle': 'Diseño y desarrollo apps, software, sitios web y producciones de video. Diseño, código e imagen en un solo profesional.',
+  'hero.promo': 'Trae un cliente: 20% de descuento en tu próximo proyecto',
+  'hero.promo_terms': 'No acumulable con otras ofertas · válida hasta el 31/12/2026',
   'hero.cta_quote': 'Solicitar presupuesto',
   'hero.cta_prices': 'Ver precios',
   'hero.cta_work': 'Ver trabajos',
@@ -777,7 +949,7 @@ const es: Dict = {
   'servizi.audit': 'Auditoría Gratuita',
   'servizi.audit_desc': 'Análisis gratuito de velocidad, SEO y versión móvil de tu sitio actual, con un informe concreto de mejoras posibles.',
   'servizi.perf': 'Rendimiento y Velocidad',
-  'servizi.perf_desc': '¿Sitio lento? Optimizo carga y Core Web Vitals (LCP, CLS, TBT) con resultados garantizados y medibles.',
+  'servizi.perf_desc': '¿Sitio lento? Optimizo carga y Core Web Vitals (LCP, INP, CLS). Te entrego las puntuaciones antes y después, para que compruebes la diferencia.',
   'servizi.multilingua': 'Sitios Multilingües',
   'servizi.multilingua_desc': 'Traduzco y adapto tu sitio a varios idiomas con hreflang, URLs dedicadas y SEO por idioma, como en este sitio.',
   'servizi.chatbot': 'Chatbot & IA',
@@ -814,8 +986,8 @@ const es: Dict = {
   'processo.step6_desc': 'Te entrego todo: archivos fuente, documentación y soporte post-entrega. El proyecto es 100% tuyo.',
 
   'prezzi.title': 'Precios',
-  'prezzi.subtitle': 'Cada proyecto tiene un presupuesto personalizado. Aquí encuentras una estimación orientativa.',
-  'prezzi.slider_label': 'Paquetes — desplázate horizontalmente',
+  'prezzi.subtitle': 'Cada proyecto tiene un presupuesto personalizado. Aquí encuentras las tarifas de partida.',
+  'prezzi.slider_label': 'Tarifas — desplázate horizontalmente',
   'prezzi.label': 'Tarifas transparentes',
   'prezzi.onetime': 'Pago único',
   'prezzi.monthly': 'Colaboración',
@@ -916,6 +1088,42 @@ const es: Dict = {
   'contatti.booking_confirmed': '¡Reserva confirmada!',
   'contatti.booking_confirmed_sub': 'Recibirás en breve un email con todos los detalles.',
 
+  // ── Newsletter: the public signup form and the double opt-in pages ──
+  'newsletter.title': 'Suscríbete al boletín',
+  'newsletter.subtitle': 'Un correo de vez en cuando, solo cuando tengo algo que merece tu tiempo. Sin spam.',
+  'newsletter.email_placeholder': 'Tu correo electrónico',
+  'newsletter.submit': 'Suscribirme',
+  'newsletter.sending': 'Enviando…',
+  'newsletter.consent_prefix': 'Acepto recibir el boletín y he leído la ',
+  'newsletter.consent_suffix': '. Puedo darme de baja en cualquier momento.',
+  'newsletter.privacy_link': 'Política de Privacidad',
+  'newsletter.check_email': 'Revisa tu correo: te he enviado el enlace de confirmación. Si no lo encuentras, mira en spam.',
+  'newsletter.invalid_email': 'Introduce una dirección de correo válida.',
+  'newsletter.consent_required': 'Hace falta el consentimiento para suscribirte.',
+  'newsletter.error': 'Algo ha salido mal. Inténtalo de nuevo en un momento.',
+  'newsletter.rate_limited': 'Demasiados intentos. Inténtalo de nuevo en unos minutos.',
+  'newsletter.privacy_note': 'Sin spam, nunca. Solo novedades reales.',
+  'newsletter.confirm_title': 'Confirma tu suscripción',
+  'newsletter.confirm_text': 'Un último paso: pulsa el botón para confirmar que eres tú. Así nadie puede suscribirte sin tu permiso.',
+  'newsletter.confirm_button': 'Confirmo mi suscripción',
+  'newsletter.confirm_secure': 'Doble confirmación: sin tu clic no se activa nada.',
+  'newsletter.unsub_title': '¿Quieres darte de baja?',
+  'newsletter.unsub_text': 'Lo siento. Pulsa el botón y no recibirás más correos.',
+  'newsletter.unsub_button': 'Darme de baja',
+  'newsletter.unsub_email_placeholder': 'Tu dirección de correo',
+  'newsletter.unsub_email_hint': 'Si has recibido un correo, usa el enlace al final: es un solo clic.',
+  'newsletter.confirmed_title': 'Suscripción confirmada',
+  'newsletter.confirmed_text': 'Estás dentro. Solo escribo cuando tengo algo que merece tu tiempo.',
+  'newsletter.already_title': 'Ya estaba confirmada',
+  'newsletter.already_text': 'Esta suscripción ya estaba activa: no hay nada más que hacer.',
+  'newsletter.unsubscribed_title': 'Baja completada',
+  'newsletter.unsubscribed_text': 'No recibirás más correos. Si cambias de idea, el formulario del sitio sigue ahí.',
+  'newsletter.invalid_title': 'Enlace ya no válido',
+  'newsletter.invalid_text': 'Este enlace ha caducado o ya se ha usado. Puedes pedir uno nuevo desde el formulario del sitio.',
+  'newsletter.failed_title': 'Algo ha salido mal',
+  'newsletter.failed_text': 'Inténtalo de nuevo en un momento. Si sigue pasando, escríbeme a info@tiadesigns.it.',
+  'newsletter.back_home': 'Volver al sitio',
+  'newsletter.sections': 'Mientras tanto, echa un vistazo:',
   'footer.desc': 'Diseñador, desarrollador de apps y software, videomaker. Transformo ideas en productos digitales completos.',
   'footer.servizi': 'Servicios',
   'footer.links': 'Enlaces',
@@ -943,18 +1151,31 @@ const es: Dict = {
   'footer.copyright': '© 2026 Tia Designs. Todos los derechos reservados.',
   'footer.location': 'Mantua, Italia',
   'footer.timezone': 'GMT+2',
-  'referral.label': 'Boca a boca',
-  'referral.title': '¿Conoces a alguien que lo necesite?',
-  'referral.note': 'Quien venga de tu parte tiene presupuesto gratuito; tú obtienes el 10% de descuento en tu próximo proyecto.',
-  'referral.copy': 'Copiar el enlace',
-  'referral.copied': 'Enlace copiado ✓',
-  'referral.share': 'Compartir en WhatsApp',
-  'referral.message': '¡Hola! Te paso el contacto de Tia Designs: webs, apps y vídeo. Echa un vistazo aquí: {link}',
-  'footer.referral': 'Programa de referidos: trae un cliente y obtén un 10% de descuento en tu próximo proyecto',
+  'footer.referral': 'Programa de boca a boca: trae un cliente y obtén un 20% de descuento en tu próximo proyecto',
+
+  // ── 404 + error pages ─────────────────────────────────────────────────
+  '404.label': 'Error 404',
+  '404.title': 'Esta página no existe',
+  '404.text': 'El enlace es antiguo o la dirección tiene un error. Desde aquí llegas al resto del sitio en un clic.',
+  '404.home': 'Volver al inicio',
+  '404.sections': 'Ir directo a',
+  '404.path': 'Ruta solicitada',
+  'error.label': 'Error inesperado',
+  'error.title': 'Algo ha salido mal',
+  'error.text': 'El resto del sitio funciona: vuelve a cargar esta página o regresa al inicio. Si vuelve a pasar, escríbeme y lo arreglo.',
+  'error.retry': 'Reintentar',
+  'error.home': 'Volver al inicio',
+  'error.digest': 'Código de error',
 
   'chat.open': 'Abrir chat',
   'chat.title': 'Chatea conmigo en tiempo real',
   'chat.ai_title': 'Chatea con la IA de Tia Designs',
+  // Direct-chat action buttons — Tia writes [CAL] or [AI] in a reply and the
+  // visitor sees a tappable button instead of the raw marker.
+  'chat.cal_cta': 'Reservar una llamada',
+  'chat.ai_cta': 'Continuar con la IA',
+  'chat.ai_handoff_label': 'Prefiero continuar con la IA',
+  'chat.ai_handoff_prompt': 'Un cliente ha escrito en el chat directo con Tia Chinaglia. Toma tú el relevo: resume en 2-3 líneas lo que ha pedido y luego propone el siguiente paso (presupuesto o llamada). Sé concreto y no vuelvas a pedir información que ya te ha dado.\n\nConversación:\n{transcript}',
   'chat.placeholder': 'Escribe un mensaje...',
   'chat.auto_reply': '¡Gracias por escribirme! Te responderé pronto.',
   'chat.welcome': '¡Hola! Este es un chat directo conmigo, Tia Chinaglia. Cuéntame qué tienes en mente y te responderé personalmente.',
@@ -1053,6 +1274,35 @@ const es: Dict = {
   'cookie.necessary': 'Solo necesarias',
   'cookie.reject': 'Rechazar',
   'cookie.saved': 'Tu elección se guardará durante 12 meses',
+
+  // Case study pages — /es/progetti/[slug]
+  'progetto.breadcrumb': 'Proyectos',
+  'progetto.back': 'Volver al inicio',
+  'progetto.intro_label': 'Caso de estudio',
+  'progetto.category': 'Categoría',
+  'progetto.tags': 'Tecnologías',
+  'progetto.visit': 'Ver el sitio',
+  'progetto.code': 'Código fuente',
+  'progetto.gallery': 'Galería',
+  'progetto.others': 'Más proyectos',
+  'progetto.cta_title': '¿Necesitas algo así?',
+  'progetto.cta_text': 'Cuéntame el proyecto y te diré cómo lo abordaría, con plazos y costes claros.',
+  'progetto.cta_button': 'Hablemos',
+
+  // "Verify it yourself" — proof the visitor can re-run, not a claim.
+  'progetto.verify_label': 'Compruébalo tú mismo',
+  'progetto.verify_text': 'Las puntuaciones de velocidad y accesibilidad de este sitio son públicas y las mide Google. Puedes repetir el test cuando quieras.',
+  'progetto.verify_cta': 'Mide este sitio',
+
+  // Live measurement of THIS site, read from the visitor's own browser.
+  'perf.label': 'Este sitio, medido ahora mismo',
+  'perf.text': 'Números leídos por tu navegador en esta visita, no declarados por mí: recarga la página y cambian.',
+  'perf.lcp': 'LCP — cuándo aparece el contenido principal',
+  'perf.cls': 'CLS — desplazamientos de diseño',
+  'perf.ttfb': 'TTFB — primera respuesta del servidor',
+  'perf.weight': 'Peso transferido',
+  'perf.cta': 'Verificar con PageSpeed Insights',
+  'perf.unavailable': 'Tu navegador no expone estas mediciones.',
 };
 
 const DICTS: Record<Lang, Dict> = { it, en, es };
@@ -1254,7 +1504,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Software & App', subtitle: 'Applicazioni mobile, software su misura e sistemi backend.', tiers: [
         { title: 'MVP o App Mobile', price: '1.900', period: '', description: 'Per startup, PMI o tool interni', delivery: 'Consegna in 4-8 settimane', features: ['Analisi requisiti e architettura', 'Backend e API dedicate', 'Autenticazione e database', 'App mobile'] },
         { title: 'Piattaforma Scalabile', price: '4.000', priceLabel: 'Da €4.000', period: '', popular: true, description: 'Soluzioni enterprise, SaaS, sistemi complessi', delivery: 'Su misura per te', features: ['Architettura modular e scalabile', 'Ruoli, permessi e multi-tenancy', 'Integrazioni API di terze parti', 'Automazioni e reportistica', 'Supporto e manutenzione inclusi'] },
-        { title: 'Soluzione Enterprise', price: '7.500', priceLabel: 'Da €7.500', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA garantito e team dedicato'] },
+        { title: 'Soluzione Enterprise', price: '7.500', priceLabel: 'Da €7.500', period: '', premium: true, description: 'Progetti mission-critical, alta disponibilità', delivery: 'Su misura per te', features: ['Infrastruttura cloud multi-region', 'DevOps, CI/CD e monitoraggio 24/7', 'API pubbliche e documentazione', 'GDPR, audit e compliance', 'SLA con tempi di risposta concordati e referente unico'] },
       ]
     },
     {
@@ -1284,7 +1534,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Software & Apps', subtitle: 'Mobile applications, custom software and backend systems.', tiers: [
         { title: 'MVP or Mobile App', price: '1.900', period: '', description: 'For startups, SMEs or internal tools', delivery: 'Delivery in 4-8 weeks', features: ['Requirements analysis and architecture', 'Dedicated backend and APIs', 'Authentication and database', 'Mobile app'] },
         { title: 'Scalable Platform', price: '4.000', priceLabel: 'From €4.000', period: '', popular: true, description: 'Enterprise solutions, SaaS, complex systems', delivery: 'Tailored for you', features: ['Modular and scalable architecture', 'Roles, permissions and multi-tenancy', 'Third-party API integrations', 'Automations and reporting', 'Support and maintenance included'] },
-        { title: 'Enterprise Solution', price: '7.500', priceLabel: 'From €7.500', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'Guaranteed SLA and dedicated team'] },
+        { title: 'Enterprise Solution', price: '7.500', priceLabel: 'From €7.500', period: '', premium: true, description: 'Mission-critical projects, high availability', delivery: 'Tailored for you', features: ['Multi-region cloud infrastructure', 'DevOps, CI/CD and 24/7 monitoring', 'Public APIs and documentation', 'GDPR, audit and compliance', 'SLA with agreed response times and a single point of contact'] },
       ]
     },
     {
@@ -1314,7 +1564,7 @@ const PRICING_ONETIME_BY_LANG: Record<Lang, PricingCategory[]> = {
       label: 'Software y Apps', subtitle: 'Aplicaciones móviles, software a medida y sistemas backend.', tiers: [
         { title: 'MVP o App Móvil', price: '1.900', period: '', description: 'Para startups, PYMEs o herramientas internas', delivery: 'Entrega en 4-8 semanas', features: ['Análisis de requisitos y arquitectura', 'Backend y APIs dedicadas', 'Autenticación y base de datos', 'App móvil'] },
         { title: 'Plataforma Escalable', price: '4.000', priceLabel: 'Desde €4.000', period: '', popular: true, description: 'Soluciones enterprise, SaaS, sistemas complejos', delivery: 'A tu medida', features: ['Arquitectura modular y escalable', 'Roles, permisos y multi-tenancy', 'Integraciones API de terceros', 'Automatizaciones y reporting', 'Soporte y mantenimiento incluidos'] },
-        { title: 'Solución Enterprise', price: '7.500', priceLabel: 'Desde €7.500', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA garantizado y equipo dedicado'] },
+        { title: 'Solución Enterprise', price: '7.500', priceLabel: 'Desde €7.500', period: '', premium: true, description: 'Proyectos de misión crítica, alta disponibilidad', delivery: 'A tu medida', features: ['Infraestructura cloud multi-región', 'DevOps, CI/CD y monitorización 24/7', 'APIs públicas y documentación', 'GDPR, auditoría y compliance', 'SLA con tiempos de respuesta acordados y un único interlocutor'] },
       ]
     },
     {
@@ -1344,7 +1594,7 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
       ]
     },
     {
-      label: 'Software & App', subtitle: 'Team esterno dedicato, mese per mese.', tiers: [
+      label: 'Software & App', subtitle: 'Sviluppo dedicato, mese per mese.', tiers: [
         { title: 'Dev Part-Time', price: '750', period: '/mese', description: 'Sviluppo dedicato su base mensile', delivery: 'Attivazione in 24-48h', hours: 'Fino a 10h/settimana, flessibili', features: ['Code review e documentazione', 'Deploy e CI/CD gestiti', 'Canale Slack dedicato', 'Sprint bisettimanali'] },
         { title: 'Dev Full-Time', price: '1.750', period: '/mese', popular: true, description: 'Risorse scalabili per progetti complessi', delivery: 'Attivazione in 24-48h', hours: 'Fino a 25h/settimana, flessibili', features: ['Tech lead e architettura inclusi', 'Gestione progetto Agile', 'On-call per emergenze', 'Reportistica avanzata'] },
         { title: 'Tech Partnership', price: '2.750', period: '/mese', premium: true, description: 'Sviluppatore senior embedded nel tuo team', delivery: 'Inizio immediato', hours: 'Fino a 40h/settimana, flessibili', features: ['Architettura e code review continui', 'Codebase proprietaria e IP tuo', 'CI/CD e monitoraggio proattivo', 'Roadmap co-gestita trimestrale'] },
@@ -1374,7 +1624,7 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
       ]
     },
     {
-      label: 'Software & Apps', subtitle: 'Dedicated external team, month by month.', tiers: [
+      label: 'Software & Apps', subtitle: 'Dedicated development, month by month.', tiers: [
         { title: 'Dev Part-Time', price: '750', period: '/month', description: 'Dedicated monthly development', delivery: 'Activation in 24-48h', hours: 'Up to 10h/week, flexible', features: ['Code review and documentation', 'Managed deploy and CI/CD', 'Dedicated Slack channel', 'Bi-weekly sprints'] },
         { title: 'Dev Full-Time', price: '1.750', period: '/month', popular: true, description: 'Scalable resources for complex projects', delivery: 'Activation in 24-48h', hours: 'Up to 25h/week, flexible', features: ['Tech lead and architecture included', 'Agile project management', 'On-call for emergencies', 'Advanced reporting'] },
         { title: 'Tech Partnership', price: '2.750', period: '/month', premium: true, description: 'Senior developer embedded in your team', delivery: 'Immediate start', hours: 'Up to 40h/week, flexible', features: ['Continuous architecture and code reviews', 'Proprietary codebase — your IP', 'CI/CD and proactive monitoring', 'Co-managed quarterly roadmap'] },
@@ -1404,7 +1654,7 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
       ]
     },
     {
-      label: 'Software y Apps', subtitle: 'Equipo externo dedicado, mes a mes.', tiers: [
+      label: 'Software y Apps', subtitle: 'Desarrollo dedicado, mes a mes.', tiers: [
         { title: 'Dev Part-Time', price: '750', period: '/mes', description: 'Desarrollo dedicado mensual', delivery: 'Activación en 24-48h', hours: 'Hasta 10h/semana, flexible', features: ['Code review y documentación', 'Deploy y CI/CD gestionados', 'Canal Slack dedicado', 'Sprints bisemanales'] },
         { title: 'Dev Full-Time', price: '1.750', period: '/mes', popular: true, description: 'Recursos escalables para proyectos complejos', delivery: 'Activación en 24-48h', hours: 'Hasta 25h/semana, flexible', features: ['Tech lead y arquitectura incluidos', 'Gestión de proyecto Agile', 'Guardia para emergencias', 'Informes avanzados'] },
         { title: 'Tech Partnership', price: '2.750', period: '/mes', premium: true, description: 'Desarrollador senior integrado en tu equipo', delivery: 'Inicio inmediato', hours: 'Hasta 40h/semana, flexible', features: ['Arquitectura y revisiones de código continuas', 'Código propietario — tu IP', 'CI/CD y monitorización proactiva', 'Roadmap co-gestionado trimestral'] },
@@ -1423,6 +1673,16 @@ const PRICING_MONTHLY_BY_LANG: Record<Lang, PricingCategory[]> = {
 export function getReviews(lang: Lang): Review[] {
   return REVIEWS_BY_LANG[lang] || REVIEWS_BY_LANG.it;
 }
+
+/**
+ * How many reviews the page actually renders (two columns of four).
+ *
+ * Shared on purpose: the reviews section slices to this number and the
+ * AggregateRating/Review JSON-LD slices to the same one. Structured data must
+ * only describe reviews that are visible on the page, so a single constant is
+ * what keeps the markup from ever claiming more than the page shows.
+ */
+export const REVIEWS_DISPLAYED = 8;
 
 export function getProjects(lang: Lang): ProjectData[] {
   const baseProjects = PROJECTS_BY_LANG[lang] || PROJECTS_BY_LANG.it;
@@ -1449,135 +1709,10 @@ export function getPricingMonthly(lang: Lang): PricingCategory[] {
 // single note under the grid that explains the rule once
 // (prezzi.installment_badge / _tip / _note).
 
-// ─── Instant estimate (QuoteEstimator) ────────────────────────────────────
-// Copy for the three-chip configurator that returns a price range and a lead
-// time without asking for an email. The numbers themselves live in
-// src/lib/estimate.ts, anchored to the published tiers.
-export interface EstimatorBlock {
-  label: string;
-  title: string;
-  subtitle: string;
-  stepService: string;
-  stepSize: string;
-  stepTiming: string;
-  services: Record<'site' | 'ecommerce' | 'software' | 'video', string>;
-  sizes: Record<'essential' | 'standard' | 'complete', string>;
-  timings: Record<'flexible' | 'month' | 'asap', string>;
-  resultLabel: string;
-  resultDelivery: string;
-  /** "3-5 settimane" — the two numbers are the estimate's week window. */
-  weeks: (min: number, max: number) => string;
-  rushNote: string;
-  note: string;
-  ctaCall: string;
-  ctaChat: string;
-  reset: string;
-  /** Chat handoff, {…} placeholders filled from the selection. */
-  chatBrief: string;
-}
+// ─── Instant estimate — REMOVED ───────────────────────────────────────────
+// The three-chip configurator (QuoteEstimator) and its model (lib/estimate.ts)
+// are gone. An automatically computed price range is a promise the studio has
+// to honour and a number the visitor will hold you to, and it competed with
+// the real price list two sections below. Prices now live in exactly one
+// place: the pricing cards (getPricingOnetime / getPricingMonthly).
 
-const ESTIMATOR_BY_LANG: Record<Lang, EstimatorBlock> = {
-  it: {
-    label: 'Preventivo istantaneo',
-    title: 'Quanto costa? Calcolalo in 20 secondi',
-    subtitle: 'Tre scelte, nessuna email. Poi decidi se parlarne con me.',
-    stepService: 'Cosa ti serve',
-    stepSize: 'Quanto è grande',
-    stepTiming: 'Quando lo vuoi online',
-    services: {
-      site: 'Sito vetrina',
-      ecommerce: 'E-commerce',
-      software: 'Software / App',
-      video: 'Video',
-    },
-    sizes: {
-      essential: 'Essenziale',
-      standard: 'Standard',
-      complete: 'Completo',
-    },
-    timings: {
-      flexible: 'Senza fretta',
-      month: 'Entro un mese',
-      asap: 'Prima possibile',
-    },
-    resultLabel: 'Fascia indicativa',
-    resultDelivery: 'Consegna stimata',
-    weeks: (min, max) => `${min}-${max} settimane`,
-    rushNote: 'Comprende la priorità di consegna (+25%).',
-    note: 'Stima indicativa, IVA esclusa. Il preventivo finale è a corpo e arriva dopo una call gratuita di 20 minuti.',
-    ctaCall: 'Prenota una call di 20 min',
-    ctaChat: 'Porta la stima in chat',
-    reset: 'Ricomincia',
-    chatBrief: 'Ciao! Ho usato il calcolatore: {service} · {size} · {timing} → {range} ({weeks}). Ne parliamo?',
-  },
-  en: {
-    label: 'Instant estimate',
-    title: 'What does it cost? Work it out in 20 seconds',
-    subtitle: 'Three choices, no email. Then you decide whether to talk to me.',
-    stepService: 'What you need',
-    stepSize: 'How big it is',
-    stepTiming: 'When you need it live',
-    services: {
-      site: 'Showcase site',
-      ecommerce: 'E-commerce',
-      software: 'Software / App',
-      video: 'Video',
-    },
-    sizes: {
-      essential: 'Essential',
-      standard: 'Standard',
-      complete: 'Complete',
-    },
-    timings: {
-      flexible: 'No rush',
-      month: 'Within a month',
-      asap: 'As soon as possible',
-    },
-    resultLabel: 'Indicative range',
-    resultDelivery: 'Estimated delivery',
-    weeks: (min, max) => `${min}-${max} weeks`,
-    rushNote: 'Includes delivery priority (+25%).',
-    note: 'Indicative estimate, VAT excluded. The final quote is fixed-scope and comes after a free 20-minute call.',
-    ctaCall: 'Book a 20-min call',
-    ctaChat: 'Send this estimate to the chat',
-    reset: 'Start over',
-    chatBrief: 'Hi! I used the calculator: {service} · {size} · {timing} → {range} ({weeks}). Can we talk?',
-  },
-  es: {
-    label: 'Presupuesto instantáneo',
-    title: '¿Cuánto cuesta? Calcúlalo en 20 segundos',
-    subtitle: 'Tres elecciones, sin email. Luego decides si hablamos.',
-    stepService: 'Qué necesitas',
-    stepSize: 'Qué tamaño tiene',
-    stepTiming: 'Cuándo lo quieres online',
-    services: {
-      site: 'Web de presentación',
-      ecommerce: 'E-commerce',
-      software: 'Software / App',
-      video: 'Vídeo',
-    },
-    sizes: {
-      essential: 'Esencial',
-      standard: 'Estándar',
-      complete: 'Completo',
-    },
-    timings: {
-      flexible: 'Sin prisa',
-      month: 'En un mes',
-      asap: 'Cuanto antes',
-    },
-    resultLabel: 'Rango indicativo',
-    resultDelivery: 'Entrega estimada',
-    weeks: (min, max) => `${min}-${max} semanas`,
-    rushNote: 'Incluye prioridad de entrega (+25%).',
-    note: 'Estimación indicativa, IVA excluido. El presupuesto final es a precio cerrado y llega tras una llamada gratuita de 20 minutos.',
-    ctaCall: 'Reserva una llamada de 20 min',
-    ctaChat: 'Envía este cálculo al chat',
-    reset: 'Empezar de nuevo',
-    chatBrief: '¡Hola! Usé la calculadora: {service} · {size} · {timing} → {range} ({weeks}). ¿Hablamos?',
-  },
-};
-
-export function getEstimator(lang: Lang): EstimatorBlock {
-  return ESTIMATOR_BY_LANG[lang] || ESTIMATOR_BY_LANG.it;
-}

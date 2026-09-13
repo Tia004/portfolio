@@ -117,20 +117,24 @@ export default async function RootLayout({
       className={cn("h-full antialiased bg-[#010101]", "font-sans", outfit.variable, shareTechMono.variable)}
     >
       <head>
-        {/* Dynamic hreflang — tells Google this page exists in 3 languages */}
-        <link rel="alternate" hrefLang="it" href="https://tiadesigns.it/" />
-        <link rel="alternate" hrefLang="en" href="https://tiadesigns.it/en" />
-        <link rel="alternate" hrefLang="es" href="https://tiadesigns.it/es" />
-        <link rel="alternate" hrefLang="x-default" href="https://tiadesigns.it/" />
-        {/* Canonical — current language version; matches sitemap hreflang assignments */}
-        <link rel="canonical" href={`https://tiadesigns.it${initialLang === 'it' ? '' : `/${initialLang}`}`} />
+        {/* Canonical and hreflang deliberately do NOT live here.
+            Both were hardcoded to the home page's URLs on every route: fine
+            while the site was one page, actively harmful as soon as it is not,
+            because a page whose canonical points elsewhere is read as a
+            duplicate of it and never gets indexed. Each page declares its own
+            through `metadata.alternates` (lib/seo.ts), which also feeds the
+            sitemap, so the three can never disagree. */}
         {/* Fonts are self-hosted via next/font/google (see the Outfit /
             Share_Tech_Mono definitions above) — no external Google Fonts
             <link> here, so nothing render-blocking in the head. */}
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
+        {/* Skip link: visible ONLY when focused (keyboard users), so its
+            resting 1×1 box is deliberate and excluded from touch-target
+            measurements — when it matters it is a big 48px button. */}
         <a
           href="#main-content"
+          data-skip-link
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[99999] focus:rounded-xl focus:bg-teal-600 focus:px-6 focus:py-3 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none"
         >
           Salta al contenuto

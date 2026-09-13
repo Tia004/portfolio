@@ -106,6 +106,60 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/master/emails/sent-registry - Protected (Add email(s) to registry manually)
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || session.username !== 'master') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const emailsToAdd: Array<{ email: string; name?: string; company?: string; subject?: string }> = Array.isArray(body.emails)
+      ? body.emails
+      : body.email
+      ? [{ email: body.email, name: body.name, company: body.company, subject: body.subject }]
+      : [];
+
+    if (emailsToAdd.length === 0) {
+      return NextResponse.json({ error: 'Nessuna email fornita' }, { status: 400 });
+    }
+
+    let added = 0;
+    for (const item of emailsToAdd) {
+      const clean = item.email.toLowerCase().trim();
+      if (!clean || isDuplicationExempt(clean)) continue;
+
+      const existing = await prisma.sentEmailLog.findFirst({
+        where: { email: clean },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        await prisma.sentEmailLog.create({
+          data: {
+            email: clean,
+            name: item.name?.trim() || null,
+            company: item.company?.trim() || null,
+            subject: item.subject?.trim() || null,
+            source: 'manual_registry_add',
+          },
+        });
+        added++;
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `${added} email aggiunte al registro contatti già inviati.`,
+      addedCount: added,
+    });
+  } catch (error: any) {
+    console.error('Error adding email to registry:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 // DELETE /api/master/emails/sent-registry - Protected (Remove an email to allow re-contacting)
 export async function DELETE(request: NextRequest) {
   try {

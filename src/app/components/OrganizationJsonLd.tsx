@@ -1,5 +1,5 @@
 import type { Lang } from '@/lib/translations';
-import { getPricingOnetime } from '@/lib/translations';
+import { getPricingOnetime, getReviews, REVIEWS_DISPLAYED } from '@/lib/translations';
 
 /**
  * Social profile URLs (sameAs) for Tia Designs. Populate with the real
@@ -34,8 +34,11 @@ function euroValue(label?: string): number {
  * Schema.org JSON-LD for the public pages, generated server-side (no
  * 'use client' — plain markup crawlers can read without JavaScript).
  *
- * Three linked nodes:
+ * Four linked nodes:
  *   • Organization  — the entity Google/AI assistants attach the brand to;
+ *   • Person — the professional behind it (founder of the Organization and of
+ *     the business). "Chi mi fa un sito a Mantova" is a question about a
+ *     person: without this node the answer can only be a faceless studio;
  *   • ProfessionalService — the actual business: what it does, WHERE it works
  *     (Mantova and province, Lombardia, all of Italy and remote) and the price
  *     range of each service category, read from the published price list.
@@ -52,6 +55,19 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
   // spanning the entry and top tier of that category.
   const categories = getPricingOnetime(lang);
   const organizationId = `${SITE_URL}/#organization`;
+  const businessId = `${SITE_URL}/#business`;
+  const personId = `${SITE_URL}/#person`;
+
+  // The SAME list the reviews section renders, sliced to the SAME window
+  // (HomeShell shows the first REVIEWS_DISPLAYED cards). Markup and visible
+  // content have to stay in lockstep: rating a page up with reviews that are
+  // not on it is a structured-data violation, not a growth trick. The slice
+  // limit lives in translations.ts so the two cannot drift apart.
+  const reviews = getReviews(lang).slice(0, REVIEWS_DISPLAYED);
+  const reviewCount = reviews.length;
+  const averageRating = reviewCount
+    ? reviews.reduce((sum, review) => sum + review.stars, 0) / reviewCount
+    : 0;
 
   const organization = {
     '@type': 'Organization',
@@ -67,6 +83,7 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
       addressRegion: 'Lombardia',
       addressCountry: 'IT',
     },
+    founder: { '@id': personId },
     ...(SOCIAL_PROFILES.length > 0 ? { sameAs: SOCIAL_PROFILES } : {}),
     contactPoint: [
       {
@@ -92,7 +109,7 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
   // full street is never published (it appears only on contracts and invoices).
   const business = {
     '@type': 'ProfessionalService',
-    '@id': `${SITE_URL}/#business`,
+    '@id': businessId,
     name: 'Tia Designs',
     description:
       lang === 'en'
@@ -104,6 +121,8 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
     email: 'info@tiadesigns.it',
     telephone: '+393318821334',
     parentOrganization: { '@id': organizationId },
+    founder: { '@id': personId },
+    employee: { '@id': personId },
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Mantova',
@@ -132,6 +151,42 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
         : lang === 'es'
           ? 'El equilibrio perfecto entre estética e ingeniería'
           : 'Il perfetto equilibrio tra estetica e ingegneria',
+    // ── Trust signals ─────────────────────────────────────────────────────
+    // The rating the page shows, derived from the very reviews it renders, so
+    // a search result (and an AI answer) can quote "5.0 from 8 clients"
+    // instead of nothing at all.
+    ...(reviewCount
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: averageRating.toFixed(1),
+            // reviewCount, not ratingCount: these are written testimonials.
+            reviewCount: String(reviewCount),
+            bestRating: 5,
+            worstRating: 1,
+          },
+          review: reviews.map((item, index) => ({
+            '@type': 'Review',
+            '@id': `${SITE_URL}/#review-${index + 1}`,
+            // The business being reviewed, by @id — same graph, same node.
+            itemReviewed: { '@id': businessId },
+            author: {
+              '@type': 'Person',
+              name: item.name,
+              // e.g. 'PCS Mantova', 'Content Creator': who the reviewer is.
+              jobTitle: item.role,
+            },
+            reviewRating: {
+              '@type': 'Rating',
+              ratingValue: item.stars,
+              bestRating: 5,
+              worstRating: 1,
+            },
+            reviewBody: item.text,
+            inLanguage: lang,
+          })),
+        }
+      : {}),
     // The prices that are already printed on the page, so a search result (and
     // an AI answer) can quote a range instead of "contact us".
     hasOfferCatalog: {
@@ -166,6 +221,29 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
     },
   };
 
+  const person = {
+    '@type': 'Person',
+    '@id': personId,
+    name: 'Tia Chinaglia',
+    jobTitle:
+      lang === 'en'
+        ? 'Founder, designer and developer'
+        : lang === 'es'
+          ? 'Fundador, diseñador y desarrollador'
+          : 'Fondatore, designer e sviluppatore',
+    description:
+      lang === 'en'
+        ? 'Founder of Tia Designs. Designs and builds the websites, web apps and video content himself: every project is handled directly, from concept to publication.'
+        : lang === 'es'
+          ? 'Fundador de Tia Designs. Diseña y construye personalmente las webs, aplicaciones web y contenidos de vídeo: cada proyecto se gestiona directamente, del concepto a la publicación.'
+          : 'Fondatore di Tia Designs. Progetta e costruisce personalmente siti, applicazioni web e contenuti video: ogni progetto è seguito direttamente, dal concept alla pubblicazione.',
+    url: SITE_URL,
+    email: 'info@tiadesigns.it',
+    worksFor: { '@id': organizationId },
+    knowsLanguage: ['it', 'en', 'es'],
+    ...(SOCIAL_PROFILES.length > 0 ? { sameAs: SOCIAL_PROFILES } : {}),
+  };
+
   const website = {
     '@type': 'WebSite',
     '@id': `${SITE_URL}/#website`,
@@ -177,7 +255,7 @@ export default function OrganizationJsonLd({ lang }: { lang: Lang }) {
 
   const schema = {
     '@context': 'https://schema.org',
-    '@graph': [organization, business, website],
+    '@graph': [organization, business, person, website],
   };
 
   return (

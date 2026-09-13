@@ -222,10 +222,13 @@ html.lenis body {
 /* Chat window height — dvh (dynamic viewport) with vh fallback so the
    window never exceeds the visible viewport on mobile (vh measures the
    layout viewport, which is taller than the visible one while browser
-   chrome is shown, pushing the chat past the bottom edge). */
+   chrome is shown, pushing the chat past the bottom edge).
+   The window is a flex item ABOVE the launcher bubble, so the budget has to
+   cover the window itself PLUS 12px gap + 56px bubble + the widget's bottom
+   offset (24px desktop). 7rem = 112px of chrome, ~20px of slack left. */
 .chat-window-h {
-  height: min(70vh, 560px);
-  height: min(70dvh, 560px);
+  height: min(70vh, 560px, calc(100vh - 7rem));
+  height: min(70dvh, 560px, calc(100dvh - 7rem));
 }
 /* The dialog inside BorderGlow must fill the card EXACTLY, or it grows with
    the message history and slides past the window's base / overflows the
@@ -239,9 +242,10 @@ html.lenis body {
 @media (max-width: 767px) {
   /* The floating widget sits 7.75rem (124px) above the viewport bottom when
      the CTA is visible on phones — clamp the window so it can never push
-     past the top edge. 11.5rem = widget offset + safe margins. */
+     past the top edge. 15.75rem = 124px widget offset + 68px (12px gap +
+     56px bubble) + safe margins. */
   .chat-window-h {
-    height: min(62dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 11.5rem));
+    height: min(62dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 15.75rem));
   }
 }
 

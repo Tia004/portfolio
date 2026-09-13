@@ -274,4 +274,45 @@ model SentEmailLog {
   @@index([sentAt])
 }
 
+model ClientReferral {
+  id                    String            @id @default(uuid())
+  code                  String            @unique
+  clientName            String
+  clientEmail           String
+  clientCompany         String?
+  discountPercent       Int               @default(20)
+  visitsCount           Int               @default(0)
+  leadsCount            Int               @default(0)
+  conversionsCount      Int               @default(0)
+  totalRewardAttributed Float             @default(0)
+  status                String            @default("active") // "active" | "inactive" | "rewarded"
+  notes                 String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  leads                 ReferralLeadLog[]
+
+  @@index([code])
+  @@index([clientEmail])
+  @@index([status])
+}
+
+model ReferralLeadLog {
+  id               String          @id @default(uuid())
+  referralId       String
+  referralCode     String
+  leadName         String
+  leadEmail        String
+  service          String?
+  source           String          @default("contact") // "contact" | "ai_quote" | "quote_accepted"
+  dealValue        Float?
+  attributedReward Float?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  referral         ClientReferral  @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@index([referralId])
+  @@index([referralCode])
+  @@index([createdAt])
+}
+
 

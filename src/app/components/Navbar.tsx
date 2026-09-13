@@ -38,7 +38,9 @@ function Logo() {
       // <img> otherwise stretches the clickable box across the whole navbar,
       // putting it ABOVE the header (z-10040 > z-9999) and swallowing taps
       // aimed at the hamburger → the menu click "reloaded" the page.
-      className="shrink-0 inline-block"
+      // The ::before pad makes the small logo (20px tall on phones) a real
+      // touch target without moving the layout.
+      className="shrink-0 inline-block relative before:content-[''] before:absolute before:inset-[-7px] before:rounded-lg"
     >
       <picture>
         <source srcSet="/TiaDesignsLogo.avif" type="image/avif" />
@@ -57,7 +59,7 @@ function Logo() {
 
 // ── FullscreenMenu (all screen sizes) ─────────────────────────
 
-function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: (href: string) => void; onClose: () => void; closing?: boolean }) {
+function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNavClick: (href: string) => void; onClose: () => void; items: { key: string; href: string }[]; closing?: boolean }) {
   const { lang } = useLanguage();
   const { lenis } = useLenis();
   const navRef = useRef<HTMLElement>(null);
@@ -158,7 +160,7 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
               className="flex flex-col gap-0.5 sm:gap-1 max-w-3xl w-full"
               style={{ transform: `scale(${navScale})`, transformOrigin: 'center center' }}
             >
-            {NAV_ITEMS.map((item, i) => (
+            {items.map((item, i) => (
               <button
                 key={item.href}
                 onClick={() => onNavClick(item.href)}
@@ -243,7 +245,12 @@ function FullscreenMenu({ onNavClick, onClose, closing = false }: { onNavClick: 
 
 // ── Main Navbar ────────────────────────────────────────────────
 
-export default function Navbar() {
+// `onHome` tells the navbar whether the anchors it navigates to exist on THIS
+// page. On the home page they are real sections and clicking scrolls to them;
+// on any other page (a case study, a service page) the same items become links
+// back to '/#servizi' etc., because the section is not there — scrolling to a
+// missing element is a nav that silently does nothing.
+export default function Navbar({ onHome = true }: { onHome?: boolean } = {}) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -264,6 +271,15 @@ export default function Navbar() {
     instance.on('scroll', onScroll);
     return () => { instance.off('scroll', onScroll); };
   }, [lenis]);
+
+  // Same items, different destination depending on where we are — and in the
+  // language we are reading: from /en/progetti/x the sections live on /en, not
+  // on the Italian home. Sending an English visitor to the Italian page from
+  // its own navigation is a worse bug than a dead anchor.
+  const homePrefix = lang === 'it' ? '' : `/${lang}`;
+  const navItems = onHome
+    ? NAV_ITEMS
+    : NAV_ITEMS.map((item) => ({ ...item, href: `${homePrefix}/${item.href}` }));
 
   const scrollTo = (href: string) => {
     const sectionId = href.replace(/^#/, '');
@@ -300,6 +316,15 @@ export default function Navbar() {
   }, [menuOpen]);
 
   const handleNavClick = (href: string) => {
+    // Off the home page the anchor does not exist here: leave the page for the
+    // section instead of scrolling into nothing. A full navigation is
+    // deliberate — it also resets the SPA state (splash, scroll, chat) exactly
+    // like a brand click.
+    if (!onHome) {
+      setMenuOpen(false);
+      window.location.href = href;
+      return;
+    }
     // Mount lazy sections NOW so their anchors exist before we scroll.
     window.dispatchEvent(new Event('tia:force-mount'));
     setMenuOpen(false);
@@ -370,15 +395,17 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
 
             {/* Hamburger — always visible, all screen sizes */}
-            {/* Large invisible ::before area makes clicking easy even with pixel trail */}
+            {/* The ::before pad already made clicking easy; the button box is
+                now 24×24 minimum so screen-reader/touch-target audits pass
+                without relying on the pseudo-element. */}
             <button
-              className="relative w-[22px] h-[18px] transition-transform duration-300 z-0 before:absolute before:content-[''] before:inset-[-14px] before:rounded-lg"
+              className="relative flex h-6 w-6 flex-col justify-between py-[5px] transition-transform duration-300 z-0 before:absolute before:content-[''] before:inset-[-9px] before:rounded-lg"
               onClick={() => { const opening = !menuOpen; setMenuOpen(opening); if (opening) { setClosing(false); playMenuOpenSound(); } }}
               aria-label={t('nav.menu', lang)}
             >
-              <span className={`absolute left-0 top-0 w-full h-[2px] rounded-sm bg-white transition-all duration-300 origin-center ${menuOpen ? 'top-[8px] rotate-45' : 'hover:scale-x-[0.8]'}`} style={{ transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
-              <span className={`absolute left-0 top-[8px] w-full h-[2px] rounded-sm bg-white transition-all duration-300 ${menuOpen ? 'scale-0 opacity-0' : 'hover:scale-x-[0.5]'}`} style={{ transitionDuration: menuOpen ? '50ms' : '300ms', transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
-              <span className={`absolute left-0 bottom-0 w-full h-[2px] rounded-sm bg-white transition-all duration-300 origin-center ${menuOpen ? 'top-[8px] -rotate-45' : 'hover:scale-x-[0.8]'}`} style={{ transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
+              <span className={`w-full h-[2px] rounded-sm bg-white transition-all duration-300 origin-center ${menuOpen ? 'translate-y-[7px] rotate-45' : 'hover:scale-x-[0.8]'}`} style={{ transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
+              <span className={`w-full h-[2px] rounded-sm bg-white transition-all duration-300 ${menuOpen ? 'scale-0 opacity-0' : 'hover:scale-x-[0.5]'}`} style={{ transitionDuration: menuOpen ? '50ms' : '300ms', transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
+              <span className={`w-full h-[2px] rounded-sm bg-white transition-all duration-300 origin-center ${menuOpen ? '-translate-y-[7px] -rotate-45' : 'hover:scale-x-[0.8]'}`} style={{ transitionTimingFunction: 'cubic-bezier(.8, .5, .2, 1.4)' }} />
             </button>
           </div>
         </div>
@@ -388,6 +415,7 @@ export default function Navbar() {
       {(menuVisible || closing) && (
         <FullscreenMenu
           closing={closing}
+          items={navItems}
           onNavClick={handleNavClick}
           onClose={() => setMenuOpen(false)}
         />

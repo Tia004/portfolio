@@ -8,12 +8,10 @@ import type Lenis from 'lenis';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
 import ProcessTimeline from './ProcessTimeline';
-import QuoteEstimator from './QuoteEstimator';
-import ReferralCard from './ReferralCard';
-import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
+import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, REVIEWS_DISPLAYED, type Lang, type ProjectData, type Review } from '@/lib/translations';
 import { trackClick, trackConversion } from '@/lib/analytics';
 import { setVisitorContext, bookingPrefillQuery } from '@/lib/booking-context';
-import { captureReferral } from '@/lib/referral';
+import { captureReferral, getReferral } from '@/lib/referral';
 import { type ChatCategory } from '@/lib/chat-categories';
 import { moltenModulePromise } from './molten-preload';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
@@ -101,7 +99,9 @@ import {
   LoaderPinwheelIcon,
   FilePenIcon,
   DollarSignIcon,
+  Discount01Icon,
   ArrowRight01Icon,
+  SentIcon,
   Cancel01Icon,
   ExternalLinkIcon,
   Audit01Icon,
@@ -161,6 +161,7 @@ import UrlPreviewCard from './UrlPreviewCard';
 import InlinePreventivoForm from './InlinePreventivoForm';
 import MobileGlowActivator from './MobileGlowActivator';
 import LazySection from './LazySection';
+import LiveSiteMetrics from './LiveSiteMetrics';
 import TypewriterText from './TypewriterText';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { ensureChatSession, mountTurnstile, secureChatFetch } from '@/lib/chat-client';
@@ -172,7 +173,7 @@ import { useTooltip } from '@/lib/useTooltip';
 /** @category Dati e Config */
 import { getTooltip } from '@/lib/tooltips';
 import { HERO, STAGGER_BY_SECTION, HERO_COUNTUP_DELAYS, SKILL_TITLE_OFFSET } from '@/lib/animation-theme';
-import { scrollToElementAfterLayout } from '@/lib/scroll';
+import { scrollToElementAfterLayout, scrollToElementFollowingLayout } from '@/lib/scroll';
 import { isValidContactEmail, isValidContactMessage, isValidContactName } from '@/lib/input-validation';
 import { playChatOpenSound } from '@/lib/menu-sounds';
 
@@ -418,7 +419,7 @@ function ServiceSelect({ value, onChange, highlighted }: { value: string; onChan
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="true"
-        className="w-full flex items-center justify-between gap-2 text-left text-sm transition-all group"
+        className="w-full flex min-h-[36px] py-1.5 items-center justify-between gap-2 text-left text-sm transition-all group"
       >
         <span className={value ? 'text-white' : 'text-neutral-500'}>
           {selected ? t(selected.labelKey, lang) : t('contatti.select', lang)}
@@ -1062,6 +1063,64 @@ function linkifyChatText(text: string, isClientBubble: boolean): React.ReactNode
   return nodes.length ? <>{nodes}</> : text;
 }
 
+// ── Action markers in the direct chat ─────────────────────────────────────
+// Tia replies from Telegram and can drop a bare marker in the text:
+//   [CAL] → a button that jumps to the contacts section and opens the
+//           Cal.com booking window.
+//   [AI]  → a button that hands the whole conversation to the site AI, which
+//           picks up the thread and keeps its normal flow.
+// The visitor never sees the raw marker, only the button.
+const DIRECT_CHAT_ACTIONS = [
+  { token: 'CAL', labelKey: 'chat.cal_cta', icon: Calendar01Icon },
+  { token: 'AI', labelKey: 'chat.ai_cta', icon: ChatBotIcon },
+] as const;
+
+/**
+ * Render a direct-chat message: linkified text with the action markers
+ * replaced by real buttons. A fresh regex is built per call on purpose — a
+ * module-level /g regex would keep `lastIndex` between renders and skip every
+ * other marker.
+ *
+ * The buttons carry `data-chat-action` instead of an onClick: the messages
+ * container delegates the click (see the widget below). Keeping the handler
+ * out of the render-time call chain is what stops the button from being tied
+ * to a closure that reads refs during render.
+ */
+function renderDirectChatText(text: string, isClientBubble: boolean, lang: Lang): React.ReactNode {
+  if (!text) return null;
+  const marker = /\[(CAL|AI)\]/gi;
+  const nodes: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let match: RegExpExecArray | null;
+  const pushText = (value: string) => {
+    if (value) nodes.push(<React.Fragment key={`t${key++}`}>{linkifyChatText(value, isClientBubble)}</React.Fragment>);
+  };
+  while ((match = marker.exec(text)) !== null) {
+    pushText(text.slice(last, match.index));
+    const token = match[1].toUpperCase() as 'CAL' | 'AI';
+    const action = DIRECT_CHAT_ACTIONS.find(a => a.token === token);
+    if (action) {
+      nodes.push(
+        <button
+          key={`a${key++}`}
+          type="button"
+          data-chat-action={token}
+          className={`my-1 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] ${isClientBubble
+            ? 'bg-black/25 text-white border border-white/25 hover:bg-black/40'
+            : 'bg-teal-500/15 text-teal-200 border border-teal-400/40 hover:bg-teal-500/25'}`}
+        >
+          <TiaIcon icon={action.icon} size={15} strokeWidth={1.9} />
+          {t(action.labelKey, lang)}
+        </button>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+  pushText(text.slice(last));
+  return nodes;
+}
+
 export default function HomeShell() {
   const { lenis } = useLenis();
   const [formName, setFormName] = useState('');
@@ -1236,6 +1295,13 @@ export default function HomeShell() {
     };
   }, [callOpen]);
 
+  // A [CAL] tap in the direct chat opens the booking window straight away,
+  // then parks the visitor on the contacts section the moment they close it:
+  // the window is fixed and covers the page anyway, so scrolling underneath
+  // would be invisible — while restoring the OLD position on close is exactly
+  // what made "book a call" feel like it teleported them back to the top.
+  const closeScrollTargetRef = useRef<string | null>(null);
+
   // Booking modal open: freeze the page behind — body position:fixed
   // stops touch scrolling and wheel scrolling (Lenis stopped) — same proven technique as LegalModal & ProjectModal.
   useEffect(() => {
@@ -1252,8 +1318,14 @@ export default function HomeShell() {
       document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.overscrollBehavior = '';
-      window.scrollTo(0, scrollY);
       inst?.start();
+      const section = closeScrollTargetRef.current;
+      closeScrollTargetRef.current = null;
+      if (section) {
+        scrollToElementFollowingLayout(section, () => lenis.current, { offsetPx: 60 });
+      } else {
+        window.scrollTo(0, scrollY);
+      }
     };
   }, [callOpen, lenis]);
   // ── "Prenotazione confermata" toast — fired by the Cal.com embed
@@ -1426,6 +1498,41 @@ export default function HomeShell() {
   // and a visual-viewport pan (Chrome nudging the page when focusing the
   // input) is subtracted so the window stays glued to the keyboard's top edge.
   const [kbOffset, setKbOffset] = useState(0);
+  // ── Cookie banner clearance ──
+  // The consent card is bottom-centred and (on phones) full width, so it
+  // covers the chat window's input until the visitor accepts — a tap there
+  // lands on the banner, which is outside the widget, and CLOSES the chat.
+  // While it is on screen the whole widget is stacked above it. The test is
+  // horizontal overlap only: both elements hug the bottom edge, so if they
+  // overlap sideways they overlap vertically too, and the lift only ever
+  // moves the widget UP (never sideways), which is what keeps this from
+  // oscillating. A MutationObserver picks up both the banner appearing and
+  // it being dismissed, so nothing is polled.
+  const [cookieLift, setCookieLift] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const banner = document.querySelector<HTMLElement>('[data-cookie-banner]');
+        const widget = chatWidgetRef.current?.getBoundingClientRect();
+        const widgetLeft = widget ? widget.left : window.innerWidth - 20 - 56;
+        const card = banner?.getBoundingClientRect();
+        const overlaps = Boolean(card) && card!.right > widgetLeft - 8 && card!.height > 0;
+        const lift = overlaps ? Math.round(card!.height + 16) : 0;
+        setCookieLift(prev => (prev === lift ? prev : lift));
+      });
+    };
+    measure();
+    const observer = new MutationObserver(measure);
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
   useEffect(() => {
     if (!chatOpen) return;
     const vv = window.visualViewport;
@@ -1471,6 +1578,13 @@ export default function HomeShell() {
   }, []);
   const getIsMobileSnapshot = useCallback(() => window.matchMedia('(max-width: 767px)').matches, []);
   const isMobile = useSyncExternalStore(subscribeIsMobile, getIsMobileSnapshot, () => false);
+
+  // Where the chat widget (bubble + window) rests: glued to the keyboard when
+  // it is open, just above the CTA on phones, the comfortable corner offset
+  // otherwise — plus the consent-banner clearance measured above.
+  const chatWidgetBottom = kbOffset > 0
+    ? kbOffset
+    : (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) + cookieLift;
 
   // ── CTA tooltip: always shows on hover (removed localStorage gate) ──
   const [showCtaTooltip] = useState(true);
@@ -2470,7 +2584,7 @@ export default function HomeShell() {
     try {
       const response = await secureChatFetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote', details, lang }),
+        body: JSON.stringify({ name, email, service, message: finalQuote, source: 'ai-quote', details, lang, ref: getReferral() }),
       });
       if (!response.ok) throw new Error('quote-send-failed');
 
@@ -2822,6 +2936,46 @@ export default function HomeShell() {
     }
   };
 
+  // ── [CAL] / [AI] action buttons in the direct chat ──
+  // Both markers share the same exit: the widget closes first, otherwise it
+  // would sit on top of whatever the button opened.
+  const closeDirectChat = () => {
+    setChatClosing(true);
+    window.setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300);
+  };
+
+  const handleDirectChatAction = (token: 'CAL' | 'AI') => {
+    if (token === 'CAL') {
+      trackClick('cal_booking_open');
+      closeDirectChat();
+      // Open the booking window NOW (it covers the page anyway) and hand the
+      // contacts section to the modal's close handler — see
+      // closeScrollTargetRef above. Waiting for the scroll first would make
+      // the visitor stare at a gliding page for a second before Cal appears.
+      closeScrollTargetRef.current = 'contatti';
+      setCallOpen(true);
+      setCallOpenedOnce(true);
+      return;
+    }
+
+    // [AI] — hand the thread over. The transcript is capped well under the
+    // moderation limit (8000 chars) and keeps the roles alternating so the
+    // model has the real context and never re-asks what was already said.
+    const transcript = messages
+      .filter(m => m.sender !== 'system' && m.text)
+      .map(m => `${m.sender === 'client' ? 'Cliente' : 'Tia'}: ${m.text.replace(/\[(CAL|AI)\]/gi, '').trim()}`)
+      .join('\n')
+      .slice(-4000);
+    closeDirectChat();
+    scrollToElementFollowingLayout('chatbot', () => lenis.current, { offsetPx: 60 });
+    setBotMessages(prev => [...prev, { id: botNextIdRef.current++, text: t('chat.ai_handoff_label', lang), sender: 'user' as const }]);
+    sendBotMessage(
+      t('chat.ai_handoff_prompt', lang).replace('{transcript}', transcript),
+      { displayUserMessage: false, category: chatCategory },
+    );
+    trackClick('chat_handoff_ai');
+  };
+
   const pricing = useMemo(() => isMonthly ? getPricingMonthly(lang) : getPricingOnetime(lang), [isMonthly, lang]);
   const reviews = useMemo(() => getReviews(lang), [lang]);
 
@@ -3094,7 +3248,7 @@ export default function HomeShell() {
     try {
       const res = await secureChatFetch('/api/contact', {
         method: 'POST',
-        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage, service: formService, lang }),
+        body: JSON.stringify({ name: formName, email: formEmail, message: formMessage, service: formService, lang, ref: getReferral() }),
       });
       if (res.ok) {
         setFormStatus('sent');
@@ -3240,7 +3394,11 @@ export default function HomeShell() {
                 <span className="font-bold text-teal-400"><span className="font-black text-white">{t('hero.line2a', lang)}</span> {t('hero.line2b', lang)} <span className="font-black text-white">{t('hero.line2c', lang)}</span> {t('hero.line2d', lang)}<span className="font-black text-white">{t('hero.line2e', lang)}</span></span>
               </h1>
               <p className="hero-anim mt-3 sm:mt-8 text-white text-[13px] sm:text-base md:text-lg max-w-sm sm:max-w-xl font-medium leading-relaxed relative" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
-                <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none" />                {t('hero.subtitle', lang)}
+                {/* Il glow decorativo scala 150% e sporgerebbe oltre il bordo
+                    dello schermo (overflow orizzontale misurato a 320px):
+                    clipped qui, dove nasce — il blur resta, l'overflow no. */}
+                <span className="absolute inset-0 blur-3xl opacity-60 bg-teal-400/20 rounded-full scale-150 -z-10 pointer-events-none overflow-hidden" />
+                {t('hero.subtitle', lang)}
               </p>
               <div className="hero-anim mt-4 sm:mt-12 flex flex-col sm:flex-row gap-2.5 sm:gap-5 justify-start items-stretch sm:items-center" style={!splashDone ? { transform: `translateY(${HERO.yOffset}px) scale(${HERO.scale})`, filter: `blur(${HERO.blur}px)` } : undefined}>
                 <button
@@ -3280,6 +3438,22 @@ export default function HomeShell() {
                   <HeroGlow stagger={2}><span className="text-teal-400 text-sm sm:text-lg font-bold"><CountUp target={30} delay={HERO_COUNTUP_DELAYS[2]} ready={splashDone} className="" />/<CountUp target={30} delay={HERO_COUNTUP_DELAYS[3]} ready={splashDone} className="" />/<CountUp target={40} delay={HERO_COUNTUP_DELAYS[4]} ready={splashDone} className="" /></span></HeroGlow>
                   <span className="text-white/80">{t('hero.stat_payment', lang)}</span>
                 </div>
+              </div>
+
+              {/* ── Promo passaparola — the only discount promise on the site.
+                  It lives HERE (once) with its two terms attached, so no card
+                  and no section has to repeat it: non-cumulative and
+                  time-boxed. The footer repeats the same number in one line
+                  (footer.referral). Keeping the terms next to the claim is what
+                  makes the offer defensible instead of aspirational. */}
+              <div data-hero-promo className="hero-anim mt-3 sm:mt-5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/[0.08] px-3 py-1.5 text-[11px] font-semibold text-teal-300 sm:text-xs">
+                  <TiaIcon icon={Discount01Icon} size={13} strokeWidth={2} />
+                  {t('hero.promo', lang)}
+                </span>
+                <span className="text-[10px] font-medium uppercase tracking-wide text-neutral-400/80 sm:text-[11px]">
+                  {t('hero.promo_terms', lang)}
+                </span>
               </div>
             </div>
 
@@ -3961,7 +4135,7 @@ export default function HomeShell() {
                     direction="vertical"
                     overflowY="visible"
                   >
-                    {reviews.slice(0, 4).map((review, idx) => renderReviewCard(review, `left-${idx}`))}
+                    {reviews.slice(0, REVIEWS_DISPLAYED / 2).map((review, idx) => renderReviewCard(review, `left-${idx}`))}
                   </InfiniteSlider>
                 </div>
                 {/* ── Right column — scrolls down ── */}
@@ -3980,7 +4154,7 @@ export default function HomeShell() {
                     reverse
                     overflowY="visible"
                   >
-                    {reviews.slice(4, 8).map((review, idx) => renderReviewCard(review, `right-${idx}`))}
+                    {reviews.slice(REVIEWS_DISPLAYED / 2, REVIEWS_DISPLAYED).map((review, idx) => renderReviewCard(review, `right-${idx}`))}
                   </InfiniteSlider>
                 </div>
               </div>
@@ -4005,14 +4179,13 @@ export default function HomeShell() {
           </LazySection>
 
           {/* ============ PREZZI ============
-              NOT inside a LazySection, unlike the sections around it. The
-              packages, the instant estimate and the whole price list are the
-              content a search engine (or an AI assistant answering "quanto
-              costa un sito a Mantova") needs to read WITHOUT running JS: while
-              it was lazy-mounted, none of those numbers existed in the served
-              HTML — the crawler saw an empty placeholder div. The cards are
-              static markup (no count-up, no canvas), so rendering them eagerly
-              costs layout, not JavaScript. */}
+              NOT inside a LazySection, unlike the sections around it. The price
+              list is the content a search engine (or an AI assistant answering
+              "quanto costa un sito a Mantova") needs to read WITHOUT running
+              JS: while it was lazy-mounted, none of those numbers existed in
+              the served HTML — the crawler saw an empty placeholder div. The
+              cards are static markup (no count-up, no canvas), so rendering
+              them eagerly costs layout, not JavaScript. */}
           <section id="prezzi" className="py-10 sm:py-24 px-4">
             <div className="max-w-6xl mx-auto">
               <ScrollReveal className="text-center mb-8 sm:mb-12">
@@ -4024,29 +4197,6 @@ export default function HomeShell() {
                 <p className="text-neutral-500 mt-2 text-xs mx-auto">
                   {t('prezzi.vat_note', lang)}
                 </p>
-              </ScrollReveal>
-
-              {/* ── Preventivo istantaneo ──
-                  Tre scelte → fascia di prezzo + tempi, senza chiedere l'email.
-                  È il punto in cui un visitatore curioso diventa un lead
-                  qualificato: la scelta (servizio, dimensione, tempi) finisce
-                  nel visitor context condiviso, quindi viaggia già dentro il
-                  prefill di Cal.com e nel messaggio in chat. */}
-              <ScrollReveal className="mb-8 sm:mb-12">
-                <QuoteEstimator
-                  lang={lang}
-                  onBookCall={() => {
-                    if (!callOpen) trackClick('cal_booking_open');
-                    setCallOpen(true);
-                    setCallOpenedOnce(true);
-                  }}
-                  onChatBrief={(text) => {
-                    setChatMessage(text);
-                    setChatClosing(false);
-                    setChatOpen(true);
-                    logAnalytics('chat_open');
-                  }}
-                />
               </ScrollReveal>
 
               {/* ── Toggle ── */}
@@ -4413,13 +4563,6 @@ export default function HomeShell() {
               </StaggerReveal>
             </div>
 
-            {/* ── Passaparola ──
-                La promessa referral era già nel footer ma non era misurata:
-                da qui in poi ogni visitatore può inoltrare un link con il suo
-                codice, e il codice viaggia su tutti gli eventi analytics. */}
-            <div className="mt-6 sm:mt-10">
-              <ReferralCard lang={lang} />
-            </div>
           </section>
           </LazySection>
 
@@ -4448,6 +4591,12 @@ export default function HomeShell() {
             </div>,
             document.body
           )}
+
+          {/* ============ MISURA DAL VIVO ============
+              The site's own performance, read from the visitor's browser in
+              this visit — the same kind of instrument the case studies point
+              at, turned on ourselves. Not a score from a cached audit. */}
+          <LiveSiteMetrics />
 
           {/* ============ FOOTER ============ */}
           <div ref={footerRef} data-molten-cover="footer">
@@ -4519,37 +4668,47 @@ export default function HomeShell() {
              the bubble floats just ABOVE it (right-aligned) so they never
              overlap; it drops to the bottom-right corner otherwise. On
              DESKTOP the bubble is always in the bottom-right corner (the CTA
-             is centered, so there is nothing to avoid). The window inside
-             this container is anchored bottom-0, so its base is always at the
-             same height as the bubble's base. When the on-screen keyboard
-             opens (kbOffset > 0) the widget sits EXACTLY on the keyboard's
-             top edge (bottom = kbOffset, no base offset → zero gap) and the
-             transition is disabled so it follows the keyboard without lag. */}
+             is centered, so there is nothing to avoid).
+             The window is a flex item ABOVE the bubble (it used to be anchored
+             to the widget's base, which hid the bubble and left a gap): the
+             column reads bottom-up as bubble → 12px gap → window. A gooey SVG
+             neck (see below) fuses the two into one liquid body. When the
+             on-screen keyboard opens (kbOffset > 0) the widget sits EXACTLY on
+             the keyboard's top edge (bottom = kbOffset, no base offset → zero
+             gap), the bubble is hidden and the transition disabled so it
+             follows the keyboard without lag. */}
         <div
           ref={chatWidgetRef}
-          className={`fixed right-4 sm:right-6 z-50 pointer-events-auto ${kbOffset === 0 ? 'transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)]' : ''}`}
-          style={{ bottom: kbOffset > 0 ? kbOffset : (isMobile && ctaVisible && !ctaHiding && !ctaDocked ? 124 : (isMobile ? 16 : 24)) }}
+          className={`fixed right-5 sm:right-6 z-50 pointer-events-auto flex flex-col items-end ${kbOffset === 0 ? 'transition-[bottom] duration-[350ms] ease-[cubic-bezier(0.16,1,0.3,1)]' : ''}`}
+          style={{ bottom: chatWidgetBottom }}
         >
-          {/* Chat popup */}
+          {/* Chat popup — in flow, so it always starts from ABOVE the bubble */}
           {(chatOpen || chatClosing) && (
             <BorderGlow
               continuousHover
               singleBeam
-              // Same recipe as the site's cards (20px radius, intensity 2.0,
-              // no fill wash) — but glowRadius must stay INSIDE the widget's
-              // 16px screen margin or the halo gets chopped off on the
-              // right/bottom edge (it looked cut and "misplaced").
+              // Exactly the site's card recipe (radius 20, intensity 2.0, no
+              // edge detection, glass rim). glowRadius 20 is the most the
+              // halo can bleed without being clipped by the viewport edge.
               borderRadius={20}
-              glowRadius={16}
+              glowRadius={20}
               glowIntensity={2.0}
               edgeSensitivity={0}
-              // fillOpacity 0 = no translucent soft-light teal wash over the
-              // window: the card reads as a SOLID surface like every other
-              // card, with only the crisp traveling border beam on hover.
-              fillOpacity={0}
+              // Opaque body: the window is a solid surface, never translucent
+              // glass (its own inner dialog is #081410 too).
               backgroundColor="#081410"
-              className={`absolute bottom-0 right-0 w-[min(calc(100vw_-_2rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
-              style={kbOffset > 0 ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` } : undefined}
+              className={`relative z-10 w-[min(calc(100vw_-_2.5rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
+              style={
+                kbOffset > 0
+                  ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` }
+                  // Banner clearance costs the window the whole lifted stack:
+                  // its own bottom offset + the 12px gap + the 56px bubble +
+                  // 16px of headroom. Without this the stack would run past
+                  // the top of the screen (it did: -92px on a 390x844 phone).
+                  : cookieLift > 0
+                    ? { height: `min(62dvh, calc(100dvh - ${chatWidgetBottom + 84}px))` }
+                    : undefined
+              }
             >
               {/* overflow-hidden here (NOT on .border-glow-card): clips the
                   title-bar background to the rounded corners. The BorderGlow
@@ -4575,8 +4734,17 @@ export default function HomeShell() {
                   </button>
                 </div>
 
-                {/* Messages area — solid background */}
-                <div ref={chatMessagesRef} className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative bg-[#081410]">
+                {/* Messages area — solid background. Delegates clicks for the
+                    [CAL] / [AI] buttons rendered inside the bubbles. */}
+                <div
+                  ref={chatMessagesRef}
+                  onClick={(e) => {
+                    const trigger = (e.target as HTMLElement).closest<HTMLElement>('[data-chat-action]');
+                    const token = trigger?.dataset.chatAction;
+                    if (token === 'CAL' || token === 'AI') handleDirectChatAction(token);
+                  }}
+                  className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative bg-[#081410]"
+                >
                   {/* Subtle DotGrid background — always mounted, static for perf */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
                     <DotGrid dotSize={2} gap={18} baseColor="#0a0a0a" activeColor="#2dd4bf" proximity={0} shockRadius={0} shockStrength={0} resistance={0} returnDuration={0} />
@@ -4600,12 +4768,12 @@ export default function HomeShell() {
                         </div>
                       )}
                       <div
-                        className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 ${msg.sender === 'client'
+                        className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 whitespace-pre-line ${msg.sender === 'client'
                           ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm shadow-md'
                           : 'bg-black/70 border border-white/[0.08] text-white rounded-2xl rounded-bl-sm shadow-md'
                           }`}
                       >
-                        {linkifyChatText(msg.text, msg.sender === 'client')}
+                        {renderDirectChatText(msg.text, msg.sender === 'client', lang)}
                       </div>
                       {msg.sender === 'client' && (
                         <div className="w-7 h-7 rounded-full bg-teal-600/30 flex items-center justify-center shrink-0">
@@ -4656,12 +4824,17 @@ export default function HomeShell() {
                       }}
                     />
                     <button
+                      type="button"
                       onClick={sendMessage}
                       disabled={!chatMessage.trim()}
-                      className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 hover:bg-teal-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                      aria-label="Invia messaggio"
+                      className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${chatMessage.trim()
+                        ? 'bg-teal-600 text-white hover:bg-teal-500 shadow-lg shadow-teal-500/25 active:scale-95'
+                        : 'bg-white/[0.05] text-neutral-600 border border-white/[0.06]'}`}
+                      aria-label={t('chat.send', lang)}
                     >
-                      <svg aria-hidden="true" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                      {/* Nudged 1px left/up: the paper plane's mass sits in its
+                          top-right corner, so dead-centre it reads off-axis. */}
+                      <TiaIcon icon={SentIcon} size={18} strokeWidth={1.8} className="-ml-0.5 mt-0.5" />
                     </button>
                   </div>
                 </div>
@@ -4669,34 +4842,78 @@ export default function HomeShell() {
             </BorderGlow>
           )}
 
-          {/* Floating button with online dot */}
-          <button
-            onClick={() => {
-              if (chatOpen) {
-                setChatClosing(true);
-                setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300);
-              } else {
-                playChatOpenSound();
-                setChatOpen(true);
-                logAnalytics('chat_open');
-              }
-            }}
-            className={`relative p-4 text-white rounded-full shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#0f0f0f] scale-0 opacity-0 pointer-events-none' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-500/15'
-              }`}
-            aria-label={chatOpen ? 'Chiudi chat' : 'Apri chat'}
-          >
-            {chatOpen ? (
-              <TiaIcon key="chat-close" icon={Cancel01Icon} size={24} strokeWidth={2} className="chat-icon-pop" />
-            ) : (
-              <TiaIcon key="chat-open" icon={BubbleChatIcon} size={24} className="chat-icon-pop" />
-            )}
-            {/* Online dot */}
-            <span
-              className={`absolute bottom-1 left-1 w-3.5 h-3.5 rounded-full border-2 border-[#010101] transition-all duration-500 ${chatOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'} ${isOnline ? 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)] animate-pulse-slow'}`}
-              aria-label={isOnline ? 'Disponibile' : 'Non disponibile'}
-              title={isOnline ? 'Disponibile' : 'Non disponibile'}
-            />
-          </button>
+          {/* ── Liquid blob ──
+              The gooey neck that ties the window to the bubble: two SOLID
+              shapes (the launcher's 56px circle + a rounded column reaching up
+              past the card's bottom edge) are blurred together and alpha-
+              thresholded by the filter, so their union reads as one liquid
+              body. The card and the button paint on top of it at z-10, so the
+              only visible part is the neck — precisely the metaball join.
+              Skipped while the keyboard is open: there the window must sit
+              flush on the keyboard, with zero gap. */}
+          {(chatOpen || chatClosing) && kbOffset === 0 && (
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute bottom-0 right-0 z-0"
+              width="120"
+              height="96"
+              viewBox="0 0 120 96"
+            >
+              <defs>
+                <filter id="chat-blob-goo" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+                  {/* Alpha contrast: pushes the blurred alpha back to a hard
+                      edge, which is what turns two shapes into a metaball. */}
+                  <feColorMatrix
+                    in="blur"
+                    mode="matrix"
+                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                  />
+                </filter>
+              </defs>
+              <g filter="url(#chat-blob-goo)" fill="#081410">
+                {/* head — same 56px circle as the launcher (bottom-right) */}
+                <circle cx="92" cy="68" r="28" />
+                {/* neck — crosses the card's bottom edge (y=28) and hides
+                    behind the opaque window above it */}
+                <rect x="66" y="0" width="52" height="60" rx="22" />
+              </g>
+            </svg>
+          )}
+
+          {/* Launcher — doubles as the blob's head while the chat is open (the
+              window needs an anchor below it to attach to). mt-3 IS the 12px
+              gap the blob geometry is built on: change one and change both. */}
+          {kbOffset === 0 && (
+            <button
+              data-chat-launcher
+              onClick={() => {
+                if (chatOpen) {
+                  setChatClosing(true);
+                  setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300);
+                } else {
+                  playChatOpenSound();
+                  setChatOpen(true);
+                  logAnalytics('chat_open');
+                }
+              }}
+              className={`relative z-10 mt-3 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition-all duration-300 hover:scale-110 active:scale-95 ${chatOpen ? 'bg-[#081410] shadow-black/40' : 'bg-teal-600 hover:bg-teal-500 shadow-teal-500/15'
+                }`}
+              aria-label={chatOpen ? 'Chiudi chat' : 'Apri chat'}
+            >
+              {chatOpen ? (
+                <TiaIcon key="chat-close" icon={Cancel01Icon} size={22} strokeWidth={2} className="chat-icon-pop" />
+              ) : (
+                <TiaIcon key="chat-open" icon={BubbleChatIcon} size={24} className="chat-icon-pop" />
+              )}
+              {/* Online dot — only on the resting bubble, not on the blob head */}
+              <span
+                className={`absolute bottom-1 left-1 w-3.5 h-3.5 rounded-full border-2 border-[#010101] transition-all duration-500 ${chatOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'} ${isOnline ? 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.45)] animate-pulse-slow'}`}
+                aria-label={isOnline ? 'Disponibile' : 'Non disponibile'}
+                title={isOnline ? 'Disponibile' : 'Non disponibile'}
+              />
+            </button>
+          )}
         </div>
 
         {/* Floating Curved CTA — docks at the top with inverted curve when

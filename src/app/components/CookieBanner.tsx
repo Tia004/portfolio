@@ -50,8 +50,9 @@ export default function CookieBanner() {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/20 backdrop-blur-none pointer-events-none" />
 
-      {/* Card */}
-      <div className={`relative w-full max-w-lg pointer-events-auto ${exiting ? 'animate-out slide-out-to-bottom-4 fade-out duration-300' : 'animate-in slide-in-from-bottom-4 fade-in duration-500'}`}>
+      {/* Card — data-cookie-banner lets other floating UI (the chat widget)
+          measure it and stack above instead of underneath. */}
+      <div data-cookie-banner className={`relative w-full max-w-lg pointer-events-auto ${exiting ? 'animate-out slide-out-to-bottom-4 fade-out duration-300' : 'animate-in slide-in-from-bottom-4 fade-in duration-500'}`}>
         {/* Outer glow ring */}
         <div className="absolute -inset-[1px] rounded-3xl bg-gradient-to-br from-teal-500/20 via-white/[0.06] to-teal-500/10 blur-sm -z-10" />
 
@@ -74,7 +75,7 @@ export default function CookieBanner() {
             {t('cookie.desc', lang)}{' '}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-legal', { detail: 'cookies' }))}
-              className="text-teal-400 hover:text-teal-300 underline underline-offset-2 transition-colors"
+              className="text-teal-400 hover:text-teal-300 underline underline-offset-2 transition-colors inline-flex min-h-[28px] items-center"
             >
               {t('cookie.learn_more', lang)}
             </button>

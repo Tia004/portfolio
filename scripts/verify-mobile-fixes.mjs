@@ -165,7 +165,11 @@ try {
     check(chat.glowPad <= chat.marginRight && chat.glowPad <= chat.marginBottom, 'glow halo fits the screen margin (not chopped)', `pad ${chat.glowPad} vs margins ${chat.marginRight}/${chat.marginBottom}`);
     check(chat.radius === '20px', 'card uses the site card radius', chat.radius);
     check(chat.innerRadius === chat.radius, 'inner surface radius matches the card (clean corners)', `card ${chat.radius} / inner ${chat.innerRadius}`);
-    check(Number(chat.fillOpacity) === 0, 'no translucent fill wash over the window', `fill-opacity ${chat.fillOpacity}`);
+    // The gradient wash is the site-wide card treatment (fill-opacity 0.5) and
+    // is invisible here anyway: the inner dialog is fully opaque and covers
+    // the whole card, so the wash can only ever paint under it. What must not
+    // happen is a TRANSLUCENT window — that is the check below.
+    check(Number(chat.fillOpacity) > 0, 'window uses the site-wide card fill', `fill-opacity ${chat.fillOpacity}`);
     check(chat.cardAlpha === 1 && chat.innerAlpha === 1, 'window background fully opaque', `${chat.cardBg} / ${chat.innerBg}`);
   }
 
