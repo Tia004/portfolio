@@ -165,7 +165,11 @@ float bayer8(vec2 p) {
   float threshold = bayer8(scaledCoord) - 0.25;
   float step = 1.0 / (colorNum - 1.0);
   col += threshold * step;
-  col = clamp(col - 0.2, 0.0, 1.0);
+  // Black offset: raised from 0.20 to 0.245 so the teal ridges sit lower on
+  // the luminance scale. On uncalibrated / high-brightness displays (the
+  // "hurts my eyes" report) the previous value put the wave's crests close to
+  // full mint. This darkens the mid-tones without touching hue or grain.
+  col = clamp(col - 0.245, 0.0, 1.0);
   col = floor(col * (colorNum - 1.0) + 0.5) / (colorNum - 1.0);
   gl_FragColor = vec4(linearTosRGB(col), 1.0);
   }

@@ -8,8 +8,9 @@ import type Lenis from 'lenis';
 import InfiniteSlider from './InfiniteSlider';
 import { useLanguage } from './LanguageProvider';
 import ProcessTimeline from './ProcessTimeline';
-import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, type ProjectData, type Review } from '@/lib/translations';
-import { trackClick } from '@/lib/analytics';
+import { t, getFaqs, getReviews, getProjects, getPricingOnetime, getPricingMonthly, getPackages, type ProjectData, type Review } from '@/lib/translations';
+import { trackClick, trackConversion } from '@/lib/analytics';
+import { setVisitorContext, bookingPrefillQuery } from '@/lib/booking-context';
 import { type ChatCategory } from '@/lib/chat-categories';
 import { moltenModulePromise } from './molten-preload';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
@@ -498,8 +499,14 @@ function CallEmbedHost() {
       try {
         const url = new URL(getCalComBaseUrl(lang));
         ensureCalEmbed(url.origin);
+        // Prefill from the qualification the chatbot / contact form already
+        // collected (name, email and a notes block with service, budget and
+        // timeline). Cal reads these from the calLink query string, so the
+        // visitor lands on a booking form that already knows who they are and
+        // what the call is about — the call then starts from the substance.
+        const prefill = bookingPrefillQuery(lang);
         getCalNsApi()?.('inline', {
-          calLink: `${url.pathname.replace(/^\//, '')}${url.search}`,
+          calLink: `${url.pathname.replace(/^\//, '')}${url.search}${prefill ? `${url.search ? '&' : '?'}${prefill}` : ''}`,
           elementOrSelector: host,
           config: { theme: 'dark', locale: CAL_COM_LANG[lang] ?? 'it' },
         });
@@ -518,7 +525,8 @@ function CallEmbedHost() {
   }, [lang]);
 
   const locale = CAL_COM_LANG[lang] ?? 'it';
-  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
+  const prefill = bookingPrefillQuery(lang);
+  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}${prefill ? `&${prefill}` : ''}`;
 
   return (
     <div className="relative w-full h-full min-h-0">
@@ -565,7 +573,8 @@ function CallBookingCard({ onClose, bodyRef, closeBtnRef }: {
 }) {
   const { lang } = useLanguage();
   const locale = CAL_COM_LANG[lang] ?? 'it';
-  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}`;
+  const prefill = bookingPrefillQuery(lang);
+  const newtabHref = `${getCalComBaseUrl(lang)}?theme=dark&hl=${locale}&locale=${locale}&lang=${locale}&cal-lang=${locale}${prefill ? `&${prefill}` : ''}`;
 
   return (
     <div className="p-4 sm:p-6 h-full flex flex-col min-h-0">
@@ -1247,6 +1256,10 @@ export default function HomeShell() {
   useEffect(() => {
     const onConfirmed = () => {
       trackClick('cal_booking_confirmed');
+      // Funnel step: a call was actually booked. Together with
+      // 'preventivo_inviato' this is the only pair of events that measures
+      // whether the site WORKS, not just whether it is visited.
+      trackConversion('call_prenotata', { source: 'cal_embed' });
       playNotificationSound();
       bookingToastStart();
     };
@@ -2421,6 +2434,26 @@ export default function HomeShell() {
       });
       if (!response.ok) throw new Error('quote-send-failed');
 
+      trackConversion('preventivo_inviato', {
+        source: 'ai_quote',
+        detail: { service: service ?? null, budget: budgetFromSlider ?? null },
+      });
+      // Hand the qualification over to the booking flow: the Cal embed and the
+      // "open in new tab" link both read this, so the visitor does not have to
+      // repeat service/budget/timeline in the call. Name and email (known from
+      // here on) prefill the booking form itself.
+      setVisitorContext({
+        name,
+        email,
+        service: service ?? undefined,
+        type: prefill.type,
+        budget: budgetFromSlider ?? prefill.budget,
+        pages: prefill.pages,
+        delivery: prefill.delivery,
+        notes: finalQuote,
+        source: 'ai_quote',
+      });
+
       quoteEmailSentRef.current = quoteKey;
       sessionStorage.setItem(storageKey, '1');
       // eslint-disable-next-line react-hooks/immutability -- draft ref written after the async send and read by later renders; its lifetime spans hook boundaries, which the rule can't model.
@@ -2714,6 +2747,11 @@ export default function HomeShell() {
 
     // Log analytics
     logAnalytics('message_sent', text);
+    // The FIRST client message is the chatbot funnel's conversion: from here
+    // on the visitor is in a conversation, not just reading.
+    if (!messages.some(m => m.sender === 'client')) {
+      trackConversion('chat_primo_messaggio', { source: 'chatbot' });
+    }
 
     try {
       const response = await secureChatFetch('/api/chat', {
@@ -2745,6 +2783,7 @@ export default function HomeShell() {
   };
 
   const pricing = useMemo(() => isMonthly ? getPricingMonthly(lang) : getPricingOnetime(lang), [isMonthly, lang]);
+  const packages = useMemo(() => getPackages(lang), [lang]);
   const reviews = useMemo(() => getReviews(lang), [lang]);
 
   // Pricing badge — "N slot liberi a {month}". Uses the live Cal.com count when
@@ -3021,6 +3060,17 @@ export default function HomeShell() {
       if (res.ok) {
         setFormStatus('sent');
         setFormValidationErrors(new Set());
+        trackConversion('preventivo_inviato', {
+          source: 'contact_form',
+          detail: { service: formService || null },
+        });
+        setVisitorContext({
+          name: formName,
+          email: formEmail,
+          service: formService,
+          notes: formMessage,
+          source: 'contact_form',
+        });
         setFormName(''); setFormEmail(''); setFormMessage(''); setFormService('');
       } else {
         setFormStatus('error');
@@ -3120,7 +3170,12 @@ export default function HomeShell() {
                 swap-in is invisible. */}
             {ditherReady && (
             <Dither
-              waveColor={[0.16470588235294117, 0.7176470588235294, 0.6235294117647059]}
+              // Teal crest, dimmed 25% (was 0.1647/0.7176/0.6235): on
+              // high-brightness / uncalibrated displays the previous peak
+              // reached near-full mint and read as eyestrain. Same hue, same
+              // dither grain, lower luminance. Keep this value in sync with
+              // the DitherStatic fallback palette (DitherStatic.tsx).
+              waveColor={[0.12352941176470588, 0.538235294117647, 0.4676470588235294]}
               waveSpeed={0.07}
               waveFrequency={5.2}
               waveAmplitude={0.32}
@@ -3922,6 +3977,50 @@ export default function HomeShell() {
                 </p>
                 <p className="text-neutral-500 mt-2 text-xs mx-auto">
                   {t('prezzi.vat_note', lang)}
+                </p>
+              </ScrollReveal>
+
+              {/* ── Pacchetti "prodotto" — three offers with a STARTING price and
+                  a declared lead time, above the detailed tiers. This is the
+                  part that shortens a sales conversation: it filters the
+                  curious and lets a ready buyer self-select before writing.
+                  Same cards (BorderGlow + glass rim) as the rest of the page. */}
+              <ScrollReveal className="mb-8 sm:mb-12">
+                <p className="text-center text-teal-400 text-xs font-medium uppercase tracking-[0.2em] mb-2">{packages.label}</p>
+                <p className="text-center text-white/90 text-sm font-semibold mb-4">{packages.title}</p>
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+                  {packages.cards.map((card) => (
+                    <BorderGlow
+                      key={card.title}
+                      continuousHover
+                      borderRadius={20}
+                      glowRadius={24}
+                      glowIntensity={2.0}
+                      edgeSensitivity={0}
+                      className="h-full"
+                    >
+                      <div className="p-5 h-full flex flex-col">
+                        <p className="text-white font-semibold text-[15px] leading-tight">{card.title}</p>
+                        <p className="mt-2 text-2xl font-bold text-teal-300 leading-none">{card.from}</p>
+                        <span className="mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-full border border-teal-400/25 bg-teal-400/[0.08] px-2.5 py-1 text-[11px] font-medium text-teal-300">
+                          <TiaIcon icon={Clock01Icon} size={11} strokeWidth={2} className="shrink-0" />
+                          {card.lead}
+                        </span>
+                        <ul className="mt-3.5 space-y-1.5 text-xs leading-relaxed text-neutral-400">
+                          {card.bullets.map((bullet) => (
+                            <li key={bullet} className="flex gap-2">
+                              <span aria-hidden="true" className="text-teal-400/80">•</span>
+                              <span>{bullet}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-auto pt-4 text-[11px] text-neutral-500">{card.installment}</p>
+                      </div>
+                    </BorderGlow>
+                  ))}
+                </div>
+                <p className="mx-auto mt-4 max-w-2xl text-center text-[11px] leading-relaxed text-neutral-500">
+                  {packages.note}
                 </p>
               </ScrollReveal>
 

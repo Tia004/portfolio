@@ -26,6 +26,29 @@ interface BorderGlowProps {
    *  passes a corner the OPPOSITE corner also lights up ("arrives first",
    *  "on other borders"). Single-beam keeps exactly one arc on the border. */
   singleBeam?: boolean;
+  /** Liquid-glass surface, the same treatment as the chatbot input bar
+   *  (ChatbotPanel): hairline bright rim, top sheen, faint teal inner rim and
+   *  a translucent body instead of a flat fill. Default on — this is the
+   *  site-wide card look. Set false for a flat opaque card. */
+  glass?: boolean;
+}
+
+// The glass body is translucent (the backdrop shows through faintly); the
+// glow's own interior fill must stay OPAQUE or the hover mesh gradient bleeds
+// into the card's middle.
+const GLASS_CARD_BG = 'rgba(8, 20, 16, 0.72)';
+const GLASS_CARD_FILL = '#081410';
+
+/** True only when the colour is fully opaque (alpha >= 1). */
+function isOpaqueColor(value: string): boolean {
+  const v = value.trim();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) return true;
+  const rgb = /^rgba?\(([^)]+)\)$/i.exec(v);
+  if (!rgb) return false;
+  const parts = rgb[1].split(/[,\s/]+/).filter(Boolean);
+  if (parts.length < 4) return true; // rgb(...) / rgba(...) with no alpha channel
+  const alpha = Number.parseFloat(parts[3]);
+  return Number.isFinite(alpha) ? alpha >= 1 : false;
 }
 
 function parseHSL(hslStr: string): { h: number; s: number; l: number } {
@@ -108,7 +131,8 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
   edgeSensitivity = 0,
   style,
   glowColor = '170 80 50',
-  backgroundColor = '#0a0a0a',
+  backgroundColor = GLASS_CARD_BG,
+  glass = true,
   borderRadius = 28,
   glowRadius = 40,
   glowIntensity = 2.0,
@@ -277,9 +301,11 @@ const BorderGlow: React.FC<BorderGlowProps> = ({
       onPointerMove={handlePointerMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`border-glow-card ${continuousHover ? 'border-glow-continuous' : ''} ${singleBeam ? 'border-glow-single' : ''} ${className}`}
+      className={`border-glow-card ${glass ? 'border-glow-glass' : ''} ${continuousHover ? 'border-glow-continuous' : ''} ${singleBeam ? 'border-glow-single' : ''} ${className}`}
       style={{
         '--card-bg': backgroundColor,
+        // Opaque companion used by ::before to mask the glow's interior.
+        '--card-fill': isOpaqueColor(backgroundColor) ? backgroundColor : GLASS_CARD_FILL,
         '--edge-sensitivity': edgeSensitivity,
         '--border-radius': `${borderRadius}px`,
         '--glow-padding': `${glowRadius}px`,

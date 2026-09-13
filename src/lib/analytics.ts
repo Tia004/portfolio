@@ -10,11 +10,41 @@ let queue: AnalyticsEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface AnalyticsEvent {
-  type: 'pageview' | 'click' | 'scroll_25' | 'scroll_50' | 'scroll_75' | 'scroll_100' | 'cookie_consent' | 'webgl_context';
+  type:
+    | 'pageview'
+    | 'click'
+    | 'scroll_25'
+    | 'scroll_50'
+    | 'scroll_75'
+    | 'scroll_100'
+    | 'cookie_consent'
+    | 'webgl_context'
+    | 'conversion';
   url: string;
   timestamp: number;
   sessionId: string;
   data?: Record<string, unknown>;
+}
+
+/**
+ * The funnel steps that actually matter for the business. Tracking clicks and
+ * scroll depth tells you where people LOOK; these tell you where they ACT.
+ *
+ *   preventivo_inviato   — a quote request reached the inbox (chat AI flow,
+ *                          the contact form, or the inline quote form)
+ *   call_prenotata       — a Cal.com booking completed inside the site
+ *   chat_primo_messaggio — the visitor sent their first chatbot message
+ *
+ * `source` records WHERE the conversion happened, so in two weeks you can see
+ * which entry point (and which headline/CTA above it) closes.
+ */
+export type ConversionName = 'preventivo_inviato' | 'call_prenotata' | 'chat_primo_messaggio';
+
+export interface ConversionSource {
+  /** 'ai_quote' | 'contact_form' | 'inline_form' | 'cal_embed' | 'chatbot' | … */
+  source: string;
+  /** Extra, source-specific context (service, budget, page section, …). */
+  detail?: Record<string, unknown>;
 }
 
 let sessionId = '';
@@ -157,6 +187,21 @@ export function trackCookieConsent(categories: string[]) {
     type: 'cookie_consent',
     url: typeof window !== 'undefined' ? location.pathname : '',
     data: { categories },
+  });
+}
+
+/**
+ * Track a funnel conversion. Same consent gate and admin exclusion as every
+ * other event, so it is only ever recorded for consented public visitors.
+ */
+export function trackConversion(name: ConversionName, { source, detail }: ConversionSource) {
+  if (isAdminOrDashboardUser()) return;
+  const currentPath = typeof window !== 'undefined' ? location.pathname : '';
+  if (currentPath.startsWith('/loginmaster') || currentPath.startsWith('/api/')) return;
+  enqueue({
+    type: 'conversion',
+    url: currentPath,
+    data: { name, source, ...detail },
   });
 }
 

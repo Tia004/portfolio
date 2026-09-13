@@ -1399,3 +1399,122 @@ export function getPricingOnetime(lang: Lang): PricingCategory[] {
 export function getPricingMonthly(lang: Lang): PricingCategory[] {
   return PRICING_MONTHLY_BY_LANG[lang] || PRICING_MONTHLY_BY_LANG.it;
 }
+
+// ─── Productised packages ─────────────────────────────────────────────────
+// Three offers with a STARTING price and a declared lead time, shown above the
+// detailed price list. A visitor who sees no number writes to ten freelancers
+// and disappears; a visitor who sees "da €1.200 — online in 2 settimane" either
+// self-selects in or self-selects out, and both save a round of negotiation.
+// The detailed tiers below stay the authoritative breakdown.
+export interface PackageCard {
+  title: string;
+  /** "da €1.200" — the starting price, always with a currency. */
+  from: string;
+  /** Declared lead time, e.g. "Online in 2 settimane". */
+  lead: string;
+  bullets: string[];
+  /** Monthly-installment alternative, e.g. "o 3 rate da €400". */
+  installment: string;
+}
+
+export interface PackagesBlock {
+  label: string;
+  title: string;
+  note: string;
+  cta: string;
+  cards: PackageCard[];
+}
+
+const PACKAGES_BY_LANG: Record<Lang, PackagesBlock> = {
+  it: {
+    label: 'Pacchetti',
+    title: 'Prezzo chiaro, tempi chiari',
+    note: 'Prezzi di partenza, IVA esclusa. Il preventivo finale dipende dallo scope: dopo una call di 20 minuti hai un numero fermo per iscritto.',
+    cta: 'Blocca il tuo posto',
+    cards: [
+      {
+        title: 'Sito vetrina',
+        from: 'da €1.200',
+        lead: 'Online in 2 settimane',
+        bullets: ['Fino a 5 pagine su misura', 'Form contatti + WhatsApp', 'SEO di base e deploy'],
+        installment: 'o 3 rate da €400',
+      },
+      {
+        title: 'E-commerce',
+        from: 'da €2.800',
+        lead: 'Online in 4-6 settimane',
+        bullets: ['Catalogo e varianti', 'Pagamenti e spedizioni', 'Formazione per gestirlo da solo'],
+        installment: 'o 4 rate da €700',
+      },
+      {
+        title: 'Video',
+        from: 'da €600',
+        lead: 'Consegna in 3-5 giorni',
+        bullets: ['Editing e color grading', 'Audio e sound design', 'Export per social e sito'],
+        installment: 'o 2 rate da €300',
+      },
+    ],
+  },
+  en: {
+    label: 'Packages',
+    title: 'Clear price, clear timeline',
+    note: 'Starting prices, VAT excluded. The final quote depends on scope: after a 20-minute call you have a fixed number in writing.',
+    cta: 'Claim your slot',
+    cards: [
+      {
+        title: 'Showcase site',
+        from: 'from €1,200',
+        lead: 'Live in 2 weeks',
+        bullets: ['Up to 5 bespoke pages', 'Contact form + WhatsApp', 'Basic SEO and deployment'],
+        installment: 'or 3 payments of €400',
+      },
+      {
+        title: 'E-commerce',
+        from: 'from €2,800',
+        lead: 'Live in 4-6 weeks',
+        bullets: ['Catalogue and variants', 'Payments and shipping', 'Training to run it yourself'],
+        installment: 'or 4 payments of €700',
+      },
+      {
+        title: 'Video',
+        from: 'from €600',
+        lead: 'Delivered in 3-5 days',
+        bullets: ['Editing and colour grading', 'Audio and sound design', 'Exports for social and site'],
+        installment: 'or 2 payments of €300',
+      },
+    ],
+  },
+  es: {
+    label: 'Paquetes',
+    title: 'Precio claro, plazos claros',
+    note: 'Precios de partida, IVA excluido. El presupuesto final depende del alcance: tras una llamada de 20 minutos tienes una cifra firme por escrito.',
+    cta: 'Reserva tu plaza',
+    cards: [
+      {
+        title: 'Web de presentación',
+        from: 'desde €1.200',
+        lead: 'Online en 2 semanas',
+        bullets: ['Hasta 5 páginas a medida', 'Formulario + WhatsApp', 'SEO básico y despliegue'],
+        installment: 'o 3 pagos de €400',
+      },
+      {
+        title: 'E-commerce',
+        from: 'desde €2.800',
+        lead: 'Online en 4-6 semanas',
+        bullets: ['Catálogo y variantes', 'Pagos y envíos', 'Formación para gestionarlo tú'],
+        installment: 'o 4 pagos de €700',
+      },
+      {
+        title: 'Vídeo',
+        from: 'desde €600',
+        lead: 'Entrega en 3-5 días',
+        bullets: ['Edición y corrección de color', 'Audio y diseño sonoro', 'Exportaciones para redes y web'],
+        installment: 'o 2 pagos de €300',
+      },
+    ],
+  },
+};
+
+export function getPackages(lang: Lang): PackagesBlock {
+  return PACKAGES_BY_LANG[lang] || PACKAGES_BY_LANG.it;
+}

@@ -18,6 +18,33 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 40%), 0 1px 3px rgb(0 0 0 / 25%), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
+/* ── Liquid glass rim ──────────────────────────────────────────────────────
+   Same treatment as the chatbot input bar: a hairline bright rim, a 1px top
+   sheen and a faint teal inner rim, over a translucent body.
+
+   Deliberately NO backdrop-filter here. A blur pass is a compositing effect:
+   the background is an animated WebGL canvas, so every blurred card would
+   re-blur its backdrop on every frame — with the skills/FAQ marquees mounting
+   hundreds of cards that is a GPU cliff, and the weakest machines (the ones
+   already struggling with the shaders) are exactly the ones that would pay
+   it. Alpha blending + the rims give the same smoked-glass read for free. */
+.border-glow-glass {
+  border-color: rgb(255 255 255 / 12%);
+  box-shadow:
+    0 2px 10px rgb(0 0 0 / 45%),
+    0 1px 3px rgb(0 0 0 / 25%),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(45, 212, 191, 0.06);
+}
+
+/* The same faint teal edge-light the chatbot bar shows when the conversation
+   is idle, riding on the existing ::before layer so it costs nothing extra:
+   it appears together with the hover glow, while the always-on rim is the
+   inset box-shadow declared on .border-glow-glass above. */
+.border-glow-glass::before {
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.045);
+}
+
 .border-glow-card::before,
 .border-glow-card::after,
 .border-glow-card > .edge-light {
@@ -75,7 +102,7 @@
 .border-glow-card::before {
   border: 1px solid transparent;
   background:
-    linear-gradient(var(--card-bg, #0a0a0a) 0 100%) padding-box,
+    linear-gradient(var(--card-fill, var(--card-bg, #0a0a0a)) 0 100%) padding-box,
     linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
     var(--gradient-one, radial-gradient(at 80% 55%, hsla(170, 80%, 50%, 1) 0px, transparent 50%)) border-box,
     var(--gradient-two, radial-gradient(at 69% 34%, hsla(170, 70%, 45%, 1) 0px, transparent 50%)) border-box,

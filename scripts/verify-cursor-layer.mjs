@@ -59,6 +59,35 @@ function report(dataUrl) {
   });
 }
 
+// Is the trail actually PAINTED? Sample a box centred on the pointer and a
+// control box far away, immediately after a movement (the trail fades in
+// ~350ms). A working effect shows a clearly teal box under the pointer.
+const regionProbe = (dataUrl, cx, cy, size) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const mean = (x, y) => {
+        const w = Math.min(size, img.width - x);
+        const h = Math.min(size, img.height - y);
+        if (w <= 0 || h <= 0) return null;
+        const d = ctx.getImageData(x, y, w, h).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+        return { r: +(r / n).toFixed(1), g: +(g / n).toFixed(1), b: +(b / n).toFixed(1) };
+      };
+      const X = Math.max(0, Math.round(cx - size / 2));
+      const Y = Math.max(0, Math.round(cy - size / 2));
+      resolve({ onTrail: mean(X, Y), offTrail: mean(20, Y) });
+    };
+    img.onerror = () => reject(new Error('decode'));
+    img.src = dataUrl;
+  });
+
 const guard = (p, ms, label) =>
   Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`WATCHDOG ${label}`)), ms))]);
 
@@ -90,6 +119,24 @@ for (const [x, y] of [[300, 300], [600, 420], [900, 500], [1200, 620], [1400, 30
   await sleep(60);
 }
 const during = await shot('after-pointer', true);
+
+// ── Trail presence: park the pointer, then screenshot while the trail is
+// still fresh (~40ms). The box under the pointer must be markedly MORE teal
+// than a control box on the same row, far from the path.
+await p.mouse.move(500, 450);
+await sleep(40);
+const freshRaw = await guard(p.screenshot({ encoding: 'base64' }), 40_000, 'trail-fresh');
+const fresh = await p.evaluate(regionProbe, `data:image/png;base64,${freshRaw}`, 500, 450, 140);
+const greenExcess = (m) => (m ? +(m.g - (m.r + m.b) / 2).toFixed(1) : NaN);
+const cursorHidden = await p.evaluate(() =>
+  document.documentElement.classList.contains('custom-cursor-active')
+);
+console.log('\n▸ trail under pointer ', JSON.stringify(fresh.onTrail), ' green-excess', greenExcess(fresh.onTrail));
+console.log('▸ control (same row)  ', JSON.stringify(fresh.offTrail), ' green-excess', greenExcess(fresh.offTrail));
+console.log(`▸ native cursor hidden: ${cursorHidden}`);
+const trailVisible =
+  greenExcess(fresh.onTrail) > 20 && greenExcess(fresh.onTrail) > greenExcess(fresh.offTrail) + 15;
+console.log(`   → ${trailVisible ? 'PASS (trail drawn)' : 'FAIL (no trail painted)'}`);
 
 await p.mouse.move(60, 860);
 await sleep(3000);

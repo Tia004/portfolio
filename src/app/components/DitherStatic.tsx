@@ -28,15 +28,19 @@
 // which is what reads as SPARSE dither grain. (The old slope 16 / offset -7.2
 // covered most of the field and, layered under the radial wash, turned the
 // fallback into a solid teal blanket.)
-const DITHER_FINE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.34' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  9 0 0 0 -5.6'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
-const DITHER_COARSE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.176  0 0 0 0 0.831  0 0 0 0 0.749  8 0 0 0 -5.4'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+// Dot colour follows the shader's dimmed teal (waveColor * 0.75 in HomeShell):
+// 0.176/0.831/0.749 -> 0.132/0.623/0.562. Keep the two in step.
+const DITHER_FINE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.34' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.132  0 0 0 0 0.623  0 0 0 0 0.562  9 0 0 0 -5.6'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
+const DITHER_COARSE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.132  0 0 0 0 0.623  0 0 0 0 0.562  8 0 0 0 -5.4'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23d)'/%3E%3C/svg%3E")`;
 
 export function StaticDitherTexture() {
   // Teal in CSS form (waveColor is normalized RGB ≈ 0.165, 0.718, 0.624).
   // The shader multiplies it by the wave field (f ≈ 0.05-0.45) minus a 0.2
   // offset, so the on-screen teal is always DEEP — these alphas are the CSS
   // equivalent of that, not a bright wash.
-  const tealRgba = (a: number) => `rgba(45, 212, 191, ${a})`;
+  // 45/212/191 is the shader's teal at full amplitude; scaled by the same 0.75
+  // as waveColor in HomeShell -> 34/159/143.
+  const tealRgba = (a: number) => `rgba(34, 159, 143, ${a})`;
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none" style={{ background: '#010101', touchAction: 'pan-y' }}>
       {/* Deep teal field — a soft, low-alpha wash that follows the shader's
@@ -52,15 +56,15 @@ export function StaticDitherTexture() {
         className="absolute inset-0"
         style={{
           background:
-            `radial-gradient(ellipse 85% 70% at 46% 32%, ${tealRgba(0.30)}, rgba(0,0,0,0) 72%),` +
-            `radial-gradient(ellipse 55% 45% at 78% 74%, ${tealRgba(0.19)}, rgba(0,0,0,0) 70%),` +
-            `radial-gradient(ellipse 40% 32% at 22% 62%, ${tealRgba(0.13)}, rgba(0,0,0,0) 68%)`,
+            `radial-gradient(ellipse 85% 70% at 46% 32%, ${tealRgba(0.24)}, rgba(0,0,0,0) 72%),` +
+            `radial-gradient(ellipse 55% 45% at 78% 74%, ${tealRgba(0.15)}, rgba(0,0,0,0) 70%),` +
+            `radial-gradient(ellipse 40% 32% at 22% 62%, ${tealRgba(0.10)}, rgba(0,0,0,0) 68%)`,
         }}
       />
       {/* Irregular dithered dots (fine + coarse) — the pixelated character of
           the shader output. Low opacity: this is texture, not noise. */}
-      <div className="absolute inset-0" style={{ backgroundImage: DITHER_FINE_URI, opacity: 0.22 }} />
-      <div className="absolute inset-0" style={{ backgroundImage: DITHER_COARSE_URI, opacity: 0.13 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_FINE_URI, opacity: 0.18 }} />
+      <div className="absolute inset-0" style={{ backgroundImage: DITHER_COARSE_URI, opacity: 0.10 }} />
     </div>
   );
 }

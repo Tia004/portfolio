@@ -53,13 +53,16 @@ function FaqCard({
         glowRadius={30}
         glowIntensity={2}
         backgroundColor="rgba(6, 10, 10, 0.62)"
-        className="h-fit w-[min(360px,calc(100vw_-_2rem))] self-start"
+        className="h-fit w-[min(380px,calc(100vw_-_2rem))] self-start"
         edgeSensitivity={0}
       >
+        {/* Heights are deliberately chunky: these cards are a scrolling rail, so
+            a taller bar reads as a real, tappable item instead of a thin strip
+            of text (closed: ~68-80px, open: content + padding). */}
         <div
-          className={`group flex w-full justify-between gap-3 select-none px-5 text-left sm:px-6 transition-[padding,height,min-height] duration-400 ease-out ${isOpen ? 'items-start py-[clamp(0.6rem,1.35vw,0.8rem)] h-fit min-h-0' : 'items-center py-[clamp(0.35rem,0.7vw,0.5rem)] h-[clamp(3rem,4.7vw,3.5rem)]'}`}
+          className={`group flex w-full justify-between gap-3 select-none px-5 text-left sm:px-6 transition-[padding,height,min-height] duration-400 ease-out ${isOpen ? 'items-start py-[clamp(0.9rem,1.8vw,1.1rem)] h-fit min-h-0' : 'items-center py-[clamp(0.5rem,1vw,0.75rem)] h-[clamp(4.25rem,6vw,5rem)]'}`}
         >
-          <span className={`text-sm sm:text-[15px] font-semibold leading-snug transition-colors duration-300 ${isOpen ? 'text-teal-400' : 'text-white group-hover:text-neutral-200'}`}>
+          <span className={`text-[15px] sm:text-base font-semibold leading-snug transition-colors duration-300 ${isOpen ? 'text-teal-400' : 'text-white group-hover:text-neutral-200'}`}>
             {question}
           </span>
           <svg
@@ -79,7 +82,7 @@ function FaqCard({
           className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden px-5 sm:px-6">
-            <p className="border-t border-white/[0.06] pt-4 pb-5 sm:pb-6 text-xs leading-relaxed text-neutral-400 sm:text-sm">
+            <p className="border-t border-white/[0.06] pt-4 pb-6 sm:pb-7 text-[13px] leading-relaxed text-neutral-400 sm:text-sm">
               {answer}
             </p>
           </div>

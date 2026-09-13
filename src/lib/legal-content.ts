@@ -84,7 +84,10 @@ export const COOKIE_POLICY: LegalDoc = {
 
 export const TERMS_CONDITIONS: LegalDoc = {
   title: 'Termini e Condizioni',
-  lastUpdated: '24 Luglio 2026',
+  // Updated when sections 12-14 (professional identification, consumer right of
+  // withdrawal, dispute resolution) were added — the date is part of the
+  // document, so it must move with it.
+  lastUpdated: '13 Settembre 2026',
   sections: [
     {
       heading: '1. Oggetto e Ambito di Applicazione',
@@ -131,8 +134,16 @@ export const TERMS_CONDITIONS: LegalDoc = {
       body: 'I presenti Termini e Condizioni sono regolati dalla legge italiana. Per qualsiasi controversia derivante da questi termini o dai servizi forniti, sarà competente in via esclusiva il foro di Mantova, salvo il foro del consumatore se applicabile ai sensi del Codice del Consumo (D.Lgs. 206/2005).',
     },
     {
-      heading: '12. Contatti',
-      body: 'Per qualsiasi domanda relativa a questi Termini e Condizioni, è possibile contattare:\n\nTia Chinaglia\nEmail: info@tiadesigns.it\nSede: Mantova, Italia\nPartita IVA: disponibile su richiesta',
+      heading: '12. Informazioni sul Professionista e Contatti',
+      body: 'I presenti Termini e Condizioni sono resi da:\n\nTia Chinaglia — attività professionale esercitata in forma individuale\nSede operativa: Mantova, Italia\nEmail: info@tiadesigns.it\nSito: tiadesigns.it\nPartita IVA / Codice Fiscale: disponibile su richiesta scritta a info@tiadesigns.it e comunque indicato su ogni fattura e documento commerciale.\n\nPer qualsiasi domanda relativa a questi Termini e Condizioni, al preventivo o a un progetto in corso, è possibile scrivere all\'indirizzo email sopra indicato. Le comunicazioni si intendono ricevute quando inviate a tale indirizzo.',
+    },
+    {
+      heading: '13. Diritto di Recesso del Consumatore',
+      body: 'Se il cliente è un CONSUMATORE (persona fisica che agisce per scopi estranei all\'attività imprenditoriale, commerciale, artigianale o professionale eventualmente svolta), ha diritto di recedere dal contratto concluso a distanza senza indicare il motivo e senza penalità, entro 14 giorni dal giorno della conclusione del contratto (artt. 52-59 del D.Lgs. 206/2005, Codice del Consumo).\n\nCome esercitare il recesso: è sufficiente inviare una comunicazione esplicita a info@tiadesigns.it (ad esempio: "Recedo dal contratto del [data]") oppure utilizzare il modulo tipo di recesso allegato al D.Lgs. 21/2014. Il recesso è valido anche senza modulo.\n\nEffetti del recesso: il Professionista rimborsa tutti i pagamenti ricevuti dal consumatore entro 14 giorni dalla comunicazione, con lo stesso mezzo di pagamento usato dal consumatore, senza alcun costo aggiuntivo. Il rimborso può essere trattenuto solo se il Professionista dimostra che il lavoro è stato già consegnato o eseguito su richiesta del consumatore.\n\nEccezioni previste dalla legge (art. 59 Codice del Consumo), tra cui:\n• Prodotti personalizzati o chiaramente su misura (es. sito web, logo, video realizzati su specifica del consumatore), per i quali il diritto di recesso non si applica;\n• Servizi la cui esecuzione è iniziata con l\'accordo espresso del consumatore, che accetta di perdere il diritto di recesso una volta completata l\'esecuzione.\n\nLe clausole sull\'acconto non rimborsabile previste dall\'art. 10 si applicano nei limiti consentiti dalla legge e non possono in nessun caso limitare il diritto di recesso qui descritto. Il presente articolo non si applica ai clienti che agiscono nell\'esercizio di un\'attività professionale o d\'impresa (contratti B2B).',
+    },
+    {
+      heading: '14. Risoluzione delle Controversie',
+      body: 'Il Professionista è disponibile a risolvere qualsiasi controversia in via amichevole: scrivere a info@tiadesigns.it prima di intraprendere qualsiasi azione.\n\nIl consumatore può inoltre ricorrere gratuitamente agli organismi di mediazione e conciliazione (ADR) previsti dal D.Lgs. 28/2010 e dal Codice del Consumo (artt. 141-141-sexies), oppure alla negoziazione assistita. Il ricorso all\'ADR è facoltativo e non preclude in alcun caso la tutela giurisdizionale ordinaria.\n\nPer i soli consumatori resta ferma la competenza del foro del luogo di residenza o domicilio elettivo del consumatore, inderogabile ai sensi dell\'art. 33, comma 2, lett. u) del Codice del Consumo. Per i clienti B2B si applica l\'art. 11 (foro di Mantova).\n\nIn caso di controversie relative al trattamento dei dati personali, l\'interessato può rivolgersi al Garante per la Protezione dei Dati Personali (garante.it), come indicato nella Privacy Policy.',
     },
   ],
 };
@@ -213,7 +224,7 @@ export const COOKIE_POLICY_EN: LegalDoc = {
 
 export const TERMS_CONDITIONS_EN: LegalDoc = {
   title: 'Terms and Conditions',
-  lastUpdated: '24 July 2026',
+  lastUpdated: '13 September 2026',
   sections: [
     {
       heading: '1. Subject Matter and Scope',
@@ -260,8 +271,16 @@ export const TERMS_CONDITIONS_EN: LegalDoc = {
       body: 'These Terms and Conditions are governed by Italian law. Any dispute arising from these terms or the services provided shall be subject to the exclusive jurisdiction of the Court of Mantua, except for consumer jurisdiction where applicable under the Italian Consumer Code (Legislative Decree 206/2005).',
     },
     {
-      heading: '12. Contact',
-      body: 'For any questions regarding these Terms and Conditions, please contact:\n\nTia Chinaglia\nEmail: info@tiadesigns.it\nLocation: Mantua, Italy\nVAT: available upon request',
+      heading: '12. Information about the Professional and Contact',
+      body: 'These Terms and Conditions are issued by:\n\nTia Chinaglia — professional activity carried on as a sole practitioner\nOperating base: Mantua, Italy\nEmail: info@tiadesigns.it\nSite: tiadesigns.it\nVAT / Tax code: available on written request to info@tiadesigns.it and in any case stated on every invoice and commercial document.\n\nFor any question regarding these Terms and Conditions, a quote, or a project in progress, write to the email address above. Communications are deemed received when sent to that address.',
+    },
+    {
+      heading: '13. Consumer Right of Withdrawal',
+      body: 'If the client is a CONSUMER (a natural person acting for purposes outside any trade, business, craft or profession), they have the right to withdraw from a distance contract without giving any reason and without penalty within 14 days of the day the contract was concluded (Arts. 52-59 of Legislative Decree 206/2005, the Italian Consumer Code).\n\nHow to withdraw: send an explicit statement to info@tiadesigns.it (for example: "I withdraw from the contract of [date]") or use the model withdrawal form annexed to Legislative Decree 21/2014. No form is required for the withdrawal to be valid.\n\nEffects of withdrawal: the Professional refunds all payments received from the consumer within 14 days of the notice, using the same means of payment used by the consumer, at no additional cost. The refund may be withheld only if the Professional proves that the work was already delivered or performed at the consumer\'s request.\n\nStatutory exceptions (Art. 59 of the Consumer Code) include:\n• Personalised or clearly custom-made products (e.g. a website, logo or video produced to the consumer\'s specification), to which the right of withdrawal does not apply;\n• Services whose performance has begun with the consumer\'s express agreement, who accepts losing the right of withdrawal once performance is complete.\n\nThe non-refundable deposit clauses in Art. 10 apply only to the extent permitted by law and can never limit the right of withdrawal described here. This article does not apply to clients acting in the course of a business or profession (B2B contracts).',
+    },
+    {
+      heading: '14. Dispute Resolution',
+      body: 'The Professional is willing to settle any dispute amicably: please write to info@tiadesigns.it before taking any action.\n\nConsumers may also use, free of charge, the mediation and conciliation bodies (ADR) provided for by Legislative Decree 28/2010 and by the Consumer Code (Arts. 141-141-sexies), or assisted negotiation. Recourse to ADR is optional and never prevents access to the ordinary courts.\n\nFor consumers only, jurisdiction lies with the court of the consumer\'s place of residence or elected domicile, which cannot be derogated from under Art. 33(2)(u) of the Consumer Code. For B2B clients, Art. 11 applies (Court of Mantua).\n\nFor disputes concerning the processing of personal data, the data subject may contact the Italian Data Protection Authority (garante.it), as set out in the Privacy Policy.',
     },
   ],
 };
@@ -342,7 +361,7 @@ export const COOKIE_POLICY_ES: LegalDoc = {
 
 export const TERMS_CONDITIONS_ES: LegalDoc = {
   title: 'Términos y Condiciones',
-  lastUpdated: '24 de Julio de 2026',
+  lastUpdated: '13 de Septiembre de 2026',
   sections: [
     {
       heading: '1. Objeto y Ámbito de Aplicación',
@@ -389,8 +408,16 @@ export const TERMS_CONDITIONS_ES: LegalDoc = {
       body: 'Estos Términos y Condiciones se rigen por la legislación italiana. Cualquier controversia derivada de estos términos o de los servicios prestados será competencia exclusiva del tribunal de Mantua, salvo la jurisdicción del consumidor cuando sea aplicable según el Código de Consumo italiano (Decreto Legislativo 206/2005).',
     },
     {
-      heading: '12. Contacto',
-      body: 'Para cualquier pregunta sobre estos Términos y Condiciones, puede contactar:\n\nTia Chinaglia\nEmail: info@tiadesigns.it\nSede: Mantua, Italia\nIVA: disponible bajo solicitud',
+      heading: '12. Información sobre el Profesional y Contacto',
+      body: 'Estos Términos y Condiciones son emitidos por:\n\nTia Chinaglia — actividad profesional ejercida como profesional individual\nSede operativa: Mantua, Italia\nEmail: info@tiadesigns.it\nSitio: tiadesigns.it\nIVA / CIF: disponible previa solicitud escrita a info@tiadesigns.it y, en todo caso, indicado en cada factura y documento comercial.\n\nPara cualquier pregunta sobre estos Términos y Condiciones, el presupuesto o un proyecto en curso, escriba a la dirección de correo indicada. Las comunicaciones se entienden recibidas cuando se envían a esa dirección.',
+    },
+    {
+      heading: '13. Derecho de Desistimiento del Consumidor',
+      body: 'Si el cliente es un CONSUMIDOR (persona física que actúa con fines ajenos a su actividad empresarial, comercial, artesanal o profesional), tiene derecho a desistir del contrato a distancia sin indicar motivo y sin penalización en un plazo de 14 días desde la celebración del contrato (arts. 52-59 del D.Lgs. 206/2005, Código del Consumo italiano).\n\nCómo desistir: basta enviar una comunicación explícita a info@tiadesigns.it (por ejemplo: "Desisto del contrato del [fecha]") o utilizar el formulario tipo de desistimiento anexo al D.Lgs. 21/2014. El desistimiento es válido incluso sin formulario.\n\nEfectos del desistimiento: el Profesional reembolsa todos los pagos recibidos del consumidor en un plazo de 14 días desde la comunicación, con el mismo medio de pago utilizado por el consumidor y sin coste adicional. El reembolso puede retenerse solo si el Profesional demuestra que el trabajo ya fue entregado o ejecutado a petición del consumidor.\n\nExcepciones legales (art. 59 del Código del Consumo), entre ellas:\n• Productos personalizados o claramente hechos a medida (por ejemplo, sitio web, logotipo o vídeo realizados según las especificaciones del consumidor), para los que no se aplica el derecho de desistimiento;\n• Servicios cuya ejecución haya comenzado con el acuerdo expreso del consumidor, que acepta perder el derecho de desistimiento una vez completada la ejecución.\n\nLas cláusulas sobre el anticipo no reembolsable del art. 10 se aplican solo en los límites permitidos por la ley y nunca pueden limitar el derecho de desistimiento aquí descrito. Este artículo no se aplica a clientes que actúan en el ejercicio de una actividad empresarial o profesional (contratos B2B).',
+    },
+    {
+      heading: '14. Resolución de Controversias',
+      body: 'El Profesional está disponible para resolver cualquier controversia de forma amistosa: escriba a info@tiadesigns.it antes de emprender cualquier acción.\n\nEl consumidor puede además acudir gratuitamente a los organismos de mediación y conciliación (ADR) previstos por el D.Lgs. 28/2010 y por el Código del Consumo (arts. 141-141-sexies), o a la negociación asistida. El recurso al ADR es facultativo y nunca impide el acceso a los tribunales ordinarios.\n\nSolo para consumidores, la competencia corresponde al tribunal del lugar de residencia o domicilio electivo del consumidor, sin posibilidad de renuncia conforme al art. 33, apartado 2, letra u) del Código del Consumo. Para clientes B2B se aplica el art. 11 (tribunal de Mantua).\n\nPara controversias relativas al tratamiento de datos personales, el interesado puede dirigirse al Garante para la Protección de Datos Personales italiano (garante.it), como se indica en la Política de Privacidad.',
     },
   ],
 };
