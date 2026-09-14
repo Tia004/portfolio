@@ -424,19 +424,24 @@ export async function sendArubaEmail(options: {
 
   const info = await transporter.sendMail(mailOptions);
 
-  // Automatically save copy to Posta Inviata (Sent) via IMAP APPEND in background
-  appendArubaSentEmail(mailOptions).catch((err) =>
-    console.warn('[Aruba Mail] appendArubaSentEmail background error:', err)
-  );
+  // Automatically save copy to Posta Inviata (Sent) via IMAP APPEND (awaited for serverless/Vercel persistence)
+  try {
+    await appendArubaSentEmail(mailOptions);
+  } catch (appendErr) {
+    console.warn('[Aruba Mail] appendArubaSentEmail warning (email still sent via SMTP):', appendErr);
+  }
 
   return { success: true, messageId: info.messageId };
 }
+
+let cachedSentMailbox: string | null = null;
 
 /**
  * Appends a copy of a sent email into the Aruba IMAP "Sent" / "Posta Inviata" folder.
  */
 export async function appendArubaSentEmail(mailOptions: any): Promise<boolean> {
   if (!isArubaConfigured()) return false;
+  let client: ImapFlow | null = null;
   try {
     const rawBuffer = await new Promise<Buffer>((resolve, reject) => {
       const composer = new MailComposer(mailOptions).compile();
@@ -446,30 +451,39 @@ export async function appendArubaSentEmail(mailOptions: any): Promise<boolean> {
       });
     });
 
-    const client = getImapClient();
+    client = getImapClient();
     await client.connect();
 
-    let sentMailbox = 'Sent';
-    try {
-      const boxes = await client.list();
-      const detected = boxes.find(
-        (b) =>
-          b.specialUse === '\\Sent' ||
-          /^(sent|inbox\.sent|posta inviata|inbox\.posta inviata)$/i.test(b.path) ||
-          /sent|inviata/i.test(b.name)
-      );
-      if (detected) {
-        sentMailbox = detected.path;
+    if (!cachedSentMailbox) {
+      try {
+        const boxes = await client.list();
+        const detected = boxes.find(
+          (b) =>
+            b.specialUse === '\\Sent' ||
+            /^(sent|inbox\.sent|posta inviata|inbox\.posta inviata)$/i.test(b.path) ||
+            /sent|inviata/i.test(b.name)
+        );
+        if (detected) {
+          cachedSentMailbox = detected.path;
+        } else {
+          cachedSentMailbox = 'Sent';
+        }
+      } catch {
+        cachedSentMailbox = 'Sent';
       }
-    } catch {
-      // Keep 'Sent' fallback
     }
 
-    await client.append(sentMailbox, rawBuffer, ['\\Seen']);
-    await client.logout();
+    await client.append(cachedSentMailbox, rawBuffer, ['\\Seen']);
     return true;
   } catch (err) {
     console.warn('[Aruba Mail] Could not append sent email to Sent folder:', err);
     return false;
+  } finally {
+    if (client) {
+      try {
+        await client.logout();
+      } catch {}
+    }
   }
 }
+

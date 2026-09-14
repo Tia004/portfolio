@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
-import { buildBrandedEmailHtml, sendEmail } from '@/lib/branded-email';
+import { buildBrandedEmailHtml } from '@/lib/branded-email';
 import { sendArubaEmail, isArubaConfigured } from '@/lib/aruba-mail';
 import { isEmailAlreadySent, recordSentEmail } from '@/lib/email-dedup';
 
@@ -102,42 +102,37 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    let sent = false;
-    let channelUsed = '';
-
-    // Channel selection
-    if ((preferredChannel === 'aruba' || preferredChannel === 'auto') && isArubaConfigured()) {
-      try {
-        await sendArubaEmail({
+    // EXCLUSIVE Aruba SMTP channel for mass auto-send outreach.
+    // Protects Resend free tier limits from being exhausted by mass campaigns.
+    if (!isArubaConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            'Credenziali Aruba Mail non configurate (EMAIL_USER / EMAIL_PASS o ARUBA_EMAIL_PASSWORD in .env / Vercel). L\'invio massivo è vincolato al 100% su Aruba SMTP per non consumare la quota di Resend.',
           to,
-          subject,
-          html,
-        });
-        sent = true;
-        channelUsed = 'Aruba SMTP (info@tiadesigns.it)';
-      } catch (arubaErr) {
-        console.warn(`[AutoSend] Invio via Aruba non riuscito per ${to}, provo fallback Resend/SMTP:`, arubaErr);
-      }
+        },
+        { status: 500 }
+      );
     }
 
-    if (!sent) {
-      sent = await sendEmail({
+    try {
+      await sendArubaEmail({
         to,
         subject,
         html,
       });
-      if (sent) channelUsed = 'Resend / SMTP Fallback';
-    }
-
-    if (!sent) {
+    } catch (arubaErr: any) {
+      console.error(`[AutoSend] Errore invio via Aruba SMTP per ${to}:`, arubaErr);
       return NextResponse.json(
         {
-          error: 'Impossibile recapitare l\'email. Verifica le credenziali Aruba Mail o Resend/SMTP in .env.',
+          error: `Errore Aruba SMTP: ${arubaErr.message || 'Impossibile recapitare l\'email tramite smtps.aruba.it'}`,
           to,
         },
         { status: 502 }
       );
     }
+
+    const channelUsed = 'Aruba SMTP (info@tiadesigns.it) + IMAP Sent';
 
     // Record in sent registry
     await recordSentEmail({

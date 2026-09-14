@@ -822,6 +822,56 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     showToast('Report CSV esportato con successo!', 'success');
   };
 
+  // Export Remaining (unsent / failed) Contacts to a clean CSV ready for re-import
+  const handleExportRemainingCsv = () => {
+    const remaining = recipients.filter((r) => r.status !== 'sent');
+    if (remaining.length === 0) {
+      showToast('Tutte le email nella lista sono già state inviate con successo!', 'info');
+      return;
+    }
+
+    let csvContent = '';
+    if (csvHeaders.length > 0) {
+      // Reconstruct with identical CSV headers and columns from extraData
+      const rows = remaining.map((r) => {
+        return csvHeaders
+          .map((h) => {
+            let val = r.extraData?.[h] ?? '';
+            if (columnMapping.subject === h && r.customSubject) val = r.customSubject;
+            if (columnMapping.body === h && r.customBody) val = r.customBody;
+            if (columnMapping.email === h && r.email) val = r.email;
+            if (columnMapping.name === h && r.name) val = r.name;
+            if (columnMapping.company === h && r.company) val = r.company;
+            return `"${String(val).replace(/"/g, '""')}"`;
+          })
+          .join(';');
+      });
+      csvContent = [csvHeaders.map((h) => `"${h.replace(/"/g, '""')}"`).join(';'), ...rows].join('\r\n');
+    } else {
+      const headers = ['email', 'nome', 'azienda', 'oggetto', 'corpo'];
+      const rows = remaining.map((r) =>
+        [
+          `"${r.email.replace(/"/g, '""')}"`,
+          `"${(r.name || '').replace(/"/g, '""')}"`,
+          `"${(r.company || '').replace(/"/g, '""')}"`,
+          `"${(r.customSubject || substituteVariables(templateSubject, r)).replace(/"/g, '""')}"`,
+          `"${(r.customBody || substituteVariables(templateBody, r)).replace(/"/g, '""')}"`,
+        ].join(';')
+      );
+      csvContent = [headers.join(';'), ...rows].join('\r\n');
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const cleanBase = (csvFileName || 'campagna').replace(/\.csv$/i, '');
+    a.download = `${cleanBase}_rimanenti_${remaining.length}_email.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`CSV con ${remaining.length} email rimanenti scaricato con successo!`, 'success');
+  };
+
   // Selected preview item
   const previewItem = useMemo(() => {
     if (!recipients.length) {
@@ -1462,6 +1512,17 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 <span>Esporta Report CSV</span>
               </button>
             )}
+            {recipients.some((r) => r.status === 'sent') && recipients.some((r) => r.status !== 'sent') && (
+              <button
+                type="button"
+                onClick={handleExportRemainingCsv}
+                className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                title="Esporta in CSV solo le email rimanenti / non ancora inviate (esclude quelle già mandate con successo)"
+              >
+                <TiaIcon icon={Download01Icon} size={14} />
+                <span>Esporta Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+              </button>
+            )}
             {recipients.length > 0 && (
               <button
                 type="button"
@@ -1503,6 +1564,34 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
             >
               <span>Vedi o sblocca ({excludedAlreadySent.length})</span>
               <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Error / Interruption Banner with 1-click download of remaining emails */}
+        {stats.failed > 0 && !isRunning && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-500/20 via-orange-500/10 to-transparent border border-red-500/30 flex flex-wrap items-center justify-between gap-3 text-xs text-red-200 animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center text-red-300 shrink-0">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-red-300 flex items-center gap-2">
+                  <span>Invio interrotto o con errori ({stats.failed} {stats.failed === 1 ? 'fallita' : 'fallite'})</span>
+                </p>
+                <p className="text-red-200/70 text-[11px]">
+                  Scarica subito un nuovo CSV pulito contenente solo le email rimaste (senza quelle già inviate con successo).
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleExportRemainingCsv}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold cursor-pointer transition-all shadow-lg text-xs flex items-center gap-2"
+              title="Scarica un nuovo file CSV pronto da ricaricare con solo le email non inviate"
+            >
+              <TiaIcon icon={Download01Icon} size={14} />
+              <span>Scarica CSV Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
             </button>
           </div>
         )}
@@ -1563,6 +1652,17 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                   <Square className="w-4 h-4 fill-current" />
                   <span>Interrompi</span>
                 </button>
+                {isPaused && (
+                  <button
+                    type="button"
+                    onClick={handleExportRemainingCsv}
+                    className="px-3.5 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all"
+                    title="Esporta le email rimanenti"
+                  >
+                    <TiaIcon icon={Download01Icon} size={14} />
+                    <span>Esporta Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -1574,6 +1674,17 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>Riprova solo le fallite ({stats.failed})</span>
+                  </button>
+                )}
+                {stats.sent > 0 && recipients.some((r) => r.status !== 'sent') && (
+                  <button
+                    type="button"
+                    onClick={handleExportRemainingCsv}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md"
+                    title="Scarica un nuovo file CSV con solo le email rimanenti da inviare (senza quelle già mandate con successo)"
+                  >
+                    <TiaIcon icon={Download01Icon} size={15} />
+                    <span>Esporta CSV Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
                   </button>
                 )}
                 <button
