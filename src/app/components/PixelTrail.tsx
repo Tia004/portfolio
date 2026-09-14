@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import { Canvas, useThree, useFrame, CanvasProps } from '@react-three/fiber';
-import { shaderMaterial } from '@react-three/drei';
+import { Canvas, useThree, CanvasProps, ThreeEvent } from '@react-three/fiber';
+import { shaderMaterial, useTrailTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { isLowEndDevice } from '@/lib/useDeviceCapabilities';
 import { scheduleTick, unscheduleTick } from '@/lib/useSharedTicker';
@@ -15,20 +15,9 @@ interface SceneProps {
   easingFunction: (x: number) => number;
   pixelColor: string;
   paused: boolean;
-  /** True only after a real pointer movement has been seen — see the arm gate
-   *  in PixelTrail below. Keeps the fullscreen layer perfectly transparent
-   *  until there is a legitimate trail to draw. */
-  armed: boolean;
-  /** Fired after the FIRST frame has actually been rendered. */
-  onFirstFrame: () => void;
 }
 
 interface PixelTrailProps {
-  /** Fired once, after the layer is ARMED (first real pointer movement) and has
-   *  rendered a real frame. The parent uses it to decide whether the native
-   *  cursor may be hidden: a layer that never draws must never leave the
-   *  visitor without a pointer. */
-  onReady?: () => void;
   gridSize?: number;
   trailSize?: number;
   maxAge?: number;
@@ -40,223 +29,6 @@ interface PixelTrailProps {
   className?: string;
 }
 
-// ─── Trail buffer (replaces @react-three/drei's useTrailTexture) ───────────
-//
-// WHY THIS EXISTS — this is the fix for the "green halo over the whole site"
-// that only appeared on some Windows/ANGLE machines (and, intermittently,
-// everywhere): drei's `useTrailTexture` paints the trail into a 2D CANVAS and
-// hands that canvas to a `THREE.Texture`. On drivers that mis-sample a
-// canvas-backed texture the sampler returned 1.0 for EVERY texel, so
-// `trailAlpha = pow(rawTrail, 0.55)` became 1.0 across the fullscreen quad and
-// the shader painted one flat teal colour over the entire viewport (this layer
-// sits at z-index 99999, above nav, hero and modals).
-//
-// A canvas is also the wrong container here: nothing in the trail needs 2D
-// drawing — it is a scalar field on a small grid. This class owns that field
-// directly as a Uint8Array uploaded through a DataTexture, which means:
-//   • the render target is NOT a driver-managed canvas-fallback, so it cannot
-//     sample as white — every byte comes from our own writes (we can prove the
-//     buffer is all zeros at mount, so a fresh layer is provably invisible);
-//   • the decay runs on frames rather than on pointer events, so the trail
-//     always fades out instead of freezing on its last shape when the pointer
-//     stops (this is what drei's `useFrame` update did, now done by us);
-//   • no CPU→GPU readback and no per-frame canvas rasterisation.
-//
-// Rows/columns follow the SHADER's convention: DataTexture keeps flipY = false
-// and the shader derives uv from gl_FragCoord, i.e. v = 0 at the BOTTOM of the
-// screen — which is exactly where the pointer uv comes from (`1 - clientY / h`).
-// No extra flip is applied.
-//
-// Core alpha of ONE dab — this is drei's `intensity` default (0.2), which is
-// what the August build used because it never overrode it. It is deliberately
-// low: the envelope and the movement force modulate the dab's RADIUS, not its
-// alpha (see drawDab). Raising this does not make the trail "stronger", it
-// makes it solid — the dabs stop reading as dabs.
-const DAB_ALPHA = 0.2;
-// Trail field resolution. drei rasterised the trail into a 512×512 canvas and
-// the shader samples that field at the centre of every `gridSize` cell, so 512
-// reproduces the rounded dab edges of the original; the visible grid is still
-// `gridSize` cells, this is only how finely the dabs themselves are drawn.
-const TRAIL_RESOLUTION = 512;
-
-interface TrailPoint {
-  /** Position in uv space (0..1), y-up like the shader. */
-  ux: number;
-  uy: number;
-  /** Age in milliseconds. */
-  age: number;
-  /** 0..1 — how hard the pointer was moving when the dab was laid down. */
-  force: number;
-}
-
-class TrailBuffer {
-  readonly texture: THREE.DataTexture;
-  private readonly data: Uint8Array;
-  private readonly size: number;
-  /** Brush radius in uv units at full growth (trailSize, e.g. 0.05). */
-  private readonly radiusUv: number;
-  private readonly maxAge: number;
-  private readonly interpolate: number;
-  /** Live dabs. Each one is re-drawn (and aged) every frame, like the canvas
-   *  texture drei repainted from scratch — the difference is that the field is
-   *  a grid WE own, with no 2D canvas and no driver-managed fallback texture. */
-  private points: TrailPoint[] = [];
-  /** Last pointer position in uv space (null right after a reset/arm). */
-  private last: { ux: number; uy: number } | null = null;
-  /** Smoothed movement force (drei's `this.force`). */
-  private force = 0;
-  /** True while there is nothing to draw — skips pointless GPU uploads. */
-  private clean = true;
-
-  constructor({
-    size,
-    trailSize,
-    maxAge,
-    interpolate,
-  }: {
-    size: number;
-    trailSize: number;
-    maxAge: number;
-    interpolate: number;
-  }) {
-    this.size = size;
-    this.radiusUv = Math.max(1 / size, trailSize);
-    this.maxAge = Math.max(20, maxAge);
-    this.interpolate = Math.max(0, interpolate);
-    this.data = new Uint8Array(size * size); // all zeros -> the layer is invisible
-    this.texture = new THREE.DataTexture(
-      this.data,
-      size,
-      size,
-      THREE.RedFormat,
-      THREE.UnsignedByteType,
-    );
-    // Raw values (no colour conversion) and blocky, trail-like sampling.
-    this.texture.colorSpace = THREE.NoColorSpace;
-    this.texture.minFilter = THREE.NearestFilter;
-    this.texture.magFilter = THREE.NearestFilter;
-    this.texture.wrapS = THREE.ClampToEdgeWrapping;
-    this.texture.wrapT = THREE.ClampToEdgeWrapping;
-    this.texture.generateMipmaps = false;
-    this.texture.needsUpdate = true;
-  }
-
-  /**
-   * Lay down a dab at the pointer position (uv in 0..1, bottom-left origin).
-   *
-   * Movement force is computed exactly like drei did: how far the pointer
-   * travelled since the previous event, normalised so that a move of 1% of the
-   * screen already counts as a full-force dab. `interpolate` then fills the gap
-   * with further dabs when the pointer moved faster than one dab per frame, so
-   * the trail stays continuous instead of turning into a dotted line.
-   */
-  addTouch(uv: { x: number; y: number }) {
-    if (this.last) {
-      const dx = this.last.ux - uv.x;
-      const dy = this.last.uy - uv.y;
-      const dd = dx * dx + dy * dy;
-      this.force = Math.max(0.3, Math.min(dd * 10000, 1));
-      if (this.interpolate > 0) {
-        const step = Math.pow((this.radiusUv * 0.5) / this.interpolate, 2);
-        const lines = step > 0 ? Math.ceil(dd / step) : 1;
-        if (lines > 1) {
-          for (let i = 1; i < lines; i++) {
-            this.points.push({
-              ux: this.last.ux - (dx / lines) * i,
-              uy: this.last.uy - (dy / lines) * i,
-              age: 0,
-              force: this.force,
-            });
-          }
-        }
-      }
-    }
-    this.points.push({ ux: uv.x, uy: uv.y, age: 0, force: this.force });
-    this.last = { ux: uv.x, uy: uv.y };
-    this.clean = false;
-  }
-
-  /** Forget the last point (and every dab) so the layer is truly empty. */
-  reset() {
-    this.last = null;
-    this.force = 0;
-    this.points.length = 0;
-    this.data.fill(0);
-    this.clean = true;
-  }
-
-  /**
-   * Age every dab by `deltaMs`, drop the expired ones and repaint the field.
-   * Running on FRAMES (not pointer events) is what makes the trail always fade
-   * out on its own: the old canvas texture only repainted on pointer events, so
-   * it froze in its last shape when the pointer stopped.
-   */
-  update(deltaMs: number) {
-    if (this.clean && this.points.length === 0) return;
-    // Clamp: with frameloop="demand" a long idle gap would otherwise age the
-    // whole trail away in one step (a hard pop instead of a fade).
-    const dt = Math.min(80, Math.max(0, deltaMs));
-    const alive: TrailPoint[] = [];
-    for (const p of this.points) {
-      p.age += dt;
-      if (p.age < this.maxAge) alive.push(p);
-    }
-    this.points = alive;
-
-    this.data.fill(0);
-    for (const p of this.points) this.drawDab(p);
-    this.clean = this.points.length === 0;
-    this.texture.needsUpdate = true;
-  }
-
-  /**
-   * One dab: a radial gradient in a 2×2 cell block around the point, added with
-   * the same `screen` accumulation drei's canvas used, so overlapping dabs build
-   * up instead of simply overwriting. Full strength inside 25% of the radius,
-   * then a linear falloff — the profile of drei's createRadialGradient.
-   */
-  private drawDab(p: TrailPoint) {
-    const t = p.age / this.maxAge;
-    // Identity easing, exactly what the August build passed as `ease`: a linear
-    // triangle — the dab grows to full size over the first 30% of its life, then
-    // shrinks to nothing over the remaining 70%.
-    const envelope = t < 0.3 ? t / 0.3 : 1 - (t - 0.3) / 0.7;
-    // drei scaled the dab's RADIUS by the envelope and the movement force, and
-    // kept the gradient's core alpha constant (DAB_ALPHA). That combination is
-    // the trail's whole character: soft round dabs that bulge and contract,
-    // instead of a smear whose opacity rises and falls.
-    const scale = envelope * p.force;
-    if (scale <= 0.001) return;
-
-    const rCells = this.radiusUv * scale * this.size;
-    if (rCells <= 0.5) return;
-    const cx = p.ux * this.size;
-    const cy = p.uy * this.size;
-    const minX = Math.max(0, Math.floor(cx - rCells));
-    const maxX = Math.min(this.size - 1, Math.ceil(cx + rCells));
-    const minY = Math.max(0, Math.floor(cy - rCells));
-    const maxY = Math.min(this.size - 1, Math.ceil(cy + rCells));
-    const invR = 1 / rCells;
-
-    for (let y = minY; y <= maxY; y++) {
-      const dy = y + 0.5 - cy;
-      const row = y * this.size;
-      for (let x = minX; x <= maxX; x++) {
-        const dx = x + 0.5 - cx;
-        const d = Math.sqrt(dx * dx + dy * dy) * invR;
-        if (d >= 1) continue;
-        // The canvas gradient held `intensity` (0.2) from the centre out to 25%
-        // of the radius, then ramped linearly to zero at the edge.
-        const profile = d <= 0.25 ? 1 : 1 - (d - 0.25) / 0.75;
-        const a = this.data[row + x] / 255;
-        const b = DAB_ALPHA * profile;
-        // screen: 1 - (1 - a)(1 - b)
-        this.data[row + x] = (a + b - a * b) * 255;
-      }
-    }
-  }
-}
-
 const DotMaterial = shaderMaterial(
   {
     resolution: new THREE.Vector2(),
@@ -265,7 +37,6 @@ const DotMaterial = shaderMaterial(
     pixelColor: new THREE.Color('#ffffff'),
     cursorGrid: new THREE.Vector2(-1, -1),
     time: 0,
-    uArmed: 0,
   },
   /* glsl vertex shader */ `
     varying vec2 vUv;
@@ -282,7 +53,6 @@ const DotMaterial = shaderMaterial(
     uniform vec3 pixelColor;
     uniform vec2 cursorGrid;
     uniform float time;
-    uniform float uArmed;
 
     vec2 coverUv(vec2 uv) {
       vec2 s = resolution.xy / max(resolution.x, resolution.y);
@@ -291,15 +61,6 @@ const DotMaterial = shaderMaterial(
     }
 
     void main() {
-      // Fail-safe: with a non-finite or zero resolution every uv becomes NaN
-      // and NaN behaviour is DRIVER-DEPENDENT — on some GPUs it collapses the
-      // whole quad into one flat colour, which is exactly how the fullscreen
-      // cursor layer turned into a teal wash over the entire site on some
-      // machines. Draw nothing instead of drawing garbage.
-      if (!(resolution.x > 0.0) || !(resolution.y > 0.0)) {
-        gl_FragColor = vec4(0.0);
-        return;
-      }
       vec2 screenUv = gl_FragCoord.xy / resolution;
       vec2 uv = coverUv(screenUv);
 
@@ -361,12 +122,7 @@ const DotMaterial = shaderMaterial(
       idleAlpha = max(dotAlpha, ringAlpha);
 
       float trailAlpha = pow(rawTrail, 0.55);
-      // uArmed is 0 until the pointer has actually moved. This layer covers
-      // the WHOLE viewport at z-index 99999, so before the first real pointer
-      // event there is nothing legitimate to show; the trail buffer is also
-      // provably all-zero at that point (see TrailBuffer), so the shader
-      // outputs alpha 0 for every fragment.
-      float alpha = max(trailAlpha, idleAlpha) * uArmed;
+      float alpha = max(trailAlpha, idleAlpha);
 
       // Ring color — lighter and more saturated than the trail, so the
       // shockwave reads as a distinct visual layer (like a white flash).
@@ -375,24 +131,12 @@ const DotMaterial = shaderMaterial(
       float ringWeight = ringAlpha / max(alpha, 0.001);
       vec3 color = mix(pixelColor, ringColor, ringWeight);
 
-      // ── PREMULTIPLIED ALPHA — the actual cause of the site-wide wash ────
-      // This canvas is created with alpha:true and three defaults the context
-      // to premultipliedAlpha:true, so the blend equation is
-      //     framebuffer.rgb = src.rgb * 1 + dst.rgb * (1 - src.a)
-      // i.e. the shader's colour is expected to ALREADY be multiplied by its
-      // alpha. Writing the un-premultiplied colour (vec4(color, alpha)) added
-      // full-intensity teal to EVERY fragment of the fullscreen quad — the
-      // layer sits at z-index 99999, so the whole site turned flat teal as
-      // soon as the layer became visible (first pointer movement). The trail
-      // texture was never the culprit: it samples to 0 there, and the wash
-      // measured rgb(7,168,133), exactly the raw bytes of the trail colour.
-      gl_FragColor = vec4(color * alpha, alpha);
+      gl_FragColor = vec4(color, alpha);
     }
   `
 );
 
-function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused, armed, onFirstFrame }: SceneProps) {
-  const firstFrameRef = useRef(false);
+function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused }: SceneProps) {
   const size = useThree((s) => s.size);
   const viewport = useThree((s) => s.viewport);
   const invalidate = useThree((s) => s.invalidate);
@@ -402,72 +146,25 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
   const dotMaterial = useMemo(() => {
     const material = new DotMaterial();
     material.uniforms.pixelColor.value = new THREE.Color(pixelColor);
-    // The quad is a fullscreen overlay whose whole point is its alpha channel:
-    // mark it transparent so three treats it as such (correct blend pass and
-    // sort) instead of as an opaque material that happens to have blending on.
-    material.transparent = true;
-    material.depthTest = false;
-    material.depthWrite = false;
-    // ── Blend factors: ONE + ONE_MINUS_SRC_ALPHA ───────────────────────────
-    // The fragment shader outputs PREMULTIPLIED colour (vec4(color * alpha,
-    // alpha)), which is what the premultipliedAlpha canvas expects. three's
-    // default NormalBlending, however, multiplies the source by its alpha
-    // AGAIN (blendSrc = SRC_ALPHA), so every fragment landed in the framebuffer
-    // as color·alpha². Squaring is invisible at the trail's core (alpha 0.88 →
-    // 0.78) but destroys the whole TAIL: at alpha 0.3 the pixel reached the
-    // screen at 0.09 instead of 0.30, so the trail lost its soft, lingering
-    // fade and read as a thin, weak smudge — nothing like the August version.
-    // With ONE / ONE_MINUS_SRC_ALPHA the framebuffer holds exactly color·alpha
-    // and the canvas composites with normal alpha blending, which IS the
-    // August look, achieved correctly (no un-premultiplied write, so no
-    // site-wide wash either).
-    material.blending = THREE.CustomBlending;
-    material.blendSrc = THREE.OneFactor;
-    material.blendDst = THREE.OneMinusSrcAlphaFactor;
-    material.blendEquation = THREE.AddEquation;
     return material;
   }, [pixelColor]);
 
-  // `easingFunction` stays in the public props for API stability: the dab
-  // growth curve is the linear triangle the August build passed as `ease`
-  // (see drawDab) and cannot be swapped without changing the trail's character.
-  void easingFunction;
-
-  // NOTE: the field resolution is deliberately NOT gridSize. The visible trail
-  // grid stays coarse (gridSize cells, blocky by design); the dabs are drawn at
-  // three times that resolution, exactly like the 512 canvas it replaces.
-  const trail = useMemo(
-    () => new TrailBuffer({ size: TRAIL_RESOLUTION, trailSize, maxAge, interpolate }),
-    [trailSize, maxAge, interpolate],
-  );
-  const trailRef = useRef(trail);
-  trailRef.current = trail;
-
-  // Age + upload the field on every rendered frame. With frameloop="demand"
-  // this runs exactly as often as the state machine below invalidates, which
-  // is 30fps while the trail fades and ~3fps once idle. Because the decay is
-  // driven by frames (not by pointer events) the trail always reaches zero on
-  // its own — the old canvas texture only repainted on pointer events, so it
-  // froze in its last shape and held the fullscreen layer's glow open.
-  const onFirstFrameRef = useRef(onFirstFrame);
-  onFirstFrameRef.current = onFirstFrame;
-  useFrame((_, delta) => {
-    // delta is in SECONDS (three); the dab ages are in milliseconds.
-    trail.update(delta * 1000);
-    if (!firstFrameRef.current) {
-      firstFrameRef.current = true;
-      onFirstFrameRef.current();
-    }
-  });
-
-  useEffect(() => () => trail.texture.dispose(), [trail]);
-  useEffect(() => () => dotMaterial.dispose(), [dotMaterial]);
+  const [trail, onMove] = useTrailTexture({
+    size: 512,
+    radius: trailSize,
+    maxAge: maxAge,
+    interpolate: interpolate || 0.1,
+    ease: easingFunction || ((x: number) => x),
+  }) as [THREE.Texture | null, (e: ThreeEvent<PointerEvent>) => void];
 
   // Ref-cached values the shared-ticker callback reads. Updated each render/
   // effect run so the stable callback always sees the latest values without
   // recreating itself (which would cause scheduleTick/unscheduleTick churn).
+  // Placed after dotMaterial and trail declarations to avoid TDZ.
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  const trailRef = useRef<THREE.Texture | null>(null);
+  trailRef.current = trail;
   const lastUvRef = useRef(new THREE.Vector2(0.5, 0.5));
   const lastMoveTimeRef = useRef(performance.now());
   const pendingPaintUvRef = useRef<THREE.Vector2 | null>(null);
@@ -475,6 +172,34 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
   dotMaterialRef.current = dotMaterial;
   const invalidateRef = useRef(invalidate);
   invalidateRef.current = invalidate;
+
+  // Stabilize onMove: useTrailTexture returns a new callback reference every
+  // render. Storing the latest in a ref prevents the main RAF-loop effect from
+  // restarting on every mouse move (which would trigger invalidate → re-render
+  // → new onMove → effect cleanup → loop). Direct render-body assignment is
+  // the idiomatic React 18+ pattern for "latest value refs."
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
+
+  const emptyTrailTexture = useMemo(() => {
+    const texture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, THREE.RGBAFormat);
+    texture.needsUpdate = true;
+    return texture;
+  }, []);
+
+  // Pixel trail: nearest filtering keeps the dots crisp and blocky.
+  // Must be applied once the trail texture is created by useTrailTexture.
+  useEffect(() => {
+    if (!trail) return;
+    // eslint-disable-next-line react-hooks/immutability -- configuring a Three.js texture returned by a hook
+    trail.minFilter = THREE.NearestFilter;
+    trail.magFilter = THREE.NearestFilter;
+    trail.wrapS = THREE.ClampToEdgeWrapping;
+    trail.wrapT = THREE.ClampToEdgeWrapping;
+  }, [trail]);
+
+  useEffect(() => () => emptyTrailTexture.dispose(), [emptyTrailTexture]);
+  useEffect(() => () => dotMaterial.dispose(), [dotMaterial]);
 
   // Shared-ticker state. The stable flushPaintStable callback reads all its
   // state from refs; handleMouseMove schedules one-shot paints via the shared
@@ -490,15 +215,15 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
     unscheduleTick(flushPaintStable);
     const uv = pendingPaintUvRef.current;
     pendingPaintUvRef.current = null;
-    // Re-check paused: a paint queued just before the canvas paused (scrolled
-    // off-screen) must not fire afterwards — ghost paint.
-    if (!uv || pausedRef.current) return;
+    // Re-check paused/trail: a paint queued just before the canvas paused
+    // (scrolled off-screen) must not fire afterwards — ghost paint.
+    if (!uv || pausedRef.current || !trailRef.current) return;
     lastUvRef.current.copy(uv);
     lastMoveTimeRef.current = performance.now();
     cursorGridRef.current.set(-1, -1);
     dotMaterialRef.current.uniforms.cursorGrid.value = cursorGridRef.current;
     dotMaterialRef.current.uniforms.time.value = performance.now() / 1000;
-    trailRef.current.addTouch(uv);
+    onMoveRef.current({ uv } as unknown as ThreeEvent<PointerEvent>);
     invalidateRef.current();
   }, []);
 
@@ -525,7 +250,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
     };
 
     const handleMouseMove = (event: MouseEvent) => {
-      if (paused) return;
+      if (paused || !trail) return;
       // If idling, immediately switch back to the shared ticker so the
       // fade decay and dot positioning resume without waiting for the
       // next idle timer tick (up to 300 ms).
@@ -557,11 +282,11 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
     const IDLE_FREQ = 300;    // ~3 fps while idle
 
     // RAF loop: during active movement, mousemove events handle all painting.
-    // After the mouse stops, we invalidate at reduced rate so the trail buffer
-    // decays visually. The cross is positioned early (after 100ms of
-    // stillness) so it fades in as the trail fades out — the shader hides it
-    // while trail > 0.05. Once idle, switch to a low-frequency timer for the
-    // breathing animation.
+    // After the mouse stops, we invalidate at reduced rate so the trail texture
+    // decays visually. No manual repaint — useTrailTexture's maxAge handles it.
+    // The cross is positioned early (after 100ms of stillness) so it fades in
+    // as the trail fades out — the shader hides it while trail > 0.05.
+    // Once idle, switch to a low-frequency timer for the breathing animation.
     const activeLoop = () => {
       if (!runningRef.current) return;
       if (paused) return;
@@ -589,7 +314,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
 
     const startIdleKeepAlive = () => {
       const tick = () => {
-        if (!runningRef.current || paused) {
+        if (!runningRef.current || paused || !trail) {
           idleTimer = setTimeout(tick, IDLE_FREQ);
           return;
         }
@@ -598,13 +323,6 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
           lastIdlePaintRef.current = now;
           dotMaterialRef.current.uniforms.time.value = now / 1000;
           updateCursorGrid(lastUvRef.current);
-          // One invalidate per idle tick: this is what ages the trail buffer
-          // via useFrame. No re-stamping here — the buffer decays to zero on
-          // its own, which is the signal the idle dot's pop animation waits
-          // for (its comment always assumed the trail fades out here). The
-          // old drei canvas only decayed when it repainted, so re-stamping
-          // was needed to keep it alive; that same re-stamp also pinned a
-          // permanent blob under a motionless cursor.
           invalidateRef.current();
         }
         // If mouse moved again, switch back to shared ticker
@@ -631,7 +349,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
         }
       } else {
         // Tab visible: restart idle keep-alive if we were idling.
-        if (!paused && runningRef.current) {
+        if (!paused && trail && runningRef.current) {
           const now = performance.now();
           if (now - lastMoveTimeRef.current >= IDLE_MS) {
             // No recent mouse movement — we were idling, restart it.
@@ -655,31 +373,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
       }
       if (idleTimer) clearTimeout(idleTimer);
     };
-  }, [paused, gridSize, flushPaintStable]);
-
-  // Arm gate: alpha 0 until a real pointer movement has been seen.
-  useEffect(() => {
-    dotMaterial.uniforms.uArmed.value = armed ? 1 : 0;
-    if (!armed) trail.reset();
-    invalidate();
-  }, [armed, dotMaterial, invalidate, trail]);
-
-  // ── resolution MUST be a THREE.Vector2 ────────────────────────────────
-  // It used to be handed to the material as a plain [w, h] array (the
-  // <primitive resolution={...}> prop below). drei's shaderMaterial defines a
-  // setter per uniform that stores the raw value, so the vec2 uniform held an
-  // ARRAY — and three's vec2 upload reads v.x / v.y, which arrays do not have.
-  // The shader therefore received NaN, computed NaN uv for every fragment and
-  // painted ONE flat colour across the fullscreen quad: the teal wash that
-  // covered the whole site (this layer sits at z-index 99999) on some GPUs and
-  // drivers but not others. Setting the Vector2 explicitly removes the NaN.
-  useEffect(() => {
-    (dotMaterial.uniforms.resolution.value as THREE.Vector2).set(
-      Math.max(1, size.width * viewport.dpr),
-      Math.max(1, size.height * viewport.dpr)
-    );
-    invalidate();
-  }, [size.width, size.height, viewport.dpr, dotMaterial, invalidate]);
+  }, [paused, trail]);
 
   const scale = Math.max(viewport.width, viewport.height) / 2;
 
@@ -689,7 +383,8 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
       <primitive
         object={dotMaterial}
         gridSize={gridSize}
-        mouseTrail={trail.texture}
+        resolution={[size.width * viewport.dpr, size.height * viewport.dpr]}
+        mouseTrail={trail ?? emptyTrailTexture}
       />
     </mesh>
   );
@@ -709,49 +404,17 @@ export default function PixelTrail({
   },
   color = '#ffffff',
   className = '',
-  onReady,
 }: PixelTrailProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
-  // Set by the scene on its first rendered frame; combined with `armed` below
-  // to signal "the trail is really on screen" to the parent.
-  const [hasRendered, setHasRendered] = useState(false);
   // Sync check — isLowEndDevice() is cached, zero-cost after first call
   const [lowEnd, setLowEnd] = useState(false);
-
-  // ── Arm gate ─────────────────────────────────────────────────────────
-  // The cursor canvas is a FULL-VIEWPORT layer at z-index 99999: whatever it
-  // paints is painted over the entire site (nav, hero, modals — everything).
-  // Until the pointer has actually moved there is nothing to draw, so the
-  // material stays transparent (uArmed) AND the wrapper stays invisible.
-  // Belt and braces on top of the zeroed trail buffer.
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (armed) return;
-    const arm = (e: PointerEvent) => {
-      // Touch has no cursor: a finger drag must not paint a trail.
-      if (e.pointerType === 'touch') return;
-      setArmed(true);
-    };
-    // Capture phase: must run BEFORE the bubble-phase mousemove handler that
-    // paints the first trail point, so the very first movement is drawn.
-    window.addEventListener('pointermove', arm, true);
-    return () => window.removeEventListener('pointermove', arm, true);
-  }, [armed]);
 
   // isLowEndDevice() uses browser-only APIs — defer to client to avoid
   // hydration mismatch (same pattern as ClickSpark).
   useEffect(() => {
     setLowEnd(isLowEndDevice());
   }, []);
-
-  // Readiness: the layer is drawing AND the visitor has actually moved the
-  // pointer. Only then may the parent hide the native cursor. `onReady` is
-  // called through the effect rather than a latest-value ref, so no ref is
-  // read or written during render.
-  useEffect(() => {
-    if (armed && hasRendered) onReady?.();
-  }, [armed, hasRendered, onReady]);
 
   // Pause when off-screen via IntersectionObserver
   useEffect(() => {
@@ -764,8 +427,6 @@ export default function PixelTrail({
     io.observe(el);
     return () => io.disconnect();
   }, []);
-
-  const handleFirstFrame = useCallback(() => setHasRendered(true), []);
 
   if (lowEnd) return null;
 
@@ -781,9 +442,6 @@ export default function PixelTrail({
         height: '100vh',
         pointerEvents: 'none',
         zIndex: 99999,
-        // The layer is not just transparent while unarmed, it is invisible.
-        opacity: armed ? 1 : 0,
-        transition: 'opacity 200ms ease',
       }}
     >
       <Canvas
@@ -814,8 +472,6 @@ export default function PixelTrail({
           easingFunction={easingFunction}
           pixelColor={color}
           paused={paused}
-          armed={armed}
-          onFirstFrame={handleFirstFrame}
         />
       </Canvas>
     </div>
