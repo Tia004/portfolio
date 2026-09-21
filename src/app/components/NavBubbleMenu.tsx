@@ -87,7 +87,7 @@ function BubbleItem({
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center px-8 sm:px-12 md:px-16 py-7 sm:py-9 md:py-11 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-h-[100px] sm:min-h-[120px] md:min-h-[140px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
+          className="group relative flex items-center justify-center px-6 sm:px-10 md:px-12 py-3.5 sm:py-4.5 md:py-5 lg:py-6 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-h-[68px] sm:min-h-[78px] md:min-h-[88px] lg:min-h-[96px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
             boxShadow:
               'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
@@ -96,7 +96,7 @@ function BubbleItem({
           {/* Subtle watermark index number in the background with generous breathing room */}
           <span
             aria-hidden="true"
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white/[0.04] group-hover:text-teal-400/[0.09] transition-colors duration-300 tracking-tight"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white/[0.04] group-hover:text-teal-400/[0.09] transition-colors duration-300 tracking-tight"
           >
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -104,7 +104,7 @@ function BubbleItem({
           {/* Centered extra large label text: white -> teal transition */}
           <span
             ref={(el) => onLabelRef(el, index)}
-            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-4xl sm:text-5xl md:text-6xl lg:text-7xl whitespace-nowrap leading-tight"
+            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-2xl sm:text-3xl md:text-4xl lg:text-5xl whitespace-nowrap leading-tight"
           >
             {t(`nav.${item.key}`, lang)}
           </span>

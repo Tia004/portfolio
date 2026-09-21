@@ -75,7 +75,7 @@ export default function LegalModal({ doc, onClose }: LegalModalProps) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10005] flex flex-col"
+      className="fixed inset-0 z-[10035] flex flex-col"
       role="dialog"
       aria-modal="true"
       aria-label={doc.title}

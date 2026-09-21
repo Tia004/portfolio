@@ -86,6 +86,7 @@ function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNav
     };
     update();
     const ro = new ResizeObserver(update);
+    ro.observe(nav);
     ro.observe(items);
     window.addEventListener('resize', update);
     return () => {
@@ -146,14 +147,14 @@ function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNav
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
         {/* Top bar with Centered Language Switcher Capsule */}
-        <div className="w-full flex items-center justify-center pt-4 sm:pt-6 pb-1 shrink-0 z-30">
+        <div className="w-full flex items-center justify-center pt-6 sm:pt-8 md:pt-10 pb-3 shrink-0 z-30">
           <MenuLanguageSwitcher />
         </div>
 
         {/* Nav items — spread out, large typography, 27km-inspired. No
             overflow-y-auto: the list scales down to fit instead (see
             navScale above), so the options never scroll. */}
-        <nav ref={navRef} className="menu-scrollbar-hidden flex-1 min-h-0 flex px-5 sm:px-12 overflow-hidden">
+        <nav ref={navRef} className="menu-scrollbar-hidden flex-1 min-h-0 flex px-5 sm:px-12 overflow-hidden pt-2 sm:pt-4">
           {/* Centering wrapper: align-items:center distributes the overflow of
               a taller-than-container layout box EQUALLY top and bottom (unlike
               margin:auto, which pushes it all to the bottom) — so the scale
