@@ -681,20 +681,6 @@ img {
   background-color: rgba(10, 10, 10, 0.92) !important;
 }
 
-/* ── Content Visibility Optimization ───────────────────────────────────────
-   content-visibility: auto tells the browser to skip layout and painting for
-   off-screen sections until the user scrolls near them. This drastically cuts
-   DOM style calculation and scroll jank while keeping graphics 100% identical. */
-#servizi,
-#progetti,
-#recensioni,
-#processo,
-#prezzi,
-#faq,
-#contatti {
-  content-visibility: auto;
-  contain-intrinsic-size: 1px 1000px;
-}
 
 /* BorderGlow cards have NO backdrop-filter anywhere now — the base rule in
    BorderGlow.css removed it (every card re-blurred the ANIMATED molten behind
