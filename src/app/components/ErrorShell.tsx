@@ -1,12 +1,14 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useState } from 'react';
+import dynamic from 'next/dynamic';
 import BorderGlow from './BorderGlow';
 import TiaIcon from './TiaIcon';
 import { StaticDitherTexture } from './DitherStatic';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
 import RetroGame404 from './RetroGame404';
+import Digit404Card from './Digit404Card';
 import {
   AlertCircleIcon,
   ArrowRight01Icon,
@@ -14,24 +16,9 @@ import {
   RefreshIcon,
 } from './icons';
 
+const MoltenMetal = dynamic(() => import('./MoltenMetal'), { ssr: false, loading: () => null });
+
 // ── 404 / error shell ─────────────────────────────────────────────────────
-// One branded surface for the two ways a visitor can end up somewhere that is
-// not the site: a URL that does not exist (app/not-found.tsx) and a runtime
-// failure (app/error.tsx). Both used to fall through to Next's default white
-// page — on a site whose whole argument is craft, the one screen a visitor sees
-// when something breaks is the worst possible place to look like a template.
-//
-// Deliberate constraints:
-//   • NO WebGL and no heavy component here. The background is the CSS/SVG
-//     StaticDitherTexture that already backs the hero as its instant base: an
-//     error page must never depend on the very thing that may have failed.
-//     (It is plain DOM + inline SVG, so it survives a broken GPU or a failed
-//      three.js chunk.)
-//   • No data fetching and no state the server cannot know: the language comes
-//     from the provider that the root layout already seeds from the `x-lang`
-//     header, so the first paint is final — no flash, no hydration mismatch.
-//   • Every link is language-prefixed and points at a REAL section of the home
-//     page: a 404 exists to stop being a dead end, not to apologise for one.
 
 interface ErrorShellProps {
   variant: '404' | 'error';
@@ -41,9 +28,6 @@ interface ErrorShellProps {
   onRetry?: () => void;
 }
 
-/** Section shortcuts. The labels reuse the nav.* keys on purpose: the chips
- *  here and the navbar can never drift apart, and translating one translates
- *  the other. The hrefs match the real section ids on the home page. */
 const noopSubscribe = () => () => {};
 const getServerPath = () => '';
 const getClientPath = () =>
@@ -61,13 +45,8 @@ const SECTIONS: { href: string; key: string }[] = [
 export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps) {
   const { lang } = useLanguage();
   const is404 = variant === '404';
+  const [gameOpen, setGameOpen] = useState(false);
 
-  // The path is client-only state and the shell is server-rendered too, so it
-  // is read through useSyncExternalStore — the sanctioned way to expose a
-  // browser value with a distinct server snapshot (the server renders '', the
-  // client renders the real path) without a post-mount setState and without a
-  // hydration mismatch on the one page that must never flicker. Same pattern
-  // the media-query reads elsewhere in this codebase use.
   const path = useSyncExternalStore(noopSubscribe, getClientPath, getServerPath);
 
   const base = lang === 'it' ? '' : `/${lang}`;
@@ -75,24 +54,133 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
   const title = is404 ? t('404.title', lang) : t('error.title', lang);
   const text = is404 ? t('404.text', lang) : t('error.text', lang);
 
+  // ── 404 Screen: Pure Black, MoltenMetal background, zero vertical scroll ──
+  if (is404) {
+    return (
+      <main
+        className="relative isolate flex h-[100dvh] max-h-[100dvh] w-full flex-col justify-between items-center overflow-hidden px-4 py-4 sm:px-8 select-none"
+        style={{ backgroundColor: '#000000' }}
+      >
+        {/* Molten Metal liquid background */}
+        <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+          <MoltenMetal opacity={0.65} speed={0.35} />
+        </div>
+
+        {/* Top spacer / branding indicator */}
+        <div className="w-full flex items-center justify-between max-w-4xl pt-1">
+          <a
+            href={`${base}/`}
+            className="text-xs sm:text-sm font-mono tracking-wider text-white/50 hover:text-white transition-colors"
+          >
+            ← Tia Designs
+          </a>
+          <p className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-[0.28em] text-teal-400/90">
+            {label}
+          </p>
+        </div>
+
+        {/* Center: The 3 Clip-Path Digit Cards with BorderGlow & 3D Tilt */}
+        <div className="relative z-10 flex flex-col items-center justify-center text-center max-w-2xl w-full my-auto px-2">
+          {/* Individual Digit Cards: '4', '0', '4' */}
+          <div className="relative flex justify-center items-center gap-2.5 sm:gap-6 md:gap-8 my-2 sm:my-4">
+            <Digit404Card digit="4" index={0} />
+            <Digit404Card digit="0" index={1} />
+            <Digit404Card digit="4" index={2} />
+          </div>
+
+          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white mt-1 sm:mt-2">
+            {title}
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-neutral-400">
+            {text}
+          </p>
+
+          {/* Action buttons */}
+          <div className="mt-4 sm:mt-5 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5">
+            <a
+              href={`${base}/`}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xl shadow-teal-600/25 transition-all hover:bg-teal-500"
+            >
+              <TiaIcon icon={Home01Icon} size={15} strokeWidth={2} />
+              {t('404.home', lang)}
+            </a>
+            <button
+              type="button"
+              onClick={() => setGameOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white transition-all hover:border-teal-400/40 hover:bg-teal-950/40 hover:text-teal-200 shadow-lg"
+            >
+              <span className="text-sm">🎮</span>
+              {lang === 'it' ? 'Mini-Gioco Retro' : lang === 'es' ? 'Mini-Juego Retro' : 'Retro Mini-Game'}
+            </button>
+          </div>
+
+          {/* Section shortcuts */}
+          <div className="mt-4 sm:mt-5 pt-3 border-t border-white/[0.08] w-full max-w-lg">
+            <nav aria-label={t('404.sections', lang)} className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+              {SECTIONS.map(({ href, key }) => (
+                <a
+                  key={href}
+                  href={`${base}/${href}`}
+                  className="group inline-flex items-center gap-1 rounded-full border border-white/[0.12] bg-white/[0.03] px-3 py-1 text-[11px] sm:text-xs font-semibold text-neutral-300 transition-all hover:border-teal-400/45 hover:bg-teal-400/[0.09] hover:text-teal-200"
+                >
+                  {t(key, lang)}
+                  <TiaIcon
+                    icon={ArrowRight01Icon}
+                    size={10}
+                    strokeWidth={2}
+                    className="opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
+                  />
+                </a>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Bottom diagnostic line */}
+        <div className="w-full flex items-center justify-center pb-1">
+          {path && (
+            <div className="font-mono text-[10px] text-neutral-500 flex items-center gap-1.5">
+              <span className="uppercase tracking-wider text-neutral-600">{t('404.path', lang)}</span>
+              <span className="break-all text-neutral-400">{path}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Retro Game Modal Overlay */}
+        {gameOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setGameOpen(false);
+            }}
+          >
+            <div className="relative max-w-md w-full p-5 rounded-2xl bg-[#081410] border border-white/12 shadow-2xl">
+              <button
+                onClick={() => setGameOpen(false)}
+                className="absolute top-3.5 right-3.5 text-white/60 hover:text-white p-1 rounded-lg text-lg leading-none"
+                aria-label="Close game"
+              >
+                ✕
+              </button>
+              <div className="pt-2">
+                <RetroGame404 />
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  // ── Generic Error Screen ──
   return (
     <main
       className="relative isolate flex min-h-[100svh] w-full items-center justify-center overflow-hidden px-5 py-20 sm:px-8"
-      // The dither needs a dark base under it on every route: the body colour
-      // is set by the layout, but this layer must never sit on white while the
-      // CSS is still applying.
       style={{ backgroundColor: '#010101' }}
     >
-      {/* ── Dither base ──
-          The same masked curtain the hero uses, so the bottom fades into the
-          dark instead of ending on a hard edge. Decorative: aria-hidden is on
-          the SVG layer itself (see StaticDitherTexture). */}
       <div aria-hidden className="hero-bottom-curtain absolute inset-0 -z-10">
         <StaticDitherTexture />
       </div>
-      {/* A single soft teal bloom, centred on the card. The dither alone is
-          very dark; this keeps the card from floating on a black hole without
-          brightening the whole surface (one radial gradient, no blur pass). */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[34rem] w-[34rem] max-w-[130vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -110,51 +198,22 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
         <div
           className="px-6 py-10 text-center sm:px-12 sm:py-14"
           data-error-shell={variant}
-          // Announcing the failure is the point of the error variant; the 404
-          // is a page, not an alert, and gets a plain heading instead.
-          role={is404 ? undefined : 'alert'}
+          role="alert"
         >
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.32em] text-teal-400/90 sm:text-[13px]">
             {label}
           </p>
 
-          {/* The big numerals: liquid glass gradient-filled text with ambient glow */}
-          {is404 && (
-            <div className="relative mt-4 flex justify-center items-center">
-              {/* Ambient blur glow behind the 404 */}
-              <div
-                aria-hidden
-                className="absolute inset-0 blur-2xl opacity-40 bg-gradient-to-r from-teal-500 via-teal-300 to-emerald-400 pointer-events-none -z-10"
-              />
-              <p
-                aria-hidden
-                className="select-none font-mono text-[72px] font-black leading-none tracking-tighter sm:text-[112px] drop-shadow-[0_0_24px_rgba(45,212,191,0.35)]"
-                style={{
-                  backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(45,212,191,0.45) 85%, rgba(13,40,31,0.2) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                  WebkitTextStroke: '1px rgba(255,255,255,0.15)',
-                }}
-              >
-                404
-              </p>
-            </div>
-          )}
-
-          <h1 className={`text-2xl font-bold tracking-tight text-white sm:text-4xl ${is404 ? 'mt-5' : 'mt-4'}`}>
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl mt-4">
             {title}
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-neutral-400 sm:text-base">
             {text}
           </p>
 
-          {/* Retro Pixel Mini-Game on 404 */}
-          {is404 && <RetroGame404 />}
-
           {/* ── Actions ── */}
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            {!is404 && onRetry && (
+            {onRetry && (
               <button
                 type="button"
                 onClick={onRetry}
@@ -166,14 +225,10 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
             )}
             <a
               href={`${base}/`}
-              className={
-                is404
-                  ? 'inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-teal-600/25 transition-all hover:bg-teal-500'
-                  : 'inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-6 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/15'
-              }
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-6 py-3 text-sm font-semibold text-white transition-all hover:border-white/30 hover:bg-white/15"
             >
               <TiaIcon icon={Home01Icon} size={16} strokeWidth={2} />
-              {is404 ? t('404.home', lang) : t('error.home', lang)}
+              {t('error.home', lang)}
             </a>
           </div>
 
@@ -201,25 +256,13 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
             </nav>
           </div>
 
-          {/* ── Diagnostic line ──
-              Not decoration: the requested path (404) and the error digest
-              (500) are the two things worth quoting when someone reports a
-              broken link or a crash. Mono, tiny, machine-copyable. */}
-          {(path || digest) && (
+          {digest && (
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 font-mono text-[10px] text-neutral-500">
-              {is404 && path && (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="uppercase tracking-wider text-neutral-600">{t('404.path', lang)}</span>
-                  <span className="break-all text-neutral-400">{path}</span>
-                </span>
-              )}
-              {!is404 && digest && (
-                <span className="inline-flex items-center gap-1.5">
-                  <TiaIcon icon={AlertCircleIcon} size={11} strokeWidth={2} className="text-teal-400/70" />
-                  <span className="uppercase tracking-wider text-neutral-600">{t('error.digest', lang)}</span>
-                  <span className="break-all text-neutral-400">{digest}</span>
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1.5">
+                <TiaIcon icon={AlertCircleIcon} size={11} strokeWidth={2} className="text-teal-400/70" />
+                <span className="uppercase tracking-wider text-neutral-600">{t('error.digest', lang)}</span>
+                <span className="break-all text-neutral-400">{digest}</span>
+              </span>
             </div>
           )}
         </div>
@@ -227,3 +270,4 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
     </main>
   );
 }
+
