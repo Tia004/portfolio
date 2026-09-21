@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from './LanguageProvider';
 import { type Lang } from '@/lib/translations';
 import BorderGlow from './BorderGlow';
+import TiaIcon from './TiaIcon';
+import { Globe02Icon } from './icons';
 
 const LANGUAGES: { code: Lang; short: string; label: string }[] = [
   { code: 'it', short: 'IT', label: 'Italiano' },
@@ -70,45 +72,53 @@ export default function MenuLanguageSwitcher() {
   const currentLangObj = LANGUAGES.find((l) => l.code === lang) ?? LANGUAGES[0];
 
   return (
-    <div ref={containerRef} className="relative z-30 select-none">
+    <div
+      ref={containerRef}
+      className="relative z-40 select-none pointer-events-auto"
+      style={{
+        width: 172,
+        height: isOpen ? 182 : 46,
+        transition: 'height 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+    >
       <BorderGlow
         borderRadius={24}
-        glowRadius={30}
+        glowRadius={26}
         glowIntensity={1.8}
         edgeSensitivity={0}
         glass={true}
-        backgroundColor="rgba(8, 20, 16, 0.65)"
-        className="rounded-[24px] shadow-xl shadow-black/50 overflow-hidden"
+        backgroundColor="rgba(8, 20, 16, 0.70)"
+        className="!overflow-hidden rounded-[24px] shadow-xl shadow-black/50 pointer-events-auto cursor-pointer"
         style={{
-          width: 156,
-          height: isOpen ? 158 : 42,
+          width: 172,
+          height: isOpen ? 182 : 46,
           transition: 'height 0.38s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        <div className="flex flex-col w-full h-full justify-start">
-          {/* Header trigger pill */}
+        <div className="flex flex-col w-full h-full justify-start overflow-hidden pointer-events-auto">
+          {/* Header trigger pill — large, reliable hit target */}
           <button
             type="button"
-            onClick={() => setIsOpen((prev) => !prev)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen((prev) => !prev);
+            }}
             aria-expanded={isOpen}
             aria-haspopup="listbox"
-            className="flex items-center justify-between w-full h-[42px] px-3.5 py-2 cursor-pointer bg-transparent text-white/90 hover:text-white transition-colors shrink-0 focus:outline-none"
+            className="flex items-center justify-between w-full h-[46px] px-4 cursor-pointer bg-transparent text-white/90 hover:text-white transition-colors shrink-0 focus:outline-none pointer-events-auto"
           >
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.8)]" />
-              <span className="text-xs font-bold font-mono tracking-wider text-teal-300">
-                {currentLangObj.short}
-              </span>
-              <span className="text-xs font-medium text-white/70 tracking-tight">
+            <div className="flex items-center gap-2.5 min-w-0 pointer-events-none">
+              <TiaIcon icon={Globe02Icon} size={16} className="text-teal-400 shrink-0" strokeWidth={2} />
+              <span className="text-xs font-semibold tracking-wide text-white truncate">
                 {currentLangObj.label}
               </span>
             </div>
 
-            {/* Subtle rotating chevron */}
+            {/* Rotating chevron */}
             <svg
               aria-hidden="true"
-              className={`w-3.5 h-3.5 text-teal-400/80 transition-transform duration-300 ${
-                isOpen ? 'rotate-180' : 'rotate-0'
+              className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-300 shrink-0 pointer-events-none ${
+                isOpen ? 'rotate-180 text-teal-300' : 'rotate-0'
               }`}
               fill="none"
               stroke="currentColor"
@@ -118,10 +128,10 @@ export default function MenuLanguageSwitcher() {
             </svg>
           </button>
 
-          {/* Elongated list inside the same div */}
+          {/* Elongated list: fills the remaining space evenly with no awkward chin */}
           <div
-            className={`flex flex-col px-1.5 pb-2 pt-0.5 border-t border-white/[0.08] transition-opacity duration-300 ${
-              isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            className={`flex flex-col p-1.5 gap-1 border-t border-white/[0.08] transition-opacity duration-300 ${
+              isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none h-0 overflow-hidden'
             }`}
           >
             {LANGUAGES.map(({ code, short, label }) => {
@@ -130,19 +140,33 @@ export default function MenuLanguageSwitcher() {
                 <button
                   key={code}
                   type="button"
-                  onClick={() => handleSelectLang(code)}
-                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectLang(code);
+                  }}
+                  className={`group flex items-center justify-between h-[38px] px-3 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer pointer-events-auto ${
                     isSelected
-                      ? 'bg-teal-500/20 text-teal-300'
-                      : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                      ? 'bg-teal-500/15 text-teal-300 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.25)]'
+                      : 'text-neutral-300 hover:text-white hover:bg-white/[0.07]'
                   }`}
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-[11px] opacity-75">{short}</span>
-                    <span>{label}</span>
-                  </span>
+                  <div className="flex items-center gap-2.5 pointer-events-none">
+                    <span
+                      className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded leading-none transition-colors ${
+                        isSelected
+                          ? 'bg-teal-400/20 text-teal-300'
+                          : 'bg-white/[0.06] text-neutral-400 group-hover:text-neutral-200 group-hover:bg-white/[0.1]'
+                      }`}
+                    >
+                      {short}
+                    </span>
+                    <span className={`text-xs ${isSelected ? 'font-semibold text-teal-200' : 'font-medium'}`}>
+                      {label}
+                    </span>
+                  </div>
+
                   {isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_5px_rgba(45,212,191,0.9)]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.9)] shrink-0 pointer-events-none" />
                   )}
                 </button>
               );

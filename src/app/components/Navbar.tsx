@@ -367,11 +367,11 @@ export default function Navbar({ onHome = true }: { onHome?: boolean } = {}) {
           the X must never sit on top of a modal. A width-matching spacer on
           the left keeps the button right-aligned like the logo used to. */}
       <header
-        className={`fixed top-0 left-0 right-0 ${(menuVisible || closing) ? 'z-[10002]' : 'z-[9999]'}`}
+        className={`fixed top-0 left-0 right-0 ${(menuVisible || closing) ? 'z-[10002]' : 'z-[9999]'} pointer-events-none`}
         style={{ top: 'var(--lang-banner-h, 0px)', transition: 'top 500ms cubic-bezier(0.4, 0, 0.2, 1)' }}
       >
         <div
-          className={`flex items-center justify-between mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 ${
+          className={`flex items-center justify-between mx-auto transition-all duration-600 px-4 sm:px-10 lg:px-16 pointer-events-none ${
             isScrolled
               ? 'max-w-5xl gap-2 sm:gap-4 py-1.5 sm:py-2'
               : 'max-w-none gap-3 sm:gap-6 py-3 sm:py-3.5'
@@ -385,7 +385,7 @@ export default function Navbar({ onHome = true }: { onHome?: boolean } = {}) {
           {/* Invisible spacer — mirrors the logo width so the hamburger keeps
               its position (logo lives in the overlay above). */}
           <span className="w-[37px] sm:w-[45px] h-5 sm:h-6 shrink-0" aria-hidden="true" />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pointer-events-auto">
 
             {/* Hamburger — always visible, all screen sizes */}
             {/* The ::before pad already made clicking easy; the button box is
