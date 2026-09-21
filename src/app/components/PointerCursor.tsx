@@ -45,7 +45,7 @@ export default function PointerCursor() {
   return (
     <PixelTrail
       gridSize={160}
-      trailSize={0.05}
+      trailSize={0.02}
       maxAge={350}
       interpolate={1.8}
       color="#2dd4bf"

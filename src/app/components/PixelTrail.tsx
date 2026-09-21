@@ -392,7 +392,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
 
 export default function PixelTrail({
   gridSize = 40,
-  trailSize = 0.1,
+  trailSize = 0.02,
   maxAge = 250,
   interpolate = 5,
   easingFunction = (x: number) => x,
