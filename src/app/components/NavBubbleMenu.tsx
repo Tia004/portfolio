@@ -36,19 +36,12 @@ function BubbleItem({
   const { lang } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0, active: false });
-  const [isDesktop, setIsDesktop] = useState(false);
 
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
-
-  const baseRotation = isDesktop ? (item.rotation ?? 0) : 0;
+  // Di base sono sempre già ruotati (item.rotation)
+  const baseRotation = item.rotation ?? (index % 2 === 0 ? -4 : 4);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current || !isDesktop) return;
+    if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
@@ -59,9 +52,9 @@ function BubbleItem({
     setTilt({ x: 0, y: 0, active: false });
   };
 
-  // Spuntano già ruotati (baseRotation). Con l'hover si raddrizzano a 0deg (perfettamente orizzontali) con 3D tilt!
+  // Di base spuntano già ruotati (baseRotation). All'hover si raddrizzano perfettamente a 0deg!
   const currentTransform = tilt.active
-    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(0deg) scale3d(1.06, 1.06, 1.06)`
+    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(0deg) scale3d(1.05, 1.05, 1.05)`
     : `perspective(600px) rotate(${baseRotation}deg) scale3d(1, 1, 1)`;
 
   return (
@@ -73,7 +66,7 @@ function BubbleItem({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setTilt((prev) => ({ ...prev, active: true }))}
       onMouseLeave={handleMouseLeave}
-      className="bubble-item-wrapper transform-gpu will-change-transform"
+      className="bubble-item-wrapper transform-gpu will-change-transform w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.333%-1.5rem)] max-w-[340px]"
       style={{
         transform: currentTransform,
         transition: tilt.active
@@ -89,12 +82,12 @@ function BubbleItem({
         edgeSensitivity={0}
         glass={true}
         backgroundColor="rgba(8, 20, 16, 0.45)"
-        className="rounded-full shadow-xl shadow-black/50"
+        className="rounded-full shadow-xl shadow-black/50 w-full"
       >
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center px-7 sm:px-9 md:px-11 py-3.5 sm:py-4.5 md:py-5 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[150px] sm:min-w-[180px] md:min-w-[210px] min-h-[56px] sm:min-h-[66px] md:min-h-[74px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
+          className="group relative flex items-center justify-center px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-h-[72px] sm:min-h-[84px] md:min-h-[94px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
             boxShadow:
               'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
@@ -103,7 +96,7 @@ function BubbleItem({
           {/* Subtle watermark index number in the background with generous breathing room */}
           <span
             aria-hidden="true"
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-3xl sm:text-4xl md:text-5xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-4xl sm:text-5xl md:text-6xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
           >
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -195,7 +188,7 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
   }, [closing]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-5 max-w-6xl mx-auto w-full px-4 py-2">
+    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-7 max-w-5xl mx-auto w-full px-4 py-2">
       {items.map((item, idx) => (
         <BubbleItem
           key={item.href}
