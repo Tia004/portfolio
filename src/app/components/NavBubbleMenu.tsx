@@ -81,31 +81,34 @@ function BubbleItem({
       <BorderGlow
         borderRadius={9999}
         glowColor="168 84% 50%"
-        glowRadius={40}
-        glowIntensity={1.2}
+        glowRadius={45}
+        glowIntensity={1.3}
         coneSpread={8}
         glass={true}
         singleBeam={true}
-        className="rounded-full shadow-lg shadow-black/40 overflow-hidden"
+        backgroundColor="rgba(8, 20, 16, 0.45)"
+        className="rounded-full shadow-lg shadow-black/40"
       >
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center gap-2.5 sm:gap-3.5 px-5 sm:px-8 py-2.5 sm:py-3.5 md:py-4 rounded-full cursor-pointer select-none transition-all duration-300 w-full"
+          className="group relative flex items-center justify-center px-8 sm:px-12 md:px-16 py-5 sm:py-7 md:py-8 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[200px] sm:min-w-[260px] md:min-w-[300px] min-h-[75px] sm:min-h-[92px] md:min-h-[105px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
-            background: 'rgba(8, 20, 16, 0.72)',
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
           }}
         >
-          {/* Index pill badge */}
-          <span className="text-[10px] sm:text-xs font-mono font-bold tracking-wider text-teal-400/70 group-hover:text-teal-300 group-hover:scale-110 group-hover:border-teal-400/40 px-2 py-0.5 rounded-full bg-teal-950/40 border border-teal-500/20 transition-all duration-300 shrink-0">
+          {/* Watermark index number in the background with low opacity */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white/[0.07] group-hover:text-teal-400/[0.14] transition-colors duration-300 tracking-tighter"
+          >
             {String(index + 1).padStart(2, '0')}
           </span>
 
-          {/* Label text: white -> teal transition */}
+          {/* Centered label text: white -> teal transition */}
           <span
             ref={(el) => onLabelRef(el, index)}
-            className="text-lg sm:text-2xl md:text-3xl font-bold tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 whitespace-nowrap"
+            className="relative z-10 text-center font-extrabold tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-2xl sm:text-3xl md:text-4xl lg:text-5xl whitespace-nowrap"
           >
             {t(`nav.${item.key}`, lang)}
           </span>
@@ -184,7 +187,7 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
   }, [closing, items]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-5 max-w-4xl mx-auto w-full px-4 py-2">
+    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-7 max-w-5xl mx-auto w-full px-4 py-2">
       {items.map((item, idx) => (
         <BubbleItem
           key={item.href}
