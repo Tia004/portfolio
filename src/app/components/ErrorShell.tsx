@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore, useState } from 'react';
+import { useSyncExternalStore, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import BorderGlow from './BorderGlow';
 import TiaIcon from './TiaIcon';
@@ -54,16 +54,46 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
   const title = is404 ? t('404.title', lang) : t('error.title', lang);
   const text = is404 ? t('404.text', lang) : t('error.text', lang);
 
-  // ── 404 Screen: Pure Black, MoltenMetal background, zero vertical scroll ──
+  // Lock html/body overflow when on 404 so no vertical scrollbar can ever appear
+  useEffect(() => {
+    if (!is404) return;
+    const origHtmlOverflow = document.documentElement.style.overflow;
+    const origBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = origHtmlOverflow;
+      document.body.style.overflow = origBodyOverflow;
+    };
+  }, [is404]);
+
+  // ── 404 Screen: Pure Black, Dark Teal MoltenMetal background, zero vertical scroll ──
   if (is404) {
     return (
       <main
-        className="relative isolate flex h-[100dvh] max-h-[100dvh] w-full flex-col justify-between items-center overflow-hidden px-4 py-4 sm:px-8 select-none"
-        style={{ backgroundColor: '#000000' }}
+        className="fixed inset-0 z-40 flex h-screen max-h-screen w-screen flex-col justify-between items-center overflow-hidden px-4 py-3 sm:py-5 select-none bg-black"
       >
-        {/* Molten Metal liquid background */}
+        {/* Molten Metal liquid background — dark and teal matching portfolio theme */}
         <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-          <MoltenMetal opacity={0.65} speed={0.35} />
+          <MoltenMetal
+            color1="#05bc8e"
+            color2="#0effc1"
+            color3="#ffffff"
+            speed={0.25}
+            scale={5.5}
+            detail={2}
+            glow={1.4}
+            coreSize={0.1}
+            swirl={1.35}
+            fold={-0.15}
+            blackPoint={0.03}
+            brightness={0.3}
+            colorMode="molten"
+            grain={false}
+            mouseInteraction={false}
+            mouseStrength={0.15}
+            opacity={0.85}
+          />
         </div>
 
         {/* Top spacer / branding indicator */}
@@ -82,21 +112,21 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
         {/* Center: The 3 Clip-Path Digit Cards with BorderGlow & 3D Tilt */}
         <div className="relative z-10 flex flex-col items-center justify-center text-center max-w-2xl w-full my-auto px-2">
           {/* Individual Digit Cards: '4', '0', '4' */}
-          <div className="relative flex justify-center items-center gap-2.5 sm:gap-6 md:gap-8 my-2 sm:my-4">
+          <div className="relative flex justify-center items-center gap-2.5 sm:gap-6 md:gap-8 my-2 sm:my-3">
             <Digit404Card digit="4" index={0} />
             <Digit404Card digit="0" index={1} />
             <Digit404Card digit="4" index={2} />
           </div>
 
-          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold tracking-tight text-white mt-1 sm:mt-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white mt-1 sm:mt-2">
             {title}
           </h1>
-          <p className="mx-auto mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-neutral-400">
+          <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm leading-relaxed text-neutral-400">
             {text}
           </p>
 
           {/* Action buttons */}
-          <div className="mt-4 sm:mt-5 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5">
+          <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5">
             <a
               href={`${base}/`}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-teal-600 px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xl shadow-teal-600/25 transition-all hover:bg-teal-500"
@@ -109,13 +139,12 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
               onClick={() => setGameOpen(true)}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-5 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white transition-all hover:border-teal-400/40 hover:bg-teal-950/40 hover:text-teal-200 shadow-lg"
             >
-              <span className="text-sm">🎮</span>
               {lang === 'it' ? 'Mini-Gioco Retro' : lang === 'es' ? 'Mini-Juego Retro' : 'Retro Mini-Game'}
             </button>
           </div>
 
           {/* Section shortcuts */}
-          <div className="mt-4 sm:mt-5 pt-3 border-t border-white/[0.08] w-full max-w-lg">
+          <div className="mt-3 sm:mt-4 pt-2.5 border-t border-white/[0.08] w-full max-w-lg">
             <nav aria-label={t('404.sections', lang)} className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
               {SECTIONS.map(({ href, key }) => (
                 <a
