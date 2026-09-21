@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "/*": ["./public/**"],
   },
+  // Enable AVIF prioritized compression for images
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
   // Domain-verification files live in public/.well-known/ (see
   // public/.well-known/discord): a static file has no routing edge cases and
   // is served by the CDN. They have no extension, so the server would guess
@@ -31,6 +35,16 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Content-Type", value: "text/plain; charset=utf-8" },
           { key: "Cache-Control", value: "public, max-age=300" },
+        ],
+      },
+      {
+        // Aggressive caching for immutable static assets (webp, avif, svg, woff2)
+        source: "/:path*.(webp|avif|svg|woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
         ],
       },
     ];

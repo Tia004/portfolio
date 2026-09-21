@@ -100,7 +100,9 @@ const DotGrid: React.FC<DotGridProps> = memo(({
     if (!wrap || !canvas) return;
 
     const { width, height } = wrap.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    // Adapt dpr dynamically on high-density / 4K displays (dpr > 2) down to 1.5 to halve battery and GPU consumption
+    const dpr = rawDpr > 2 ? 1.5 : Math.min(rawDpr, 2);
 
     canvas.width = width * dpr;
     canvas.height = height * dpr;

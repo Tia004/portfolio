@@ -3,10 +3,17 @@
 const STORAGE_KEY = 'tia-cookie-consent';
 const COOKIE_KEY = 'cookie-consent';
 
-export type ConsentLevel = 'all' | 'technical' | 'none';
+export type ConsentLevel = 'all' | 'technical' | 'custom' | 'none';
+
+export interface GranularConsent {
+  necessary: boolean;
+  analytics: boolean;
+  functional: boolean;
+}
 
 export interface ConsentState {
   level: ConsentLevel;
+  granular?: GranularConsent;
   timestamp: number;
 }
 
@@ -49,8 +56,13 @@ export function getConsent(): ConsentState | null {
 }
 
 /** Save consent — persists to both localStorage and cookie. */
-export function setConsent(level: ConsentLevel): void {
-  const state: ConsentState = { level, timestamp: Date.now() };
+export function setConsent(level: ConsentLevel, granular?: GranularConsent): void {
+  const g: GranularConsent = granular ?? {
+    necessary: true,
+    analytics: level === 'all',
+    functional: level === 'all' || level === 'custom',
+  };
+  const state: ConsentState = { level, granular: g, timestamp: Date.now() };
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   setConsentCookie(state);
 }
@@ -58,7 +70,17 @@ export function setConsent(level: ConsentLevel): void {
 /** Check if analytics/tracking cookies are allowed. */
 export function hasAnalyticsConsent(): boolean {
   const c = getConsent();
-  return c?.level === 'all';
+  if (!c) return false;
+  if (c.granular) return c.granular.analytics;
+  return c.level === 'all';
+}
+
+/** Check if functional cookies (currency, draft) are allowed. */
+export function hasFunctionalConsent(): boolean {
+  const c = getConsent();
+  if (!c) return true; // Default true before consent
+  if (c.granular) return c.granular.functional;
+  return c.level !== 'none';
 }
 
 /** Check if consent has ever been given (any level). */

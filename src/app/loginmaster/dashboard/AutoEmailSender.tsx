@@ -57,6 +57,9 @@ export default function AutoEmailSender() {
   // Manual list textarea
   const [manualText, setManualText] = useState('');
 
+  // Virtualization for recipients table
+  const [visibleCount, setVisibleCount] = useState(100);
+
   // CSV file state
   const [csvFileName, setCsvFileName] = useState<string | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -1723,7 +1726,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     </td>
                   </tr>
                 ) : (
-                  filteredRecipients.map((r, idx) => {
+                  filteredRecipients.slice(0, visibleCount).map((r, idx) => {
                     const resolvedSub = r.customSubject || substituteVariables(templateSubject, r);
                     return (
                       <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
@@ -1795,6 +1798,18 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 )}
               </tbody>
             </table>
+            {filteredRecipients.length > visibleCount && (
+              <div className="p-3 bg-[#081410] border-t border-white/[0.08] flex items-center justify-between text-xs text-neutral-400">
+                <span>Visualizzati <strong>{visibleCount}</strong> di <strong>{filteredRecipients.length}</strong> destinatari (Virtualizzazione attiva per prestazioni istantanee).</span>
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => Math.min(prev + 200, filteredRecipients.length))}
+                  className="px-3 py-1 bg-white/[0.06] hover:bg-teal-500/20 text-teal-300 rounded-lg font-mono text-[11px] transition-colors"
+                >
+                  Mostra altri 200 ↓
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

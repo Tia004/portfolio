@@ -23,7 +23,7 @@ interface FaqScrollerProps {
   rows: FaqRow[];
 }
 
-function FaqCard({
+const FaqCard = React.memo(function FaqCard({
   question,
   answer,
   isOpen,
@@ -90,7 +90,7 @@ function FaqCard({
       </BorderGlow>
     </div>
   );
-}
+});
 
 function FaqScrollerMarquee({
   items,

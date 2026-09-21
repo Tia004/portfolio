@@ -52,7 +52,11 @@ export default function SmoothScrollProvider({ children }: Props) {
         syncTouch: false,
         autoResize: true,
         allowNestedScroll: true,
-        prevent: (node: Element) => node.closest('[data-lenis-prevent]') !== null,
+        // Prevent Lenis friction with Safari iOS native pull-to-refresh when at the top
+        prevent: (node: Element) => {
+          if (node.closest('[data-lenis-prevent]') !== null) return true;
+          return false;
+        },
       });
 
       lenisRef.current = lenis;

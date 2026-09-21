@@ -6,6 +6,7 @@ import TiaIcon from './TiaIcon';
 import { StaticDitherTexture } from './DitherStatic';
 import { useLanguage } from './LanguageProvider';
 import { t } from '@/lib/translations';
+import RetroGame404 from './RetroGame404';
 import {
   AlertCircleIcon,
   ArrowRight01Icon,
@@ -117,21 +118,28 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
             {label}
           </p>
 
-          {/* The big numerals: gradient-filled text, aria-hidden because the
-              label above already says "Errore 404" in words. */}
+          {/* The big numerals: liquid glass gradient-filled text with ambient glow */}
           {is404 && (
-            <p
-              aria-hidden
-              className="mt-4 select-none font-mono text-[68px] font-black leading-none tracking-tighter sm:text-[104px]"
-              style={{
-                backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(45,212,191,0.30))',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                color: 'transparent',
-              }}
-            >
-              404
-            </p>
+            <div className="relative mt-4 flex justify-center items-center">
+              {/* Ambient blur glow behind the 404 */}
+              <div
+                aria-hidden
+                className="absolute inset-0 blur-2xl opacity-40 bg-gradient-to-r from-teal-500 via-teal-300 to-emerald-400 pointer-events-none -z-10"
+              />
+              <p
+                aria-hidden
+                className="select-none font-mono text-[72px] font-black leading-none tracking-tighter sm:text-[112px] drop-shadow-[0_0_24px_rgba(45,212,191,0.35)]"
+                style={{
+                  backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(45,212,191,0.45) 85%, rgba(13,40,31,0.2) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                  WebkitTextStroke: '1px rgba(255,255,255,0.15)',
+                }}
+              >
+                404
+              </p>
+            </div>
           )}
 
           <h1 className={`text-2xl font-bold tracking-tight text-white sm:text-4xl ${is404 ? 'mt-5' : 'mt-4'}`}>
@@ -140,6 +148,9 @@ export default function ErrorShell({ variant, digest, onRetry }: ErrorShellProps
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-neutral-400 sm:text-base">
             {text}
           </p>
+
+          {/* Retro Pixel Mini-Game on 404 */}
+          {is404 && <RetroGame404 />}
 
           {/* ── Actions ── */}
           <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">

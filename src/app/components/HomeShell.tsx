@@ -15,6 +15,9 @@ import { captureReferral, getReferral } from '@/lib/referral';
 import { type ChatCategory } from '@/lib/chat-categories';
 import { moltenModulePromise } from './molten-preload';
 import { isInappropriateChatMessage, isInappropriateContactValue } from '@/lib/chat-moderation';
+import { useCurrency, CURRENCIES, type CurrencyCode } from '@/lib/currency';
+import { suggestEmailCorrection } from '@/lib/input-validation';
+import { showToast } from './Toast';
 
 /** @category Componente Icone */
 import TiaIcon from './TiaIcon';
@@ -683,7 +686,7 @@ function euroValue(label?: string): number {
   return digits ? Number(digits) : 0;
 }
 
-function PriceCard({
+const PriceCard = React.memo(function PriceCard({
   title,
   price,
   priceLabel,
@@ -718,6 +721,7 @@ function PriceCard({
   onRequestQuote?: (serviceTitle: string) => void;
 }) {
   const { lang } = useLanguage();
+  const { formatPrice } = useCurrency();
   const { lenis } = useLenis();
   const { getHandlers } = useTooltip(onTooltipShow, onTooltipHide, { showDelay: 300, hideDelay: 100 });
   const dlvHandlers = getHandlers(t('tooltip.enterprise_deadline', lang));
@@ -780,7 +784,7 @@ function PriceCard({
               >?</span>
             )}
           </h4>
-          <p className="text-neutral-500 text-[11px] sm:text-xs mb-3">{description}</p>
+          <p className="text-neutral-400 text-[11px] sm:text-xs mb-3">{description}</p>
           <div className="flex items-center gap-2 mb-3">
             <TiaIcon icon={Clock01Icon} size={14} className="text-teal-400 shrink-0" strokeWidth={2} />
             <span className="text-teal-400/80 text-xs font-medium">{delivery}</span>
@@ -803,14 +807,14 @@ function PriceCard({
             {price ? (
               <span className={`text-2xl sm:text-4xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
                 <span className="text-neutral-300 text-[11px] font-normal uppercase tracking-[0.15em] mr-1" style={{ verticalAlign: 'super' }}>{t('prezzi.from', lang)}</span>
-                €{price}
+                {formatPrice(price)}
               </span>
             ) : (
               <span className={`text-2xl sm:text-3xl font-bold ${premium ? 'text-teal-300' : 'text-white'}`}>
-                {priceLabel}
+                {priceLabel ? formatPrice(priceLabel) : priceLabel}
               </span>
             )}
-            {period && <span className="text-neutral-500 text-sm ml-1">{period}</span>}
+            {period && <span className="text-neutral-400 text-sm ml-1">{period}</span>}
             {installment && (
               // The badge says WHO qualifies; the tooltip (and the single note
               // under the grid) says HOW it works. Neither repeats the €1.000
@@ -860,7 +864,7 @@ function PriceCard({
       </TiltCard>
     </div>
   );
-}
+});
 
 
 
@@ -1123,6 +1127,7 @@ function renderDirectChatText(text: string, isClientBubble: boolean, lang: Lang)
 
 export default function HomeShell() {
   const { lenis } = useLenis();
+  const { currency, setCurrency } = useCurrency();
   const [formName, setFormName] = useState('');
   const { lang } = useLanguage();
   const FAQS = useMemo(() => getFaqs(lang), [lang]);
@@ -1141,6 +1146,68 @@ export default function HomeShell() {
   const [showResetToast, setShowResetToast] = useState(false);
   const [resetToastHiding, setResetToastHiding] = useState(false);
   const resetToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore contact form draft from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('tiadesigns_contact_draft');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.name) setFormName(data.name);
+        if (data.email) setFormEmail(data.email);
+        if (data.message) setFormMessage(data.message);
+        if (data.service) setFormService(data.service);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Autosave contact form draft to localStorage
+  useEffect(() => {
+    try {
+      if (formName || formEmail || formMessage || formService) {
+        localStorage.setItem(
+          'tiadesigns_contact_draft',
+          JSON.stringify({ name: formName, email: formEmail, message: formMessage, service: formService })
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }, [formName, formEmail, formMessage, formService]);
+
+  // Offline detection with subtle toast notification
+  useEffect(() => {
+    const handleOffline = () => {
+      showToast(
+        lang === 'en'
+          ? 'You are offline, but you can still explore projects'
+          : lang === 'es'
+            ? 'Estás desconectado, pero aún puedes explorar los proyectos'
+            : 'Sei offline ma puoi comunque leggere i progetti',
+        'info'
+      );
+    };
+    const handleOnline = () => {
+      showToast(
+        lang === 'en'
+          ? 'Connection restored'
+          : lang === 'es'
+            ? 'Conexión restaurada'
+            : 'Connessione ripristinata',
+        'success'
+      );
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [lang]);
+
+  const emailCorrection = useMemo(() => suggestEmailCorrection(formEmail), [formEmail]);
 
   // Listen for 'open-legal' CustomEvent from CookieBanner
   useEffect(() => {
@@ -1677,7 +1744,28 @@ export default function HomeShell() {
       hideCta();
     }, 5000);
   }, [hideCta]);
+
   const [chatMessage, setChatMessage] = useState('');
+
+  // Restore chat draft
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('tiadesigns_chat_draft');
+      if (saved) setChatMessage(saved);
+    } catch {}
+  }, []);
+
+  // Autosave chat draft
+  useEffect(() => {
+    try {
+      if (chatMessage) {
+        localStorage.setItem('tiadesigns_chat_draft', chatMessage);
+      } else {
+        localStorage.removeItem('tiadesigns_chat_draft');
+      }
+    } catch {}
+  }, [chatMessage]);
+
   // Fail closed: until the server confirms availability, don't show a
   // misleading green indicator.
   const [isOnline, setIsOnline] = useState(false);
@@ -2908,12 +2996,39 @@ export default function HomeShell() {
     }
 
     try {
-      const response = await secureChatFetch('/api/chat', {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      });
+      // Exponential retry: attempt up to 2 retries (after 1s and 3s) for micro-disconnections
+      const sendWithRetry = async (retries = 2): Promise<Response> => {
+        const delays = [1000, 3000];
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          try {
+            const res = await secureChatFetch('/api/chat', {
+              method: 'POST',
+              body: JSON.stringify({ text }),
+            });
+            if (res.ok) return res;
+            if (attempt < retries && res.status >= 500) {
+              await new Promise((r) => setTimeout(r, delays[attempt]));
+              continue;
+            }
+            return res;
+          } catch (err) {
+            if (attempt < retries) {
+              await new Promise((r) => setTimeout(r, delays[attempt]));
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw new Error('chat-send-failed');
+      };
+
+      const response = await sendWithRetry();
       if (!response.ok) throw new Error('chat-send-failed');
       const result = await response.json() as { available?: unknown };
+
+      try {
+        localStorage.removeItem('tiadesigns_chat_draft');
+      } catch {}
 
       // Show a localized offline notice when Telegram delivery is paused;
       // the message stays in the session and can still be handled later.
@@ -3253,6 +3368,17 @@ export default function HomeShell() {
       if (res.ok) {
         setFormStatus('sent');
         setFormValidationErrors(new Set());
+        showToast(
+          lang === 'en'
+            ? 'Message sent successfully! I will reply shortly.'
+            : lang === 'es'
+              ? '¡Mensaje enviado con éxito! Te responderé en breve.'
+              : 'Messaggio inviato con successo! Ti risponderò al più presto.',
+          'success'
+        );
+        try {
+          localStorage.removeItem('tiadesigns_contact_draft');
+        } catch {}
         trackConversion('preventivo_inviato', {
           source: 'contact_form',
           detail: { service: formService || null },
@@ -3267,9 +3393,25 @@ export default function HomeShell() {
         setFormName(''); setFormEmail(''); setFormMessage(''); setFormService('');
       } else {
         setFormStatus('error');
+        showToast(
+          lang === 'en'
+            ? 'Failed to send message. Please try again or use WhatsApp.'
+            : lang === 'es'
+              ? 'Error al enviar el mensaje. Inténtalo de nuevo o usa WhatsApp.'
+              : 'Errore durante l\'invio. Riprova o contattami su WhatsApp.',
+          'error'
+        );
       }
     } catch {
       setFormStatus('error');
+      showToast(
+        lang === 'en'
+          ? 'Failed to send message. Please try again or use WhatsApp.'
+          : lang === 'es'
+            ? 'Error al enviar el mensaje. Inténtalo de nuovo o usa WhatsApp.'
+            : 'Errore durante l\'invio. Riprova o contattami su WhatsApp.',
+        'error'
+      );
     }
   };
 
@@ -4199,8 +4341,8 @@ export default function HomeShell() {
                 </p>
               </ScrollReveal>
 
-              {/* ── Toggle ── */}
-              <div className="flex justify-center mb-6 sm:mb-10">
+              {/* ── Toggle & Currency Switcher ── */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                 <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10">
                   <button
                     onClick={() => setIsMonthly(false)}
@@ -4216,6 +4358,23 @@ export default function HomeShell() {
                   >
                     {t('prezzi.monthly', lang)}
                   </button>
+                </div>
+
+                {/* Currency Switcher */}
+                <div className="inline-flex bg-white/5 rounded-full p-1 border border-white/10 text-xs">
+                  {(Object.keys(CURRENCIES) as CurrencyCode[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCurrency(c)}
+                      className={`px-3 py-1.5 rounded-full font-medium transition-all ${
+                        currency === c ? 'bg-teal-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title={`${CURRENCIES[c].label}`}
+                    >
+                      {CURRENCIES[c].symbol} {c}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -4384,6 +4543,18 @@ export default function HomeShell() {
                             className={`w-full bg-transparent text-white text-sm focus:outline-none placeholder-neutral-600 border px-2 py-1 -mx-2 -my-1 transition-colors ${formValidationErrors.has('email') ? 'border-red-500/70 bg-red-500/[0.08]' : 'border-transparent'} ${highlightedFields.has('email') ? 'form-highlight' : ''}`}
                             placeholder={t('contatti.placeholder_email', lang)} />
                           {formValidationErrors.has('email') && <p className="mt-2 text-[11px] text-red-400">{t('bot.invalid_email', lang)}</p>}
+                          {emailCorrection && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormEmail(emailCorrection);
+                                setFormValidationErrors(prev => { const next = new Set(prev); next.delete('email'); return next; });
+                              }}
+                              className="mt-2 text-[11px] text-teal-300 hover:text-teal-200 flex items-center gap-1 transition-colors cursor-pointer text-left"
+                            >
+                              <span>💡 Forse intendevi <strong className="underline font-semibold">{emailCorrection}</strong>?</span>
+                            </button>
+                          )}
                         </div>
                       </BorderGlow>
                     </div>
@@ -4470,6 +4641,22 @@ export default function HomeShell() {
                         : 'bg-teal-600 hover:bg-teal-500 text-white'
                       }`}>
                     {formStatus === 'sending' ? <><TiaIcon icon={LoaderPinwheelIcon} size={18} className="animate-spin" strokeWidth={2} /> {t('contatti.sending', lang)}</> : formStatus === 'sent' ? <><TiaIcon icon={CheckmarkCircle01Icon} size={18} className="animate-pulse" strokeWidth={2} /> {t('contatti.sent', lang)}</> : formStatus === 'error' ? <><TiaIcon icon={AlertCircleIcon} size={18} className="animate-bounce" strokeWidth={2} /> {t('contatti.error', lang)}</> : <><TiaIcon icon={Mail01Icon} size={18} strokeWidth={2} /> {t('chat.send', lang)}</>}</button>
+
+                  {/* Quick 15-minute call shortcut */}
+                  <div className="flex items-center justify-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!callOpen) trackClick('cal_booking_open');
+                        setCallOpen(true);
+                        setCallOpenedOnce(true);
+                      }}
+                      className="text-xs text-teal-400/90 hover:text-teal-300 transition-colors flex items-center gap-1.5 cursor-pointer py-1 group"
+                    >
+                      <TiaIcon icon={Calendar01Icon} size={13} strokeWidth={2} className="group-hover:scale-110 transition-transform" />
+                      <span>Preferisci parlare a voce? <strong className="underline font-semibold">Fissa una call rapida di 15 min →</strong></span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* ── Info sidebar — email, telefono, whatsapp + dettagli ── */}

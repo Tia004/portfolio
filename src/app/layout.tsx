@@ -108,6 +108,9 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+import { CurrencyProvider } from "@/lib/currency";
+import Toast from "./components/Toast";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -124,16 +127,9 @@ export default async function RootLayout({
       className={cn("h-full antialiased bg-[#010101]", "font-sans", outfit.variable, shareTechMono.variable)}
     >
       <head>
-        {/* Canonical and hreflang deliberately do NOT live here.
-            Both were hardcoded to the home page's URLs on every route: fine
-            while the site was one page, actively harmful as soon as it is not,
-            because a page whose canonical points elsewhere is read as a
-            duplicate of it and never gets indexed. Each page declares its own
-            through `metadata.alternates` (lib/seo.ts), which also feeds the
-            sitemap, so the three can never disagree. */}
-        {/* Fonts are self-hosted via next/font/google (see the Outfit /
-            Share_Tech_Mono definitions above) — no external Google Fonts
-            <link> here, so nothing render-blocking in the head. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preload" as="image" href="/TiaDesignsLogo.png" fetchPriority="high" />
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         {/* Skip link: visible ONLY when focused (keyboard users), so its
@@ -148,25 +144,28 @@ export default async function RootLayout({
         </a>
         <div id="main-content" />
         <LanguageProvider initialLang={initialLang}>
-          <SplashScreen>
-            <ClickSpark
-              sparkColor="#2dd4bf"
-              sparkSize={14}
-              sparkRadius={40}
-              sparkCount={8}
-              duration={500}
-              extraScale={0.9}
-            >
-              {children}
-            </ClickSpark>
-            <PointerCursor />
-            <CookieBanner />
-            <DeviceClassInjector />
-            <FpsOverlayWrapper />
-            <ScrollbarReveal />
-            <Analytics />
-            <SpeedInsights />
-          </SplashScreen>
+          <CurrencyProvider>
+            <SplashScreen>
+              <ClickSpark
+                sparkColor="#2dd4bf"
+                sparkSize={14}
+                sparkRadius={40}
+                sparkCount={8}
+                duration={500}
+                extraScale={0.9}
+              >
+                {children}
+              </ClickSpark>
+              <PointerCursor />
+              <CookieBanner />
+              <Toast />
+              <DeviceClassInjector />
+              <FpsOverlayWrapper />
+              <ScrollbarReveal />
+              <Analytics />
+              <SpeedInsights />
+            </SplashScreen>
+          </CurrencyProvider>
         </LanguageProvider>
       </body>
     </html>
