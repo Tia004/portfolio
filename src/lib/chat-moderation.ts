@@ -22,8 +22,7 @@ const INAPPROPRIATE_CONTACT_PATTERNS: RegExp[] = [
 export function isInappropriateChatMessage(value: string): boolean {
   const normalized = value.replace(/\s+/g, ' ').trim();
   if (!normalized || normalized.length > 8_000) return normalized.length > 8_000;
-  return INAPPROPRIATE_PATTERNS.some((pattern) => pattern.test(normalized))
-    || INAPPROPRIATE_CONTACT_PATTERNS.some((pattern) => pattern.test(normalized));
+  return INAPPROPRIATE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 export function isInappropriateContactValue(value: string): boolean {

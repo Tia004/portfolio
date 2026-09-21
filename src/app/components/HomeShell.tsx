@@ -4687,55 +4687,41 @@ export default function HomeShell() {
             <BorderGlow
               continuousHover
               singleBeam
-              // Exactly the site's card recipe (radius 20, intensity 2.0, no
-              // edge detection, glass rim). glowRadius 20 is the most the
-              // halo can bleed without being clipped by the viewport edge.
-              borderRadius={20}
-              glowRadius={20}
-              glowIntensity={2.0}
+              borderRadius={24}
+              glowRadius={32}
+              glowIntensity={2.2}
               edgeSensitivity={0}
-              // Opaque body: the window is a solid surface, never translucent
-              // glass (its own inner dialog is #081410 too).
-              backgroundColor="#081410"
-              className={`relative z-10 w-[min(calc(100vw_-_2.5rem),340px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
+              glass
+              className={`relative z-10 w-[min(calc(100vw_-_2.5rem),350px)] chat-window-h ${chatClosing ? 'opacity-0 translate-y-2 scale-95 transition-all duration-300' : 'chat-pop-up'}`}
               style={
                 kbOffset > 0
                   ? { height: `min(70dvh, calc(100dvh - ${kbOffset + 20}px))` }
-                  // Banner clearance costs the window the whole lifted stack:
-                  // its own bottom offset + the 12px gap + the 56px bubble +
-                  // 16px of headroom. Without this the stack would run past
-                  // the top of the screen (it did: -92px on a 390x844 phone).
                   : cookieLift > 0
                     ? { height: `min(62dvh, calc(100dvh - ${chatWidgetBottom + 84}px))` }
                     : undefined
               }
             >
-              {/* overflow-hidden here (NOT on .border-glow-card): clips the
-                  title-bar background to the rounded corners. The BorderGlow
-                  lives on the parent card's pseudo-elements + .edge-light, which
-                  are siblings — clipping this child never touches the glow.
-                  The radius MUST match the card's --border-radius (20px): a
-                  mismatch (rounded-2xl = 16px) left the opaque surface poking
-                  past the glowing ring at the corners, which read as a
-                  sloppy/"transparent" window. The surface itself is fully
-                  opaque (#081410) — no glass, no translucency. */}
-              <div role="dialog" aria-modal="true" aria-label="Chat con Tia Chinaglia" className="w-full h-full bg-[#081410] rounded-[20px] overflow-hidden flex flex-col shadow-2xl">
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Chat con Tia Chinaglia"
+                className="w-full h-full bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] rounded-[24px] overflow-hidden flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.09),inset_0_0_0_1px_rgba(45,212,191,0.06)]"
+              >
                 {/* Title bar */}
-                <div className="flex items-center px-4 py-3 border-b border-white/[0.08] bg-[#0c1c17] select-none">
+                <div className="flex items-center px-4 py-3 border-b border-white/[0.08] bg-[#0c1c17]/55 backdrop-blur-xl select-none">
                   {/* Centered title */}
-                  <span className="flex-1 text-center text-xs font-medium text-neutral-300 tracking-wide">{t('chat.title', lang)}</span>
+                  <span className="flex-1 text-center text-xs font-semibold text-neutral-200 tracking-wide">{t('chat.title', lang)}</span>
                   {/* Close button */}
                   <button
                     onClick={() => { setChatClosing(true); setTimeout(() => { setChatOpen(false); setChatClosing(false); setKbOffset(0); }, 300); }}
-                    className="w-6 h-6 rounded-md hover:bg-white/[0.06] flex items-center justify-center transition-colors text-neutral-500 hover:text-white shrink-0 cursor-pointer"
+                    className="w-7 h-7 rounded-full hover:bg-white/[0.08] flex items-center justify-center transition-colors text-neutral-400 hover:text-white shrink-0 cursor-pointer"
                     aria-label="Chiudi chat"
                   >
                     <svg aria-hidden="true" className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
 
-                {/* Messages area — solid background. Delegates clicks for the
-                    [CAL] / [AI] buttons rendered inside the bubbles. */}
+                {/* Messages area — transparent background letting backdrop blur and website background shine through */}
                 <div
                   ref={chatMessagesRef}
                   onClick={(e) => {
@@ -4743,7 +4729,7 @@ export default function HomeShell() {
                     const token = trigger?.dataset.chatAction;
                     if (token === 'CAL' || token === 'AI') handleDirectChatAction(token);
                   }}
-                  className="flex-1 px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative bg-[#081410]"
+                  className="flex-1 px-4 sm:px-5 py-4 min-h-0 overflow-y-auto flex flex-col gap-3 relative bg-transparent scrollbar-hide"
                 >
                   {/* Subtle DotGrid background — always mounted, static for perf */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.06]">
@@ -4752,10 +4738,9 @@ export default function HomeShell() {
 
                   {messages.map((msg) => (
                     msg.sender === 'system' ? (
-                      // Neutral system notice (e.g. delivery failure) — centered,
-                      // dim, clearly not a message from either side.
+                      // Neutral system notice (e.g. delivery failure)
                       <div key={msg.id} className="flex justify-center">
-                        <span className="max-w-[85%] rounded-full bg-black/60 border border-white/[0.06] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-400">{msg.text}</span>
+                        <span className="max-w-[85%] rounded-full bg-black/55 backdrop-blur-md border border-white/[0.08] px-3 py-1 text-[11px] leading-relaxed text-center text-neutral-400">{msg.text}</span>
                       </div>
                     ) : (
                     <div
@@ -4763,20 +4748,20 @@ export default function HomeShell() {
                       className={`flex items-end gap-2 ${msg.sender === 'client' ? 'justify-end' : 'justify-start'}`}
                     >
                       {msg.sender === 'tia' && (
-                        <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0 shadow-sm">
                           <TiaIcon icon={BubbleChatIcon} size={12} className="text-teal-400" />
                         </div>
                       )}
                       <div
                         className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed break-words min-w-0 whitespace-pre-line ${msg.sender === 'client'
-                          ? 'bg-teal-600 text-white rounded-2xl rounded-br-sm shadow-md'
-                          : 'bg-black/70 border border-white/[0.08] text-white rounded-2xl rounded-bl-sm shadow-md'
+                          ? 'bg-teal-600/90 backdrop-blur-md text-white rounded-2xl rounded-br-sm shadow-[0_4px_16px_rgba(45,212,191,0.25)]'
+                          : 'bg-black/60 backdrop-blur-md border border-white/[0.09] text-neutral-100 rounded-2xl rounded-bl-sm shadow-[0_4px_16px_rgba(0,0,0,0.3)]'
                           }`}
                       >
                         {renderDirectChatText(msg.text, msg.sender === 'client', lang)}
                       </div>
                       {msg.sender === 'client' && (
-                        <div className="w-7 h-7 rounded-full bg-teal-600/30 flex items-center justify-center shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-teal-600/30 border border-teal-400/30 flex items-center justify-center shrink-0 shadow-sm">
                           <TiaIcon icon={UserIcon} size={14} className="text-teal-300" />
                         </div>
                       )}
@@ -4787,10 +4772,10 @@ export default function HomeShell() {
                   {/* Typing indicator */}
                   {isTyping && (
                     <div className="flex items-end gap-2 justify-start">
-                      <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
                         <TiaIcon icon={BubbleChatIcon} size={12} className="text-teal-400" />
                       </div>
-                      <div className="bg-black/70 border border-white/[0.08] rounded-2xl rounded-bl-sm px-4 py-3">
+                      <div className="bg-black/60 backdrop-blur-md border border-white/[0.09] rounded-2xl rounded-bl-sm px-4 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
                         <div className="flex gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '0ms' }} />
                           <span className="w-2 h-2 rounded-full bg-teal-400/60 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -4802,12 +4787,9 @@ export default function HomeShell() {
 
                 </div>
 
-                {/* Input — desktop autofocuses for convenience; on mobile the
-                    keyboard must NOT auto-open (it would jump/resize the whole
-                    page while the window animates in): the user taps the bar
-                    to type, and the visualViewport lift keeps it visible. */}
-                <div className="px-5 pb-5 pt-2 border-t border-white/[0.08] bg-[#081410]">
-                  <div className="flex items-end gap-2">
+                {/* Input — modern liquid glass input container matching chatbot style */}
+                <div className="px-4 pb-4 pt-2 border-t border-white/[0.08] bg-[#081410]/55 backdrop-blur-xl">
+                  <div className="flex items-center gap-2 rounded-2xl bg-black/45 border border-white/[0.1] p-1.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] focus-within:border-teal-400/50 focus-within:shadow-[0_0_16px_rgba(45,212,191,0.18),inset_0_1px_0_rgba(255,255,255,0.12)] transition-all duration-300">
                     <textarea
                       ref={chatTextareaRef}
                       value={chatMessage}
@@ -4815,7 +4797,7 @@ export default function HomeShell() {
                       placeholder={t('chat.placeholder', lang)}
                       rows={1}
                       autoFocus={!isMobile}
-                      className="flex-1 bg-black/60 border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-teal-500/40 focus:shadow-[0_0_14px_rgba(45,212,191,0.12)] resize-none placeholder-neutral-600 transition-shadow duration-200"
+                      className="flex-1 bg-transparent px-2.5 py-1.5 text-white text-sm focus:outline-none resize-none placeholder-neutral-500 leading-relaxed max-h-24 overflow-y-auto scrollbar-hide"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();

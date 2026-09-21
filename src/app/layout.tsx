@@ -89,6 +89,13 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
     },
     manifest: "/site.webmanifest",
+    alternates: {
+      canonical: `https://tiadesigns.it${lang === 'it' ? '' : `/${lang}`}`,
+      types: {
+        'application/rss+xml': 'https://tiadesigns.it/feed.xml',
+        'application/feed+json': 'https://tiadesigns.it/feed.json',
+      },
+    },
     appleWebApp: {
       capable: true,
       statusBarStyle: "black-translucent",

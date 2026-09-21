@@ -215,23 +215,33 @@ export function sanitizeQuoteDraft(input: unknown): Record<string, string> {
   return result;
 }
 
-/** Per-scope message allowance per 60s window. The direct Telegram chat is a
- *  live conversation with Tia — a real person can type 5+ messages in a
- *  minute during an exchange, and the old 5/min + 15-min block made sends
- *  silently stop mid-conversation. Bot endpoints (AI, contact, session)
- *  keep the tight default; the human chat gets realistic headroom while the
- *  15-min block still catches automated spam. */
-function rateLimitForScope(scope: string): number {
-  return scope === 'telegram' ? 15 : 5;
+/** Per-scope rate limits and global DDoS protection limits (per 60-second window).
+ *  Protects costly AI tokens and SMTP services from distributed abuse. */
+const SCOPE_CONFIG: Record<string, { perUser: number; globalLimit: number }> = {
+  telegram: { perUser: 15, globalLimit: 120 },
+  ai: { perUser: 6, globalLimit: 80 },          // Protects AI API keys & tokens
+  contact: { perUser: 4, globalLimit: 40 },     // Protects SMTP / Resend quotas
+  newsletter: { perUser: 5, globalLimit: 50 },
+  session: { perUser: 12, globalLimit: 150 },
+  stream: { perUser: 10, globalLimit: 120 },
+};
+
+function getScopeLimits(scope: string): { perUser: number; globalLimit: number } {
+  return SCOPE_CONFIG[scope] ?? { perUser: 5, globalLimit: 60 };
 }
 
 function takeLocalChatRateLimit(ip: string, sessionId: string, scope: string): { ok: boolean; retryAfter: number } {
   const now = Date.now();
-  const keys = [`${scope}:ip:${ip}`, `${scope}:session:${sessionId}`];
-  const limit = rateLimitForScope(scope);
+  const { perUser, globalLimit } = getScopeLimits(scope);
+  const globalKey = `global:${scope}`;
+  const keys = [globalKey, `${scope}:ip:${ip}`, `${scope}:session:${sessionId}`];
   let retryAfter = 0;
 
   for (const key of keys) {
+    const isGlobal = key === globalKey;
+    const limit = isGlobal ? globalLimit : perUser;
+    const blockTime = isGlobal ? 10_000 : BLOCK_MS; // Global backoff is short (10s), user block is 15min
+
     const bucket = rateBuckets.get(key);
     if (!bucket || now - bucket.startedAt >= RATE_WINDOW_MS) {
       rateBuckets.set(key, { startedAt: now, count: 1, blockedUntil: 0 });
@@ -243,13 +253,12 @@ function takeLocalChatRateLimit(ip: string, sessionId: string, scope: string): {
     }
     bucket.count += 1;
     if (bucket.count > limit) {
-      bucket.blockedUntil = now + BLOCK_MS;
-      retryAfter = Math.max(retryAfter, Math.ceil(BLOCK_MS / 1000));
+      bucket.blockedUntil = now + blockTime;
+      retryAfter = Math.max(retryAfter, Math.ceil(blockTime / 1000));
     }
   }
 
-  // Bound memory in long-lived Node processes. Production deployments should
-  // replace this map with a shared Redis/Upstash limiter for multiple regions.
+  // Bound memory in long-lived Node processes.
   if (rateBuckets.size > 10_000) {
     for (const [key, bucket] of rateBuckets) {
       if (now - bucket.startedAt > RATE_WINDOW_MS && bucket.blockedUntil < now) rateBuckets.delete(key);
@@ -260,45 +269,62 @@ function takeLocalChatRateLimit(ip: string, sessionId: string, scope: string): {
 }
 
 /**
- * Rate-limit with Upstash Redis when configured, falling back to the local
- * bucket for development/single-process deployments. The Redis path keeps the
- * 5/minute + 15-minute block effective across serverless instances.
+ * Distributed rate-limiting with Upstash Redis or Vercel KV when configured,
+ * falling back to the local bucket for development/single-process deployments.
+ * Protects both per-user/per-IP and global scope (DDoS / quota exhaustion).
  */
 export async function takeChatRateLimit(ip: string, sessionId: string, scope: string): Promise<{ ok: boolean; retryAfter: number }> {
-  const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, '');
-  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const redisUrl = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)?.replace(/\/$/, '');
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
   if (!redisUrl || !redisToken) return takeLocalChatRateLimit(ip, sessionId, scope);
 
+  const { perUser, globalLimit } = getScopeLimits(scope);
   const now = Math.floor(Date.now() / 1000);
+  const globalKey = `chat:${scope}:global`;
   const keys = [`chat:${scope}:ip:${ip}`, `chat:${scope}:session:${sessionId}`];
   const blockedKeys = keys.map(key => `${key}:blocked`);
+
+  // Lua script: checks global quota (DDoS protection) + per-IP / per-session buckets
   const script = `
     local now = tonumber(ARGV[1])
     local window = tonumber(ARGV[2])
-    local limit = tonumber(ARGV[3])
+    local userLimit = tonumber(ARGV[3])
     local block = tonumber(ARGV[4])
+    local globalLimit = tonumber(ARGV[5])
+    local globalKey = KEYS[1]
+
+    -- 1. Global DDoS check
+    local globalCount = redis.call('INCR', globalKey)
+    if globalCount == 1 then redis.call('EXPIRE', globalKey, window) end
+    if globalCount > globalLimit then
+      return 10 -- 10s global backoff under distributed flood
+    end
+
+    -- 2. Per-user & per-IP checks
     for i = 1, 2 do
-      local blockedUntil = tonumber(redis.call('GET', KEYS[i + 2]) or '0')
+      local blockedUntil = tonumber(redis.call('GET', KEYS[i + 3]) or '0')
       if blockedUntil > now then return blockedUntil - now end
-      local count = redis.call('INCR', KEYS[i])
-      if count == 1 then redis.call('EXPIRE', KEYS[i], window) end
-      if count > limit then
-        redis.call('SET', KEYS[i + 2], now + block, 'EX', block)
+      local count = redis.call('INCR', KEYS[i + 1])
+      if count == 1 then redis.call('EXPIRE', KEYS[i + 1], window) end
+      if count > userLimit then
+        redis.call('SET', KEYS[i + 3], now + block, 'EX', block)
         return block
       end
     end
     return 0
   `;
   try {
+    const allKeys = [globalKey, ...keys, ...blockedKeys];
     const path = [
       `${redisUrl}/eval`,
       encodeURIComponent(script),
-      '4',
-      ...[...keys, ...blockedKeys].map(encodeURIComponent),
+      String(allKeys.length),
+      ...allKeys.map(encodeURIComponent),
       String(now),
       String(RATE_WINDOW_MS / 1000),
-      String(rateLimitForScope(scope)),
+      String(perUser),
       String(BLOCK_MS / 1000),
+      String(globalLimit),
     ].join('/');
     const response = await fetch(path, {
       headers: { Authorization: `Bearer ${redisToken}` },
@@ -310,7 +336,7 @@ export async function takeChatRateLimit(ip: string, sessionId: string, scope: st
     const retryAfter = Math.max(0, Number(data.result || 0));
     return { ok: retryAfter === 0, retryAfter };
   } catch {
-    // Redis outage must not make the chat unavailable; retain local protection.
+    // Redis outage must not make the service unavailable; retain local protection.
     return takeLocalChatRateLimit(ip, sessionId, scope);
   }
 }
