@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useLenis } from './SmoothScroll';
 import { useLanguage } from './LanguageProvider';
@@ -268,9 +268,10 @@ export default function Navbar({ onHome = true }: { onHome?: boolean } = {}) {
   // on the Italian home. Sending an English visitor to the Italian page from
   // its own navigation is a worse bug than a dead anchor.
   const homePrefix = lang === 'it' ? '' : `/${lang}`;
-  const navItems = onHome
-    ? NAV_ITEMS
-    : NAV_ITEMS.map((item) => ({ ...item, href: `${homePrefix}/${item.href}` }));
+  const navItems = useMemo(
+    () => (onHome ? NAV_ITEMS : NAV_ITEMS.map((item) => ({ ...item, href: `${homePrefix}/${item.href}` }))),
+    [onHome, homePrefix]
+  );
 
   const scrollTo = (href: string) => {
     const sectionId = href.replace(/^#/, '');

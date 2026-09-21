@@ -18,7 +18,7 @@ interface NavBubbleMenuProps {
   closing?: boolean;
 }
 
-// ── Single Bubble with 3D Tilt and Liquid Glass BorderGlow ─────────
+// ── Single Bubble with Interactive Hover Tilt & Rotation ─────────
 
 function BubbleItem({
   item,
@@ -45,23 +45,24 @@ function BubbleItem({
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  const baseRotation = isDesktop ? (item.rotation ?? 0) : 0;
+  const hoverRotation = isDesktop ? (item.rotation ?? 0) : 0;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !isDesktop) return;
     const rect = cardRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
-    setTilt({ x: x * 12, y: y * -12, active: true });
+    setTilt({ x: x * 10, y: y * -10, active: true });
   };
 
   const handleMouseLeave = () => {
     setTilt({ x: 0, y: 0, active: false });
   };
 
+  // Initially strictly horizontal (0deg). On hover, rotates to hoverRotation with 3D tilt. On leave, returns to horizontal.
   const currentTransform = tilt.active
-    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(${baseRotation * 0.3}deg) scale3d(1.06, 1.06, 1.06)`
-    : `perspective(600px) rotate(${baseRotation}deg) scale3d(1, 1, 1)`;
+    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(${hoverRotation}deg) scale3d(1.06, 1.06, 1.06)`
+    : `perspective(600px) rotate(0deg) scale3d(1, 1, 1)`;
 
   return (
     <div
@@ -70,45 +71,47 @@ function BubbleItem({
         onMountRef(el, index);
       }}
       onMouseMove={handleMouseMove}
+      onMouseEnter={() => setTilt((prev) => ({ ...prev, active: true }))}
       onMouseLeave={handleMouseLeave}
       className="bubble-item-wrapper transform-gpu will-change-transform"
       style={{
         transform: currentTransform,
-        transition: tilt.active ? 'transform 0.1s ease-out' : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+        transition: tilt.active
+          ? 'transform 0.12s ease-out'
+          : 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
         transformOrigin: '50% 50%',
       }}
     >
       <BorderGlow
         borderRadius={9999}
-        glowColor="168 84% 50%"
-        glowRadius={45}
-        glowIntensity={1.3}
-        coneSpread={8}
+        glowRadius={35}
+        glowIntensity={1.8}
+        edgeSensitivity={0}
         glass={true}
-        singleBeam={true}
         backgroundColor="rgba(8, 20, 16, 0.45)"
-        className="rounded-full shadow-lg shadow-black/40"
+        className="rounded-full shadow-xl shadow-black/50"
       >
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center px-8 sm:px-12 md:px-16 py-5 sm:py-7 md:py-8 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[200px] sm:min-w-[260px] md:min-w-[300px] min-h-[75px] sm:min-h-[92px] md:min-h-[105px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
+          className="group relative flex items-center justify-center px-10 sm:px-14 md:px-18 py-7 sm:py-9 md:py-11 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[220px] sm:min-w-[280px] md:min-w-[340px] min-h-[90px] sm:min-h-[115px] md:min-h-[135px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
-            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
           }}
         >
-          {/* Watermark index number in the background with low opacity */}
+          {/* Subtle watermark index number in the background with generous breathing room */}
           <span
             aria-hidden="true"
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-mono font-black text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white/[0.07] group-hover:text-teal-400/[0.14] transition-colors duration-300 tracking-tighter"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
           >
             {String(index + 1).padStart(2, '0')}
           </span>
 
-          {/* Centered label text: white -> teal transition */}
+          {/* Centered large label text: white -> teal transition */}
           <span
             ref={(el) => onLabelRef(el, index)}
-            className="relative z-10 text-center font-extrabold tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-2xl sm:text-3xl md:text-4xl lg:text-5xl whitespace-nowrap"
+            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-3xl sm:text-4xl md:text-5xl lg:text-6xl whitespace-nowrap leading-tight"
           >
             {t(`nav.${item.key}`, lang)}
           </span>
@@ -124,6 +127,7 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
   const bubblesRef = useRef<(HTMLDivElement | null)[]>([]);
   const labelsRef = useRef<(HTMLSpanElement | null)[]>([]);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const hasAnimatedRef = useRef(false);
 
   useEffect(() => {
     const bubbles = bubblesRef.current.filter(Boolean) as HTMLDivElement[];
@@ -132,6 +136,10 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
     if (!bubbles.length) return;
 
     if (!closing) {
+      // Prevent running the entrance animation more than once to fix the double-pop bug
+      if (hasAnimatedRef.current) return;
+      hasAnimatedRef.current = true;
+
       // Entrance: scale 0 -> 1 with back.out(1.5) elastic pop + staggered delays
       gsap.killTweensOf([...bubbles, ...labels]);
       gsap.set(bubbles, { scale: 0, transformOrigin: '50% 50%' });
@@ -184,10 +192,10 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
     return () => {
       timelineRef.current?.kill();
     };
-  }, [closing, items]);
+  }, [closing]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-7 max-w-5xl mx-auto w-full px-4 py-2">
+    <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-7 md:gap-8 max-w-5xl mx-auto w-full px-4 py-2">
       {items.map((item, idx) => (
         <BubbleItem
           key={item.href}
