@@ -66,7 +66,7 @@ function BubbleItem({
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setTilt((prev) => ({ ...prev, active: true }))}
       onMouseLeave={handleMouseLeave}
-      className="bubble-item-wrapper transform-gpu will-change-transform w-full sm:w-[calc(50%-1rem)] md:w-[calc(33.333%-1.5rem)] max-w-[340px]"
+      className="bubble-item-wrapper transform-gpu will-change-transform w-full sm:w-[calc(50%-1.25rem)] md:w-[calc(33.333%-1.5rem)] max-w-[390px]"
       style={{
         transform: currentTransform,
         transition: tilt.active
@@ -77,17 +77,17 @@ function BubbleItem({
     >
       <BorderGlow
         borderRadius={9999}
-        glowRadius={35}
-        glowIntensity={1.8}
+        glowRadius={42}
+        glowIntensity={2.0}
         edgeSensitivity={0}
         glass={true}
         backgroundColor="rgba(8, 20, 16, 0.45)"
-        className="rounded-full shadow-xl shadow-black/50 w-full"
+        className="rounded-full shadow-2xl shadow-black/60 w-full"
       >
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center px-6 sm:px-8 md:px-10 py-5 sm:py-6 md:py-7 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-h-[72px] sm:min-h-[84px] md:min-h-[94px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
+          className="group relative flex items-center justify-center px-8 sm:px-12 md:px-14 py-6 sm:py-8 md:py-10 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-h-[88px] sm:min-h-[105px] md:min-h-[125px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
             boxShadow:
               'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
@@ -96,7 +96,7 @@ function BubbleItem({
           {/* Subtle watermark index number in the background with generous breathing room */}
           <span
             aria-hidden="true"
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-4xl sm:text-5xl md:text-6xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white/[0.04] group-hover:text-teal-400/[0.09] transition-colors duration-300 tracking-tight"
           >
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -104,7 +104,7 @@ function BubbleItem({
           {/* Centered large label text: white -> teal transition */}
           <span
             ref={(el) => onLabelRef(el, index)}
-            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-2xl sm:text-3xl md:text-4xl whitespace-nowrap leading-tight"
+            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-3xl sm:text-4xl md:text-5xl lg:text-5xl whitespace-nowrap leading-tight"
           >
             {t(`nav.${item.key}`, lang)}
           </span>
@@ -188,7 +188,7 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
   }, [closing]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-7 max-w-5xl mx-auto w-full px-4 py-2">
+    <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-7 max-w-6xl mx-auto w-full px-4 py-2">
       {items.map((item, idx) => (
         <BubbleItem
           key={item.href}
