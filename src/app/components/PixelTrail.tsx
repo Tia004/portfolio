@@ -15,6 +15,7 @@ interface SceneProps {
   easingFunction: (x: number) => number;
   pixelColor: string;
   paused: boolean;
+  isScrolling?: boolean;
 }
 
 interface PixelTrailProps {
@@ -136,7 +137,7 @@ const DotMaterial = shaderMaterial(
   `
 );
 
-function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused }: SceneProps) {
+function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixelColor, paused, isScrolling }: SceneProps) {
   const size = useThree((s) => s.size);
   const viewport = useThree((s) => s.viewport);
   const invalidate = useThree((s) => s.invalidate);
@@ -150,7 +151,7 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
   }, [pixelColor]);
 
   const [trail, onMove] = useTrailTexture({
-    size: 512,
+    size: 256,
     radius: trailSize,
     maxAge: maxAge,
     interpolate: interpolate || 0.1,
@@ -249,8 +250,14 @@ function Scene({ gridSize, trailSize, maxAge, interpolate, easingFunction, pixel
       dotMaterialRef.current.uniforms.cursorGrid.value = cursorGridRef.current;
     };
 
+    let lastMoveEventTime = 0;
     const handleMouseMove = (event: MouseEvent) => {
-      if (paused || !trail) return;
+      if (paused || isScrolling || !trail) return;
+      // Throttle mouse moves to max 120Hz (~8.3ms) to prevent high-polling gaming mice (1000Hz) from flooding the main thread
+      const now = performance.now();
+      if (now - lastMoveEventTime < 8) return;
+      lastMoveEventTime = now;
+
       // If idling, immediately switch back to the shared ticker so the
       // fade decay and dot positioning resume without waiting for the
       // next idle timer tick (up to 300 ms).
@@ -407,6 +414,25 @@ export default function PixelTrail({
 }: PixelTrailProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // isScrolling gate: pause heavy trail repaint while scrolling fast to avoid GPU/CPU contention
+  useEffect(() => {
+    const onScroll = () => {
+      setIsScrolling(true);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 150);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
+
   // Sync check — isLowEndDevice() is cached, zero-cost after first call
   const [lowEnd, setLowEnd] = useState(false);
 
@@ -442,6 +468,7 @@ export default function PixelTrail({
         height: '100vh',
         pointerEvents: 'none',
         zIndex: 99999,
+        mixBlendMode: 'screen',
       }}
     >
       <Canvas
@@ -472,6 +499,7 @@ export default function PixelTrail({
           easingFunction={easingFunction}
           pixelColor={color}
           paused={paused}
+          isScrolling={isScrolling}
         />
       </Canvas>
     </div>

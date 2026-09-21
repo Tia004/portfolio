@@ -449,33 +449,39 @@ export default function MoltenMetal({
     };
 
     // Hero/footer coverage pause: the fixed shader pauses ONLY when the
-    // viewport center is inside an opaque cover (hero or footer). This saves
-    // GPU when the molten is invisible anyway. scrollInput is NOT paused —
-    // the molten must animate continuously during scroll; a freeze+restart
-    // on every wheel event reads as a visual glitch.
-    const updateCoverage = () => {
-      const vh = window.innerHeight || 1;
-      const covers = Array.from(document.querySelectorAll<HTMLElement>('[data-molten-cover]'));
-      const center = vh * 0.5;
-      const next = covers.some((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.top <= center && rect.bottom >= center;
-      });
-      if (next !== covered) {
-        covered = next;
-        if (covered) tryStop();
-        else tryStart();
-      }
+    // viewport center is inside an opaque cover (hero or footer).
+    // An IntersectionObserver with rootMargin '-50% 0px -50% 0px' tests the exact
+    // center line of the viewport asynchronously, completely eliminating
+    // window 'scroll' listeners and getBoundingClientRect() layout thrashing!
+    const intersectingCovers = new Set<Element>();
+    const coverageObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            intersectingCovers.add(entry.target);
+          } else {
+            intersectingCovers.delete(entry.target);
+          }
+        }
+        const next = intersectingCovers.size > 0;
+        if (next !== covered) {
+          covered = next;
+          if (covered) tryStop();
+          else tryStart();
+        }
+      },
+      { rootMargin: '-50% 0px -50% 0px' }
+    );
+
+    const observeCovers = () => {
+      const covers = document.querySelectorAll<HTMLElement>('[data-molten-cover]');
+      covers.forEach((el) => coverageObserver.observe(el));
     };
-    window.addEventListener('scroll', updateCoverage, { passive: true });
-    window.addEventListener('resize', updateCoverage, { passive: true });
-    // Lazy sections mount as the user scrolls, growing the document and
-    // shifting the hero/footer covers — re-evaluate coverage then too, or a
-    // stale `covered=true` could leave the molten paused forever behind the
-    // transparent sections ("the background disappeared").
-    window.addEventListener('tia:section-mounted', updateCoverage);
-    window.addEventListener('tia:force-mount', updateCoverage);
-    updateCoverage();
+    observeCovers();
+
+    // Lazy sections mount as the user scrolls, shifting or adding covers
+    window.addEventListener('tia:section-mounted', observeCovers);
+    window.addEventListener('tia:force-mount', observeCovers);
 
     // Watchdog: if the loop SHOULD be running but hasn't drawn a frame in 3s
     // (browser quirk killed the rAF chain, a visibilitychange was missed, or a
@@ -531,10 +537,9 @@ export default function MoltenMetal({
       tryStop();
       ro.disconnect();
       window.clearInterval(watchdog);
-      window.removeEventListener('scroll', updateCoverage);
-      window.removeEventListener('resize', updateCoverage);
-      window.removeEventListener('tia:section-mounted', updateCoverage);
-      window.removeEventListener('tia:force-mount', updateCoverage);
+      coverageObserver.disconnect();
+      window.removeEventListener('tia:section-mounted', observeCovers);
+      window.removeEventListener('tia:force-mount', observeCovers);
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mouseleave', onLeave);

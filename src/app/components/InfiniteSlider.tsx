@@ -92,12 +92,12 @@ const InfiniteSlider = memo(function InfiniteSlider({
       {/* Injected keyframes — one per direction so we don't pollute global scope */}
       <style>{`
         @keyframes infscroll-h {
-          from { transform: translateX(0); }
-          to   { transform: translateX(calc(-50% - var(--gap) / 2)); }
+          from { transform: translate3d(0, 0, 0); }
+          to   { transform: translate3d(calc(-50% - var(--gap) / 2), 0, 0); }
         }
         @keyframes infscroll-v {
-          from { transform: translateY(0); }
-          to   { transform: translateY(calc(-50% - var(--gap) / 2)); }
+          from { transform: translate3d(0, 0, 0); }
+          to   { transform: translate3d(0, calc(-50% - var(--gap) / 2), 0); }
         }
       `}</style>
 

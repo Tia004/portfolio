@@ -1,4 +1,11 @@
+.pixel-trail-canvas {
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
 .pixel-canvas {
   position: absolute;
   z-index: 1;
+  mix-blend-mode: screen;
 }
+
