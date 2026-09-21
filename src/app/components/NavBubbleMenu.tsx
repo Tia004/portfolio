@@ -45,7 +45,7 @@ function BubbleItem({
     return () => window.removeEventListener('resize', checkDesktop);
   }, []);
 
-  const hoverRotation = isDesktop ? (item.rotation ?? 0) : 0;
+  const baseRotation = isDesktop ? (item.rotation ?? 0) : 0;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !isDesktop) return;
@@ -59,10 +59,10 @@ function BubbleItem({
     setTilt({ x: 0, y: 0, active: false });
   };
 
-  // Initially strictly horizontal (0deg). On hover, rotates to hoverRotation with 3D tilt. On leave, returns to horizontal.
+  // Spuntano già ruotati (baseRotation). Con l'hover si raddrizzano a 0deg (perfettamente orizzontali) con 3D tilt!
   const currentTransform = tilt.active
-    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(${hoverRotation}deg) scale3d(1.06, 1.06, 1.06)`
-    : `perspective(600px) rotate(0deg) scale3d(1, 1, 1)`;
+    ? `perspective(600px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) rotate(0deg) scale3d(1.06, 1.06, 1.06)`
+    : `perspective(600px) rotate(${baseRotation}deg) scale3d(1, 1, 1)`;
 
   return (
     <div
@@ -94,7 +94,7 @@ function BubbleItem({
         <button
           type="button"
           onClick={() => onNavClick(item.href)}
-          className="group relative flex items-center justify-center px-10 sm:px-14 md:px-18 py-7 sm:py-9 md:py-11 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[220px] sm:min-w-[280px] md:min-w-[340px] min-h-[90px] sm:min-h-[115px] md:min-h-[135px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
+          className="group relative flex items-center justify-center px-7 sm:px-9 md:px-11 py-3.5 sm:py-4.5 md:py-5 rounded-full cursor-pointer select-none transition-all duration-300 w-full min-w-[150px] sm:min-w-[180px] md:min-w-[210px] min-h-[56px] sm:min-h-[66px] md:min-h-[74px] overflow-hidden bg-transparent backdrop-blur-xl focus:outline-none"
           style={{
             boxShadow:
               'inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(45, 212, 191, 0.08)',
@@ -103,7 +103,7 @@ function BubbleItem({
           {/* Subtle watermark index number in the background with generous breathing room */}
           <span
             aria-hidden="true"
-            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
+            className="pointer-events-none select-none absolute inset-0 flex items-center justify-center font-sans font-black text-3xl sm:text-4xl md:text-5xl text-white/[0.035] group-hover:text-teal-400/[0.08] transition-colors duration-300 tracking-tight"
           >
             {String(index + 1).padStart(2, '0')}
           </span>
@@ -111,7 +111,7 @@ function BubbleItem({
           {/* Centered large label text: white -> teal transition */}
           <span
             ref={(el) => onLabelRef(el, index)}
-            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-3xl sm:text-4xl md:text-5xl lg:text-6xl whitespace-nowrap leading-tight"
+            className="relative z-10 text-center font-black tracking-tight text-white group-hover:text-teal-300 transition-colors duration-300 select-none text-2xl sm:text-3xl md:text-4xl whitespace-nowrap leading-tight"
           >
             {t(`nav.${item.key}`, lang)}
           </span>
@@ -195,7 +195,7 @@ export default function NavBubbleMenu({ items, onNavClick, closing = false }: Na
   }, [closing]);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-7 md:gap-8 max-w-5xl mx-auto w-full px-4 py-2">
+    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-5 max-w-6xl mx-auto w-full px-4 py-2">
       {items.map((item, idx) => (
         <BubbleItem
           key={item.href}
