@@ -9,17 +9,18 @@ import { t } from '@/lib/translations';
 import { playMenuOpenSound, playMenuCloseSound } from '@/lib/menu-sounds';
 import { scrollToElementAfterLayout, triggerArrivalGlow } from '@/lib/scroll';
 import { SECTION_OFFSETS } from '@/lib/animation-theme';
+import NavBubbleMenu, { type NavBubbleItem } from './NavBubbleMenu';
 
-// ── Nav items — numbers for 27km-style menu ───────────────────
+// ── Nav items — Bubble pills with rotation for modern dynamic layout ──
 
-const NAV_ITEMS = [
-  { key: 'servizi', href: '#servizi' },
-  { key: 'progetti', href: '#progetti' },
-  { key: 'chisono', href: '#chisono' },
-  { key: 'processo', href: '#processo' },
-  { key: 'prezzi', href: '#prezzi' },
-  { key: 'recensioni', href: '#recensioni' },
-  { key: 'faq', href: '#faq' },
+const NAV_ITEMS: NavBubbleItem[] = [
+  { key: 'servizi', href: '#servizi', rotation: -5 },
+  { key: 'progetti', href: '#progetti', rotation: 4 },
+  { key: 'chisono', href: '#chisono', rotation: -4 },
+  { key: 'processo', href: '#processo', rotation: 5 },
+  { key: 'prezzi', href: '#prezzi', rotation: -5 },
+  { key: 'recensioni', href: '#recensioni', rotation: 4 },
+  { key: 'faq', href: '#faq', rotation: -3 },
 ];
 
 // ── Logo ───────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ function Logo() {
 
 // ── FullscreenMenu (all screen sizes) ─────────────────────────
 
-function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNavClick: (href: string) => void; onClose: () => void; items: { key: string; href: string }[]; closing?: boolean }) {
+function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNavClick: (href: string) => void; onClose: () => void; items: NavBubbleItem[]; closing?: boolean }) {
   const { lang } = useLanguage();
   const { lenis } = useLenis();
   const navRef = useRef<HTMLElement>(null);
@@ -154,27 +155,17 @@ function FullscreenMenu({ onNavClick, onClose, items, closing = false }: { onNav
               margin:auto, which pushes it all to the bottom) — so the scale
               below shrinks symmetrically toward the nav center and the whole
               list always fits, no scroll, no clipping. */}
-          <div className="flex-1 min-h-0 flex items-center justify-center">
+          <div className="flex-1 min-h-0 flex items-center justify-center w-full">
             <div
               ref={navItemsRef}
-              className="flex flex-col gap-0.5 sm:gap-1 max-w-3xl w-full"
+              className="w-full flex items-center justify-center"
               style={{ transform: `scale(${navScale})`, transformOrigin: 'center center' }}
             >
-            {items.map((item, i) => (
-              <button
-                key={item.href}
-                onClick={() => onNavClick(item.href)}
-                className="group flex items-baseline gap-4 sm:gap-8 py-2.5 sm:py-4 text-left w-full animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${i * 70}ms`, animationFillMode: 'backwards' }}
-              >
-                <span className="text-[10px] sm:text-xs font-mono text-teal-400/60 group-hover:text-teal-400 group-hover:scale-110 inline-block transition-all duration-300 w-6 shrink-0 text-right pt-1.5 sm:pt-2">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight text-white/50 group-hover:text-white transition-colors duration-300 select-none">
-                  {t(`nav.${item.key}`, lang)}
-                </span>
-              </button>
-            ))}
+              <NavBubbleMenu
+                items={items}
+                onNavClick={onNavClick}
+                closing={closing}
+              />
             </div>
           </div>
         </nav>
