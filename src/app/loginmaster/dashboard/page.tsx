@@ -84,6 +84,8 @@ const MoltenMetal = dynamic(() => import('@/app/components/MoltenMetal'), { ssr:
 // heavy panels: it polls on its own and must never delay the dashboard's first
 // paint.
 const AlertsBell = dynamic(() => import('@/app/components/dashboard/AlertsBell'), { ssr: false });
+const ChatArchive = dynamic(() => import('@/app/components/dashboard/ChatArchive'), { ssr: false });
+const ChatbotSettings = dynamic(() => import('@/app/components/dashboard/ChatbotSettings'), { ssr: false });
 
 const ConversionsView = dynamic(() => import('@/app/components/dashboard/ConversionsView'), {
   ssr: false,
@@ -107,7 +109,7 @@ const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepA
   ),
 });
 
-type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'quotes' | 'analytics' | 'conversions' | 'cms' | 'health' | 'passkeys';
+type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'chatbot' | 'quotes' | 'analytics' | 'conversions' | 'cms' | 'health' | 'passkeys';
 
 // ── Models & Interfaces ──────────────────────────────────────────
 
@@ -664,21 +666,18 @@ export default function DashboardPage() {
           localStorage.setItem('master_authenticated', 'true');
         } catch {}
 
-        await Promise.allSettled([
-          fetchAvailability(),
-          fetchProjects(),
-          fetchMessages(),
-          fetchChatData(),
-          fetchPasskeys(),
-          fetchCms(),
-          fetchHealth(),
-          fetchSavedQuotes(),
-          fetchAnalytics(),
-          fetchNewsletterData(),
-          fetchEmailTemplates(),
-          fetchMediaAssets(),
-          fetchArubaEmailsList(),
-        ]);
+        // Paint the default Projects tab as soon as its own data is ready.
+        // Slow email/analytics endpoints must not hold the entire dashboard.
+        await Promise.allSettled([fetchProjects(), fetchAvailability()]);
+        const loadSecondary = () => { void (async () => {
+          // Small batches avoid a burst of DB, mail and analytics work right
+          // after hydration. All counts still fill in without blocking input.
+          await Promise.allSettled([fetchMessages(), fetchChatData(), fetchPasskeys(), fetchSavedQuotes()]);
+          await Promise.allSettled([fetchCms(), fetchHealth(), fetchNewsletterData(), fetchEmailTemplates()]);
+          await Promise.allSettled([fetchAnalytics(), fetchMediaAssets()]);
+        })(); };
+        if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(loadSecondary, { timeout: 1800 });
+        else setTimeout(loadSecondary, 0);
       } catch (err: any) {
         setError(err.message || 'Errore di connessione');
       } finally {
@@ -1934,7 +1933,7 @@ export default function DashboardPage() {
   const handleRegisterNewPasskey = async () => {
     setError(null);
     try {
-      const optRes = await fetch('/api/auth/passkey/register/options');
+      const optRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' });
       const optData = await optRes.json();
       if (!optRes.ok) throw new Error(optData.error || 'Errore registrazione');
 
@@ -1945,7 +1944,7 @@ export default function DashboardPage() {
         body: JSON.stringify(attResp),
       });
       const verData = await verRes.json();
-      if (!verRes.ok || !verData.verified) throw new Error(verData.error || 'Verifica fallita');
+      if (!verRes.ok || !verData.success) throw new Error(verData.error || 'Verifica fallita');
 
       await fetchPasskeys();
       showTemporarySuccess('Nuovo dispositivo biometrico registrato!');
@@ -2321,7 +2320,8 @@ export default function DashboardPage() {
               { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, count: projects.length },
               { id: 'media', label: 'Media & Cloudflare CDN', icon: CloudIcon, count: mediaAssets.length },
               { id: 'inbox', label: 'Webmail & Inbox', icon: Mail01Icon, count: (arubaUnreadCount > 0 ? arubaUnreadCount : messages.filter((m) => m.status === 'new').length) },
-              { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatLeads.length },
+              { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatSessions.length },
+              { id: 'chatbot', label: 'Chatbot & Rulebook', icon: Robot01Icon },
               { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
               // Funnel steps (quote / call / chat) with their source and the
@@ -2339,7 +2339,10 @@ export default function DashboardPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as ActiveTab)}
+                  onClick={() => {
+                    setActiveTab(tab.id as ActiveTab);
+                    if (tab.id === 'inbox') void fetchArubaEmailsList();
+                  }}
                   className={`w-full px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
                     active
                       ? 'bg-teal-400 text-black border-teal-300 shadow-lg shadow-teal-400/20'
@@ -3937,29 +3940,31 @@ export default function DashboardPage() {
                           {/* Email Body Rendering */}
                           <div className="p-5 rounded-2xl bg-black/60 border border-white/[0.06] text-xs text-neutral-200 leading-relaxed overflow-x-auto min-h-[220px]">
                             {selectedArubaEmail.html ? (
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: (() => {
+                              <iframe
+                                title="Contenuto email isolato"
+                                sandbox=""
+                                referrerPolicy="no-referrer"
+                                srcDoc={(() => {
                                     let h = selectedArubaEmail.html;
                                     if (selectedArubaEmail.attachments && selectedArubaEmail.attachments.length > 0) {
                                       selectedArubaEmail.attachments.forEach((att: any) => {
                                         if (att.dataBase64) {
-                                          const mime = att.contentType || 'image/png';
+                                          const mime = /^image\/(png|jpeg|gif|webp)$/i.test(att.contentType || '') ? att.contentType : 'image/png';
                                           const dataUri = `data:${mime};base64,${att.dataBase64}`;
                                           if (att.contentId) {
-                                            const clean = att.contentId.replace(/[<>]/g, '').trim();
+                                            const clean = att.contentId.replace(/[<>]/g, '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                                             h = h.replace(new RegExp(`cid:(<${clean}>|${clean})`, 'gi'), dataUri);
                                           }
                                           if (att.filename) {
-                                            h = h.replace(new RegExp(`cid:(<${att.filename}>|${att.filename})`, 'gi'), dataUri);
+                                            const clean = att.filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                            h = h.replace(new RegExp(`cid:(<${clean}>|${clean})`, 'gi'), dataUri);
                                           }
                                         }
                                       });
                                     }
                                     return h.replace(/cid:(<?TiaDesignsLogo-white\.png>?)/gi, 'https://tiadesigns.it/TiaDesignsLogo-white.png');
-                                  })(),
-                                }}
-                                className="prose prose-invert max-w-none text-xs text-neutral-200"
+                                  })()}
+                                className="w-full min-h-[320px] rounded-xl bg-white"
                               />
                             ) : (
                               <pre className="whitespace-pre-wrap font-sans text-xs text-neutral-200">
@@ -5005,54 +5010,9 @@ export default function DashboardPage() {
 
           {/* ── TAB 3: ARCHIVIO CHATBOT ── */}
           {activeTab === 'chats' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Leads Generated by Bot */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <TiaIcon icon={BubbleChatIcon} size={18} className="text-teal-400" />
-                  <span>Lead & Preventivi AI Generati ({chatLeads.length})</span>
-                </h3>
-                {chatLeads.length === 0 ? (
-                  <p className="text-xs text-neutral-500 py-6 text-center">Nessun preventivo registrato dal bot finora.</p>
-                ) : (
-                  <div className="flex flex-col gap-3 max-h-[500px] overflow-y-auto">
-                    {chatLeads.map((lead) => (
-                      <div key={lead.id} className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-teal-300">{lead.category} • {lead.service || 'Generale'}</span>
-                          <span className="text-[10px] text-neutral-500">{new Date(lead.createdAt).toLocaleDateString()}</span>
-                        </div>
-                        {lead.budget && <p className="text-xs text-neutral-300">Budget indicato: <strong className="text-white">{lead.budget}</strong></p>}
-                        {lead.userGoal && <p className="text-xs text-neutral-400">Obiettivo: {lead.userGoal}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Chat Sessions List */}
-              <div className="bg-[#081410]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-6 flex flex-col gap-4">
-                <h3 className="font-bold text-white text-base">Sessioni di Chat Recenti ({chatSessions.length})</h3>
-                {chatSessions.length === 0 ? (
-                  <p className="text-xs text-neutral-500 py-6 text-center">Nessuna conversazione recente nel database.</p>
-                ) : (
-                  <div className="flex flex-col gap-2.5 max-h-[500px] overflow-y-auto">
-                    {chatSessions.map((s) => (
-                      <div key={s.sessionId} className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-xs font-mono text-neutral-400 truncate">ID: {s.sessionId.slice(0, 16)}...</p>
-                          <p className="text-xs text-white truncate">{s.lastMessage}</p>
-                        </div>
-                        <span className="px-2 py-1 rounded-lg bg-teal-500/10 text-teal-400 text-[10px] font-mono shrink-0">
-                          {s.count} msgs
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <ChatArchive />
           )}
+          {activeTab === 'chatbot' && <ChatbotSettings />}
 
           {/* ── TAB 4: PREVENTIVATORE BRANDED PDF ── */}
           {activeTab === 'quotes' && (
@@ -6161,21 +6121,21 @@ export default function DashboardPage() {
                 <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
                   <span className="text-xs text-neutral-400 uppercase tracking-wider">Database Status</span>
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-teal-400 animate-pulse" />
-                    <span className="text-lg font-bold text-white capitalize">{systemHealth?.database?.status || 'Online'}</span>
+                    <span className={`w-3 h-3 rounded-full ${systemHealth?.database?.status === 'healthy' ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
+                    <span className="text-lg font-bold text-white capitalize">{systemHealth?.database?.status || 'Non disponibile'}</span>
                   </div>
-                  <span className="text-xs text-neutral-500 font-mono">Latenza: {systemHealth?.database?.latencyMs ?? 1} ms</span>
+                  <span className="text-xs text-neutral-500 font-mono">Latenza: {systemHealth?.database?.latencyMs ?? '—'} ms</span>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
                   <span className="text-xs text-neutral-400 uppercase tracking-wider">Email Delivery</span>
                   <span className="text-lg font-bold text-white">Resend API</span>
-                  <span className="text-xs text-teal-400 font-mono">{systemHealth?.services?.email?.resend === 'configured' ? 'Configurato ✅' : 'Pronto (SMTP / Direct)'}</span>
+                  <span className="text-xs text-teal-400 font-mono">{systemHealth?.services?.email?.resend === 'configured' ? 'Resend configurato' : systemHealth?.services?.email?.smtp === 'configured' ? 'SMTP configurato' : 'Configurazione non verificata'}</span>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
                   <span className="text-xs text-neutral-400 uppercase tracking-wider">Eventi Tracciati</span>
-                  <span className="text-lg font-bold text-white">{systemHealth?.counts?.analyticsEvents ?? 0}</span>
+                  <span className="text-lg font-bold text-white">{systemHealth?.counts?.analyticsEvents ?? '—'}</span>
                   <span className="text-xs text-neutral-500 font-mono">First-party analytics</span>
                 </div>
               </div>
@@ -6183,9 +6143,11 @@ export default function DashboardPage() {
               <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08]">
                 <h3 className="font-bold text-white text-sm mb-3">Audit Logs & Error Tracker</h3>
                 <div className="bg-black/60 rounded-2xl p-4 font-mono text-xs text-neutral-300 max-h-60 overflow-y-auto">
-                  <p className="text-neutral-500">// Nessun errore critico rilevato. Tutte le pipeline sono operative.</p>
-                  <p className="text-teal-400/80 mt-1">[System] Passkey biometric module initialized.</p>
-                  <p className="text-teal-400/80">[System] Database Turso connection healthy.</p>
+                  {systemHealth?.logs?.length ? systemHealth.logs.map((log: { id: string; timestamp: string; source: string; level: string; message: string }) => (
+                    <p key={log.id} className={log.level === 'error' ? 'text-rose-300' : 'text-teal-400/80'}>
+                      [{new Date(log.timestamp).toLocaleString('it-IT')}] {log.source}: {log.message}
+                    </p>
+                  )) : <p className="text-neutral-500">Nessun evento registrato.</p>}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import { createContext, useContext, useEffect, useMemo, type ReactNode, type RefObject } from 'react';
 import type Lenis from 'lenis';
 
 type LenisContextValue = {
@@ -73,9 +73,20 @@ export default function SmoothScrollProvider({ children }: Props) {
         lenis.raf(time);
         frameId = requestAnimationFrame(raf);
       }
-      frameId = requestAnimationFrame(raf);
+      const onVisibilityChange = () => {
+        if (document.hidden) {
+          cancelAnimationFrame(frameId);
+          frameId = 0;
+        } else if (!frameId) {
+          lenis.resize();
+          frameId = requestAnimationFrame(raf);
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      if (!document.hidden) frameId = requestAnimationFrame(raf);
 
       destroy = () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
         cancelAnimationFrame(frameId);
         ScrollTrigger.getAll().forEach(t => t.kill());
         lenis.destroy();
@@ -89,9 +100,9 @@ export default function SmoothScrollProvider({ children }: Props) {
       alive = false;
       destroy?.();
     };
-  }, []);
+  }, [lenisRef]);
 
-  const ctx = useMemo(() => ({ lenis: lenisRef }), []);
+  const ctx = useMemo(() => ({ lenis: lenisRef }), [lenisRef]);
 
   return (
     <LenisContext.Provider value={ctx}>

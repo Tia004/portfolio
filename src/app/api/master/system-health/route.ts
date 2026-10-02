@@ -16,48 +16,29 @@ export async function GET() {
     try {
       await prisma.$queryRaw`SELECT 1`;
       dbLatencyMs = Date.now() - startTime;
-    } catch (e) {
+    } catch {
       dbStatus = 'degraded';
     }
 
     const resendConfigured = Boolean(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY.startsWith('re_'));
-    const smtpConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
-    const sessionSecretConfigured = Boolean(process.env.SESSION_SECRET);
-    const turnstileConfigured = Boolean(process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY);
+    const smtpConfigured = Boolean(process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    const sessionSecretConfigured = Boolean(process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32);
+    const turnstileConfigured = Boolean(process.env.TURNSTILE_SECRET_KEY);
 
-    const projectCount = await prisma.project.count();
-    const messageCount = await prisma.contactMessage.count();
-    const chatCount = await prisma.chatMessage.count();
-    const leadCount = await prisma.chatSessionLead.count();
-    const eventCount = await prisma.analyticsEvent.count();
-    const quoteCount = await prisma.quote.count();
+    const [projectCount, messageCount, chatCount, aiChatCount, leadCount, eventCount, quoteCount, recentLogs] = await Promise.all([
+      prisma.project.count(), prisma.contactMessage.count(), prisma.chatMessage.count(),
+      prisma.aiChatMessage.count(), prisma.chatSessionLead.count(), prisma.analyticsEvent.count(),
+      prisma.quote.count(), prisma.systemLog.findMany({ orderBy: { timestamp: 'desc' }, take: 20 }),
+    ]);
 
     // Speed Insights / CrUX Core Web Vitals query if CRUX_API_KEY is present
-    let speedInsights = {
-      source: 'Chrome UX Report & Edge Benchmarks',
+    const speedInsights = {
+      source: 'Nessuna misura raccolta da questo endpoint',
       origin: process.env.SITE_ORIGIN || 'https://tiadesigns.it',
-      available: true,
-      metrics: {
-        ttfb: { label: 'TTFB (Time to First Byte)', value: '180ms', rating: 'good', score: 98 },
-        fcp: { label: 'FCP (First Contentful Paint)', value: '0.8s', rating: 'good', score: 96 },
-        lcp: { label: 'LCP (Largest Contentful Paint)', value: '1.4s', rating: 'good', score: 94 },
-        inp: { label: 'INP (Interaction to Next Paint)', value: '48ms', rating: 'good', score: 99 },
-        cls: { label: 'CLS (Cumulative Layout Shift)', value: '0.01', rating: 'good', score: 100 },
-      },
-      performanceScore: 98,
-      deployment: {
-        provider: 'Vercel Edge Network',
-        region: 'fra1 (Frankfurt / Milan Edge)',
-        ssl: 'TLS 1.3 Active',
-        httpVersion: 'HTTP/3 (QUIC)',
-        status: 'production_ready',
-      },
+      available: false,
+      metrics: null,
+      performanceScore: null,
     };
-
-    const recentLogs = await prisma.systemLog.findMany({
-      orderBy: { timestamp: 'desc' },
-      take: 20,
-    });
 
     return NextResponse.json({
       status: dbStatus === 'healthy' ? 'operational' : 'attention_needed',
@@ -70,25 +51,26 @@ export async function GET() {
       speedInsights,
       services: {
         email: {
-          resend: resendConfigured ? 'configured' : 'fallback_smtp',
-          smtp: smtpConfigured ? 'configured' : 'aruba_configured',
+          resend: resendConfigured ? 'configured' : 'missing',
+          smtp: smtpConfigured ? 'configured' : 'missing',
         },
         security: {
-          sessionSecret: sessionSecretConfigured ? 'active' : 'active_secure',
-          turnstile: turnstileConfigured ? 'configured' : 'enabled',
+          sessionSecret: sessionSecretConfigured ? 'active' : 'missing',
+          turnstile: turnstileConfigured ? 'configured' : 'missing',
         },
       },
       counts: {
         projects: projectCount,
         messages: messageCount,
         chatMessages: chatCount,
+        aiChatMessages: aiChatCount,
         leads: leadCount,
         quotes: quoteCount,
         analyticsEvents: eventCount,
       },
       logs: recentLogs,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error checking system health:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

@@ -334,9 +334,25 @@ async function run() {
     await client.execute('CREATE INDEX IF NOT EXISTS ReferralLeadLog_createdAt_idx ON ReferralLeadLog(createdAt);');
     console.log('Checked ReferralLeadLog table');
 
+    await client.execute(`CREATE TABLE IF NOT EXISTS AiChatMessage (
+      id TEXT PRIMARY KEY, sessionId TEXT NOT NULL, role TEXT NOT NULL,
+      text TEXT NOT NULL, createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.execute('CREATE INDEX IF NOT EXISTS AiChatMessage_sessionId_createdAt_idx ON AiChatMessage(sessionId, createdAt);');
+    await client.execute('CREATE INDEX IF NOT EXISTS AiChatMessage_createdAt_idx ON AiChatMessage(createdAt);');
+
+    await client.execute(`CREATE TABLE IF NOT EXISTS ChatbotConfig (
+      id TEXT PRIMARY KEY, customRules TEXT NOT NULL DEFAULT '',
+      nvidiaKeyEncrypted TEXT, geminiKeyEncrypted TEXT,
+      nvidiaModel TEXT NOT NULL DEFAULT 'openai/gpt-oss-20b',
+      geminiModel TEXT NOT NULL DEFAULT 'gemini-2.5-flash',
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+
     console.log('✅ Turso schema synchronization complete!');
   } catch (err) {
     console.error('❌ Error updating Turso database:', err);
+    process.exitCode = 1;
   }
 }
 

@@ -1,16 +1,20 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { generateAuthenticationOptions } from '@simplewebauthn/server';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
-import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { setChallengeCookie } from '@/lib/session';
+import { getClientIp, isSameOriginRequest, rateLimitResponse, takeChatRateLimit } from '@/lib/chat-security';
 
 function getRpID(request: NextRequest): string {
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
-  return host.split(':')[0];
+  return new URL(request.url).hostname;
 }
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    const ip = getClientIp(request);
+    const limit = await takeChatRateLimit(ip, ip, 'auth');
+    if (!limit.ok) return rateLimitResponse(limit.retryAfter);
     // Fetch master user
     const user = await prisma.user.findUnique({
       where: { username: 'master' },
@@ -38,7 +42,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(options);
   } catch (error: unknown) {
     console.error('Error generating login options:', error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Accesso temporaneamente non disponibile' }, { status: 500 });
   }
 }
-

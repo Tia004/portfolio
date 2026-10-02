@@ -42,6 +42,27 @@ model ChatMessage {
   @@index([sessionId, timestamp])
 }
 
+model AiChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  role      String
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([createdAt])
+}
+
+model ChatbotConfig {
+  id                 String   @id
+  customRules        String   @default("")
+  nvidiaKeyEncrypted String?
+  geminiKeyEncrypted String?
+  nvidiaModel        String   @default("openai/gpt-oss-20b")
+  geminiModel        String   @default("gemini-2.5-flash")
+  updatedAt          DateTime @updatedAt
+}
+
 model ContactMessage {
   id        String   @id @default(uuid())
   name      String
@@ -314,5 +335,3 @@ model ReferralLeadLog {
   @@index([referralCode])
   @@index([createdAt])
 }
-
-

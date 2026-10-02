@@ -6,7 +6,7 @@ Il portfolio ha **due canali di comunicazione** che funzionano indipendentemente
 
 | Canale | Dove | Backend |
 |---|---|---|
-| **🤖 AI Chatbot** | Sezione `#chatbot` (standalone nella pagina) | `POST /api/chat/ai` → Groq |
+| **🤖 AI Chatbot** | Sezione `#chatbot` (standalone nella pagina) | `POST /api/chat/ai` → Groq, NVIDIA NIM o Gemini |
 | **💬 Telegram Chat** | Widget fluttuante (basso destra) | `POST /api/chat` → Telegram Bot + SSE stream |
 
 ---
@@ -27,6 +27,10 @@ Su Vercel, vai in **Settings → Environment Variables** e aggiungi:
 | Variabile | Valore | Obbligatoria per |
 |---|---|---|
 | `GROQ_API_KEY` | `gsk_...` | 🤖 AI Chatbot |
+| `SESSION_SECRET` | stringa casuale di almeno 32 caratteri | Cookie di accesso alla dashboard |
+| `AI_KEYS_ENCRYPTION_KEY` | stringa casuale di almeno 32 caratteri, diversa da `SESSION_SECRET` | Cifratura delle chiavi AI salvate dalla dashboard |
+| `NVIDIA_NIM_API_KEY` | opzionale, chiave NVIDIA lato server | 🤖 AI Chatbot; alternativa all'inserimento in dashboard |
+| `GEMINI_API_KEY` | opzionale, chiave Gemini lato server | 🤖 AI Chatbot; alternativa all'inserimento in dashboard |
 | `TELEGRAM_BOT_TOKEN` | ve lo dice @BotFather | 💬 Telegram Chat |
 | `TELEGRAM_CHAT_ID` | `123456789` (il tuo ID) | 💬 Telegram Chat |
 | `TELEGRAM_ADMIN_USER_ID` | ID numerico del tuo account Telegram | Comandi `/online`, `/offline`, `/status` in gruppi Telegram |
@@ -41,6 +45,12 @@ Su Vercel, vai in **Settings → Environment Variables** e aggiungi:
 | `TURNSTILE_EXPECTED_ACTION` | `chat`, opzionale | Verifica CAPTCHA |
 
 > In produzione configura sempre `TELEGRAM_WEBHOOK_SECRET`, `CHAT_SESSION_SECRET`, entrambe le chiavi Turnstile e, su Vercel/serverless, le variabili Upstash. Imposta `CHAT_EDGE_PROVIDER=vercel` o `cloudflare` quando il provider non viene rilevato automaticamente. Senza Turnstile le API chat e contatti rifiutano le richieste in produzione. In sviluppo il CAPTCHA può restare non configurato.
+>
+> `SESSION_SECRET` e `AI_KEYS_ENCRYPTION_KEY` sono obbligatorie per l'accesso master e la gestione delle chiavi AI. Non cambiare `AI_KEYS_ENCRYPTION_KEY` senza prima rimuovere e reinserire le chiavi cifrate nella dashboard. Le chiavi AI non devono mai avere il prefisso `NEXT_PUBLIC_` e non devono essere salvate nel repository.
+
+### Chatbot dalla dashboard
+
+Apri `/loginmaster/dashboard` → **Chatbot & Rulebook**. Qui puoi aggiungere istruzioni al rulebook e incollare o sostituire le chiavi NVIDIA NIM e Gemini AI Studio. La dashboard mostra soltanto se una chiave è configurata; il valore non viene mai restituito dalle API. Le chiamate ai modelli partono dal server tramite HTTPS. L'archivio conserva i nuovi turni del chatbot nel database; le vecchie conversazioni rimaste soltanto nel browser del visitatore non possono essere recuperate retroattivamente. I limiti gratuiti e i modelli disponibili dipendono dai rispettivi provider.
 >
 > `TELEGRAM_ADMIN_USER_ID` è obbligatoria quando `TELEGRAM_CHAT_ID` è un gruppo: solo quell'account può usare `/online`, `/offline` e `/status`. In una chat privata il `TELEGRAM_CHAT_ID` identifica già il destinatario autorizzato.
 >

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -33,6 +33,8 @@ const shareTechMono = Share_Tech_Mono({
   variable: "--font-share-tech-mono",
   display: "swap",
 });
+
+export const viewport: Viewport = { themeColor: '#02040a' };
 
 // Localized metadata — Google sees the right title/description per language
 export async function generateMetadata(): Promise<Metadata> {
@@ -101,7 +103,6 @@ export async function generateMetadata(): Promise<Metadata> {
       statusBarStyle: "black-translucent",
       title: "Tia Designs",
     },
-    themeColor: "#02040a",
     other: {
       "msapplication-TileColor": "#02040a",
     },
@@ -127,9 +128,7 @@ export default async function RootLayout({
       className={cn("h-full antialiased bg-[#010101]", "font-sans", outfit.variable, shareTechMono.variable)}
     >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preload" as="image" href="/TiaDesignsLogo.png" fetchPriority="high" />
+        <link rel="preload" as="image" href="/TiaDesignsLogo.avif" type="image/avif" fetchPriority="high" />
       </head>
       <body className="min-h-full flex flex-col bg-[#02040a] text-slate-100 font-sans">
         {/* Skip link: visible ONLY when focused (keyboard users), so its

@@ -8,6 +8,24 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get('master_session')?.value;
   const { pathname } = request.nextUrl;
 
+  // All admin mutations must originate from this exact origin. This closes
+  // the same-site subdomain gap for older master endpoints as well.
+  if (pathname.startsWith('/api/master/')) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+      const origin = request.headers.get('origin');
+      const referer = request.headers.get('referer');
+      const fetchSite = request.headers.get('sec-fetch-site');
+      let sameOrigin = false;
+      try {
+        sameOrigin = origin ? new URL(origin).origin === request.nextUrl.origin
+          : referer ? new URL(referer).origin === request.nextUrl.origin
+            : fetchSite === 'same-origin';
+      } catch { /* invalid origin */ }
+      if (!sameOrigin) return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
   // Language from the URL path (/en, /es) — these are real pages now (no
   // redirect), so CrUX can collect per-language metrics on distinct URLs.
   //
@@ -82,5 +100,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|api|favicon|site\\.webmanifest|apple-touch-icon).*)'],
+  matcher: ['/((?!_next|api|favicon|site\\.webmanifest|apple-touch-icon).*)', '/api/master/:path*'],
 };

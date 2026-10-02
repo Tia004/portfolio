@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable react/no-unknown-property */
 
 import { useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
@@ -301,6 +300,32 @@ function DitheredWaves({
       </mesh>
     </>
   );
+}
+
+// The hero shader changes slowly. Driving a demand canvas at 30 fps halves
+// full-screen GPU draws while keeping the same animation and pointer response.
+function DitherFrameDriver({ active, staticFrame }: { active: boolean; staticFrame: boolean }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!active) return;
+    let timer = 0;
+    const tick = () => {
+      if (document.hidden) return;
+      invalidate();
+      if (!staticFrame) timer = window.setTimeout(tick, 1000 / 30);
+    };
+    const onVisibility = () => {
+      window.clearTimeout(timer);
+      if (!document.hidden) tick();
+    };
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [active, staticFrame, invalidate]);
+  return null;
 }
 
 // The static teal base layer lives in DitherStatic.tsx and is rendered
@@ -630,7 +655,7 @@ export default function Dither({
           key={canvasKey}
           camera={{ position: [0, 0, 6] }}
           dpr={1}
-          frameloop={paused ? 'never' : 'always'}
+          frameloop={paused ? 'never' : 'demand'}
           // antialias:false — the shader quantises every channel to ~8 levels,
           // so MSAA cannot smooth anything on this full-screen quad; it only
           // adds a resolve pass per frame (measurable on integrated GPUs).
@@ -683,6 +708,7 @@ export default function Dither({
             visibility: contextLost ? 'hidden' : 'visible',
           }}
         >
+          <DitherFrameDriver active={!paused} staticFrame={disableAnimation} />
           <DitheredWaves
             waveSpeed={waveSpeed}
             waveFrequency={waveFrequency}

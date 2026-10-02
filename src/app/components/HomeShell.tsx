@@ -3443,6 +3443,12 @@ export default function HomeShell() {
             blurLevels={[1, 4, 9, 18]}
           />
         </div>
+        <div
+          className="fixed inset-x-0 bottom-0 z-20 pointer-events-none"
+          style={{ opacity: chatFullscreen ? 0 : 1, transition: 'opacity 0.35s ease' }}
+        >
+          <ProgressiveBlur height="4.5rem" position="bottom" blurLevels={[1, 4, 9, 18]} />
+        </div>
         <div ref={turnstileContainerRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-px w-px overflow-hidden opacity-0" />
 
           {/* Fixed molten-metal background — visible (and animating) only

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import TiaIcon from './TiaIcon';
 import { Settings01Icon } from './icons';
 import { useLanguage } from './LanguageProvider';
@@ -9,10 +10,10 @@ import { setConsent, hasConsent, type ConsentLevel } from '@/lib/cookie-consent'
 import { trackPageView, trackCookieConsent } from '@/lib/analytics';
 
 export default function CookieBanner() {
+  const pathname = usePathname();
   const { lang } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const scrollPosRef = useRef(0);
 
   // Non-blocking banner — users can freely browse and scroll the page
   // while the floating consent banner remains accessible at the bottom.
@@ -25,11 +26,12 @@ export default function CookieBanner() {
   }, []);
 
   useEffect(() => {
+    if (pathname.startsWith('/loginmaster')) return;
     const t = setTimeout(() => {
       if (!hasConsent()) setVisible(true);
     }, 2500);
     return () => clearTimeout(t);
-  }, []);
+  }, [pathname]);
 
   const [showPreferences, setShowPreferences] = useState(false);
   const [analyticsAllowed, setAnalyticsAllowed] = useState(true);
@@ -56,7 +58,7 @@ export default function CookieBanner() {
     });
   };
 
-  if (!visible) return null;
+  if (!visible || pathname.startsWith('/loginmaster')) return null;
 
   return (
     <div className={`fixed inset-0 z-[10030] flex items-end justify-center p-4 sm:p-6 pointer-events-none ${exiting ? 'animate-out fade-out duration-300' : 'animate-in fade-in duration-300'}`}>

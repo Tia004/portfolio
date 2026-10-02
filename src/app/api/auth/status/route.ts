@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -9,6 +9,6 @@ export async function GET() {
     return NextResponse.json({ initialized: authCount > 0, passkeyCount: authCount });
   } catch (error: unknown) {
     console.error('Error checking auth status:', error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Stato accesso temporaneamente non disponibile' }, { status: 500 });
   }
 }

@@ -2,9 +2,12 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
 const COOKIE_NAME = 'master_session';
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.SESSION_SECRET || 'fallback-super-secret-key-at-least-32-chars-long-for-passkey-portfolio'
-);
+// Never accept a public, hard-coded signing secret. Missing configuration
+// invalidates every session instead of letting anyone forge an admin cookie.
+const configuredSecret = process.env.SESSION_SECRET;
+const SECRET_KEY = configuredSecret && configuredSecret.length >= 32
+  ? new TextEncoder().encode(configuredSecret)
+  : null;
 
 export interface SessionPayload {
   userId: string;
@@ -12,6 +15,7 @@ export interface SessionPayload {
 }
 
 export async function encrypt(payload: SessionPayload) {
+  if (!SECRET_KEY) throw new Error('SESSION_SECRET must contain at least 32 characters');
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -20,12 +24,13 @@ export async function encrypt(payload: SessionPayload) {
 }
 
 export async function decrypt(token: string): Promise<SessionPayload | null> {
+  if (!SECRET_KEY) return null;
   try {
     const { payload } = await jwtVerify(token, SECRET_KEY, {
       algorithms: ['HS256'],
     });
     return payload as unknown as SessionPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -76,4 +81,3 @@ export async function deleteChallengeCookie(name: string) {
   const cookieStore = await cookies();
   cookieStore.delete(name);
 }
-

@@ -1842,10 +1842,8 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
               {/* Rendered HTML Container */}
               <div className="rounded-2xl border border-white/10 overflow-hidden bg-black p-1 shadow-inner">
-                <div
-                  className="rounded-xl overflow-hidden"
-                  dangerouslySetInnerHTML={{ __html: livePreviewHtml }}
-                />
+                <iframe title="Anteprima email isolata" sandbox="" referrerPolicy="no-referrer"
+                  className="w-full min-h-[500px] rounded-xl bg-white" srcDoc={livePreviewHtml} />
               </div>
             </div>
 

@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { createSession } from '@/lib/session';
+import { getClientIp, isSameOriginRequest, rateLimitResponse, takeChatRateLimit } from '@/lib/chat-security';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    if (Number(request.headers.get('content-length') || 0) > 1024) return NextResponse.json({ error: 'Richiesta troppo grande' }, { status: 413 });
+    const ip = getClientIp(request);
+    const limit = await takeChatRateLimit(ip, ip, 'auth');
+    if (!limit.ok) return rateLimitResponse(limit.retryAfter);
     const { code } = await request.json();
 
-    if (!code || typeof code !== 'string') {
+    if (!code || typeof code !== 'string' || code.length > 64) {
       return NextResponse.json({ error: 'Codice di recupero richiesto' }, { status: 400 });
     }
 
@@ -24,10 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark as used
-    await prisma.recoveryCode.update({
-      where: { id: recoveryRecord.id },
+    const consumed = await prisma.recoveryCode.updateMany({
+      where: { id: recoveryRecord.id, usedAt: null },
       data: { usedAt: new Date() },
     });
+    if (consumed.count !== 1) return NextResponse.json({ error: 'Codice di recupero già utilizzato' }, { status: 401 });
 
     // Ensure master user exists
     let master = await prisma.user.findUnique({
@@ -63,6 +70,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error verifying recovery code:', error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Accesso temporaneamente non disponibile' }, { status: 500 });
   }
 }

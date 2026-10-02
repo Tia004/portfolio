@@ -890,7 +890,7 @@ img {
 /* ── Official Commercial PDF & Print Styling for Preventivatore (A4 Portrait) ─────────── */
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 12mm 16mm;
 }
 
 @media print {
@@ -899,13 +899,14 @@ img {
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
     overflow: visible !important;
+    display: block !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -913,6 +914,25 @@ img {
   /* Completely hide all UI elements outside the printable document */
   body * {
     visibility: hidden !important;
+  }
+
+  /* Keep only the quote's ancestor chain in normal flow. Absolute positioning
+     clipped long documents to page one; hidden siblings retained layout space. */
+  body *:not(:has(#printable-quote)):not(#printable-quote):not(#printable-quote *) {
+    display: none !important;
+  }
+  body *:has(#printable-quote) {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
   }
 
   header, nav, footer, aside, .no-print, .molten-metal-container, [aria-hidden="true"] {
@@ -926,15 +946,12 @@ img {
   }
 
   #printable-quote {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    right: 0 !important;
+    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
-    min-height: 100% !important;
+    min-height: 0 !important;
     box-sizing: border-box !important;
-    padding: 12mm 16mm 10mm 16mm !important;
+    padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     border-radius: 0 !important;
@@ -942,13 +959,11 @@ img {
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
-    page-break-inside: avoid !important;
-    page-break-after: avoid !important;
-    break-inside: avoid !important;
+    page-break-inside: auto !important;
+    page-break-after: auto !important;
+    break-inside: auto !important;
     overflow: visible !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    display: block !important;
     z-index: 999999 !important;
   }
 
@@ -1013,6 +1028,7 @@ img {
   }
   #printable-quote tbody tr {
     border-bottom: 1px solid #e2e8f0 !important;
+    break-inside: avoid !important;
   }
   #printable-quote .quote-divider {
     border-color: #cbd5e1 !important;

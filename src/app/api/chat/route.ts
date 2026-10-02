@@ -15,36 +15,11 @@ import {
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-const locationCache = new Map<string, string>();
-
-/** Get a rough location string from an IP address with fast in-memory caching and a short timeout. */
-async function getLocation(ip: string): Promise<string> {
-  if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
-    return 'localhost';
-  }
-  if (locationCache.has(ip)) {
-    return locationCache.get(ip)!;
-  }
-  try {
-    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=city,regionName,country`, {
-      signal: AbortSignal.timeout(600),
-    });
-    if (!res.ok) return 'sconosciuta';
-    const data = await res.json();
-    const parts: string[] = [];
-    if (data.city) parts.push(data.city);
-    if (data.regionName) parts.push(data.regionName);
-    if (data.country) parts.push(data.country);
-    const loc = parts.join(', ') || 'sconosciuta';
-    if (locationCache.size > 500) {
-      const firstKey = locationCache.keys().next().value;
-      if (firstKey) locationCache.delete(firstKey);
-    }
-    locationCache.set(ip, loc);
-    return loc;
-  } catch {
-    return 'sconosciuta';
-  }
+/** Edge geolocation avoids a blocking third-party lookup for every visitor. */
+function getLocation(req: NextRequest): string {
+  if (!process.env.VERCEL) return 'sconosciuta';
+  return [req.headers.get('x-vercel-ip-city'), req.headers.get('x-vercel-ip-country-region'), req.headers.get('x-vercel-ip-country')]
+    .filter(Boolean).map((part) => { try { return decodeURIComponent(part!); } catch { return part!; } }).join(', ') || 'sconosciuta';
 }
 
 export async function GET(req: NextRequest) {
@@ -99,14 +74,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Parallelize message storage, availability check, location lookup, and history retrieval
-    const [, availability, location, history] = await Promise.all([
+    const location = getLocation(req);
+    const [, availability, history] = await Promise.all([
       addMessage(sessionId, {
         text,
         sender: 'client',
         timestamp: Date.now(),
       }),
       getAvailability(),
-      getLocation(ip),
       getRecentMessages(sessionId, 3),
     ]);
 

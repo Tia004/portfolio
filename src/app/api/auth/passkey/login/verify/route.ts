@@ -1,32 +1,24 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
-import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { getChallengeCookie, deleteChallengeCookie, createSession } from '@/lib/session';
+import { getClientIp, isSameOriginRequest, rateLimitResponse, takeChatRateLimit } from '@/lib/chat-security';
 
 function getRpID(request: NextRequest): string {
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
-  return host.split(':')[0];
+  return new URL(request.url).hostname;
 }
 
 function getExpectedOrigins(request: NextRequest): string[] {
-  const originHeader = request.headers.get('origin');
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(request.url).host;
-  const proto = request.headers.get('x-forwarded-proto') || (request.url.startsWith('https') ? 'https' : 'http');
-  const origins = new Set<string>();
-  if (originHeader) origins.add(originHeader);
-  origins.add(`${proto}://${host}`);
-  origins.add('https://tiadesigns.it');
-  origins.add('https://www.tiadesigns.it');
-  if (process.env.NODE_ENV !== 'production') {
-    origins.add('http://localhost:3000');
-    origins.add('http://127.0.0.1:3000');
-  }
-  return Array.from(origins);
+  return [new URL(request.url).origin];
 }
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Origine non autorizzata' }, { status: 403 });
+    const ip = getClientIp(request);
+    const limit = await takeChatRateLimit(ip, ip, 'auth');
+    if (!limit.ok) return rateLimitResponse(limit.retryAfter);
     const body = await request.json();
     const credentialID = body.id;
 
@@ -85,7 +77,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Error verifying login:', error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: 'Accesso temporaneamente non disponibile' }, { status: 500 });
   }
 }
-

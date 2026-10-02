@@ -129,7 +129,7 @@ export function isSameOriginRequest(req: NextRequest): boolean {
   // browser same-site fetch signal or a same-origin Referer; direct requests
   // without either signal remain rejected in production.
   const fetchSite = req.headers.get('sec-fetch-site');
-  if (fetchSite === 'same-origin' || fetchSite === 'same-site') return true;
+  if (fetchSite === 'same-origin') return true;
   const referer = req.headers.get('referer');
   if (referer) {
     try {
@@ -224,6 +224,8 @@ const SCOPE_CONFIG: Record<string, { perUser: number; globalLimit: number }> = {
   newsletter: { perUser: 5, globalLimit: 50 },
   session: { perUser: 12, globalLimit: 150 },
   stream: { perUser: 10, globalLimit: 120 },
+  auth: { perUser: 8, globalLimit: 100 },
+  unfurl: { perUser: 20, globalLimit: 200 },
 };
 
 function getScopeLimits(scope: string): { perUser: number; globalLimit: number } {
