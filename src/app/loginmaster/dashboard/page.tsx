@@ -109,7 +109,18 @@ const DeepAnalyticsView = dynamic(() => import('@/app/components/dashboard/DeepA
   ),
 });
 
-type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'chatbot' | 'quotes' | 'analytics' | 'conversions' | 'cms' | 'health' | 'passkeys';
+const CRMShell = dynamic(() => import('@/app/components/crm/CRMShell'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-[#0a0a14]/85 backdrop-blur-2xl border border-white/[0.08] rounded-3xl p-12 flex flex-col items-center justify-center text-center">
+      <div className="w-8 h-8 rounded-full border-2 border-violet-400 border-t-transparent animate-spin mb-4" />
+      <p className="text-sm font-bold text-white">Caricamento CRM Commerciale...</p>
+      <p className="text-xs text-neutral-400 mt-1">Pipeline, trattative e AI briefing</p>
+    </div>
+  ),
+});
+
+type ActiveTab = 'projects' | 'media' | 'inbox' | 'chats' | 'chatbot' | 'quotes' | 'analytics' | 'conversions' | 'cms' | 'health' | 'passkeys' | 'crm';
 
 // ── Models & Interfaces ──────────────────────────────────────────
 
@@ -2333,9 +2344,11 @@ export default function DashboardPage() {
               { id: 'cms', label: 'CMS Contenuti', icon: FilePenIcon },
               { id: 'health', label: 'System Health', icon: WorkflowSquare01Icon },
               { id: 'passkeys', label: 'Passkey & Sicurezza', icon: CpuIcon, count: passkeys.length },
+              { id: 'crm', label: 'CRM Commerciale', icon: DashboardSquare01Icon, badge: 'PRO' },
             ].map((tab) => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
+              const isCRM = tab.id === 'crm';
               return (
                 <button
                   key={tab.id}
@@ -2344,7 +2357,9 @@ export default function DashboardPage() {
                     if (tab.id === 'inbox') void fetchArubaEmailsList();
                   }}
                   className={`w-full px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
-                    active
+                    active && isCRM
+                      ? 'bg-violet-500/90 text-white border-violet-400 shadow-lg shadow-violet-500/20'
+                      : active
                       ? 'bg-teal-400 text-black border-teal-300 shadow-lg shadow-teal-400/20'
                       : 'bg-transparent text-neutral-400 border-transparent hover:text-white hover:bg-white/[0.05]'
                   }`}
@@ -2353,6 +2368,11 @@ export default function DashboardPage() {
                     <TiaIcon icon={Icon} size={17} strokeWidth={2} />
                     <span>{tab.label}</span>
                   </div>
+                  {'badge' in tab && tab.badge && !active && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                      {tab.badge}
+                    </span>
+                  )}
                   {typeof tab.count === 'number' && tab.count > 0 && (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${active ? 'bg-black/20 text-black font-bold' : 'bg-teal-500/20 text-teal-300'}`}>
                       {tab.count}
@@ -6460,6 +6480,35 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ── TAB CRM: CRM COMMERCIALE ── */}
+          {activeTab === 'crm' && (
+            <div className="flex flex-col gap-0 w-full crm-portal">
+              {/* CRM Header Card */}
+              <div className="bg-[#0a0814]/85 backdrop-blur-2xl border border-violet-500/[0.15] shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(139,92,246,0.15)] rounded-3xl p-6 flex items-center justify-between mb-5">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/30 flex items-center justify-center text-violet-400 shadow-[0_0_20px_rgba(139,92,246,0.2)]">
+                    <TiaIcon icon={DashboardSquare01Icon} size={22} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="text-lg font-bold tracking-tight text-white">CRM Commerciale</h2>
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">PRO</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400 font-mono">Pipeline · Trattative · AI Briefing · Calendario</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs font-mono">
+                    <span className="opacity-60">⌘J</span> Palette
+                  </div>
+                </div>
+              </div>
+              {/* Embedded CRM Shell — fully self-contained with its own providers */}
+              <CRMShell />
+            </div>
+          )}
 
         </main>
 
