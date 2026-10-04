@@ -192,12 +192,12 @@ export default function AlertsBell() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-label={unread.length > 0 ? `Avvisi, ${unread.length} nuovi` : 'Avvisi'}
-        className="relative flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-neutral-300 transition-colors hover:border-teal-400/30 hover:text-white"
+        title="Avvisi di sistema"
+        className="relative flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] p-2 text-neutral-300 transition-all hover:border-violet-400/40 hover:text-white cursor-pointer"
       >
         <TiaIcon icon={Notification01Icon} size={16} strokeWidth={1.8} />
-        <span className="hidden sm:inline">Avvisi</span>
         {unread.length > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-400 px-1 text-[11px] font-bold text-[#04120f]">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-400 px-1 text-[10px] font-bold text-[#04120f] shadow-[0_0_8px_rgba(45,212,191,0.6)]">
             {unread.length > 9 ? '9+' : unread.length}
           </span>
         )}

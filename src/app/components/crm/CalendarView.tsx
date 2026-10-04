@@ -815,8 +815,9 @@ export const CalendarView: React.FC = () => {
               </span>
               <div className="flex flex-col gap-2">
                 {activeDayTasks.filter((t) => t.status !== 'Completata').length === 0 ? (
-                  <div className="p-4 text-center text-xs text-zinc-400">
-                    🎉 Tutte le attività della giornata sono completate!
+                  <div className="p-4 text-center text-xs text-zinc-400 flex items-center justify-center gap-1.5">
+                    <span className="material-symbols-outlined text-teal-400 text-[18px]">check_circle</span>
+                    <span>Tutte le attività della giornata sono completate!</span>
                   </div>
                 ) : (
                   activeDayTasks

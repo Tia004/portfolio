@@ -15,12 +15,23 @@ import { NewDealModal } from './NewDealModal';
 import { SettingsMcpModal } from './SettingsMcpModal';
 import { SalesFocus } from './SalesFocus';
 import { CommandPalette } from './CommandPalette';
+import { GlowPointerListener } from './GlowPointerListener';
 
 type CRMTab = 'cockpit' | 'kanban' | 'focus' | 'opportunities' | 'calendar' | 'standby' | 'crm-analytics';
 
-function CRMInner() {
+export interface CRMShellProps {
+  activeTab?: CRMTab;
+  onTabChange?: (tab: CRMTab) => void;
+}
+
+function CRMInner({ activeTab: controlledTab, onTabChange }: CRMShellProps) {
   const { dataReady, syncStatus } = useCRM();
-  const [activeTab, setActiveTab] = useState<CRMTab>('cockpit');
+  const [internalTab, setInternalTab] = useState<CRMTab>('cockpit');
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = (tab: CRMTab) => {
+    setInternalTab(tab);
+    onTabChange?.(tab);
+  };
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -123,11 +134,12 @@ function CRMInner() {
   );
 }
 
-export default function CRMShell() {
+export default function CRMShell(props: CRMShellProps = {}) {
   return (
     <AuthProvider>
       <CRMProvider>
-        <CRMInner />
+        <GlowPointerListener />
+        <CRMInner {...props} />
       </CRMProvider>
     </AuthProvider>
   );

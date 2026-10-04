@@ -141,4 +141,5 @@ export {
   Home01Icon,
   // Referral attribution (dashboard ConversionsView)
   Link01Icon,
+  Logout01Icon,
 } from '@hugeicons/core-free-icons';

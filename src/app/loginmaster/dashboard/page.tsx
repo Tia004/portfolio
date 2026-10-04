@@ -52,6 +52,7 @@ import {
   CloudIcon,
   LayersIcon,
   ViewIcon,
+  Logout01Icon,
 } from '@/app/components/icons';
 import {
   Paperclip,
@@ -393,7 +394,8 @@ async function convertImageToWebp(file: File, quality = 0.85): Promise<File> {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('crm');
+  const [crmSubTab, setCrmSubTab] = useState<'cockpit' | 'kanban' | 'focus' | 'opportunities' | 'calendar' | 'standby' | 'crm-analytics'>('cockpit');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -2297,88 +2299,121 @@ export default function DashboardPage() {
         {/* ── LEFT SIDEBAR NAVIGATION BAR ── */}
         <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-4 no-print lg:sticky lg:top-8">
           
-          {/* Brand & Master Status */}
-          <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.12)] rounded-3xl p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
-                <TiaIcon icon={CpuIcon} size={20} strokeWidth={1.8} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold tracking-tight text-white">Master Hub</h1>
-                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+          {/* Brand & Master Status — Linear / Resend Obsidian Glass Card */}
+          <div className="bg-[#0b0c16]/85 backdrop-blur-2xl border border-violet-500/[0.2] shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(165,180,252,0.12)] rounded-3xl p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-violet-500/20 via-teal-500/10 to-violet-500/30 border border-violet-500/30 flex items-center justify-center text-violet-300 shadow-[0_0_16px_rgba(139,92,246,0.25)] shrink-0">
+                  <TiaIcon icon={CpuIcon} size={18} strokeWidth={1.8} />
                 </div>
-                <p className="text-[11px] text-neutral-400 font-mono">Passkey Protected</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="text-sm font-bold tracking-tight text-white whitespace-nowrap">Master Hub</h1>
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)] animate-pulse shrink-0" />
+                  </div>
+                  <p className="text-[10px] text-neutral-400 font-mono tracking-tight">Passkey Protected</p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <AlertsBell />
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-500/30 text-red-300 text-xs transition-colors cursor-pointer"
-                title="Logout"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <AlertsBell />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-2 rounded-xl bg-white/[0.04] hover:bg-red-500/15 border border-white/[0.08] hover:border-red-500/30 text-neutral-400 hover:text-red-300 transition-all cursor-pointer flex items-center justify-center"
+                  title="Logout"
+                >
+                  <TiaIcon icon={Logout01Icon} size={15} strokeWidth={2} />
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Left Vertical Tabs Menu */}
-          <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_0_rgba(255,255,255,0.08)] rounded-3xl p-3 flex flex-col gap-1.5">
+          <div className="bg-[#0b0c16]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(165,180,252,0.08)] rounded-3xl p-3 flex flex-col gap-1.5">
             {[
+              { id: 'crm', label: 'CRM Commerciale', icon: DashboardSquare01Icon, badge: 'PRO' },
+              { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'projects', label: 'Progetti Portfolio', icon: CodeFolderIcon, count: projects.length },
               { id: 'media', label: 'Media & Cloudflare CDN', icon: CloudIcon, count: mediaAssets.length },
               { id: 'inbox', label: 'Webmail & Inbox', icon: Mail01Icon, count: (arubaUnreadCount > 0 ? arubaUnreadCount : messages.filter((m) => m.status === 'new').length) },
               { id: 'chats', label: 'Archivio Chatbot', icon: BubbleChatIcon, count: chatSessions.length },
               { id: 'chatbot', label: 'Chatbot & Rulebook', icon: Robot01Icon },
-              { id: 'quotes', label: 'Preventivatore', icon: DollarSignIcon, count: savedQuotes.length },
               { id: 'analytics', label: 'Deep Analytics', icon: GaugeIcon },
-              // Funnel steps (quote / call / chat) with their source and the
-              // ?ref= codes behind the 20% word-of-mouth offer. Kept separate
-              // from Deep Analytics on purpose: traffic and conversions are
-              // read in different moments, and mixing them buries the three
-              // numbers that decide anything.
               { id: 'conversions', label: 'Conversioni', icon: AnalyticsUpIcon },
               { id: 'cms', label: 'CMS Contenuti', icon: FilePenIcon },
               { id: 'health', label: 'System Health', icon: WorkflowSquare01Icon },
               { id: 'passkeys', label: 'Passkey & Sicurezza', icon: CpuIcon, count: passkeys.length },
-              { id: 'crm', label: 'CRM Commerciale', icon: DashboardSquare01Icon, badge: 'PRO' },
             ].map((tab) => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
               const isCRM = tab.id === 'crm';
               return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id as ActiveTab);
-                    if (tab.id === 'inbox') void fetchArubaEmailsList();
-                  }}
-                  className={`w-full px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
-                    active && isCRM
-                      ? 'bg-violet-500/90 text-white border-violet-400 shadow-lg shadow-violet-500/20'
-                      : active
-                      ? 'bg-teal-400 text-black border-teal-300 shadow-lg shadow-teal-400/20'
-                      : 'bg-transparent text-neutral-400 border-transparent hover:text-white hover:bg-white/[0.05]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <TiaIcon icon={Icon} size={17} strokeWidth={2} />
-                    <span>{tab.label}</span>
-                  </div>
-                  {'badge' in tab && tab.badge && !active && (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                      {tab.badge}
-                    </span>
+                <div key={tab.id} className="flex flex-col">
+                  <button
+                    onClick={() => {
+                      setActiveTab(tab.id as ActiveTab);
+                      if (tab.id === 'inbox') void fetchArubaEmailsList();
+                    }}
+                    className={`w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
+                      active
+                        ? 'bg-gradient-to-r from-violet-600/90 to-indigo-600/90 text-white border-violet-400/40 shadow-[0_0_24px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.2)]'
+                        : 'bg-transparent text-neutral-400 border-transparent hover:text-white hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <TiaIcon icon={Icon} size={16} strokeWidth={2} />
+                      <span>{tab.label}</span>
+                    </div>
+                    {'badge' in tab && tab.badge && (
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        active
+                          ? 'bg-white/20 text-white border border-white/30'
+                          : 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                      }`}>
+                        {tab.badge}
+                      </span>
+                    )}
+                    {typeof tab.count === 'number' && tab.count > 0 && (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                        active ? 'bg-black/30 text-teal-300 font-bold' : 'bg-teal-500/20 text-teal-300'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Nested CRM Sub-Menu when CRM tab is active */}
+                  {isCRM && active && (
+                    <div className="flex flex-col gap-1 pl-3 py-1.5 my-1 border-l border-violet-500/30 ml-4 animate-in fade-in slide-in-from-top-1 duration-150">
+                      {[
+                        { id: 'cockpit', label: 'Cockpit & KPI', icon: '◈' },
+                        { id: 'kanban', label: 'Pipeline Kanban', icon: '⬛' },
+                        { id: 'opportunities', label: 'Tutte le Trattative', icon: '◎' },
+                        { id: 'focus', label: 'Focus Vendite', icon: '◉' },
+                        { id: 'calendar', label: 'Calendario', icon: '▦' },
+                        { id: 'standby', label: 'Stand-by & Alert', icon: '◷' },
+                        { id: 'crm-analytics', label: 'Analytics Vendite', icon: '▲' },
+                      ].map((sub) => {
+                        const isSubActive = crmSubTab === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => setCrmSubTab(sub.id as any)}
+                            className={`w-full px-2.5 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-2 transition-all cursor-pointer border ${
+                              isSubActive
+                                ? 'bg-violet-500/25 text-violet-200 border-violet-500/40 shadow-sm'
+                                : 'text-neutral-400 hover:text-white hover:bg-white/[0.04] border-transparent'
+                            }`}
+                          >
+                            <span className="text-[10px] font-mono text-violet-400">{sub.icon}</span>
+                            <span className="truncate">{sub.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                  {typeof tab.count === 'number' && tab.count > 0 && (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${active ? 'bg-black/20 text-black font-bold' : 'bg-teal-500/20 text-teal-300'}`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -6506,7 +6541,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               {/* Embedded CRM Shell — fully self-contained with its own providers */}
-              <CRMShell />
+              <CRMShell activeTab={crmSubTab} onTabChange={(t) => setCrmSubTab(t)} />
             </div>
           )}
 

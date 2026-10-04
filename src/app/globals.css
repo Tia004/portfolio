@@ -8,6 +8,34 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/symbols.ttf') format('truetype');
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+  user-select: none;
+}
+
 :root {
   --font-sans: var(--font-outfit), 'Space Grotesk', sans-serif;
   --font-mono: var(--font-share-tech-mono), monospace;
@@ -1306,4 +1334,95 @@ img {
   .crm-subnav-btn { padding: 6px 10px; font-size: 11px; }
   .crm-portal .focus-layout { grid-template-columns: 1fr; }
   .crm-portal .app-main { padding: 0; }
+}
+
+/* ===========================================================================
+   LINEAR & RESEND UNIFIED DESIGN SYSTEM OVERRIDES FOR CRM & DASHBOARD
+   =========================================================================== */
+
+/* Global mapping for surface containers used in CRM */
+.crm-portal .bg-surface-container-lowest,
+.crm-portal [class*="bg-surface-container-lowest"],
+.crm-portal section[class*="bg-surface-container-lowest"] {
+  background: rgba(13, 14, 22, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(165, 180, 252, 0.12) !important;
+}
+
+.crm-portal .bg-surface-container-lowest:hover,
+.crm-portal [class*="bg-surface-container-lowest"]:hover {
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(165, 180, 252, 0.2), 0 0 24px -6px rgba(139, 92, 246, 0.25) !important;
+}
+
+.crm-portal .bg-surface-container-low,
+.crm-portal [class*="bg-surface-container-low"] {
+  background: rgba(18, 19, 29, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.crm-portal .bg-surface-container,
+.crm-portal [class*="bg-surface-container"] {
+  background: rgba(22, 23, 35, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.crm-portal .bg-surface-container-high,
+.crm-portal [class*="bg-surface-container-high"] {
+  background: rgba(28, 30, 45, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Eliminate harsh white borders */
+.crm-portal [class*="border-outline-variant"],
+.crm-portal .border-outline-variant {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.crm-portal .text-on-surface,
+.crm-portal [class*="text-on-surface"] {
+  color: #f4f4f5 !important;
+}
+
+.crm-portal .text-on-surface-variant,
+.crm-portal [class*="text-on-surface-variant"] {
+  color: #a1a1aa !important;
+}
+
+.crm-portal .text-outline {
+  color: #71717a !important;
+}
+
+.crm-portal .bg-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+}
+
+.crm-portal .text-primary {
+  color: #a5b4fc !important;
+}
+
+/* Dashed placeholder box */
+.crm-portal .border-dashed {
+  border-style: dashed !important;
+  border-color: rgba(165, 180, 252, 0.25) !important;
+  background: rgba(139, 92, 246, 0.03) !important;
+}
+
+/* Hover glow pointer effect across linear cards */
+.resend-card {
+  position: relative;
+  background: rgba(14, 15, 23, 0.85) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(165, 180, 252, 0.12) !important;
+  transition: all 0.22s ease-out;
+}
+
+.resend-card:hover {
+  border-color: rgba(139, 92, 246, 0.35) !important;
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(165, 180, 252, 0.22), 0 0 28px -6px rgba(139, 92, 246, 0.3) !important;
 }
