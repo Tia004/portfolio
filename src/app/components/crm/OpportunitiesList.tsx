@@ -101,7 +101,7 @@ export const OpportunitiesList: React.FC = () => {
             <h1 className="font-headline font-bold text-xl md:text-2xl text-on-surface tracking-tight">
               Registro Opportunità Commerciali
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-mono text-xs font-semibold text-primary">
+            <span className="px-2.5 py-0.5 rounded-full bg-surface-container tabular-nums text-xs font-semibold text-primary">
               {filteredDeals.length} Risultati
             </span>
           </div>
@@ -229,7 +229,7 @@ export const OpportunitiesList: React.FC = () => {
 
                     {/* Valore */}
                     <td className="py-3 px-3">
-                      <div className="flex flex-col font-mono">
+                      <div className="flex flex-col tabular-nums">
                         <span className="font-bold text-primary">
                           € {deal.value.toLocaleString()}
                         </span>
@@ -266,7 +266,7 @@ export const OpportunitiesList: React.FC = () => {
                           <span className="text-on-surface font-medium line-clamp-1">
                             {deal.nextAction.what}
                           </span>
-                          <span className="text-[10px] font-mono text-on-surface-variant">
+                          <span className="text-[10px] tabular-nums text-on-surface-variant">
                             {deal.nextAction.when} {deal.nextAction.time || ''} • {deal.nextAction.who}
                           </span>
                         </div>

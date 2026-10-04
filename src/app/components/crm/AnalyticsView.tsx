@@ -154,7 +154,7 @@ export const AnalyticsView: React.FC = () => {
           <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
             Venduto Concluso
           </span>
-          <div className="font-headline font-bold text-2xl text-on-surface mt-1 font-mono">
+          <div className="font-headline font-bold text-2xl text-on-surface mt-1 tabular-nums">
             € {soldTotal.toLocaleString()}
           </div>
           <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-2 block">
@@ -166,7 +166,7 @@ export const AnalyticsView: React.FC = () => {
           <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
             Valore Pipeline Attiva
           </span>
-          <div className="font-headline font-bold text-2xl text-on-surface mt-1 font-mono">
+          <div className="font-headline font-bold text-2xl text-on-surface mt-1 tabular-nums">
             € {pipelineTotal.toLocaleString()}
           </div>
           <span className="text-xs text-primary font-semibold mt-2 block">
@@ -178,7 +178,7 @@ export const AnalyticsView: React.FC = () => {
           <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
             Win-Rate Globale
           </span>
-          <div className="font-headline font-bold text-2xl text-on-surface mt-1 font-mono">
+          <div className="font-headline font-bold text-2xl text-on-surface mt-1 tabular-nums">
             {winRate}%
           </div>
           <span className="text-xs text-on-surface-variant font-medium mt-2 block">
@@ -190,7 +190,7 @@ export const AnalyticsView: React.FC = () => {
           <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
             Ticket Medio Vinto
           </span>
-          <div className="font-headline font-bold text-2xl text-on-surface mt-1 font-mono">
+          <div className="font-headline font-bold text-2xl text-on-surface mt-1 tabular-nums">
             € {avgTicket.toLocaleString()}
           </div>
           <span className="text-xs text-on-surface-variant font-medium mt-2 block">
@@ -207,7 +207,7 @@ export const AnalyticsView: React.FC = () => {
             <h3 className="font-headline font-bold text-base text-on-surface">
               Distribuzione Trattative per Fase (Funnel)
             </h3>
-            <span className="text-xs font-mono text-outline">{totalLeads} Totali</span>
+            <span className="text-xs tabular-nums text-outline">{totalLeads} Totali</span>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -217,7 +217,7 @@ export const AnalyticsView: React.FC = () => {
                 <div key={item.stage} className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-on-surface">{item.stage}</span>
-                    <div className="flex items-center gap-2 font-mono">
+                    <div className="flex items-center gap-2 tabular-nums">
                       <span className="text-on-surface-variant">€ {item.value.toLocaleString()}</span>
                       <span className="font-bold text-primary">({item.count})</span>
                     </div>
@@ -253,7 +253,7 @@ export const AnalyticsView: React.FC = () => {
                   <span className="font-headline font-bold text-sm text-on-surface">
                     {item.brand}
                   </span>
-                  <span className="text-xs font-mono font-bold text-primary">
+                  <span className="text-xs tabular-nums font-bold text-primary">
                     {item.count} Opportunità
                   </span>
                 </div>
@@ -263,7 +263,7 @@ export const AnalyticsView: React.FC = () => {
                     <span className="text-[10px] text-on-surface-variant uppercase font-bold block">
                       Venduto Concluso
                     </span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
                       € {item.sold.toLocaleString()}
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export const AnalyticsView: React.FC = () => {
                     <span className="text-[10px] text-on-surface-variant uppercase font-bold block">
                       Pipeline Aperta
                     </span>
-                    <span className="font-mono font-bold text-primary">
+                    <span className="tabular-nums font-bold text-primary">
                       € {item.pipeline.toLocaleString()}
                     </span>
                   </div>
@@ -305,14 +305,14 @@ export const AnalyticsView: React.FC = () => {
                 <tr key={i} className="hover:bg-surface-container-low/50 transition-colors">
                   <td className="py-3 px-4 font-bold text-on-surface">{r.name}</td>
                   <td className="py-3 px-4 text-on-surface-variant">{r.role}</td>
-                  <td className="py-3 px-4 font-mono font-semibold">{r.won}</td>
-                  <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  <td className="py-3 px-4 tabular-nums font-semibold">{r.won}</td>
+                  <td className="py-3 px-4 tabular-nums font-bold text-emerald-600 dark:text-emerald-400">
                     € {r.sold.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 font-mono font-bold text-primary">
+                  <td className="py-3 px-4 tabular-nums font-bold text-primary">
                     € {r.pipe.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-on-surface">
+                  <td className="py-3 px-4 text-right tabular-nums font-bold text-on-surface">
                     {r.winRate}%
                   </td>
                 </tr>

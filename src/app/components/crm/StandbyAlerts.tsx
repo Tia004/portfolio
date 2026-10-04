@@ -47,7 +47,7 @@ export const StandbyAlerts: React.FC = () => {
             <h1 className="font-headline font-bold text-xl md:text-2xl text-on-surface tracking-tight">
               Controllo Stand-by & Alert Automatici
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-surface-container font-mono text-xs font-semibold text-primary">
+            <span className="px-2.5 py-0.5 rounded-full bg-surface-container tabular-nums text-xs font-semibold text-primary">
               {alerts.length} Segnalazioni Attive
             </span>
           </div>
@@ -68,7 +68,7 @@ export const StandbyAlerts: React.FC = () => {
                 Anomalie Commerciali Rilevate
               </h2>
             </div>
-            <span className="text-xs font-mono font-bold text-on-surface-variant">
+            <span className="text-xs tabular-nums font-bold text-on-surface-variant">
               Auto-Audit attivo
             </span>
           </div>
@@ -125,7 +125,7 @@ export const StandbyAlerts: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
-                    <span className="text-[10px] font-mono text-on-surface-variant">
+                    <span className="text-[10px] tabular-nums text-on-surface-variant">
                       Rilevato il: {alert.date}
                     </span>
                     {alert.dealId && (
@@ -208,7 +208,7 @@ export const StandbyAlerts: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="text-right font-mono">
+                      <div className="text-right tabular-nums">
                         <span className="text-xs font-bold text-primary block">
                           € {deal.value.toLocaleString()}
                         </span>

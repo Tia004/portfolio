@@ -364,7 +364,7 @@ export const VoiceAuraOrb: React.FC<VoiceAuraOrbProps> = ({
       <div className="w-full max-w-md bg-[#121316] border border-white/10 rounded-2xl p-4 shadow-lg mb-4 text-left">
         <div className="flex items-center justify-between text-xs mb-2">
           <span className="text-zinc-400 font-medium">Modello Vocale & Alternative</span>
-          <span className="text-zinc-300 font-mono text-[11px] font-medium">
+          <span className="text-zinc-300 tabular-nums text-[11px] font-medium">
             {voiceIndex + 1} di {NEURAL_VOICES.length}
           </span>
         </div>

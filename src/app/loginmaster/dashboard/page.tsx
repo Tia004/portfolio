@@ -260,7 +260,7 @@ const EMAIL_TEMPLATES = [
   {
     id: 'quote',
     name: 'Offerta & Preventivo',
-    icon: '💼',
+    icon: 'work',
     badge: 'Preventivo & Proposta',
     title: 'Proposta per il tuo Progetto',
     subject: (client: string) => `Proposta & Preventivo per il tuo Progetto - Tia Designs`,
@@ -271,7 +271,7 @@ const EMAIL_TEMPLATES = [
   {
     id: 'followup',
     name: 'Follow-up / Ricontatto',
-    icon: '🔄',
+    icon: 'sync',
     badge: 'Follow-up',
     title: 'Hai avuto modo di valutare la proposta?',
     subject: (client: string) => `Aggiornamento sul tuo progetto - Tia Designs`,
@@ -282,7 +282,7 @@ const EMAIL_TEMPLATES = [
   {
     id: 'kickoff',
     name: 'Conferma & Kick-off',
-    icon: '🚀',
+    icon: 'rocket_launch',
     badge: 'Kick-off & Avvio',
     title: 'Benvenuto a bordo! Iniziamo il progetto',
     subject: (client: string) => `Conferma d'Ordine & Avvio Lavori - Tia Designs`,
@@ -293,7 +293,7 @@ const EMAIL_TEMPLATES = [
   {
     id: 'briefing',
     name: 'Briefing Tecnico',
-    icon: '📋',
+    icon: 'assignment',
     badge: 'Briefing & Info',
     title: 'Dettagli necessari per procedere',
     subject: (client: string) => `Dettagli e requisiti per il tuo progetto - Tia Designs`,
@@ -304,10 +304,10 @@ const EMAIL_TEMPLATES = [
   {
     id: 'delivery',
     name: 'Consegna & Recensione',
-    icon: '🌟',
+    icon: 'star',
     badge: 'Consegna & Feedback',
     title: 'Il tuo progetto è online con successo!',
-    subject: (client: string) => `Il tuo progetto è online! 🚀 - Tia Designs`,
+    subject: (client: string) => `Il tuo progetto è online! - Tia Designs`,
     body: (client: string) => `Ciao **${client || 'Gentile Cliente'}**,\n\nè con grande piacere che ti confermo che il tuo progetto è ufficialmente completato e online!\n\nÈ stato un vero piacere collaborare con te su questo progetto.\n\nSe sei soddisfatto del risultato e del lavoro svolto insieme, ti sarei immensamente grato se potessi dedicare 1 minuto per lasciare una breve recensione sul sito: per me è fondamentale!\n\nGrazie ancora per la fiducia e resto a disposizione per qualsiasi esigenza futura.\n\nUn caro saluto,\nTia`,
     ctaText: 'Lascia una Recensione',
     ctaUrl: 'https://tiadesigns.it#recensioni',
@@ -315,31 +315,31 @@ const EMAIL_TEMPLATES = [
 ];
 
 const COUNTRY_MAP: Record<string, { name: string; flag: string }> = {
-  IT: { name: 'Italia', flag: '🇮🇹' },
-  US: { name: 'Stati Uniti', flag: '🇺🇸' },
-  GB: { name: 'Regno Unito', flag: '🇬🇧' },
-  DE: { name: 'Germania', flag: '🇩🇪' },
-  FR: { name: 'Francia', flag: '🇫🇷' },
-  ES: { name: 'Spagna', flag: '🇪🇸' },
-  CH: { name: 'Svizzera', flag: '🇨🇭' },
-  NL: { name: 'Paesi Bassi', flag: '🇳🇱' },
-  BE: { name: 'Belgio', flag: '🇧🇪' },
-  AT: { name: 'Austria', flag: '🇦🇹' },
-  PT: { name: 'Portogallo', flag: '🇵🇹' },
-  PL: { name: 'Polonia', flag: '🇵🇱' },
-  RO: { name: 'Romania', flag: '🇷🇴' },
-  SE: { name: 'Svezia', flag: '🇸🇪' },
-  NO: { name: 'Norvegia', flag: '🇳🇴' },
-  DK: { name: 'Danimarca', flag: '🇩🇰' },
-  FI: { name: 'Finlandia', flag: '🇫🇮' },
-  GR: { name: 'Grecia', flag: '🇬🇷' },
-  IE: { name: 'Irlanda', flag: '🇮🇪' },
-  JP: { name: 'Giappone', flag: '🇯🇵' },
-  CN: { name: 'Cina', flag: '🇨🇳' },
-  BR: { name: 'Brasile', flag: '🇧🇷' },
-  CA: { name: 'Canada', flag: '🇨🇦' },
-  AU: { name: 'Australia', flag: '🇦🇺' },
-  IN: { name: 'India', flag: '🇮🇳' },
+  IT: { name: 'Italia', flag: 'IT' },
+  US: { name: 'Stati Uniti', flag: 'US' },
+  GB: { name: 'Regno Unito', flag: 'GB' },
+  DE: { name: 'Germania', flag: 'DE' },
+  FR: { name: 'Francia', flag: 'FR' },
+  ES: { name: 'Spagna', flag: 'ES' },
+  CH: { name: 'Svizzera', flag: 'CH' },
+  NL: { name: 'Paesi Bassi', flag: 'NL' },
+  BE: { name: 'Belgio', flag: 'BE' },
+  AT: { name: 'Austria', flag: 'AT' },
+  PT: { name: 'Portogallo', flag: 'PT' },
+  PL: { name: 'Polonia', flag: 'PL' },
+  RO: { name: 'Romania', flag: 'RO' },
+  SE: { name: 'Svezia', flag: 'SE' },
+  NO: { name: 'Norvegia', flag: 'NO' },
+  DK: { name: 'Danimarca', flag: 'DK' },
+  FI: { name: 'Finlandia', flag: 'FI' },
+  GR: { name: 'Grecia', flag: 'GR' },
+  IE: { name: 'Irlanda', flag: 'IE' },
+  JP: { name: 'Giappone', flag: 'JP' },
+  CN: { name: 'Cina', flag: 'CN' },
+  BR: { name: 'Brasile', flag: 'BR' },
+  CA: { name: 'Canada', flag: 'CA' },
+  AU: { name: 'Australia', flag: 'AU' },
+  IN: { name: 'India', flag: 'IN' },
 };
 
 // ── WebP Image Converter (Auto-converts any uploaded image format to WebP) ──
@@ -404,6 +404,25 @@ export default function DashboardPage() {
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [toastHiding, setToastHiding] = useState(false);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Accent Theme State (Violet Linear vs Classic Teal)
+  const [accentTheme, setAccentTheme] = useState<'violet' | 'teal'>('violet');
+
+  useEffect(() => {
+    try {
+      const savedTheme = localStorage.getItem('dashboard_accent_theme') as 'violet' | 'teal' | null;
+      if (savedTheme === 'violet' || savedTheme === 'teal') {
+        setAccentTheme(savedTheme);
+      }
+    } catch {}
+  }, []);
+
+  const handleSetAccentTheme = (theme: 'violet' | 'teal') => {
+    setAccentTheme(theme);
+    try {
+      localStorage.setItem('dashboard_accent_theme', theme);
+    } catch {}
+  };
 
   // Availability state
   const [isOnline, setIsOnline] = useState(true);
@@ -532,7 +551,7 @@ export default function DashboardPage() {
   const [customEmailTemplates, setCustomEmailTemplates] = useState<any[]>([]);
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
-  const [newTemplateIcon, setNewTemplateIcon] = useState('✉️');
+  const [newTemplateIcon, setNewTemplateIcon] = useState('mail');
   const [isSavingCustomTemplate, setIsSavingCustomTemplate] = useState(false);
 
   // Newsletter & Campaigns State
@@ -1246,8 +1265,8 @@ export default function DashboardPage() {
 
       showTemporarySuccess(
         nextFeatured
-          ? `★ "${p.title}" messo in evidenza e spostato in cima!`
-          : `☆ "${p.title}" rimosso dai featured.`
+          ? `"${p.title}" messo in evidenza e spostato in cima!`
+          : `"${p.title}" rimosso dai featured.`
       );
     } catch {
       setError('Errore durante l\'aggiornamento del flag featured');
@@ -1612,7 +1631,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newTemplateName.trim(),
-          icon: newTemplateIcon.trim() || '✉️',
+          icon: newTemplateIcon.trim() || 'mail',
           badge: composeBadgeText.trim() || 'Tia Designs',
           title: composeTitle.trim() || 'Proposta',
           subject: composeSubject.trim(),
@@ -2259,7 +2278,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-[#030712] text-white flex items-center justify-center font-sans">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-teal-400/80 text-xs tracking-widest uppercase font-mono animate-pulse">Caricamento Master Dashboard...</p>
+          <p className="text-teal-400/80 text-xs tracking-widest uppercase tabular-nums animate-pulse">Caricamento Master Dashboard...</p>
         </div>
       </div>
     );
@@ -2270,18 +2289,18 @@ export default function DashboardPage() {
       {/* Molten Metal Shader Background */}
       <div aria-hidden="true" className="fixed inset-0 z-0 pointer-events-none">
         <MoltenMetal
-          color1="#05bc8e"
-          color2="#0effc1"
+          color1={accentTheme === 'violet' ? '#7c3aed' : '#05bc8e'}
+          color2={accentTheme === 'violet' ? '#c084fc' : '#0effc1'}
           color3="#ffffff"
           speed={0.25}
           scale={5.5}
           detail={2}
-          glow={1.4}
+          glow={accentTheme === 'violet' ? 1.6 : 1.4}
           coreSize={0.1}
           swirl={1.35}
           fold={-0.15}
-          blackPoint={0.03}
-          brightness={0.3}
+          blackPoint={0.02}
+          brightness={accentTheme === 'violet' ? 0.65 : 0.55}
           colorMode="molten"
           grain={false}
           mouseInteraction={false}
@@ -2291,7 +2310,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Subtle vignette layer */}
-      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/45 pointer-events-none" />
+      <div aria-hidden="true" className="fixed inset-0 z-0 bg-black/20 pointer-events-none" />
 
       {/* Main Container with Left Sidebar & Right Content */}
       <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 pt-6 sm:pt-8 flex flex-col lg:flex-row gap-6 items-start">
@@ -2311,7 +2330,7 @@ export default function DashboardPage() {
                     <h1 className="text-sm font-bold tracking-tight text-white whitespace-nowrap">Master Hub</h1>
                     <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)] animate-pulse shrink-0" />
                   </div>
-                  <p className="text-[10px] text-neutral-400 font-mono tracking-tight">Passkey Protected</p>
+                  <p className="text-[10px] text-neutral-400 font-medium tracking-tight">Passkey Protected</p>
                 </div>
               </div>
 
@@ -2357,7 +2376,9 @@ export default function DashboardPage() {
                     }}
                     className={`w-full px-3.5 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer border ${
                       active
-                        ? 'bg-gradient-to-r from-violet-600/90 to-indigo-600/90 text-white border-violet-400/40 shadow-[0_0_24px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.2)]'
+                        ? (accentTheme === 'violet'
+                            ? 'bg-gradient-to-r from-violet-600/90 to-indigo-600/90 text-white border-violet-400/40 shadow-[0_0_24px_rgba(139,92,246,0.25),inset_0_1px_0_rgba(255,255,255,0.2)]'
+                            : 'bg-gradient-to-r from-teal-600/90 to-emerald-600/90 text-white border-teal-400/40 shadow-[0_0_24px_rgba(20,184,166,0.25),inset_0_1px_0_rgba(255,255,255,0.2)]')
                         : 'bg-transparent text-neutral-400 border-transparent hover:text-white hover:bg-white/[0.05]'
                     }`}
                   >
@@ -2369,53 +2390,111 @@ export default function DashboardPage() {
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                         active
                           ? 'bg-white/20 text-white border border-white/30'
-                          : 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                          : (accentTheme === 'violet' ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30' : 'bg-teal-500/20 text-teal-300 border border-teal-500/30')
                       }`}>
                         {tab.badge}
                       </span>
                     )}
                     {typeof tab.count === 'number' && tab.count > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                        active ? 'bg-black/30 text-teal-300 font-bold' : 'bg-teal-500/20 text-teal-300'
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tabular-nums ${
+                        active 
+                          ? 'bg-black/30 text-white font-bold' 
+                          : (accentTheme === 'violet' ? 'bg-violet-500/20 text-violet-300' : 'bg-teal-500/20 text-teal-300')
                       }`}>
                         {tab.count}
                       </span>
                     )}
                   </button>
 
-                  {/* Nested CRM Sub-Menu when CRM tab is active */}
-                  {isCRM && active && (
-                    <div className="flex flex-col gap-1 pl-3 py-1.5 my-1 border-l border-violet-500/30 ml-4 animate-in fade-in slide-in-from-top-1 duration-150">
-                      {[
-                        { id: 'cockpit', label: 'Cockpit & KPI', icon: '◈' },
-                        { id: 'kanban', label: 'Pipeline Kanban', icon: '⬛' },
-                        { id: 'opportunities', label: 'Tutte le Trattative', icon: '◎' },
-                        { id: 'focus', label: 'Focus Vendite', icon: '◉' },
-                        { id: 'calendar', label: 'Calendario', icon: '▦' },
-                        { id: 'standby', label: 'Stand-by & Alert', icon: '◷' },
-                        { id: 'crm-analytics', label: 'Analytics Vendite', icon: '▲' },
-                      ].map((sub) => {
-                        const isSubActive = crmSubTab === sub.id;
-                        return (
-                          <button
-                            key={sub.id}
-                            onClick={() => setCrmSubTab(sub.id as any)}
-                            className={`w-full px-2.5 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-2 transition-all cursor-pointer border ${
-                              isSubActive
-                                ? 'bg-violet-500/25 text-violet-200 border-violet-500/40 shadow-sm'
-                                : 'text-neutral-400 hover:text-white hover:bg-white/[0.04] border-transparent'
-                            }`}
-                          >
-                            <span className="text-[10px] font-mono text-violet-400">{sub.icon}</span>
-                            <span className="truncate">{sub.label}</span>
-                          </button>
-                        );
-                      })}
+                  {/* Nested CRM Sub-Menu with smooth CSS Grid collapse animation */}
+                  {isCRM && (
+                    <div
+                      className={`grid transition-all duration-300 ease-in-out overflow-hidden ${
+                        active
+                          ? 'grid-rows-[1fr] opacity-100 mt-1.5 mb-1'
+                          : 'grid-rows-[0fr] opacity-0 mt-0 mb-0 pointer-events-none'
+                      }`}
+                    >
+                      <div className="min-h-0 flex flex-col gap-1 pl-3 py-1 border-l border-violet-500/30 ml-4">
+                        {[
+                          { id: 'cockpit', label: 'Cockpit & KPI', icon: 'speed' },
+                          { id: 'kanban', label: 'Pipeline Kanban', icon: 'view_kanban' },
+                          { id: 'opportunities', label: 'Tutte le Trattative', icon: 'format_list_bulleted' },
+                          { id: 'focus', label: 'Focus Vendite', icon: 'crisis_alert' },
+                          { id: 'calendar', label: 'Calendario', icon: 'calendar_month' },
+                          { id: 'standby', label: 'Stand-by & Alert', icon: 'hourglass_empty' },
+                          { id: 'crm-analytics', label: 'Analytics Vendite', icon: 'trending_up' },
+                        ].map((sub) => {
+                          const isSubActive = crmSubTab === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              onClick={() => setCrmSubTab(sub.id as any)}
+                              className={`w-full px-2.5 py-1.5 rounded-xl text-[11px] font-medium flex items-center gap-2.5 transition-all cursor-pointer border ${
+                                isSubActive
+                                  ? (accentTheme === 'violet'
+                                      ? 'bg-violet-500/25 text-violet-200 border-violet-500/40 shadow-sm'
+                                      : 'bg-teal-500/25 text-teal-200 border-teal-500/40 shadow-sm')
+                                  : 'text-neutral-400 hover:text-white hover:bg-white/[0.04] border-transparent'
+                              }`}
+                            >
+                              <span className={`material-symbols-outlined text-[17px] shrink-0 ${
+                                isSubActive
+                                  ? (accentTheme === 'violet' ? 'text-violet-300' : 'text-teal-300')
+                                  : (accentTheme === 'violet' ? 'text-violet-400/80' : 'text-teal-400/80')
+                              }`}>
+                                {sub.icon}
+                              </span>
+                              <span className="truncate">{sub.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* Palette Accent Switcher (Viola vs Turchese) */}
+          <div className="bg-[#0b0c16]/85 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(165,180,252,0.08)] rounded-3xl p-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">Palette Accento</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                accentTheme === 'violet'
+                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                  : 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+              }`}>
+                {accentTheme === 'violet' ? 'Viola Linear' : 'Turchese'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-black/40 border border-white/[0.06]">
+              <button
+                type="button"
+                onClick={() => handleSetAccentTheme('violet')}
+                className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  accentTheme === 'violet'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-[0_0_16px_rgba(139,92,246,0.35)]'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+                <span>Viola</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetAccentTheme('teal')}
+                className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  accentTheme === 'teal'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-[0_0_16px_rgba(20,184,166,0.35)]'
+                    : 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                <span className="w-2.5 h-2.5 rounded-full bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.8)]" />
+                <span>Turchese</span>
+              </button>
+            </div>
           </div>
 
           {/* Availability Switch */}
@@ -2456,18 +2535,18 @@ export default function DashboardPage() {
                         <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                           Gestione Portfolio Progetti
                         </h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
                           {projects.length} Progetti
                         </span>
                         {isReordering && (
-                          <span className="flex items-center gap-1.5 text-xs text-teal-300 font-mono animate-pulse">
+                          <span className="flex items-center gap-1.5 text-xs text-teal-300 tabular-nums animate-pulse">
                             <span className="w-2 h-2 rounded-full bg-teal-400" />
                             Salvataggio ordine live...
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-neutral-400 mt-0.5">
-                        Griglia su 5 colonne fisse. Trascina la trama tattile ⠿ per riorganizzare l&apos;ordine sul sito live o usa ★ per mettere in evidenza un progetto e portarlo in cima.
+                        Griglia su 5 colonne fisse. Trascina la maniglia per riorganizzare l&apos;ordine sul sito live o usa la stella per mettere in evidenza un progetto e portarlo in cima.
                       </p>
                     </div>
                   </div>
@@ -2503,7 +2582,7 @@ export default function DashboardPage() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
                     { id: 'all', label: 'Tutti', count: projects.length },
-                    { id: 'featured', label: '★ In Evidenza', count: projects.filter((p) => p.featured).length },
+                    { id: 'featured', label: 'In Evidenza', count: projects.filter((p) => p.featured).length },
                     { id: 'Sviluppo', label: 'Web', count: projects.filter((p) => (p.category || 'Sviluppo') === 'Sviluppo').length },
                     { id: 'Software', label: 'App', count: projects.filter((p) => p.category === 'Software' || p.tags.toLowerCase().includes('software') || p.tags.toLowerCase().includes('app')).length },
                     { id: 'Design', label: 'Design', count: projects.filter((p) => p.category === 'Design' || p.tags.toLowerCase().includes('design')).length },
@@ -2521,7 +2600,7 @@ export default function DashboardPage() {
                       }`}
                     >
                       <span>{cat.label}</span>
-                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${selectedCategoryFilter === cat.id ? 'bg-black/20 text-black font-bold' : 'bg-black/40 text-neutral-400'}`}>
+                      <span className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-md ${selectedCategoryFilter === cat.id ? 'bg-black/20 text-black font-bold' : 'bg-black/40 text-neutral-400'}`}>
                         {cat.count}
                       </span>
                     </button>
@@ -2635,7 +2714,7 @@ export default function DashboardPage() {
                                     <circle cx="10" cy="10" r="1.2" />
                                   </svg>
                                 </div>
-                                <span className="text-[10px] font-mono font-bold text-teal-300">
+                                <span className="text-[10px] tabular-nums font-bold text-teal-300">
                                   #{p.order}
                                 </span>
                               </div>
@@ -2648,7 +2727,7 @@ export default function DashboardPage() {
                                     e.stopPropagation();
                                     handleToggleFeatured(p);
                                   }}
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono flex items-center gap-1.5 cursor-pointer transition-all border ${
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold tabular-nums flex items-center gap-1.5 cursor-pointer transition-all border ${
                                     p.featured
                                       ? 'bg-teal-950/80 border-teal-400/50 text-teal-300 shadow-[0_0_10px_rgba(45,212,191,0.25)]'
                                       : 'bg-white/[0.03] border-white/[0.06] text-neutral-400 hover:text-teal-300 hover:border-teal-400/30'
@@ -2677,7 +2756,7 @@ export default function DashboardPage() {
                                   }}
                                 />
                               ) : (
-                                <div className="text-neutral-600 text-[10px] font-mono">No preview</div>
+                                <div className="text-neutral-600 text-[10px] tabular-nums">No preview</div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
                               <div className="absolute bottom-1.5 left-2 right-2 z-10">
@@ -2702,7 +2781,7 @@ export default function DashboardPage() {
                                     className="px-2 py-0.5 rounded-md bg-teal-500/15 hover:bg-teal-500/30 border border-teal-500/30 text-[10px] text-teal-300 font-semibold flex items-center gap-1 cursor-pointer transition-all"
                                     title="Visualizza galleria carosello"
                                   >
-                                    <span>🖼️</span>
+                                    <span className="material-symbols-outlined text-[14px]">image</span>
                                     <span>{galleryList.length} foto</span>
                                   </button>
                                 )}
@@ -2713,7 +2792,7 @@ export default function DashboardPage() {
                                     className="px-2 py-0.5 rounded-md bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/30 text-[10px] text-rose-300 font-semibold flex items-center gap-1 cursor-pointer transition-all"
                                     title="Visualizza documento PDF"
                                   >
-                                    <span>📄</span>
+                                    <span className="material-symbols-outlined text-[14px]">description</span>
                                     <span>PDF</span>
                                   </button>
                                 )}
@@ -2724,7 +2803,7 @@ export default function DashboardPage() {
                             {p.tags && (
                               <div className="flex flex-wrap gap-1 px-0.5 mb-2">
                                 {p.tags.split(',').slice(0, 2).map((tag, idx) => (
-                                  <span key={idx} className="px-1.5 py-0.2 rounded-md bg-white/[0.04] border border-white/[0.04] text-[9px] text-teal-300/90 font-mono truncate max-w-[100px]">
+                                  <span key={idx} className="px-1.5 py-0.2 rounded-md bg-white/[0.04] border border-white/[0.04] text-[9px] text-teal-300/90 tabular-nums truncate max-w-[100px]">
                                     #{tag.trim()}
                                   </span>
                                 ))}
@@ -2767,7 +2846,7 @@ export default function DashboardPage() {
                                 className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                                 title="Duplica questo progetto"
                               >
-                                <span>📋</span>
+                                <span className="material-symbols-outlined text-[14px]">content_paste</span>
                                 <span className="hidden 2xl:inline">Duplica</span>
                               </button>
                               <button
@@ -2896,7 +2975,7 @@ export default function DashboardPage() {
                           <label className="block text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                             Copertina / Thumbnail * (Conversione WebP Automatica)
                           </label>
-                          <span className="text-[10px] text-teal-300 font-mono">Formato consigliato 16:9</span>
+                          <span className="text-[10px] text-teal-300 tabular-nums">Formato consigliato 16:9</span>
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3">
@@ -2907,7 +2986,7 @@ export default function DashboardPage() {
                               value={projectThumbnail}
                               onChange={(e) => setProjectThumbnail(e.target.value)}
                               placeholder="/uploads/nome-progetto.webp o URL"
-                              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 font-mono"
+                              className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 tabular-nums"
                             />
                             <button
                               type="button"
@@ -2938,7 +3017,7 @@ export default function DashboardPage() {
                                 className="px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-teal-500/20 border border-white/[0.08] hover:border-teal-500/30 text-neutral-300 hover:text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                                 title="Regola ritaglio e proporzione 16:9"
                               >
-                                <span>✂️</span>
+                                <span className="material-symbols-outlined text-[14px]">content_cut</span>
                                 <span>Regola 16:9</span>
                               </button>
                             </div>
@@ -2951,7 +3030,7 @@ export default function DashboardPage() {
                       <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm">🖼️</span>
+                            <span className="material-symbols-outlined text-[14px]">image</span>
                             <div>
                               <p className="text-xs font-bold text-white">Carosello / Galleria Immagini ({projectGallery.length})</p>
                               <p className="text-[10px] text-neutral-400">Carica più immagini insieme, convertite automaticamente in WebP</p>
@@ -2991,7 +3070,7 @@ export default function DashboardPage() {
                                 >
                                   &times;
                                 </button>
-                                <span className="absolute bottom-0.5 left-0.5 px-1 rounded bg-black/80 text-[8px] text-white font-mono">
+                                <span className="absolute bottom-0.5 left-0.5 px-1 rounded bg-black/80 text-[8px] text-white tabular-nums">
                                   #{idx + 1}
                                 </span>
                               </div>
@@ -3006,7 +3085,7 @@ export default function DashboardPage() {
                       <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm">📄</span>
+                            <span className="material-symbols-outlined text-[14px]">description</span>
                             <div>
                               <p className="text-xs font-bold text-white">Documento PDF Allegato (Case Study / Presentazione)</p>
                               <p className="text-[10px] text-neutral-400">Permette di visualizzare un documento PDF sfogliabile</p>
@@ -3049,7 +3128,7 @@ export default function DashboardPage() {
                           value={projectPdfUrl}
                           onChange={(e) => setProjectPdfUrl(e.target.value)}
                           placeholder="/uploads/design-works/Misti/WCM.pdf o URL del documento"
-                          className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 font-mono"
+                          className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-teal-400 tabular-nums"
                         />
                       </div>
 
@@ -3118,7 +3197,7 @@ export default function DashboardPage() {
                             min={1}
                             value={projectOrder}
                             onChange={(e) => setProjectOrder(Number(e.target.value))}
-                            className="w-16 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs text-center font-mono focus:outline-none focus:border-teal-400"
+                            className="w-16 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-xs text-center tabular-nums focus:outline-none focus:border-teal-400"
                           />
                         </div>
                       </div>
@@ -3157,7 +3236,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
-                          ✂️
+                          
                         </div>
                         <div>
                           <h3 className="font-bold text-white text-base">Ritaglio & Inquadratura 16:9 Interattiva</h3>
@@ -3232,11 +3311,11 @@ export default function DashboardPage() {
                         </div>
 
                         {/* 16:9 Badge */}
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-teal-300 border border-teal-500/30 pointer-events-none">
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] tabular-nums font-bold text-teal-300 border border-teal-500/30 pointer-events-none">
                           16:9 ULTRA-HD
                         </div>
 
-                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono text-neutral-300 border border-white/10 pointer-events-none">
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] tabular-nums text-neutral-300 border border-white/10 pointer-events-none">
                           Trascina per inquadrare
                         </div>
                       </div>
@@ -3245,16 +3324,16 @@ export default function DashboardPage() {
                       <div className="w-full max-w-lg bg-black/40 border border-white/[0.06] rounded-2xl p-3 flex flex-col gap-2.5">
                         <div className="flex items-center justify-between text-xs text-neutral-300">
                           <span className="flex items-center gap-1.5 font-medium">
-                            <span>🔍</span>
+                            <span className="material-symbols-outlined text-[14px]">search</span>
                             <span>Livello Zoom:</span>
                           </span>
-                          <span className="font-mono font-bold text-teal-300">
+                          <span className="tabular-nums font-bold text-teal-300">
                             {cropZoom.toFixed(2)}x
                           </span>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-neutral-500 font-mono">1.0x</span>
+                          <span className="text-[10px] text-neutral-500 tabular-nums">1.0x</span>
                           <input
                             type="range"
                             min="1"
@@ -3264,7 +3343,7 @@ export default function DashboardPage() {
                             onChange={(e) => setCropZoom(parseFloat(e.target.value))}
                             className="flex-1 accent-teal-400 cursor-pointer h-1.5 bg-white/10 rounded-lg"
                           />
-                          <span className="text-[10px] text-neutral-500 font-mono">3.0x</span>
+                          <span className="text-[10px] text-neutral-500 tabular-nums">3.0x</span>
                         </div>
 
                         {/* Position presets */}
@@ -3355,13 +3434,13 @@ export default function DashboardPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`w-2.5 h-2.5 rounded-full ${r2Status?.configured ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
-                    <span className={`text-[11px] font-mono uppercase tracking-widest ${r2Status?.configured ? 'text-teal-400' : 'text-amber-400'}`}>
+                    <span className={`text-[11px] tabular-nums uppercase tracking-widest ${r2Status?.configured ? 'text-teal-400' : 'text-amber-400'}`}>
                       {r2Status?.configured ? 'Cloudflare R2 S3 Connected' : 'Cloudflare R2 Object Storage'}
                     </span>
                   </div>
                   <h2 className="text-xl font-bold tracking-tight text-white">Media Hub & Cloudflare R2 CDN</h2>
                   <p className="text-xs text-neutral-400 mt-1 max-w-xl">
-                    Bucket: <strong className="text-white font-mono">{r2Status?.bucket || 'portfolio-assets'}</strong> • Account: <span className="font-mono text-neutral-300">86fdf5e2f4d450ad3d3644d9937eb0b8</span>
+                    Bucket: <strong className="text-white tabular-nums">{r2Status?.bucket || 'portfolio-assets'}</strong> • Account: <span className="tabular-nums text-neutral-300">86fdf5e2f4d450ad3d3644d9937eb0b8</span>
                   </p>
                 </div>
 
@@ -3380,11 +3459,11 @@ export default function DashboardPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="px-3.5 py-2 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
                       <span className="text-[9px] text-neutral-400 font-medium">Asset Totali</span>
-                      <span className="text-sm font-bold text-white font-mono">{mediaStats?.totalFiles ?? mediaAssets.length}</span>
+                      <span className="text-sm font-bold text-white tabular-nums">{mediaStats?.totalFiles ?? mediaAssets.length}</span>
                     </div>
                     <div className="px-3.5 py-2 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col">
                       <span className="text-[9px] text-neutral-400 font-medium">Storage R2</span>
-                      <span className="text-sm font-bold text-teal-300 font-mono">
+                      <span className="text-sm font-bold text-teal-300 tabular-nums">
                         {mediaStats ? `${(mediaStats.totalBytes / (1024 * 1024)).toFixed(1)} MB` : '0 MB'}
                       </span>
                     </div>
@@ -3396,13 +3475,13 @@ export default function DashboardPage() {
               {r2Status && !r2Status.configured && (
                 <div className="p-5 rounded-3xl bg-amber-950/20 border border-amber-500/30 flex flex-col sm:flex-row items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <span className="text-xl">⚠️</span>
+                    <span className="material-symbols-outlined text-amber-400 text-xl">warning</span>
                     <div className="text-xs text-neutral-300 space-y-1">
                       <p className="font-bold text-amber-300 text-sm">Configurazione API Token Cloudflare R2</p>
                       <p>
                         Per consentire a Next.js / Vercel di leggere e caricare direttamente i file nel tuo bucket <strong className="text-white">portfolio-assets</strong>, aggiungi le credenziali S3 R2 su Vercel (o in <code>.env</code>):
                       </p>
-                      <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 font-mono text-[11px]">
+                      <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 tabular-nums text-[11px]">
                         <li><code>R2_ACCESS_KEY_ID=&quot;&lt;il_tuo_access_key_id&gt;&quot;</code></li>
                         <li><code>R2_SECRET_ACCESS_KEY=&quot;&lt;il_tuo_secret_access_key&gt;&quot;</code></li>
                         <li><code>CLOUDFLARE_ACCOUNT_ID=&quot;86fdf5e2f4d450ad3d3644d9937eb0b8&quot;</code></li>
@@ -3514,7 +3593,7 @@ export default function DashboardPage() {
                 if (filteredMedia.length === 0) {
                   return (
                     <div className="bg-[#081410]/75 backdrop-blur-2xl border border-white/[0.10] rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-3">
-                      <span className="text-3xl">📁</span>
+                      <span className="material-symbols-outlined text-3xl text-violet-400">folder</span>
                       <p className="text-sm font-semibold text-white">Nessun asset presente</p>
                       <p className="text-xs text-neutral-400 max-w-sm">
                         Nessun file multimediale trovato nel bucket R2 o nella cartella locale. Puoi caricare nuovi file con il pulsante in alto.
@@ -3551,11 +3630,11 @@ export default function DashboardPage() {
                                 />
                               ) : isPdf ? (
                                 <div className="flex flex-col items-center justify-center gap-1.5 p-3 text-rose-400">
-                                  <span className="text-3xl">📄</span>
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 font-mono">PDF Document</span>
+                                  <span className="material-symbols-outlined text-3xl text-neutral-400">description</span>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 tabular-nums">PDF Document</span>
                                 </div>
                               ) : (
-                                <div className="text-neutral-500 text-xs font-mono">{asset.ext}</div>
+                                <div className="text-neutral-500 text-xs tabular-nums">{asset.ext}</div>
                               )}
 
                               {/* Hover Action Overlay */}
@@ -3590,19 +3669,19 @@ export default function DashboardPage() {
                                   className="p-2 rounded-xl bg-white/[0.15] hover:bg-white/[0.25] text-white text-xs shadow-lg hover:scale-110 transition-transform cursor-pointer"
                                   title="Copia URL CDN"
                                 >
-                                  🔗
+                                  <span className="material-symbols-outlined text-[14px]">link</span>
                                 </button>
                               </div>
 
                               {/* Format Badge Top Left */}
-                              <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold uppercase ${
+                              <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md text-[9px] tabular-nums font-bold uppercase ${
                                 isImage ? 'bg-teal-500/80 text-black' : isPdf ? 'bg-rose-500/80 text-white' : 'bg-neutral-600/80 text-white'
                               }`}>
                                 {asset.ext || asset.type}
                               </span>
 
                               {/* Size Badge Top Right */}
-                              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] font-mono bg-black/75 text-neutral-300">
+                              <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[9px] tabular-nums bg-black/75 text-neutral-300">
                                 {formattedSize}
                               </span>
                             </div>
@@ -3611,8 +3690,8 @@ export default function DashboardPage() {
                             <h4 className="font-bold text-white text-xs truncate drop-shadow-sm px-0.5" title={asset.filename}>
                               {asset.filename}
                             </h4>
-                            <p className="text-[10px] text-neutral-500 font-mono truncate px-0.5 mb-2" title={asset.folder}>
-                              📁 /{asset.folder}
+                            <p className="text-[10px] text-neutral-500 tabular-nums truncate px-0.5 mb-2" title={asset.folder}>
+                              /{asset.folder}
                             </p>
                           </div>
 
@@ -3628,7 +3707,7 @@ export default function DashboardPage() {
                               className="px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-teal-500/20 text-neutral-300 hover:text-teal-300 text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                               title="Copia link"
                             >
-                              <span>🔗</span>
+                              <span className="material-symbols-outlined text-[13px]">link</span>
                               <span>Copia URL</span>
                             </button>
 
@@ -3672,7 +3751,7 @@ export default function DashboardPage() {
                     <TiaIcon icon={Mail01Icon} size={16} />
                     <span>Webmail Aruba (info@tiadesigns.it)</span>
                     {arubaUnreadCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300 animate-pulse font-bold">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] tabular-nums bg-black text-teal-300 animate-pulse font-bold">
                         {arubaUnreadCount} non lette
                       </span>
                     )}
@@ -3691,7 +3770,7 @@ export default function DashboardPage() {
                     <LucideSend size={15} />
                     <span>Componi Stile Gmail</span>
                     {composerAttachments.length > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[9px] font-mono bg-teal-500/20 text-teal-300">
+                      <span className="px-1.5 py-0.2 rounded-full text-[9px] tabular-nums bg-teal-500/20 text-teal-300">
                         {composerAttachments.length} allegati
                       </span>
                     )}
@@ -3709,7 +3788,7 @@ export default function DashboardPage() {
                   >
                     <TiaIcon icon={WorkflowSquare01Icon} size={16} />
                     <span>Inviatore Automatico CSV</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-teal-500/20 text-teal-300 font-bold">
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] tabular-nums bg-teal-500/20 text-teal-300 font-bold">
                       Batch
                     </span>
                   </button>
@@ -3727,7 +3806,7 @@ export default function DashboardPage() {
                     <TiaIcon icon={BubbleChatIcon} size={16} />
                     <span>Lead & Form Sito</span>
                     {messages.filter((m) => m.status === 'new').length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-black text-teal-300">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] tabular-nums bg-black text-teal-300">
                         {messages.filter((m) => m.status === 'new').length} nuovi
                       </span>
                     )}
@@ -3748,13 +3827,13 @@ export default function DashboardPage() {
                   >
                     <TiaIcon icon={SparklesIcon} size={16} />
                     <span>Newsletter & Campagne</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-500/20 text-teal-300">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] tabular-nums bg-teal-500/20 text-teal-300">
                       {audienceList.length || messages.length} destinatari
                     </span>
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-neutral-400 font-mono pr-2">
+                <div className="flex items-center gap-2 text-xs text-neutral-400 tabular-nums pr-2">
                   <span className={`w-2 h-2 rounded-full ${arubaConfigured ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
                   <span>{arubaConfigured ? 'Aruba IMAP/SMTP Live' : 'info@tiadesigns.it'}</span>
                 </div>
@@ -3767,13 +3846,13 @@ export default function DashboardPage() {
                   {arubaConfigured === false && (
                     <div className="p-6 rounded-3xl bg-amber-950/20 border border-amber-500/30 flex flex-col md:flex-row items-start justify-between gap-4">
                       <div className="flex items-start gap-3">
-                        <span className="text-2xl">🔐</span>
+                        <span className="material-symbols-outlined text-2xl text-teal-400">lock</span>
                         <div className="text-xs text-neutral-300 space-y-1.5">
                           <p className="font-bold text-amber-300 text-sm">Configurazione Aruba Mail (info@tiadesigns.it)</p>
                           <p>
                             Per visualizzare la cronologia delle tue email, leggere i messaggi ricevuti e inviare come su Gmail direttamente dalla dashboard, aggiungi la password della tua casella Aruba su Vercel (o in <code>.env</code>):
                           </p>
-                          <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 font-mono text-[11px]">
+                          <ul className="list-disc list-inside text-neutral-400 space-y-0.5 pt-1 tabular-nums text-[11px]">
                             <li><code>ARUBA_EMAIL_USER=&quot;info@tiadesigns.it&quot;</code></li>
                             <li><code>ARUBA_EMAIL_PASSWORD=&quot;&lt;la_tua_password_aruba&gt;&quot;</code></li>
                             <li><code>ARUBA_IMAP_HOST=&quot;imaps.aruba.it&quot; (Porta 993 SSL)</code></li>
@@ -3809,7 +3888,7 @@ export default function DashboardPage() {
                           <span>+ Componi Nuova Email</span>
                         </button>
 
-                        <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 pt-1">Cartelle Aruba</p>
+                        <p className="text-[10px] tabular-nums uppercase tracking-wider text-neutral-400 px-2 pt-1">Cartelle Aruba</p>
                         
                         {[
                           { id: 'INBOX', label: 'Posta in arrivo', icon: Mail01Icon, count: arubaUnreadCount },
@@ -3837,7 +3916,7 @@ export default function DashboardPage() {
                                 <span>{box.label}</span>
                               </div>
                               {typeof box.count === 'number' && box.count > 0 && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-400 text-black font-bold">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] tabular-nums bg-teal-400 text-black font-bold">
                                   {box.count}
                                 </span>
                               )}
@@ -3846,12 +3925,12 @@ export default function DashboardPage() {
                         })}
 
                         <div className="pt-3 border-t border-white/[0.06] flex flex-col gap-1">
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2">Filtri Rapidi</p>
+                          <p className="text-[10px] tabular-nums uppercase tracking-wider text-neutral-400 px-2">Filtri Rapidi</p>
                           {[
                             { id: 'all', label: 'Tutte le email' },
                             { id: 'unread', label: 'Solo non lette' },
-                            { id: 'flagged', label: 'Contrassegnate ⭐' },
-                            { id: 'attachments', label: 'Con allegati 📎' },
+                            { id: 'flagged', label: 'Contrassegnate' },
+                            { id: 'attachments', label: 'Con allegati' },
                           ].map((f) => (
                             <button
                               key={f.id}
@@ -3884,7 +3963,7 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-neutral-400 font-mono">
+                          <span className="text-xs text-neutral-400 tabular-nums">
                             {arubaEmails.length} email caricate
                           </span>
                           <button
@@ -3954,12 +4033,12 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                   <p className="font-bold text-white">{selectedArubaEmail.from?.name || selectedArubaEmail.from?.address || 'Mittente sconosciuto'}</p>
-                                  <p className="text-neutral-400 font-mono text-[11px]">&lt;{selectedArubaEmail.from?.address || 'info@tiadesigns.it'}&gt;</p>
+                                  <p className="text-neutral-400 tabular-nums text-[11px]">&lt;{selectedArubaEmail.from?.address || 'info@tiadesigns.it'}&gt;</p>
                                 </div>
                               </div>
                               <div className="text-right text-neutral-400 text-[11px]">
                                 <div>{selectedArubaEmail.date ? new Date(selectedArubaEmail.date).toLocaleString('it-IT') : ''}</div>
-                                <span className="text-[10px] font-mono text-teal-400 bg-teal-950/40 px-2 py-0.5 rounded-md border border-teal-500/30">
+                                <span className="text-[10px] tabular-nums text-teal-400 bg-teal-950/40 px-2 py-0.5 rounded-md border border-teal-500/30">
                                   Aruba IMAP Verified
                                 </span>
                               </div>
@@ -3983,7 +4062,7 @@ export default function DashboardPage() {
                                   >
                                     <LucideFileText size={14} className="text-teal-400" />
                                     <span className="font-medium truncate max-w-[200px]">{att.filename}</span>
-                                    <span className="text-[10px] text-neutral-500 font-mono">
+                                    <span className="text-[10px] text-neutral-500 tabular-nums">
                                       ({(att.size / 1024).toFixed(0)} KB)
                                     </span>
                                   </a>
@@ -4050,7 +4129,7 @@ export default function DashboardPage() {
                           if (filtered.length === 0) {
                             return (
                               <div className="p-16 rounded-3xl bg-[#081410]/60 border border-white/[0.06] text-center flex flex-col items-center justify-center gap-3">
-                                <span className="text-3xl">📭</span>
+                                <span className="material-symbols-outlined text-3xl text-neutral-500">drafts</span>
                                 <p className="text-sm font-semibold text-white">Nessuna email trovata</p>
                                 <p className="text-xs text-neutral-400 max-w-sm">
                                   {isArubaLoading ? 'Scaricamento messaggi da Aruba IMAP in corso...' : 'Nessuna email corrisponde ai filtri o alla cartella selezionata.'}
@@ -4099,7 +4178,7 @@ export default function DashboardPage() {
                                   </div>
 
                                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/[0.04]">
-                                    <span className="text-[10px] font-mono text-neutral-400">
+                                    <span className="text-[10px] tabular-nums text-neutral-400">
                                       {email.date ? new Date(email.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }) : ''}
                                     </span>
                                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -4144,7 +4223,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <h3 className="font-bold text-white text-base">Componi Email Ufficiale</h3>
-                          <p className="text-[11px] text-neutral-400">Da: <strong className="text-teal-300 font-mono">info@tiadesigns.it</strong> (Aruba SMTP)</p>
+                          <p className="text-[11px] text-neutral-400">Da: <strong className="text-teal-300 tabular-nums">info@tiadesigns.it</strong> (Aruba SMTP)</p>
                         </div>
                       </div>
 
@@ -4152,7 +4231,7 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => setShowCcBcc(!showCcBcc)}
-                          className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-neutral-300 font-mono cursor-pointer transition-colors"
+                          className="px-2.5 py-1 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-neutral-300 tabular-nums cursor-pointer transition-colors"
                         >
                           {showCcBcc ? 'Nascondi Cc/Ccn' : '+ Cc / Ccn'}
                         </button>
@@ -4178,21 +4257,21 @@ export default function DashboardPage() {
                         className="px-3 py-1 rounded-xl bg-teal-400 hover:bg-teal-300 text-black font-bold text-[11px] cursor-pointer transition-colors shadow-sm shrink-0 flex items-center gap-1"
                       >
                         <span>Usa Inviatore Automatico CSV</span>
-                        <span>➔</span>
+                        <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
                       </button>
                     </div>
 
                     <form onSubmit={handleSendGmailStyleEmail} className="flex flex-col gap-3.5">
                       {/* Recipient Field A: */}
                       <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-teal-400">
-                        <span className="text-xs font-mono font-bold text-teal-400 w-10">A:</span>
+                        <span className="text-xs tabular-nums font-bold text-teal-400 w-10">A:</span>
                         <input
                           type="email"
                           required
                           value={composeTo}
                           onChange={(e) => setComposeTo(e.target.value)}
                           placeholder="destinatario@cliente.com"
-                          className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none font-mono"
+                          className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none tabular-nums"
                         />
                       </div>
 
@@ -4200,23 +4279,23 @@ export default function DashboardPage() {
                       {showCcBcc && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 animate-in fade-in duration-150">
                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                            <span className="text-[11px] font-mono text-neutral-400 w-8">Cc:</span>
+                            <span className="text-[11px] tabular-nums text-neutral-400 w-8">Cc:</span>
                             <input
                               type="text"
                               value={composerCc}
                               onChange={(e) => setComposerCc(e.target.value)}
                               placeholder="altro@email.com"
-                              className="w-full bg-transparent text-white text-xs focus:outline-none font-mono"
+                              className="w-full bg-transparent text-white text-xs focus:outline-none tabular-nums"
                             />
                           </div>
                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                            <span className="text-[11px] font-mono text-neutral-400 w-8">Ccn:</span>
+                            <span className="text-[11px] tabular-nums text-neutral-400 w-8">Ccn:</span>
                             <input
                               type="text"
                               value={composerBcc}
                               onChange={(e) => setComposerBcc(e.target.value)}
                               placeholder="invisibile@email.com"
-                              className="w-full bg-transparent text-white text-xs focus:outline-none font-mono"
+                              className="w-full bg-transparent text-white text-xs focus:outline-none tabular-nums"
                             />
                           </div>
                         </div>
@@ -4224,7 +4303,7 @@ export default function DashboardPage() {
 
                       {/* Subject Field */}
                       <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/[0.03] border border-white/[0.08] focus-within:border-teal-400">
-                        <span className="text-xs font-mono font-bold text-neutral-400 w-16">Oggetto:</span>
+                        <span className="text-xs tabular-nums font-bold text-neutral-400 w-16">Oggetto:</span>
                         <input
                           type="text"
                           required
@@ -4237,7 +4316,7 @@ export default function DashboardPage() {
 
                       {/* Quick Presets Strip */}
                       <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-black/40 border border-white/[0.06]">
-                        <span className="text-[10px] font-mono uppercase text-teal-400 font-bold px-1.5 flex items-center gap-1">
+                        <span className="text-[10px] tabular-nums uppercase text-teal-400 font-bold px-1.5 flex items-center gap-1">
                           <TiaIcon icon={SparklesIcon} size={12} />
                           Modelli:
                         </span>
@@ -4296,7 +4375,7 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             onClick={() => insertFormatting('## ')}
-                            className="px-2 py-1 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white text-xs font-bold font-mono cursor-pointer"
+                            className="px-2 py-1 rounded-lg hover:bg-white/[0.1] text-neutral-300 hover:text-white text-xs font-bold tabular-nums cursor-pointer"
                             title="Titolo H2"
                           >
                             H2
@@ -4371,7 +4450,7 @@ export default function DashboardPage() {
                             className="px-2.5 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-sm"
                             title="Inserisci GIF animate"
                           >
-                            <span>🎭 GIF</span>
+                            <span className="material-symbols-outlined text-[14px]">gif_box</span> GIF
                           </button>
 
                           {/* Insert Link */}
@@ -4402,14 +4481,14 @@ export default function DashboardPage() {
                         <div className="p-4 rounded-2xl bg-[#061410] border border-teal-500/40 flex flex-col gap-3 animate-in fade-in duration-200">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                              <span>🎭</span> Seleziona GIF Animata
+                              <span className="material-symbols-outlined text-[14px]">gif_box</span> Seleziona GIF Animata
                             </span>
                             <button
                               type="button"
                               onClick={() => setShowGifPicker(false)}
                               className="text-neutral-400 hover:text-white text-xs cursor-pointer"
                             >
-                              ✕
+                              <span className="material-symbols-outlined text-[14px]">close</span>
                             </button>
                           </div>
 
@@ -4431,7 +4510,7 @@ export default function DashboardPage() {
                                 className="group relative rounded-xl overflow-hidden border border-white/[0.1] hover:border-teal-400 transition-all cursor-pointer h-18 bg-black"
                               >
                                 <img src={g.url} alt={g.label} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                <span className="absolute bottom-1 left-1 px-1 rounded text-[9px] font-mono bg-black/80 text-white">
+                                <span className="absolute bottom-1 left-1 px-1 rounded text-[9px] tabular-nums bg-black/80 text-white">
                                   {g.label}
                                 </span>
                               </button>
@@ -4444,7 +4523,7 @@ export default function DashboardPage() {
                       {showLinkModal && (
                         <div className="p-4 rounded-2xl bg-[#061410] border border-teal-500/40 flex flex-col gap-3 animate-in fade-in duration-200">
                           <span className="text-xs font-bold text-white">
-                            {linkAsButton ? '🔘 Inserisci Bottone' : '🔗 Inserisci Link Cliccabile'}
+                            {linkAsButton ? 'Inserisci Bottone' : 'Inserisci Link Cliccabile'}
                           </span>
                           <div className="grid grid-cols-2 gap-2">
                             <input
@@ -4493,7 +4572,7 @@ export default function DashboardPage() {
                       {/* Attached files chips list */}
                       {composerAttachments.length > 0 && (
                         <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-black/40 border border-white/[0.06]">
-                          <span className="text-[10px] font-mono text-neutral-400 font-bold px-1 flex items-center gap-1">
+                          <span className="text-[10px] tabular-nums text-neutral-400 font-bold px-1 flex items-center gap-1">
                             <Paperclip size={12} className="text-teal-400" /> Allegati:
                           </span>
                           {composerAttachments.map((att, attIdx) => (
@@ -4501,7 +4580,7 @@ export default function DashboardPage() {
                               key={attIdx}
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-teal-950/40 border border-teal-500/30 text-xs text-neutral-200"
                             >
-                              <span className="truncate max-w-[150px] font-mono text-[11px]">{att.filename}</span>
+                              <span className="truncate max-w-[150px] tabular-nums text-[11px]">{att.filename}</span>
                               <span className="text-[10px] text-teal-400">({(att.size / 1024).toFixed(0)}KB)</span>
                               <button
                                 type="button"
@@ -4577,7 +4656,7 @@ export default function DashboardPage() {
                           the email that no longer existed. */}
                       <div className="flex flex-col gap-1 px-1">
                         {composeSubject && <h4 className="text-sm font-bold text-white">{composeSubject}</h4>}
-                        {composeTo && <p className="text-[11px] text-neutral-400 font-mono">A: {composeTo}</p>}
+                        {composeTo && <p className="text-[11px] text-neutral-400 tabular-nums">A: {composeTo}</p>}
                       </div>
 
                       {emailPreviewTab === 'preview' ? (
@@ -4588,19 +4667,19 @@ export default function DashboardPage() {
                           className="w-full h-[620px] rounded-2xl border border-white/[0.08] bg-[#040d0a]"
                         />
                       ) : (
-                        <pre className="w-full h-[620px] overflow-auto p-3 rounded-2xl border border-white/[0.08] bg-black/50 text-[10px] leading-relaxed text-neutral-400 font-mono whitespace-pre-wrap break-all">
+                        <pre className="w-full h-[620px] overflow-auto p-3 rounded-2xl border border-white/[0.08] bg-black/50 text-[10px] leading-relaxed text-neutral-400 tabular-nums whitespace-pre-wrap break-all">
                           {composerPreviewHtml}
                         </pre>
                       )}
 
                       <p className="text-[10px] text-neutral-500 px-1 leading-relaxed">
                         Rendering del client: quello che vedi è l&apos;HTML esatto inviato, non una ricostruzione.
-                        Formattazione supportata: <span className="font-mono text-teal-400">## titolo</span>,{' '}
-                        <span className="font-mono text-teal-400">- elenco</span>,{' '}
-                        <span className="font-mono text-teal-400">1. elenco numerato</span>,{' '}
-                        <span className="font-mono text-teal-400">&gt; citazione</span>,{' '}
-                        <span className="font-mono text-teal-400">**grassetto**</span>,{' '}
-                        <span className="font-mono text-teal-400">[Bottone: testo](url)</span>.
+                        Formattazione supportata: <span className="tabular-nums text-teal-400">## titolo</span>,{' '}
+                        <span className="tabular-nums text-teal-400">- elenco</span>,{' '}
+                        <span className="tabular-nums text-teal-400">1. elenco numerato</span>,{' '}
+                        <span className="tabular-nums text-teal-400">&gt; citazione</span>,{' '}
+                        <span className="tabular-nums text-teal-400">**grassetto**</span>,{' '}
+                        <span className="tabular-nums text-teal-400">[Bottone: testo](url)</span>.
                       </p>
                     </div>
                   </div>
@@ -4619,7 +4698,7 @@ export default function DashboardPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-white text-base">Crea Campagna Newsletter</h3>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] tabular-nums bg-teal-500/15 text-teal-300 border border-teal-500/30">
                             Cron Attivo (Vercel)
                           </span>
                         </div>
@@ -4634,10 +4713,10 @@ export default function DashboardPage() {
                           className="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 shadow-sm"
                           title="Esegue manualmente il controllo delle newsletter programmate per inviare quelle scadute"
                         >
-                          <span>⚡</span>
+                          <span className="material-symbols-outlined text-[14px]">bolt</span>
                           <span>{isExecutingCron ? 'Esecuzione...' : 'Esegui Cron Ora'}</span>
                         </button>
-                        <span className="px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-white/[0.04] text-neutral-300 border border-white/[0.06]">
+                        <span className="px-2.5 py-1.5 rounded-xl text-xs tabular-nums font-bold bg-white/[0.04] text-neutral-300 border border-white/[0.06]">
                           {audienceList.length || messages.length} Contatti
                         </span>
                       </div>
@@ -4667,7 +4746,7 @@ export default function DashboardPage() {
                             value={newsletterCustomEmails}
                             onChange={(e) => setNewsletterCustomEmails(e.target.value)}
                             placeholder="mail1@test.it, mail2@test.it..."
-                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono focus:outline-none focus:border-teal-400 resize-none"
+                            className="w-full px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs tabular-nums focus:outline-none focus:border-teal-400 resize-none"
                           />
                         </div>
                       )}
@@ -4704,7 +4783,7 @@ export default function DashboardPage() {
                           value={newsletterBody}
                           onChange={(e) => setNewsletterBody(e.target.value)}
                           placeholder="Scrivi qui la tua newsletter o annuncio..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs font-mono leading-relaxed focus:outline-none focus:border-teal-400 resize-y"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-xs tabular-nums leading-relaxed focus:outline-none focus:border-teal-400 resize-y"
                         />
                       </div>
 
@@ -4799,7 +4878,7 @@ export default function DashboardPage() {
                           <h3 className="font-bold text-white text-sm">Iscritti Newsletter</h3>
                           <p className="text-[11px] text-neutral-400">Doppio opt-in: solo i confermati ricevono le campagne</p>
                         </div>
-                        <span className="text-xs text-neutral-400 font-mono">{newsletterSubscribers.length} totali</span>
+                        <span className="text-xs text-neutral-400 tabular-nums">{newsletterSubscribers.length} totali</span>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
@@ -4809,7 +4888,7 @@ export default function DashboardPage() {
                           { label: 'Disiscritti', value: newsletterStats?.subscribersUnsubscribed ?? 0, tone: 'text-neutral-300 border-white/[0.08] bg-white/[0.04]' },
                         ].map((kpi) => (
                           <div key={kpi.label} className={`rounded-xl border px-2.5 py-2 text-center ${kpi.tone}`}>
-                            <div className="text-base font-bold font-mono leading-none">{kpi.value}</div>
+                            <div className="text-base font-bold tabular-nums leading-none">{kpi.value}</div>
                             <div className="text-[10px] uppercase tracking-wider mt-1 opacity-80">{kpi.label}</div>
                           </div>
                         ))}
@@ -4830,7 +4909,7 @@ export default function DashboardPage() {
                                 </p>
                               </div>
                               <span
-                                className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold border ${
+                                className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] tabular-nums uppercase font-bold border ${
                                   sub.status === 'confirmed'
                                     ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                                     : sub.status === 'pending'
@@ -4838,7 +4917,7 @@ export default function DashboardPage() {
                                     : 'bg-white/[0.04] text-neutral-400 border-white/[0.08]'
                                 }`}
                               >
-                                {sub.status === 'confirmed' ? '✓' : sub.status === 'pending' ? '⏱' : '✕'} {sub.status}
+                                {sub.status === 'confirmed' ? 'Confermato' : sub.status === 'pending' ? 'In attesa' : 'Non confermato'}
                               </span>
                             </div>
                           ))}
@@ -4852,7 +4931,7 @@ export default function DashboardPage() {
                           <h3 className="font-bold text-white text-sm">Storico & Report Campagne</h3>
                           <p className="text-[11px] text-neutral-400">Tracciamento invii, aperture stimate e programmazioni</p>
                         </div>
-                        <span className="text-xs text-neutral-400 font-mono">{newsletterCampaigns.length} totali</span>
+                        <span className="text-xs text-neutral-400 tabular-nums">{newsletterCampaigns.length} totali</span>
                       </div>
 
                       {newsletterCampaigns.length === 0 ? (
@@ -4890,7 +4969,7 @@ export default function DashboardPage() {
 
                                   {/* Color-Coded Status Badge */}
                                   <span
-                                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold shrink-0 border ${
+                                    className={`px-2.5 py-0.5 rounded-full text-[10px] tabular-nums uppercase font-bold shrink-0 border ${
                                       isSent
                                         ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                                         : isScheduled
@@ -4903,14 +4982,14 @@ export default function DashboardPage() {
                                     }`}
                                   >
                                     {isSent
-                                      ? '✓ Inviata'
+                                      ? 'Inviata'
                                       : isScheduled
-                                      ? '⏱ In Programmazione'
+                                      ? 'In Programmazione'
                                       : isFailed
-                                      ? '✕ Errore'
+                                      ? 'Errore'
                                       : isPartial
-                                      ? '⚠️ Parziale'
-                                      : '✎ Bozza'}
+                                      ? 'Parziale'
+                                      : 'Bozza'}
                                   </span>
                                 </div>
 
@@ -4922,18 +5001,18 @@ export default function DashboardPage() {
                                 {/* KPI Metrics & Engagement Report Row */}
                                 <div className="grid grid-cols-3 gap-1.5 py-1">
                                   <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] flex flex-col items-center justify-center text-center">
-                                    <span className="text-[9px] text-neutral-400 uppercase font-mono">Consegna</span>
-                                    <span className="text-xs font-bold font-mono text-teal-300">{deliveryRate}%</span>
+                                    <span className="text-[9px] text-neutral-400 uppercase tabular-nums">Consegna</span>
+                                    <span className="text-xs font-bold tabular-nums text-teal-300">{deliveryRate}%</span>
                                   </div>
                                   <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] flex flex-col items-center justify-center text-center">
-                                    <span className="text-[9px] text-neutral-400 uppercase font-mono">Open Rate</span>
-                                    <span className="text-xs font-bold font-mono text-sky-300">
+                                    <span className="text-[9px] text-neutral-400 uppercase tabular-nums">Open Rate</span>
+                                    <span className="text-xs font-bold tabular-nums text-sky-300">
                                       {isSent ? `${estimatedOpenRate}%` : '—'}
                                     </span>
                                   </div>
                                   <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.04] flex flex-col items-center justify-center text-center">
-                                    <span className="text-[9px] text-neutral-400 uppercase font-mono">Click Rate</span>
-                                    <span className="text-xs font-bold font-mono text-purple-300">
+                                    <span className="text-[9px] text-neutral-400 uppercase tabular-nums">Click Rate</span>
+                                    <span className="text-xs font-bold tabular-nums text-purple-300">
                                       {isSent ? `${estimatedClickRate}%` : '—'}
                                     </span>
                                   </div>
@@ -4942,11 +5021,11 @@ export default function DashboardPage() {
                                 {/* Footer: Recipients, Dates & Action Buttons */}
                                 <div className="flex items-center justify-between pt-2 border-t border-white/[0.04] text-[10px] text-neutral-400">
                                   <div className="flex items-center gap-2">
-                                    <span className="font-mono text-neutral-300 font-medium">
-                                      👥 {camp.recipientCount} destinatari
+                                    <span className="tabular-nums text-neutral-300 font-medium">
+                                      {camp.recipientCount} destinatari
                                     </span>
                                     <span>•</span>
-                                    <span className="font-mono text-neutral-400">
+                                    <span className="tabular-nums text-neutral-400">
                                       {camp.sentAt
                                         ? `Inviata: ${new Date(camp.sentAt).toLocaleDateString('it-IT')}`
                                         : camp.scheduledFor
@@ -4998,7 +5077,7 @@ export default function DashboardPage() {
                   <div className="w-full max-w-xl bg-[#081410] border border-teal-500/30 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                       <div>
-                        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">
+                        <span className="text-[10px] tabular-nums uppercase px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30">
                           Report Dettagliato Newsletter
                         </span>
                         <h3 className="font-bold text-white text-base mt-1">
@@ -5018,11 +5097,11 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="p-3 rounded-2xl bg-black/40 border border-white/[0.06]">
                         <span className="text-[10px] text-neutral-400 block mb-0.5">Destinatari Target</span>
-                        <span className="font-bold text-white font-mono">{selectedNewsletterPreview.recipients}</span>
+                        <span className="font-bold text-white tabular-nums">{selectedNewsletterPreview.recipients}</span>
                       </div>
                       <div className="p-3 rounded-2xl bg-black/40 border border-white/[0.06]">
                         <span className="text-[10px] text-neutral-400 block mb-0.5">Totale Destinatari</span>
-                        <span className="font-bold text-teal-300 font-mono">{selectedNewsletterPreview.recipientCount} email</span>
+                        <span className="font-bold text-teal-300 tabular-nums">{selectedNewsletterPreview.recipientCount} email</span>
                       </div>
                     </div>
 
@@ -5113,7 +5192,7 @@ export default function DashboardPage() {
                       }`}
                       title="Mostra anteprima in stile Dark (Cyber)"
                     >
-                      <span>🌙</span>
+                      <span className="material-symbols-outlined text-[14px]">dark_mode</span>
                       <span>Dark</span>
                     </button>
                     <button
@@ -5126,7 +5205,7 @@ export default function DashboardPage() {
                       }`}
                       title="Mostra anteprima in stile Documento Bianco A4 Ufficiale"
                     >
-                      <span>📄</span>
+                      <span className="material-symbols-outlined text-[14px]">description</span>
                       <span>Bianco (A4)</span>
                     </button>
                   </div>
@@ -5140,8 +5219,8 @@ export default function DashboardPage() {
                         : 'bg-white/[0.04] text-white border-white/[0.08] hover:bg-white/[0.08]'
                     }`}
                   >
-                    <span>✍️</span>
-                    <span>{signatureData ? 'Firma Applicata ✅' : 'Firma a Mano (Canvas)'}</span>
+                    <span className="material-symbols-outlined text-[14px]">draw</span>
+                    <span>{signatureData ? 'Firma Applicata' : 'Firma a Mano (Canvas)'}</span>
                   </button>
 
                   <button
@@ -5159,7 +5238,7 @@ export default function DashboardPage() {
                     className="px-4 py-2.5 rounded-2xl bg-white/[0.08] hover:bg-teal-400 hover:text-black border border-white/[0.1] text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md"
                     title="Genera e stampa il preventivo in formato A4 bianco ufficiale senza bordi o intestazioni inutili"
                   >
-                    <span>🖨️ Stampa / Salva PDF (A4 Bianco)</span>
+                    <span className="material-symbols-outlined text-[14px]">print</span> Stampa / Salva PDF (A4 Bianco)
                   </button>
                 </div>
               </div>
@@ -5173,7 +5252,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-neutral-400">Clicca su &ldquo;Carica&rdquo; per riaprire o modificare qualsiasi preventivo</p>
                     </div>
                     <button onClick={() => setShowQuotesHistory(false)} className="text-xs text-neutral-400 hover:text-white cursor-pointer">
-                      Chiudi ✕
+                      Chiudi
                     </button>
                   </div>
 
@@ -5185,8 +5264,8 @@ export default function DashboardPage() {
                         <div key={q.id} className="p-4 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col justify-between gap-3 hover:border-teal-500/40 transition-colors">
                           <div>
                             <div className="flex items-center justify-between">
-                              <span className="font-mono text-xs font-bold text-teal-400">{q.quoteNumber}</span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold ${
+                              <span className="tabular-nums text-xs font-bold text-teal-400">{q.quoteNumber}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] tabular-nums uppercase font-bold ${
                                 q.status === 'sent'
                                   ? 'bg-blue-400/20 text-blue-300 border border-blue-400/40'
                                   : q.status === 'accepted'
@@ -5198,7 +5277,7 @@ export default function DashboardPage() {
                             </div>
                             <p className="font-bold text-white text-sm mt-1">{q.clientName}</p>
                             {q.clientCompany && <p className="text-xs text-neutral-400">{q.clientCompany}</p>}
-                            <p className="text-xs text-teal-300/80 font-mono mt-1">Totale: <strong>{q.total} €</strong></p>
+                            <p className="text-xs text-teal-300/80 tabular-nums mt-1">Totale: <strong>{q.total} €</strong></p>
                             <p className="text-[10px] text-neutral-500 mt-1">Data: {q.date}</p>
                           </div>
 
@@ -5236,7 +5315,7 @@ export default function DashboardPage() {
                         <TiaIcon icon={DollarSignIcon} size={18} className="text-teal-400" />
                         <span>Generatore Documenti & Fatture</span>
                       </h3>
-                      <span className="text-[11px] font-mono text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
+                      <span className="text-[11px] tabular-nums text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/20">
                         Legal Document Engine
                       </span>
                     </div>
@@ -5264,9 +5343,9 @@ export default function DashboardPage() {
                         }}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-teal-500/40 text-white text-xs font-semibold focus:outline-none focus:border-teal-400 cursor-pointer shadow-inner"
                       >
-                        <option value="quote">📋 Preventivo Commerciale / Contratto d&apos;Opera</option>
-                        <option value="occasional_receipt">🧾 Ricevuta per Prestazione Occasionale (senza P.IVA - art. 2222 C.C.)</option>
-                        <option value="proforma_invoice">📑 Fattura Pro-Forma</option>
+                        <option value="quote">Preventivo Commerciale / Contratto d&apos;Opera</option>
+                        <option value="occasional_receipt">Ricevuta per Prestazione Occasionale (senza P.IVA - art. 2222 C.C.)</option>
+                        <option value="proforma_invoice">Fattura Pro-Forma</option>
                       </select>
                       <p className="text-[10px] text-teal-300/80 mt-1">
                         {quoteDocumentType === 'occasional_receipt'
@@ -5285,7 +5364,7 @@ export default function DashboardPage() {
                           type="text"
                           value={quoteNumber}
                           onChange={(e) => setQuoteNumber(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white font-mono focus:outline-none focus:border-teal-400"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-white tabular-nums focus:outline-none focus:border-teal-400"
                         />
                       </div>
                       <div>
@@ -5333,7 +5412,7 @@ export default function DashboardPage() {
                             value={quoteProviderCf}
                             onChange={(e) => setQuoteProviderCf(e.target.value)}
                             placeholder="Codice Fiscale"
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs tabular-nums text-white"
                           />
                         </div>
                         <div>
@@ -5414,7 +5493,7 @@ export default function DashboardPage() {
                             value={quoteClientVat}
                             onChange={(e) => setQuoteClientVat(e.target.value)}
                             placeholder="IT12345678901 / CF"
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs tabular-nums text-white"
                           />
                         </div>
                       </div>
@@ -5437,7 +5516,7 @@ export default function DashboardPage() {
                         {quoteItems.map((item, idx) => (
                           <div key={item.id} className="p-3 rounded-2xl bg-black/40 border border-white/[0.06] flex flex-col gap-2 relative group/qitem">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-mono text-teal-400 font-bold">#{idx + 1}</span>
+                              <span className="text-[10px] tabular-nums text-teal-400 font-bold">#{idx + 1}</span>
                               <input
                                 type="text"
                                 placeholder="Titolo Voce (es. Sviluppo Web App Next.js)"
@@ -5468,7 +5547,7 @@ export default function DashboardPage() {
                                   min={1}
                                   value={item.quantity}
                                   onChange={(e) => handleUpdateQuoteItem(item.id, 'quantity', Number(e.target.value))}
-                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs font-mono text-white text-center"
+                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs tabular-nums text-white text-center"
                                 />
                               </div>
                               <div>
@@ -5478,7 +5557,7 @@ export default function DashboardPage() {
                                   min={0}
                                   value={item.price}
                                   onChange={(e) => handleUpdateQuoteItem(item.id, 'price', Number(e.target.value))}
-                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs font-mono text-white text-right"
+                                  className="w-full px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs tabular-nums text-white text-right"
                                 />
                               </div>
                             </div>
@@ -5554,7 +5633,7 @@ export default function DashboardPage() {
                         type="text"
                         value={quoteIban}
                         onChange={(e) => setQuoteIban(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-white"
+                        className="w-full px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs tabular-nums text-white"
                       />
                     </div>
 
@@ -5613,7 +5692,7 @@ export default function DashboardPage() {
 
                         <div className="text-[11px] text-slate-600 space-y-0.5 mt-2 font-sans">
                           <p className="font-bold text-slate-900">Tia Chinaglia</p>
-                          <p>Codice Fiscale: <strong className="font-mono text-slate-900">{quoteProviderCf || 'CHNTNA04D14E897A'}</strong></p>
+                          <p>Codice Fiscale: <strong className="tabular-nums text-slate-900">{quoteProviderCf || 'CHNTNA04D14E897A'}</strong></p>
                           <p>Sede / Domicilio: <span className="text-slate-800">{quoteProviderAddress || 'Mantova (MN), Italia'}</span></p>
                           <p>Email: <span className="text-slate-900">info@tiadesigns.it</span> • Web: <span className="text-slate-900">tiadesigns.it</span></p>
                           <p>Tel: <span className="text-slate-900">+39 331 882 1334</span></p>
@@ -5669,7 +5748,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="sm:text-right flex flex-col sm:items-end justify-center text-xs text-slate-600 space-y-0.5">
                         {quoteClientVat && (
-                          <p>C.F. / P.IVA: <strong className="text-slate-900 font-mono">{quoteClientVat}</strong></p>
+                          <p>C.F. / P.IVA: <strong className="text-slate-900 tabular-nums">{quoteClientVat}</strong></p>
                         )}
                         {quoteClientEmail && <p>Email: <strong className="text-slate-900">{quoteClientEmail}</strong></p>}
                         {quoteClientPhone && <p>Telefono: <strong className="text-slate-900">{quoteClientPhone}</strong></p>}
@@ -5693,16 +5772,16 @@ export default function DashboardPage() {
                             const lineTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
                             return (
                               <tr key={item.id} className="hover:bg-slate-50">
-                                <td className="py-3 px-2 font-mono text-slate-500">{idx + 1}</td>
+                                <td className="py-3 px-2 tabular-nums text-slate-500">{idx + 1}</td>
                                 <td className="py-3 px-2">
                                   <p className="font-semibold text-xs text-slate-900">{item.title}</p>
                                   {item.description && (
                                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed font-sans">{item.description}</p>
                                   )}
                                 </td>
-                                <td className="py-3 px-2 text-center font-mono text-slate-700">{item.quantity}</td>
-                                <td className="py-3 px-2 text-right font-mono text-slate-700">{item.price} €</td>
-                                <td className="py-3 px-2 text-right font-mono font-bold text-slate-950">{lineTotal} €</td>
+                                <td className="py-3 px-2 text-center tabular-nums text-slate-700">{item.quantity}</td>
+                                <td className="py-3 px-2 text-right tabular-nums text-slate-700">{item.price} €</td>
+                                <td className="py-3 px-2 text-right tabular-nums font-bold text-slate-950">{lineTotal} €</td>
                               </tr>
                             );
                           })}
@@ -5741,7 +5820,7 @@ export default function DashboardPage() {
                             </p>
                             <p className="font-medium text-slate-900">{quotePaymentTerms}</p>
                             <p className="text-[11px] pt-0.5">
-                              IBAN: <strong className="font-mono font-bold text-slate-950">{quoteIban}</strong> (Intestato a Tia Chinaglia)
+                              IBAN: <strong className="tabular-nums font-bold text-slate-950">{quoteIban}</strong> (Intestato a Tia Chinaglia)
                             </p>
 
                             {/* Mandatory Legal Clause */}
@@ -5770,13 +5849,13 @@ export default function DashboardPage() {
                           }`}>
                             <div className="flex justify-between text-xs text-slate-600">
                               <span>Compenso Lordo / Voci:</span>
-                              <span className="font-mono font-medium text-slate-900">{subtotal} €</span>
+                              <span className="tabular-nums font-medium text-slate-900">{subtotal} €</span>
                             </div>
 
                             {quoteDiscount > 0 && (
                               <div className="flex justify-between text-xs font-semibold text-red-600">
                                 <span>Sconto Applicato ({quoteDiscount}%):</span>
-                                <span className="font-mono">- {discountAmount} €</span>
+                                <span className="tabular-nums">- {discountAmount} €</span>
                               </div>
                             )}
 
@@ -5785,20 +5864,20 @@ export default function DashboardPage() {
                                 {quoteWithholdingTax && (
                                   <div className="flex justify-between text-xs font-semibold text-slate-700">
                                     <span>Ritenuta d&apos;Acconto (20%):</span>
-                                    <span className="font-mono text-red-700">- {withholdingAmount} €</span>
+                                    <span className="tabular-nums text-red-700">- {withholdingAmount} €</span>
                                   </div>
                                 )}
                                 {stampDuty > 0 && (
                                   <div className="flex justify-between text-xs text-slate-600">
                                     <span>Marca da Bollo (D.P.R. 642/72):</span>
-                                    <span className="font-mono text-slate-900">+ {stampDuty} €</span>
+                                    <span className="tabular-nums text-slate-900">+ {stampDuty} €</span>
                                   </div>
                                 )}
                                 <div className="quote-divider pt-2 border-t border-slate-900 flex justify-between items-baseline">
                                   <span className="font-serif text-xs font-bold uppercase text-slate-950 tracking-wider">
                                     Netto a Pagare:
                                   </span>
-                                  <span className="font-serif text-2xl font-bold font-mono tracking-tight text-slate-950">
+                                  <span className="font-serif text-2xl font-bold tabular-nums tracking-tight text-slate-950">
                                     {netToPay} €
                                   </span>
                                 </div>
@@ -5808,14 +5887,14 @@ export default function DashboardPage() {
                                 {quoteTaxRegime === 'iva22' && (
                                   <div className="flex justify-between text-xs text-slate-600">
                                     <span>IVA Ordinaria (22%):</span>
-                                    <span className="font-mono text-slate-900">{vatAmount} €</span>
+                                    <span className="tabular-nums text-slate-900">{vatAmount} €</span>
                                   </div>
                                 )}
                                 <div className="quote-divider pt-2 border-t border-slate-900 flex justify-between items-baseline">
                                   <span className="font-serif text-xs font-bold uppercase text-slate-950 tracking-wider">
                                     Totale Documento:
                                   </span>
-                                  <span className="font-serif text-2xl font-bold font-mono tracking-tight text-slate-950">
+                                  <span className="font-serif text-2xl font-bold tabular-nums tracking-tight text-slate-950">
                                     {quoteTotal} €
                                   </span>
                                 </div>
@@ -5858,7 +5937,7 @@ export default function DashboardPage() {
                             onClick={() => setShowSignatureModal(true)}
                             className="no-print text-[10px] font-sans cursor-pointer underline text-teal-700 hover:text-teal-900"
                           >
-                            {signatureData ? 'Modifica Firma' : '✍️ Firma a mano'}
+                            {signatureData ? 'Modifica Firma' : 'Firma a mano'}
                           </button>
                         </div>
                       </div>
@@ -5890,10 +5969,10 @@ export default function DashboardPage() {
                   <div className="bg-[#081410] border border-teal-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">✍️</span>
+                        <span className="material-symbols-outlined text-[16px]">draw</span>
                         <h3 className="font-bold text-white text-base">Firma Digitale Interattiva</h3>
                       </div>
-                      <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 hover:text-white cursor-pointer">✕</button>
+                      <button onClick={() => setShowSignatureModal(false)} className="text-neutral-400 hover:text-white cursor-pointer"><span className="material-symbols-outlined text-[14px]">close</span></button>
                     </div>
 
                     <p className="text-xs text-neutral-300">
@@ -5955,13 +6034,13 @@ export default function DashboardPage() {
                         <TiaIcon icon={Mail01Icon} size={18} className="text-teal-400" />
                         <h3 className="font-bold text-white text-base">Invia Preventivo via Email</h3>
                       </div>
-                      <button onClick={() => setShowSendModal(false)} className="text-neutral-400 hover:text-white cursor-pointer">✕</button>
+                      <button onClick={() => setShowSendModal(false)} className="text-neutral-400 hover:text-white cursor-pointer"><span className="material-symbols-outlined text-[14px]">close</span></button>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] text-xs flex flex-col gap-1.5">
                       <p className="text-neutral-400">Destinatario:</p>
                       <p className="font-bold text-white text-sm">{quoteClientName} &lt;{quoteClientEmail}&gt;</p>
-                      <p className="text-[11px] text-teal-300 font-mono mt-1">Preventivo: {quoteNumber} • Totale: {(() => {
+                      <p className="text-[11px] text-teal-300 tabular-nums mt-1">Preventivo: {quoteNumber} • Totale: {(() => {
                         const subtotal = quoteItems.reduce((acc, it) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 1), 0);
                         const discountAmount = quoteDiscount > 0 ? Math.round((subtotal * quoteDiscount) / 100) : 0;
                         const taxable = subtotal - discountAmount;
@@ -5984,7 +6063,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="p-3 rounded-xl bg-teal-950/30 border border-teal-500/20 text-[11px] text-teal-300/90 leading-relaxed">
-                      ℹ️ Verrà inviata un&apos;email brandizzata con il riepilogo dettagliato al cliente e una <strong>notifica di conferma immediata</strong> alla tua casella <strong>info@tiadesigns.it</strong>.
+                      Verrà inviata un&apos;email brandizzata con il riepilogo dettagliato al cliente e una <strong>notifica di conferma immediata</strong> alla tua casella <strong>info@tiadesigns.it</strong>.
                     </div>
 
                     <div className="flex items-center justify-end gap-2 pt-2">
@@ -6179,25 +6258,25 @@ export default function DashboardPage() {
                     <span className={`w-3 h-3 rounded-full ${systemHealth?.database?.status === 'healthy' ? 'bg-teal-400 animate-pulse' : 'bg-amber-400'}`} />
                     <span className="text-lg font-bold text-white capitalize">{systemHealth?.database?.status || 'Non disponibile'}</span>
                   </div>
-                  <span className="text-xs text-neutral-500 font-mono">Latenza: {systemHealth?.database?.latencyMs ?? '—'} ms</span>
+                  <span className="text-xs text-neutral-500 tabular-nums">Latenza: {systemHealth?.database?.latencyMs ?? '—'} ms</span>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
                   <span className="text-xs text-neutral-400 uppercase tracking-wider">Email Delivery</span>
                   <span className="text-lg font-bold text-white">Resend API</span>
-                  <span className="text-xs text-teal-400 font-mono">{systemHealth?.services?.email?.resend === 'configured' ? 'Resend configurato' : systemHealth?.services?.email?.smtp === 'configured' ? 'SMTP configurato' : 'Configurazione non verificata'}</span>
+                  <span className="text-xs text-teal-400 tabular-nums">{systemHealth?.services?.email?.resend === 'configured' ? 'Resend configurato' : systemHealth?.services?.email?.smtp === 'configured' ? 'SMTP configurato' : 'Configurazione non verificata'}</span>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-[#081410]/85 border border-white/[0.08] flex flex-col gap-2">
                   <span className="text-xs text-neutral-400 uppercase tracking-wider">Eventi Tracciati</span>
                   <span className="text-lg font-bold text-white">{systemHealth?.counts?.analyticsEvents ?? '—'}</span>
-                  <span className="text-xs text-neutral-500 font-mono">First-party analytics</span>
+                  <span className="text-xs text-neutral-500 tabular-nums">First-party analytics</span>
                 </div>
               </div>
 
               <div className="p-6 rounded-3xl bg-[#081410]/85 border border-white/[0.08]">
                 <h3 className="font-bold text-white text-sm mb-3">Audit Logs & Error Tracker</h3>
-                <div className="bg-black/60 rounded-2xl p-4 font-mono text-xs text-neutral-300 max-h-60 overflow-y-auto">
+                <div className="bg-black/60 rounded-2xl p-4 tabular-nums text-xs text-neutral-300 max-h-60 overflow-y-auto">
                   {systemHealth?.logs?.length ? systemHealth.logs.map((log: { id: string; timestamp: string; source: string; level: string; message: string }) => (
                     <p key={log.id} className={log.level === 'error' ? 'text-rose-300' : 'text-teal-400/80'}>
                       [{new Date(log.timestamp).toLocaleString('it-IT')}] {log.source}: {log.message}
@@ -6251,11 +6330,11 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2">
                               <p className="font-bold text-white text-sm">{p.nickname || p.credentialDeviceType || 'Dispositivo Passkey'}</p>
                               <button onClick={() => { setEditingPasskeyId(p.id); setPasskeyNickname(p.nickname || ''); }} className="text-neutral-500 hover:text-teal-400 text-xs cursor-pointer">
-                                ✏️
+                                
                               </button>
                             </div>
                           )}
-                          <p className="text-[11px] text-neutral-500 font-mono">ID: {p.credentialID.slice(0, 18)}... • Creata: {new Date(p.createdAt).toLocaleDateString('it-IT')}</p>
+                          <p className="text-[11px] text-neutral-500 tabular-nums">ID: {p.credentialID.slice(0, 18)}... • Creata: {new Date(p.createdAt).toLocaleDateString('it-IT')}</p>
                         </div>
                       </div>
 
@@ -6291,7 +6370,7 @@ export default function DashboardPage() {
                 {recoveryCodes && (
                   <div className="p-4 rounded-2xl bg-teal-950/40 border border-teal-500/40 flex flex-col gap-2">
                     <p className="text-[11px] font-bold text-teal-300">Copia e conserva questi codici:</p>
-                    <div className="flex flex-col gap-1 font-mono text-xs text-white">
+                    <div className="flex flex-col gap-1 tabular-nums text-xs text-white">
                       {recoveryCodes.map((c, i) => (
                         <div key={i} className="p-1.5 bg-black/60 rounded border border-white/10 text-center select-all">
                           {c}
@@ -6312,11 +6391,11 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 text-lg">
-                    📄
+                    
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-base">Visualizzatore PDF Integrato</h3>
-                    <p className="text-xs text-neutral-400 font-mono truncate max-w-md">{selectedProjectPdfModal}</p>
+                    <p className="text-xs text-neutral-400 tabular-nums truncate max-w-md">{selectedProjectPdfModal}</p>
                   </div>
                 </div>
 
@@ -6360,7 +6439,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 text-lg">
-                    🖼️
+                    
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-base">{selectedProjectGalleryModal.title}</h3>
@@ -6382,7 +6461,7 @@ export default function DashboardPage() {
                     }}
                     className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <span>🔗</span>
+                    <span className="material-symbols-outlined text-[13px]">link</span>
                     <span>Copia URL</span>
                   </button>
                   <button
@@ -6477,8 +6556,8 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
                 <div>
                   <h3 className="font-bold text-white text-base truncate">{selectedMediaPreview.filename}</h3>
-                  <p className="text-xs text-neutral-400 font-mono">
-                    📁 /{selectedMediaPreview.folder} • {(selectedMediaPreview.size / 1024).toFixed(0)} KB • {selectedMediaPreview.ext}
+                  <p className="text-xs text-neutral-400 tabular-nums">
+                    /{selectedMediaPreview.folder} • {(selectedMediaPreview.size / 1024).toFixed(0)} KB • {selectedMediaPreview.ext}
                   </p>
                 </div>
 
@@ -6491,7 +6570,7 @@ export default function DashboardPage() {
                     }}
                     className="px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-semibold text-neutral-300 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <span>🔗</span>
+                    <span className="material-symbols-outlined text-[13px]">link</span>
                     <span>Copia URL</span>
                   </button>
                   <button
@@ -6531,12 +6610,12 @@ export default function DashboardPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
                       <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">PRO</span>
                     </div>
-                    <p className="text-[11px] text-neutral-400 font-mono">Pipeline · Trattative · AI Briefing · Calendario</p>
+                    <p className="text-[11px] text-neutral-400 tabular-nums">Pipeline · Trattative · AI Briefing · Calendario</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs font-mono">
-                    <span className="opacity-60">⌘J</span> Palette
+                  <div className="px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs tabular-nums">
+                    <kbd className="opacity-75 font-semibold">Cmd+J</kbd> Palette
                   </div>
                 </div>
               </div>

@@ -136,7 +136,7 @@ export const DealModal: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 self-end md:self-auto">
-            <div className="text-right font-mono">
+            <div className="text-right tabular-nums">
               <span className="text-xl font-bold text-primary block leading-tight">
                 € {selectedDeal.value.toLocaleString()}
               </span>
@@ -287,7 +287,7 @@ export const DealModal: React.FC = () => {
                     {selectedDeal.nextAction && selectedDeal.nextAction.what && !selectedDeal.nextAction.completed ? (
                       <div className="text-xs font-bold text-on-surface mt-0.5">
                         {selectedDeal.nextAction.what}
-                        <span className="block text-[11px] font-mono text-on-surface-variant mt-0.5">
+                        <span className="block text-[11px] tabular-nums text-on-surface-variant mt-0.5">
                           Data prevista: {selectedDeal.nextAction.when} {selectedDeal.nextAction.time || ''} • Assegnato a: {selectedDeal.nextAction.who}
                         </span>
                       </div>
@@ -365,7 +365,7 @@ export const DealModal: React.FC = () => {
                       {/* Timeline dot */}
                       <span className="absolute -left-[29px] top-1.5 w-2.5 h-2.5 rounded-full bg-zinc-300 border border-[#14151a]" />
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-zinc-400 text-[11px]">
+                        <span className="tabular-nums text-zinc-400 text-[11px]">
                           {h.date}
                         </span>
                         <span className="font-bold text-on-surface">{h.title}</span>
@@ -415,7 +415,7 @@ export const DealModal: React.FC = () => {
                   required
                   value={editValue}
                   onChange={(e) => setEditValue(Number(e.target.value))}
-                  className="w-full bg-surface-container p-2.5 rounded-xl border border-outline-variant/30 text-on-surface outline-none font-mono"
+                  className="w-full bg-surface-container p-2.5 rounded-xl border border-outline-variant/30 text-on-surface outline-none tabular-nums"
                 />
               </div>
 
@@ -485,7 +485,7 @@ export const DealModal: React.FC = () => {
                   <h4 className="font-headline font-bold text-sm text-on-surface">
                     Generatore Preventivo Commerciale ({selectedDeal.brand})
                   </h4>
-                  <span className="font-mono font-bold text-primary text-sm">
+                  <span className="tabular-nums font-bold text-primary text-sm">
                     Totale Offerta: € {selectedDeal.value.toLocaleString()}
                   </span>
                 </div>
@@ -493,7 +493,7 @@ export const DealModal: React.FC = () => {
                   Crea al volo la proposta commerciale formattata per {selectedDeal.company}.
                 </p>
 
-                <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/20 font-mono text-[11px] whitespace-pre-wrap">
+                <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/20 tabular-nums text-[11px] whitespace-pre-wrap">
 {`PROPOSTA COMMERCIALE ${selectedDeal.brand.toUpperCase()}
 Cliente: ${selectedDeal.name} - ${selectedDeal.company}
 Data: ${new Date().toLocaleDateString('it-IT')}

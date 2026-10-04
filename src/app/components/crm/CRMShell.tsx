@@ -50,7 +50,7 @@ function CRMInner({ activeTab: controlledTab, onTabChange }: CRMShellProps) {
     return (
       <div className="crm-shell-loading">
         <div className="w-8 h-8 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
-        <p className="text-xs text-neutral-400 mt-3 font-mono">Caricamento CRM Commerciale…</p>
+        <p className="text-xs text-neutral-400 mt-3 font-medium">Caricamento CRM Commerciale…</p>
       </div>
     );
   }
@@ -70,45 +70,11 @@ function CRMInner({ activeTab: controlledTab, onTabChange }: CRMShellProps) {
     );
   }
 
-  const tabs: { id: CRMTab; label: string; icon: string }[] = [
-    { id: 'cockpit', label: 'Cockpit', icon: '◈' },
-    { id: 'kanban', label: 'Pipeline', icon: '⬛' },
-    { id: 'opportunities', label: 'Opportunità', icon: '◎' },
-    { id: 'focus', label: 'Focus', icon: '◉' },
-    { id: 'calendar', label: 'Calendario', icon: '▦' },
-    { id: 'standby', label: 'Stand-by', icon: '◷' },
-    { id: 'crm-analytics', label: 'Analytics', icon: '▲' },
-  ];
 
   return (
-    <div className="crm-shell" data-theme="slate">
-      {/* CRM Sub-Nav */}
-      <div className="crm-subnav">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`crm-subnav-btn ${activeTab === tab.id ? 'active' : ''}`}
-          >
-            <span className="crm-subnav-icon">{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
-        <div className="ml-auto flex items-center gap-2">
-          <div className="crm-sync-dot" data-status={syncStatus} title={`Sync: ${syncStatus}`} />
-          <span className="text-[10px] text-neutral-500 font-mono hidden sm:block">{syncStatus}</span>
-          <button
-            onClick={() => setPaletteOpen(true)}
-            className="crm-cmd-btn"
-            title="Command palette (⌘J)"
-          >
-            <span className="text-[10px] font-mono opacity-60">⌘J</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="crm-portal crm-shell w-full" data-theme="slate">
       {/* CRM Content */}
-      <div className="crm-content">
+      <div className="crm-content w-full">
         {activeTab === 'cockpit' && (
           <ExecutiveCockpit onNavigateToTab={(t) => setActiveTab(t as CRMTab)} />
         )}

@@ -87,7 +87,7 @@ export const NextStepModal: React.FC = () => {
               {nextStepModalDeal.company} • {nextStepModalDeal.brand} ({nextStepModalDeal.stage})
             </span>
           </div>
-          <span className="font-mono font-bold text-primary text-xs">
+          <span className="tabular-nums font-bold text-primary text-xs">
             Valore: € {nextStepModalDeal.value.toLocaleString()}
           </span>
         </div>

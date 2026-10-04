@@ -310,7 +310,7 @@ export const NewDealModal: React.FC = () => {
                   min="0"
                   value={value}
                   onChange={(e) => setValue(Number(e.target.value))}
-                  className="w-full bg-[#121316] p-2.5 rounded-lg border border-white/10 text-white outline-none font-mono"
+                  className="w-full bg-[#121316] p-2.5 rounded-lg border border-white/10 text-white outline-none tabular-nums"
                 />
               </div>
 

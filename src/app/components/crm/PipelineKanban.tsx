@@ -72,7 +72,7 @@ export const PipelineKanban: React.FC = () => {
             <h1 className="font-headline font-bold text-xl md:text-2xl text-on-surface tracking-tight">
               Pipeline Commerciale Kanban
             </h1>
-            <span className="px-2 py-0.5 rounded-full bg-surface-container font-mono text-xs font-semibold text-primary">
+            <span className="px-2 py-0.5 rounded-full bg-surface-container tabular-nums text-xs font-semibold text-primary">
               {filteredDeals.length} Opportunità
             </span>
           </div>
@@ -112,11 +112,11 @@ export const PipelineKanban: React.FC = () => {
                     <span className="text-xs font-bold uppercase tracking-wider text-on-surface">
                       {stage.label}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-xs font-bold font-mono text-primary">
+                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-xs font-bold tabular-nums text-primary">
                       {stageDeals.length}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-on-surface-variant font-mono">
+                  <div className="flex items-center justify-between text-xs text-on-surface-variant tabular-nums">
                     <span>Totale:</span>
                     <span className="font-bold text-on-surface">
                       € {stageTotal.toLocaleString()}
@@ -148,7 +148,7 @@ export const PipelineKanban: React.FC = () => {
                               {deal.brand}
                             </span>
                             <div className="text-right">
-                              <span className="font-mono text-xs font-bold text-primary block leading-tight">
+                              <span className="tabular-nums text-xs font-bold text-primary block leading-tight">
                                 € {deal.value.toLocaleString()}
                               </span>
                               <span className="text-[9px] text-on-surface-variant font-medium">
@@ -186,7 +186,7 @@ export const PipelineKanban: React.FC = () => {
                                   <span className="font-semibold text-on-surface line-clamp-1">
                                     {deal.nextAction?.what}
                                   </span>
-                                  <span className="text-[10px] font-mono text-on-surface-variant">
+                                  <span className="text-[10px] tabular-nums text-on-surface-variant">
                                     {deal.nextAction?.when} {deal.nextAction?.time || ''} • {deal.nextAction?.who}
                                   </span>
                                 </div>
@@ -205,7 +205,7 @@ export const PipelineKanban: React.FC = () => {
                               <span className="material-symbols-outlined text-[13px]">person</span>
                               {deal.salesRep}
                             </span>
-                            <span className="text-outline font-mono text-[9px]">
+                            <span className="text-outline tabular-nums text-[9px]">
                               {deal.id}
                             </span>
                           </div>

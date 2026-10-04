@@ -441,10 +441,10 @@ export const CalendarView: React.FC = () => {
                       }}
                       className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-transform hover:scale-110 cursor-pointer ${
                         isToday
-                          ? 'bg-primary text-on-primary font-mono'
+                          ? 'bg-primary text-on-primary tabular-nums'
                           : cell.isCurrentMonth
-                          ? 'text-on-surface font-mono'
-                          : 'text-on-surface-variant font-mono'
+                          ? 'text-on-surface tabular-nums'
+                          : 'text-on-surface-variant tabular-nums'
                       }`}
                     >
                       {cell.date.getDate()}
@@ -543,7 +543,7 @@ export const CalendarView: React.FC = () => {
                   {col.dayNameShort}
                 </span>
                 <span
-                  className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full font-mono ${
+                  className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full tabular-nums ${
                     col.isToday ? 'bg-primary text-on-primary' : 'text-on-surface'
                   }`}
                 >
@@ -561,7 +561,7 @@ export const CalendarView: React.FC = () => {
               return (
                 <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] min-h-[58px]">
                   {/* Hour Axis Label */}
-                  <div className="text-[11px] font-mono text-on-surface-variant p-2 text-right pr-3 border-r border-outline-variant/20 select-none flex items-start justify-end">
+                  <div className="text-[11px] tabular-nums text-on-surface-variant p-2 text-right pr-3 border-r border-outline-variant/20 select-none flex items-start justify-end">
                     {hour}
                   </div>
 
@@ -659,7 +659,7 @@ export const CalendarView: React.FC = () => {
 
                 return (
                   <div key={hour} className="grid grid-cols-[64px_1fr] min-h-[64px] group">
-                    <div className="p-3 text-xs font-mono text-on-surface-variant text-right border-r border-outline-variant/20 select-none">
+                    <div className="p-3 text-xs tabular-nums text-on-surface-variant text-right border-r border-outline-variant/20 select-none">
                       {hour}
                     </div>
 
@@ -801,7 +801,7 @@ export const CalendarView: React.FC = () => {
                         </span>
                         <span className="text-zinc-200">{item.label}</span>
                       </div>
-                      <span className="font-bold text-zinc-400 font-mono">{count}</span>
+                      <span className="font-bold text-zinc-400 tabular-nums">{count}</span>
                     </div>
                   );
                 })}
