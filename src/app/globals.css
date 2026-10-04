@@ -1426,3 +1426,13 @@ img {
   border-color: rgba(139, 92, 246, 0.35) !important;
   box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(165, 180, 252, 0.22), 0 0 28px -6px rgba(139, 92, 246, 0.3) !important;
 }
+
+/* ── Command Palette Edge-to-Edge Search Bar ── */
+.command-dialog { width:min(100%,600px); background:#0c0d15; border:1px solid rgba(255,255,255,0.1); border-radius:14px; box-shadow:0 25px 90px rgba(0,0,0,0.85); overflow:hidden; }
+.command-input-row { height:56px; padding:0 18px; display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.08); background:transparent; color:#a1a1aa; }
+.command-input-row .material-symbols-outlined { font-size:22px; color:#a1a1aa; flex-shrink:0; }
+.command-input-row input,
+.command-input-row input:focus,
+.command-input-row input:focus-visible { flex:1 !important; width:100% !important; height:100% !important; border:none !important; outline:none !important; background:transparent !important; background-color:transparent !important; color:#ffffff !important; font-size:15px !important; font-weight:500 !important; border-radius:0 !important; box-shadow:none !important; padding:0 !important; margin:0 !important; }
+.command-input-row input::placeholder { color:#71717a !important; opacity:0.7 !important; }
+.command-input-row kbd { font-family:inherit; font-size:10px; font-weight:600; padding:2px 6px; border-radius:5px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#a1a1aa; flex-shrink:0; letter-spacing:0.04em; }
