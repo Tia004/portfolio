@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       attachments,
     });
 
-    return NextResponse.json({ success: true, messageId: result.messageId });
+    return NextResponse.json({ ...result, deliveryStatus: result.success ? 'smtp_accepted' : 'partial_or_unknown', inboxPlacement: 'not_verified', error: result.success ? undefined : 'Accettazione SMTP parziale o non confermata. Controlla Posta inviata prima di ripetere.' }, { status: result.success ? 200 : 409 });
   } catch (error: any) {
     console.error('Error in /api/master/aruba-mail/send:', error);
     return NextResponse.json({ error: error.message || 'Errore durante l\'invio dell\'email' }, { status: 500 });

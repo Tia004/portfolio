@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-15",
+  "product_files_sha256": {
+    "src/lib/email-delivery.ts": "697412071faf93599af3ec1f8fe36d9727b9d9f27000eb6cb755b45341d6a770",
+    "src/lib/outreach-dispatch.ts": "51c7a001197bbdb915c81ec0837690c9a49d5cfe1bcf1354cf0c82c4462afe6c",
+    "src/lib/outreach-server.ts": "a896f10cd848560a0af2ea7594e1f3c99d8ddcf32b6586fbfa8eed3e13529f0f",
+    "src/lib/email-template.ts": "8c37731329e1005d3e126ff83ff149ff2b0e2183f125b512f5af5cdd023d36f3",
+    "src/lib/aruba-mail.ts": "15d55d4c7714cc023fdf8aa6a43f850953c637520637ef1c14112fcf9adb7a3b",
+    "src/lib/branded-email.ts": "83a758923890733e8913f1d544915a9706b170c3a7476ce749a97adc38dc6f88",
+    "src/app/loginmaster/dashboard/page.tsx": "e3f053062f8b54b95478efe6c8d8975700d69df9abc7077775a4a238c626d187",
+    "src/app/loginmaster/dashboard/AutoEmailSender.tsx": "e138a40d3d55c942855d81930b61eeee744d3b5e33d8f1efa626c76ed3bba4e1",
+    "src/app/api/master/aruba-mail/send/route.ts": "4b4cdfefd7e66ca437e90871657bd442c6a2e2443ce9b96d697ee3129783839f",
+    "src/app/api/master/emails/auto-send/route.ts": "e5552e3bd98f21a24a6b78262b2ba0ab652bf7e63a554055b35390ca700f2682",
+    "src/app/api/master/emails/sent-registry/route.ts": "6ea882d255b9628237aeed459eaa491f09666c014370a4180c8b7df316755eed"
+  },
+  "build": "Next16.2.6 webpack production PASS, isolated source copy, fixture SQLite and synthetic environment only",
+  "typescript": "PASS",
+  "lint": "New delivery/outreach modules + auto-send route + shared template PASS; no claim about existing legacy lint",
+  "mime_checks": 9,
+  "sqlite_dispatch_checks": 16,
+  "batch_requests_simulated": 500,
+  "synthetic_accepted": 150,
+  "browser_composer": "PASS production build; logo naturalWidth and unchanged HTTPS send payload; all API calls intercepted",
+  "browser_batch": "PASS production build;500listblockedbeforeAPI,unknownstopsloop,noautoreplay,cancelinflightbarrier",
+  "shared_builder": "PASS",
+  "newsletter_regressions": "PASS",
+  "source_matches_tested_build": true,
+  "real_email_sends": 0,
+  "inbox_placement": "NOT_VERIFIED",
+  "published_logo_url": "https://tiadesigns.it/TiaDesignsLogo-white.png",
+  "logo_url_changed": false
+}

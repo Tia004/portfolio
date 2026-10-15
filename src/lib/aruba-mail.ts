@@ -1,10 +1,9 @@
+import { prepareEmailHtml, emailPlainText, smtpReceipt } from './email-delivery';
 import { ImapFlow } from 'imapflow';
 import { simpleParser, type ParsedMail } from 'mailparser';
 import nodemailer from 'nodemailer';
 // @ts-ignore
 import MailComposer from 'nodemailer/lib/mail-composer/index.js';
-import fs from 'fs';
-import path from 'path';
 
 export const ARUBA_IMAP_HOST = process.env.ARUBA_IMAP_HOST || 'imaps.aruba.it';
 export const ARUBA_IMAP_PORT = parseInt(process.env.ARUBA_IMAP_PORT || '993', 10);
@@ -54,6 +53,9 @@ export function getImapClient(): ImapFlow {
     host: ARUBA_IMAP_HOST,
     port: ARUBA_IMAP_PORT,
     secure: true,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     auth: {
       user: ARUBA_EMAIL_USER,
       pass: ARUBA_EMAIL_PASSWORD,
@@ -373,7 +375,7 @@ export async function sendArubaEmail(options: {
     contentType?: string;
     cid?: string;
   }[];
-}): Promise<{ success: boolean; messageId?: string }> {
+}): Promise<{ success: boolean; messageId?: string; accepted: string[]; rejected: string[]; sentCopySaved: boolean }> {
   if (!isArubaConfigured()) {
     throw new Error('Credenziali Aruba Mail non configurate in .env o su Vercel');
   }
@@ -382,6 +384,9 @@ export async function sendArubaEmail(options: {
     host: ARUBA_SMTP_HOST,
     port: ARUBA_SMTP_PORT,
     secure: true,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 45000,
     auth: {
       user: ARUBA_EMAIL_USER,
       pass: ARUBA_EMAIL_PASSWORD,
@@ -389,26 +394,7 @@ export async function sendArubaEmail(options: {
   });
 
   const attachments = options.attachments ? [...options.attachments] : [];
-  const logoPath = path.join(process.cwd(), 'public', 'TiaDesignsLogo-white.png');
-
-  // Auto-embed logo as inline CID attachment if referenced in HTML so email clients don't block it
-  if (
-    options.html.includes('cid:TiaDesignsLogo-white.png') &&
-    !attachments.some((a) => a.cid === 'TiaDesignsLogo-white.png')
-  ) {
-    try {
-      if (fs.existsSync(logoPath)) {
-        attachments.push({
-          filename: 'TiaDesignsLogo-white.png',
-          path: logoPath,
-          cid: 'TiaDesignsLogo-white.png',
-          contentType: 'image/png',
-        });
-      }
-    } catch (e) {
-      console.warn('Could not attach inline logo for Aruba SMTP:', e);
-    }
-  }
+  const html = prepareEmailHtml(options.html);
 
   const mailOptions = {
     from: `Tia Designs <${ARUBA_EMAIL_USER}>`,
@@ -417,21 +403,24 @@ export async function sendArubaEmail(options: {
     bcc: options.bcc,
     replyTo: options.replyTo || ARUBA_EMAIL_USER,
     subject: options.subject,
-    text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
-    html: options.html,
+    text: options.text || emailPlainText(html),
+    html,
     attachments: attachments.length > 0 ? attachments : undefined,
   };
 
   const info = await transporter.sendMail(mailOptions);
+  const list = (value?: string | string[]) => !value ? [] : Array.isArray(value) ? value : [value];
+  const receipt = smtpReceipt(info, [...list(options.to), ...list(options.cc), ...list(options.bcc)]);
+  let sentCopySaved = false;
 
   // Automatically save copy to Posta Inviata (Sent) via IMAP APPEND (awaited for serverless/Vercel persistence)
   try {
-    await appendArubaSentEmail(mailOptions);
+    sentCopySaved = await appendArubaSentEmail({ ...mailOptions, messageId: info.messageId });
   } catch (appendErr) {
     console.warn('[Aruba Mail] appendArubaSentEmail warning (email still sent via SMTP):', appendErr);
   }
 
-  return { success: true, messageId: info.messageId };
+  return { ...receipt, sentCopySaved };
 }
 
 let cachedSentMailbox: string | null = null;

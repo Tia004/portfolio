@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getOutreachStore } from '@/lib/outreach-server';
 import { getSession } from '@/lib/session';
 import { isDuplicationExempt, getSentEmailSet } from '@/lib/email-dedup';
 
@@ -85,6 +86,8 @@ export async function GET(request: NextRequest) {
     }
 
     const sentEmailSet = await getSentEmailSet();
+    const dispatches = await getOutreachStore().blocked();
+    for (const row of dispatches) if (!isDuplicationExempt(row.email)) sentEmailSet.add(row.email);
     const sentEmails = Array.from(sentEmailSet);
 
     // Fetch recent 50 logs for display
@@ -98,6 +101,7 @@ export async function GET(request: NextRequest) {
       totalCount: sentEmails.length,
       sentEmails,
       recentLogs,
+      dispatches,
       exemptEmails: ['info@tiadesigns.it', 'tiachinaglia@gmail.com', 'latitiante@gmail.com'],
     });
   } catch (error: any) {
@@ -175,6 +179,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Email parameter required' }, { status: 400 });
     }
 
+    if (!await getOutreachStore().releaseAccepted(email)) return NextResponse.json({ error: 'Esiste un invio in corso o incerto: verifica prima la ricevuta SMTP. Lo sblocco automatico non è disponibile.' }, { status: 409 });
     await prisma.sentEmailLog.deleteMany({
       where: { email },
     });

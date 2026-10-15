@@ -45,7 +45,7 @@ export interface RecipientRow {
   customSubject?: string;
   customBody?: string;
   extraData?: Record<string, string>;
-  status: 'idle' | 'sending' | 'sent' | 'failed';
+  status: 'idle' | 'sending' | 'sent' | 'failed' | 'uncertain';
   error?: string;
   sentAt?: string;
 }
@@ -88,7 +88,7 @@ export default function AutoEmailSender() {
   const [companyGreetingFormat, setCompanyGreetingFormat] = useState<'spett_le' | 'team_di' | 'ciao'>('spett_le');
 
   // Sending configuration
-  const [delayMs, setDelayMs] = useState<number>(600); // ms between emails
+  const [delayMs, setDelayMs] = useState<number>(30000); // Conservative cadence; not an inbox guarantee
   const [testEmailAddress, setTestEmailAddress] = useState('info@tiadesigns.it');
   const [isSendingTest, setIsSendingTest] = useState(false);
 
@@ -97,6 +97,8 @@ export default function AutoEmailSender() {
   const [isPaused, setIsPaused] = useState(false);
   const pauseRef = useRef(false);
   const cancelRef = useRef(false);
+  const runRef = useRef(false);
+  const requestIdsRef = useRef(new Map<string, string>());
 
   // Preview modal/drawer state
   const [previewRecipientId, setPreviewRecipientId] = useState<string | null>(null);
@@ -527,6 +529,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     const sent = recipients.filter((r) => r.status === 'sent').length;
     const failed = recipients.filter((r) => r.status === 'failed').length;
     const pending = recipients.filter((r) => r.status === 'idle').length;
+    const uncertain = recipients.filter((r) => r.status === 'uncertain').length;
 
     return {
       total,
@@ -536,6 +539,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       sent,
       failed,
       pending,
+      uncertain,
     };
   }, [recipients]);
 
@@ -650,10 +654,12 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     setIsSendingTest(true);
     try {
       const res = await fetch('/api/master/emails/auto-send', {
+        signal: AbortSignal.timeout(110000),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testEmailAddress,
+          requestId: crypto.randomUUID(),
           name: resolvedName,
           greeting: resolvedGreeting,
           subject: `[TEST] ${resolvedSubject}`,
@@ -675,8 +681,9 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
   };
 
   // Execution Engine: Send one email
-  const sendSingleRecipient = async (row: RecipientRow): Promise<{ success: boolean; error?: string }> => {
+  const sendSingleRecipient = async (row: RecipientRow): Promise<{ success: boolean; error?: string; uncertain?: boolean; stopBatch?: boolean; retryAfter?: number }> => {
     const cleanTo = row.email.toLowerCase().trim();
+    if (!requestIdsRef.current.has(row.id)) requestIdsRef.current.set(row.id, crypto.randomUUID());
     if (!EXEMPT_EMAILS.has(cleanTo) && sentRegistry.has(cleanTo)) {
       return { success: false, error: 'Email già presente nello storico invii (bloccata per prevenire spam)' };
     }
@@ -688,10 +695,12 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
     try {
       const res = await fetch('/api/master/emails/auto-send', {
+        signal: AbortSignal.timeout(110000),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: row.email,
+          requestId: requestIdsRef.current.get(row.id),
           name: resolvedName,
           greeting: resolvedGreeting,
           subject: resolvedSubject,
@@ -704,38 +713,48 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       });
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || 'Errore invio' };
+        const retryAfter = res.status === 429 && Number.isInteger(data.retryAfter) && data.retryAfter > 0 && data.retryAfter <= 300 ? data.retryAfter : undefined;
+        return { success: false, error: data.error || 'Errore invio', uncertain: data.uncertain === true, stopBatch: res.status !== 409 && res.status !== 400, retryAfter };
       }
+      if (data.success !== true || data.deliveryStatus !== 'smtp_accepted') return { success: false, error: 'Ricevuta SMTP non confermata: verifica prima di ripetere.', uncertain: true, stopBatch: true };
       // Update local sent registry
       setSentRegistry((prev) => new Set([...prev, cleanTo]));
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Errore di rete' };
+      return { success: false, error: 'Risposta non ricevuta: il messaggio potrebbe essere già partito. Verifica Posta inviata prima di ripetere.', uncertain: true, stopBatch: true };
     }
   };
 
   // Start Batch Execution
   const handleStartAutoSending = async (onlyFailed = false) => {
+    if (runRef.current) return;
     if (recipients.length === 0) {
       showToast('Nessun destinatario presente nella lista.', 'error');
       return;
     }
 
-    const toProcess = recipients.filter((r) => (onlyFailed ? r.status === 'failed' : r.status !== 'sent'));
+    const toProcess = recipients.filter((r) => (onlyFailed ? r.status === 'failed' : ['idle', 'failed'].includes(r.status)));
     if (toProcess.length === 0) {
-      showToast('Tutte le email nella lista sono già state inviate!', 'info');
+      showToast('Nessun destinatario pronto: controlla gli esiti incerti e lo storico prima di riprendere.', 'info');
       return;
     }
 
+    if (toProcess.length > 150) {
+      showToast('Questa modalità Aruba non avvia campagne oltre 150 destinatari. Per messaggi analoghi a centinaia di destinatari serve un servizio campagne appropriato; non suddividere la lista per aggirare i limiti.', 'error');
+      return;
+    }
     if (!confirm(`Confermi l'invio automatico a ${toProcess.length} destinatari con intervallo di ${delayMs}ms?`)) {
       return;
     }
 
+    runRef.current = true;
     setIsRunning(true);
     setIsPaused(false);
     pauseRef.current = false;
     cancelRef.current = false;
 
+    let halted = false;
+    let hadFailures = false;
     for (let i = 0; i < recipients.length; i++) {
       if (cancelRef.current) {
         showToast('Invio interrotto dall\'utente.', 'info');
@@ -750,7 +769,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
       if (cancelRef.current) break;
 
       const current = recipients[i];
-      if (onlyFailed ? current.status !== 'failed' : current.status === 'sent') {
+      if (onlyFailed ? current.status !== 'failed' : !['idle', 'failed'].includes(current.status)) {
         continue;
       }
 
@@ -766,7 +785,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
           idx === i
             ? {
                 ...r,
-                status: result.success ? 'sent' : 'failed',
+                status: result.success ? 'sent' : result.uncertain ? 'uncertain' : result.retryAfter ? 'idle' : 'failed',
                 error: result.error,
                 sentAt: result.success ? new Date().toLocaleTimeString('it-IT') : undefined,
               }
@@ -774,15 +793,22 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
         )
       );
 
-      // Delay between emails to respect SMTP rate limits
-      if (delayMs > 0) {
-        await new Promise((r) => setTimeout(r, delayMs));
+      if (result.retryAfter) {
+        const until = Date.now() + result.retryAfter * 1000;
+        while (Date.now() < until && !cancelRef.current) await new Promise(r => setTimeout(r, Math.min(400, until - Date.now())));
+        i--; // Only an explicit no-dispatch rate-limit response can be retried.
+        continue;
       }
+      if (!result.success) hadFailures = true;
+      if (result.stopBatch || result.uncertain) { halted = true; break; }
+      const until = Date.now() + Math.max(30000, delayMs);
+      while (Date.now() < until && !cancelRef.current) await new Promise(r => setTimeout(r, Math.min(400, until - Date.now())));
     }
 
     setIsRunning(false);
     setIsPaused(false);
-    showToast('Processo di invio completato!', 'success');
+    runRef.current = false;
+    showToast(cancelRef.current ? 'Invio interrotto. Il messaggio già in corso potrebbe essere partito: controlla lo stato.' : halted ? 'Campagna fermata: verifica l’errore e Posta inviata prima di riprendere.' : hadFailures ? 'Elaborazione terminata con errori: consulta gli esiti.' : 'Messaggi accettati dal server SMTP. Arrivo in posta in ingresso non verificato.', halted || hadFailures ? 'error' : 'info');
   };
 
   const handlePauseResume = () => {
@@ -799,7 +825,6 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
     cancelRef.current = true;
     pauseRef.current = false;
     setIsPaused(false);
-    setIsRunning(false);
   };
 
   // Export Results Report to CSV
@@ -827,9 +852,9 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
   // Export Remaining (unsent / failed) Contacts to a clean CSV ready for re-import
   const handleExportRemainingCsv = () => {
-    const remaining = recipients.filter((r) => r.status !== 'sent');
+    const remaining = recipients.filter((r) => ['idle', 'failed'].includes(r.status));
     if (remaining.length === 0) {
-      showToast('Tutte le email nella lista sono già state inviate con successo!', 'info');
+      showToast('Nessun invio pronto da esportare. Gli esiti incerti sono nel report completo.', 'info');
       return;
     }
 
@@ -1223,14 +1248,15 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
 
             <div>
               <label className="block text-[11px] font-mono text-neutral-300 mb-1">
-                Intervallo tra le email (Anti-Spam Rate Limit)
+                Intervallo tra le email (non garantisce la posta in ingresso)
               </label>
+              <p className="text-xs text-neutral-400 mb-2">Tieni aperta questa scheda durante l’invio. Storico e blocchi sono persistenti, ma l’elaborazione della lista si ferma chiudendo la pagina. Massimo prudenziale del sito: 150 tentativi/24h. I limiti e le condizioni Aruba restano applicabili.</p>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { label: '300ms', value: 300, desc: 'Veloce' },
-                  { label: '600ms', value: 600, desc: 'Consigliato' },
-                  { label: '1.2s', value: 1200, desc: 'Prudente' },
-                  { label: '2.0s', value: 2000, desc: 'Anti-Spam' },
+                  { label: '30s', value: 30000, desc: 'Standard' },
+                  { label: '60s', value: 60000, desc: 'Lento' },
+                  { label: '2min', value: 120000, desc: 'Distanziato' },
+                  { label: '5min', value: 300000, desc: 'Distanziato' },
                 ].map((preset) => (
                   <button
                     key={preset.value}
@@ -1455,8 +1481,9 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
               </span>
             )}
             <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/20 text-emerald-300 font-bold">
-              ✅ {stats.sent} inviate
+              ✅ {stats.sent} accettate SMTP
             </span>
+            {stats.uncertain > 0 && <span className="text-xs text-amber-300">{stats.uncertain} da verificare — esclusi dal reinvio</span>}
             {stats.failed > 0 && (
               <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-red-500/20 text-red-300 font-bold">
                 ❌ {stats.failed} fallite
@@ -1515,7 +1542,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 <span>Esporta Report CSV</span>
               </button>
             )}
-            {recipients.some((r) => r.status === 'sent') && recipients.some((r) => r.status !== 'sent') && (
+            {recipients.some((r) => r.status === 'sent') && recipients.some((r) => ['idle', 'failed'].includes(r.status)) && (
               <button
                 type="button"
                 onClick={handleExportRemainingCsv}
@@ -1523,7 +1550,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                 title="Esporta in CSV solo le email rimanenti / non ancora inviate (esclude quelle già mandate con successo)"
               >
                 <TiaIcon icon={Download01Icon} size={14} />
-                <span>Esporta Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+                <span>Esporta Rimanenti ({recipients.filter((r) => ['idle', 'failed'].includes(r.status)).length})</span>
               </button>
             )}
             {recipients.length > 0 && (
@@ -1594,7 +1621,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
               title="Scarica un nuovo file CSV pronto da ricaricare con solo le email non inviate"
             >
               <TiaIcon icon={Download01Icon} size={14} />
-              <span>Scarica CSV Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+              <span>Scarica CSV Rimanenti ({recipients.filter((r) => ['idle', 'failed'].includes(r.status)).length})</span>
             </button>
           </div>
         )}
@@ -1606,7 +1633,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
               <span className="text-teal-300 font-bold flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
                 Invio in corso: {stats.sent} su {stats.total} (
-                {Math.round(((stats.sent + stats.failed) / (stats.total || 1)) * 100)}%)
+                {Math.round(((stats.sent + stats.failed + stats.uncertain) / (stats.total || 1)) * 100)}%)
               </span>
               <span className="text-neutral-400">{isPaused ? 'In Pausa' : `Ritardo: ${delayMs}ms`}</span>
             </div>
@@ -1614,7 +1641,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
               <div
                 className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-300"
                 style={{
-                  width: `${Math.round(((stats.sent + stats.failed) / (stats.total || 1)) * 100)}%`,
+                  width: `${Math.round(((stats.sent + stats.failed + stats.uncertain) / (stats.total || 1)) * 100)}%`,
                 }}
               />
             </div>
@@ -1663,7 +1690,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     title="Esporta le email rimanenti"
                   >
                     <TiaIcon icon={Download01Icon} size={14} />
-                    <span>Esporta Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+                    <span>Esporta Rimanenti ({recipients.filter((r) => ['idle', 'failed'].includes(r.status)).length})</span>
                   </button>
                 )}
               </>
@@ -1679,7 +1706,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     <span>Riprova solo le fallite ({stats.failed})</span>
                   </button>
                 )}
-                {stats.sent > 0 && recipients.some((r) => r.status !== 'sent') && (
+                {stats.sent > 0 && recipients.some((r) => ['idle', 'failed'].includes(r.status)) && (
                   <button
                     type="button"
                     onClick={handleExportRemainingCsv}
@@ -1687,7 +1714,7 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                     title="Scarica un nuovo file CSV con solo le email rimanenti da inviare (senza quelle già mandate con successo)"
                   >
                     <TiaIcon icon={Download01Icon} size={15} />
-                    <span>Esporta CSV Rimanenti ({recipients.filter((r) => r.status !== 'sent').length})</span>
+                    <span>Esporta CSV Rimanenti ({recipients.filter((r) => ['idle', 'failed'].includes(r.status)).length})</span>
                   </button>
                 )}
                 <button
@@ -1756,9 +1783,10 @@ info@ristoranteesempio.it;Marco;Ristorante Il Faro;Titolare`;
                           )}
                           {r.status === 'sent' && (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1 w-fit">
-                              ✅ Inviata {r.sentAt && `(${r.sentAt})`}
+                              ✅ Accettata SMTP {r.sentAt && `(${r.sentAt})`}
                             </span>
                           )}
+                          {r.status === 'uncertain' && <span className="text-amber-300 text-xs" title={r.error}>Da verificare — nessun reinvio automatico</span>}
                           {r.status === 'failed' && (
                             <span
                               className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-red-500/20 text-red-300 border border-red-500/30 font-bold flex items-center gap-1 w-fit cursor-help"

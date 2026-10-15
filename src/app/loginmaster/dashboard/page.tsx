@@ -10,7 +10,7 @@ import TiaIcon from '@/app/components/TiaIcon';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
 // Same template the server sends: the preview and the delivered email are one
 // piece of code, not two that look alike.
-import { buildBrandedEmailHtml, EMAIL_DESIGN_DEFAULTS, REMOTE_LOGO_URL, CID_LOGO_URL, type EmailDesign } from '@/lib/email-template';
+import { buildBrandedEmailHtml, EMAIL_DESIGN_DEFAULTS, REMOTE_LOGO_URL, type EmailDesign } from '@/lib/email-template';
 import { EmailComposerField, ResetEmailField } from './EmailComposerFields';
 import AutoEmailSender from './AutoEmailSender';
 import {
@@ -1872,7 +1872,7 @@ export default function DashboardPage() {
       // with nothing between them. The header is now the white logo, alone.
       const htmlBody = buildBrandedEmailHtml({
         ...composeDesign,
-        logoUrl: composeDesign.logoUrl === REMOTE_LOGO_URL ? CID_LOGO_URL : composeDesign.logoUrl,
+        logoUrl: composeDesign.logoUrl,
         title: composeTitle || undefined,
         bodyMarkdown: composeBody,
         ctaText: composeCtaText || undefined,

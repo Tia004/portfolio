@@ -129,7 +129,6 @@ export function buildBrandedEmailHtml({
   bannerUrl,
   bannerAlt,
   logoUrl,
-  forPreview,
   unsubscribeUrl,
   unsubscribeNote,
   unsubscribeLinkText,
@@ -165,8 +164,9 @@ export function buildBrandedEmailHtml({
 
   const contentHtml = renderEmailMarkdown(cleanBodyMarkdown);
 
-  const isBrowser = typeof window !== 'undefined';
-  const effectiveLogoSrc = safeImage(logoUrl ?? (isBrowser || forPreview ? REMOTE_LOGO_URL : CID_LOGO_URL));
+  // Use the same stable public asset in previews and delivered messages.
+  // A serverless deployment may omit public/ from its function filesystem.
+  const effectiveLogoSrc = safeImage(logoUrl === CID_LOGO_URL ? REMOTE_LOGO_URL : (logoUrl ?? REMOTE_LOGO_URL));
 
   return `
     <!DOCTYPE html>

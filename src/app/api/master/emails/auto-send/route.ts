@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, getDatabaseErrorMessage } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { buildBrandedEmailHtml } from '@/lib/branded-email';
 import { sendArubaEmail, isArubaConfigured } from '@/lib/aruba-mail';
-import { isEmailAlreadySent, recordSentEmail } from '@/lib/email-dedup';
+import { isDuplicationExempt, recordSentEmail } from '@/lib/email-dedup';
+import { deliverOutreach } from '@/lib/outreach-dispatch';
+import { getOutreachStore } from '@/lib/outreach-server';
+import { escapeEmailHtml } from '@/lib/email-markdown';
+
+export const maxDuration = 120;
 
 /**
- * Clean direct/personal email template (high deliverability for outreach).
+ * Direct/personal template. Inbox placement is measured independently.
  */
-function buildDirectEmailHtml(bodyMarkdown: string, name?: string): string {
+function buildDirectEmailHtml(bodyMarkdown: string): string {
   // Convert newlines into paragraphs or line breaks
   const paragraphs = bodyMarkdown
     .split(/\n\s*\n/)
@@ -18,7 +22,7 @@ function buildDirectEmailHtml(bodyMarkdown: string, name?: string): string {
   const formattedParagraphs = paragraphs
     .map((p) => {
       // Basic bold and italic rendering
-      const rendered = p
+      const rendered = escapeEmailHtml(p)
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/\n/g, '<br />');
@@ -56,6 +60,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       to,
+      requestId,
       name,
       greeting,
       subject,
@@ -64,32 +69,21 @@ export async function POST(request: NextRequest) {
       badgeText = 'Proposta Dedicata',
       ctaText,
       ctaUrl,
-      preferredChannel = 'auto', // 'auto' | 'aruba' | 'resend'
     } = body;
 
-    if (!to || !subject || !emailBody) {
-      return NextResponse.json(
-        { error: 'Destinatario (to), oggetto (subject) e corpo del messaggio sono obbligatori' },
-        { status: 400 }
-      );
+    if (typeof to !== 'string' || to.length > 254 || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(to.trim()) ||
+        typeof subject !== 'string' || !subject.trim() || subject.length > 200 || /[\r\n]/.test(subject) ||
+        typeof emailBody !== 'string' || !emailBody.trim() || emailBody.length > 100000 ||
+        typeof requestId !== 'string' || !/^[a-f0-9-]{36}$/i.test(requestId) || !['branded','direct'].includes(style) ||
+        [name,greeting,badgeText,ctaText,ctaUrl].some(v => v != null && (typeof v !== 'string' || v.length > 2000))) {
+      return NextResponse.json({ error: 'Destinatario singolo, oggetto, contenuto o identificativo invio non validi.' }, { status: 400 });
     }
-
-    // Anti-duplication check (unless exempt e.g. info@tiadesigns.it, tiachinaglia@gmail.com, latitiante@gmail.com)
-    if (await isEmailAlreadySent(to)) {
-      return NextResponse.json(
-        {
-          error: `Email già inviata in precedenza a ${to}. Invio bloccato per prevenire invii doppi e salvaguardare la reputazione anti-spam.`,
-          to,
-          alreadySent: true,
-        },
-        { status: 409 }
-      );
-    }
+    const email = to.trim().toLowerCase();
 
     // Build the corresponding HTML
     let html = '';
     if (style === 'direct') {
-      html = buildDirectEmailHtml(emailBody, name);
+      html = buildDirectEmailHtml(emailBody);
     } else {
       html = buildBrandedEmailHtml({
         recipientName: name || undefined,
@@ -115,41 +109,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      await sendArubaEmail({
-        to,
-        subject,
-        html,
+    const result = await deliverOutreach(getOutreachStore(), { email, requestId, exempt: isDuplicationExempt(email) }, () => sendArubaEmail({ to: email, subject, html }));
+    if (!result.ok) {
+      return NextResponse.json({ success: false, error: result.error, uncertain: result.uncertain === true, retryAfter: 'retryAfter' in result ? result.retryAfter : undefined }, {
+        status: result.status,
+        headers: 'retryAfter' in result && result.retryAfter ? { 'Retry-After': String(result.retryAfter) } : undefined,
       });
-    } catch (arubaErr: any) {
-      console.error(`[AutoSend] Errore invio via Aruba SMTP per ${to}:`, arubaErr);
-      return NextResponse.json(
-        {
-          error: `Errore Aruba SMTP: ${arubaErr.message || 'Impossibile recapitare l\'email tramite smtps.aruba.it'}`,
-          to,
-        },
-        { status: 502 }
-      );
     }
-
-    const channelUsed = 'Aruba SMTP (info@tiadesigns.it) + IMAP Sent';
-
-    // Record in sent registry
-    await recordSentEmail({
-      email: to,
-      name,
-      subject,
-      source: 'auto_sender',
-    });
-
-    return NextResponse.json({
-      success: true,
-      to,
-      channel: channelUsed,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
-    console.error('Error in auto-send email route:', error);
-    return NextResponse.json({ error: getDatabaseErrorMessage(error) }, { status: 500 });
+    // Durable admission already records acceptance, even if this legacy index fails.
+    await recordSentEmail({ email, name, subject, source: 'auto_sender' });
+    return NextResponse.json({ success: true, to: email, messageId: result.messageId, channel: 'Aruba SMTP', sentCopySaved: result.sentCopySaved, deliveryStatus: 'smtp_accepted', inboxPlacement: 'not_verified', timestamp: new Date().toISOString() });
+  } catch {
+    console.error('[AutoSend] Invio sospeso: storico o servizio non disponibile');
+    return NextResponse.json({ error: 'Invio sospeso: verifica storico e disponibilità del servizio prima di ripetere.', uncertain: true }, { status: 503 });
   }
 }

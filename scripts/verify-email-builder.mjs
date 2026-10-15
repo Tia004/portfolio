@@ -137,7 +137,8 @@ console.log('\n── Editable composer content and logo delivery ────�
     check(`custom field reaches HTML: ${text}`, html.includes(text));
   }
   check('language is editable', html.includes('<html lang="en">'));
-  check('default logo is embedded for sending', html.includes('src="cid:TiaDesignsLogo-white.png"'));
+  check('default logo uses the stable public URL for sending', html.includes('src="https://tiadesigns.it/TiaDesignsLogo-white.png"') && !html.includes('cid:TiaDesignsLogo-white.png'));
+  check('legacy brand CID is normalized in saved designs', email('x', { logoUrl: 'cid:TiaDesignsLogo-white.png' }).includes('src="https://tiadesigns.it/TiaDesignsLogo-white.png"'));
   check('preview uses an accessible image URL', email('x', { forPreview: true }).includes('src="https://tiadesigns.it/TiaDesignsLogo-white.png"'));
   check('custom logo is respected', email('x', { logoUrl: 'https://example.com/logo.png' }).includes('src="https://example.com/logo.png"'));
   check('empty logo removes the image', !email('x', { logoUrl: '' }).includes('<img'));

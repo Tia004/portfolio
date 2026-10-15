@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { SignJWT } from 'jose';
 import { mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
+const BASE = process.env.EMAIL_TEST_BASE_URL || 'http://localhost:3011';
+if (!/^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(BASE)) throw new Error('Only an isolated localhost fixture is allowed');
 const browser = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
 try {
   const token = await new SignJWT({ userId: 'local-composer-test', username: 'master' })
@@ -25,10 +27,10 @@ try {
         emails: [], mailboxes: [], subscribers: [], passkeys: [], assets: [], alerts: [],
         leads: [], opportunities: [], activities: [], contacts: [], data: [], notifications: [],
       }) });
-    } else if (url.origin !== 'http://localhost:3011') void request.abort();
+    } else if (url.origin !== BASE) void request.abort();
     else void request.continue();
   });
-  await page.goto('http://localhost:3011/loginmaster/dashboard', { waitUntil: 'networkidle0', timeout: 120000 });
+  await page.goto(`${BASE}/loginmaster/dashboard`, { waitUntil: 'networkidle0', timeout: 120000 });
   await page.waitForFunction(() => !document.querySelector('.fixed.inset-0[class*="99999"]'));
   const clickText = async (text) => {
     await page.waitForFunction((text) => [...document.querySelectorAll('button')].some((el) => el.textContent.includes(text)), {}, text);
@@ -71,7 +73,7 @@ try {
   await setValue('input[placeholder="destinatario@cliente.com"]', 'test@example.com');
   await click('button[type="submit"]');
   await page.waitForFunction(() => document.body.innerText.includes('Email inviata con successo direttamente'));
-  assert.ok(sentBody.includes('cid:TiaDesignsLogo-white.png'), 'sent email must embed the logo');
+  assert.ok(sentBody.includes('https://tiadesigns.it/TiaDesignsLogo-white.png') && !sentBody.includes('cid:TiaDesignsLogo-white.png'), 'sent email must use the unchanged public logo URL');
   assert.ok(sentBody.includes('FOW test signature') && sentBody.includes('English footer') && sentBody.includes('Hi Studio FOW,'));
   await click('[aria-label="Ripristina Nome nella firma"]');
   await waitValue('Nome nella firma', 'Mattia Chinaglia');

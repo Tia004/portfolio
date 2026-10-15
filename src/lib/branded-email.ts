@@ -1,3 +1,4 @@
+import { prepareEmailHtml, emailPlainText } from './email-delivery';
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
@@ -13,7 +14,6 @@ import nodemailer from 'nodemailer';
  */
 export { buildBrandedEmailHtml } from './email-template';
 import fs from 'fs';
-import path from 'path';
 import { isArubaConfigured, appendArubaSentEmail } from './aruba-mail';
 
 export type { BrandedEmailOptions } from './email-template';
@@ -41,28 +41,8 @@ export async function sendEmail({
   const resendApiKey = process.env.RESEND_API_KEY;
 
   const mailAttachments = [...attachments];
-  const logoPath = path.join(process.cwd(), 'public', 'TiaDesignsLogo-white.png');
-
-  // If HTML contains inline CID logo reference and not explicitly attached, attach it
-  if (
-    html.includes('cid:TiaDesignsLogo-white.png') &&
-    !mailAttachments.some((a) => a.cid === 'TiaDesignsLogo-white.png')
-  ) {
-    try {
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        mailAttachments.push({
-          filename: 'TiaDesignsLogo-white.png',
-          path: logoPath,
-          content: logoBuffer,
-          cid: 'TiaDesignsLogo-white.png',
-          contentType: 'image/png',
-        });
-      }
-    } catch (e) {
-      console.warn('Could not read logo for email attachment:', e);
-    }
-  }
+  html = prepareEmailHtml(html);
+  const text = emailPlainText(html);
 
   if (resendApiKey) {
     try {
@@ -79,6 +59,7 @@ export async function sendEmail({
         replyTo,
         subject,
         html,
+        text,
         attachments: resendAttachments.length > 0 ? resendAttachments : undefined,
       });
       if (!error) {
@@ -89,6 +70,7 @@ export async function sendEmail({
             replyTo,
             subject,
             html,
+            text,
             attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
           }).catch((err) => console.warn('[Branded Email] appendArubaSentEmail error:', err));
         }
@@ -118,6 +100,7 @@ export async function sendEmail({
         replyTo,
         subject,
         html,
+        text,
         attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
       });
       if (isArubaConfigured()) {
@@ -127,6 +110,7 @@ export async function sendEmail({
           replyTo,
           subject,
           html,
+          text,
           attachments: mailAttachments.length > 0 ? mailAttachments : undefined,
         }).catch((err) => console.warn('[Branded Email] appendArubaSentEmail error:', err));
       }
