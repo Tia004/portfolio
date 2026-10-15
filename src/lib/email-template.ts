@@ -32,7 +32,29 @@ export const CID_LOGO_URL = 'cid:TiaDesignsLogo-white.png';
 const LOGO_WIDTH = 90;
 const LOGO_HEIGHT = 48;
 
-export interface BrandedEmailOptions {
+export const EMAIL_DESIGN_DEFAULTS = {
+  greeting: '',
+  preheaderText: '',
+  language: 'it',
+  brandName: BRAND_NAME,
+  logoUrl: REMOTE_LOGO_URL,
+  logoAlt: BRAND_NAME,
+  bannerUrl: '',
+  bannerAlt: BRAND_NAME,
+  signatureName: 'Mattia Chinaglia',
+  signatureRole: 'Founder & Lead Creative Developer • Tia Designs',
+  signatureEmail: 'info@tiadesigns.it',
+  emailLabel: 'Email',
+  signatureWebsite: BRAND_URL,
+  websiteLabel: 'Web',
+  websiteText: 'tiadesigns.it',
+  footerText: 'Proposta inviata da Mattia Chinaglia • Tia Designs • Mantova, Italia',
+  footerNote: 'Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.',
+};
+
+export type EmailDesign = typeof EMAIL_DESIGN_DEFAULTS;
+
+export interface BrandedEmailOptions extends Partial<EmailDesign> {
   recipientName?: string;
   /** Optional custom greeting override (e.g. "Spett.le Mantova Motor Giardino," or "Ciao Marco,") */
   greeting?: string;
@@ -90,7 +112,7 @@ function bannerHtml(url?: string, alt?: string): string {
   return `
               <tr>
                 <td style="padding:0; font-size:0; line-height:0;">
-                  <img src="${escapeEmailHtml(url)}" alt="${escapeEmailHtml(alt || BRAND_NAME)}" width="620" style="display:block; width:100%; max-width:620px; height:auto; border:0; outline:none;" />
+                  <img src="${url}" alt="${escapeEmailHtml(alt || BRAND_NAME)}" width="620" style="display:block; width:100%; max-width:620px; height:auto; border:0; outline:none;" />
                 </td>
               </tr>`;
 }
@@ -111,13 +133,27 @@ export function buildBrandedEmailHtml({
   unsubscribeUrl,
   unsubscribeNote,
   unsubscribeLinkText,
+  language = EMAIL_DESIGN_DEFAULTS.language,
+  brandName = BRAND_NAME,
+  logoAlt = BRAND_NAME,
+  signatureName = EMAIL_DESIGN_DEFAULTS.signatureName,
+  signatureRole = EMAIL_DESIGN_DEFAULTS.signatureRole,
+  signatureEmail = EMAIL_DESIGN_DEFAULTS.signatureEmail,
+  emailLabel = EMAIL_DESIGN_DEFAULTS.emailLabel,
+  signatureWebsite = EMAIL_DESIGN_DEFAULTS.signatureWebsite,
+  websiteLabel = EMAIL_DESIGN_DEFAULTS.websiteLabel,
+  websiteText = EMAIL_DESIGN_DEFAULTS.websiteText,
+  footerText = EMAIL_DESIGN_DEFAULTS.footerText,
+  footerNote = EMAIL_DESIGN_DEFAULTS.footerNote,
 }: BrandedEmailOptions): string {
   const safeName = recipientName ? escapeEmailHtml(recipientName) : '';
   const safeGreeting = greeting ? escapeEmailHtml(greeting) : (safeName ? `Ciao ${safeName},` : '');
   const safeTitle = title ? escapeEmailHtml(title) : '';
   const safeCtaText = ctaText ? escapeEmailHtml(ctaText) : '';
-  const safeCtaUrl = ctaUrl ? escapeEmailHtml(ctaUrl) : '';
-  const safeUnsubscribeUrl = unsubscribeUrl ? escapeEmailHtml(unsubscribeUrl) : '';
+  const safeLink = (url: string) => /^(https?:\/\/|mailto:|tel:)/i.test(url.trim()) ? escapeEmailHtml(url.trim()) : '';
+  const safeImage = (url: string) => /^(https?:\/\/|\/(?!\/)|cid:)/i.test(url.trim()) ? escapeEmailHtml(url.trim()) : '';
+  const safeCtaUrl = ctaUrl ? safeLink(ctaUrl) : '';
+  const safeUnsubscribeUrl = unsubscribeUrl ? safeLink(unsubscribeUrl) : '';
 
   // Prevent duplicate greeting (e.g. "Ciao Marco," above the card AND "Ciao Marco," inside the card).
   // If safeGreeting or safeName is provided, strip any redundant greeting line from the start of bodyMarkdown.
@@ -130,16 +166,16 @@ export function buildBrandedEmailHtml({
   const contentHtml = renderEmailMarkdown(cleanBodyMarkdown);
 
   const isBrowser = typeof window !== 'undefined';
-  const effectiveLogoSrc = logoUrl || (isBrowser || forPreview ? REMOTE_LOGO_URL : CID_LOGO_URL);
+  const effectiveLogoSrc = safeImage(logoUrl ?? (isBrowser || forPreview ? REMOTE_LOGO_URL : CID_LOGO_URL));
 
   return `
     <!DOCTYPE html>
-    <html lang="it">
+    <html lang="${escapeEmailHtml(language)}">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta name="color-scheme" content="dark light" />
-      <title>${safeTitle || BRAND_NAME}</title>
+      <title>${safeTitle || escapeEmailHtml(brandName)}</title>
     </head>
     <body style="margin:0; padding:0; background-color:#040d0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#f3f4f6;">
       ${preheaderHtml(preheaderText)}
@@ -147,14 +183,14 @@ export function buildBrandedEmailHtml({
         <tr>
           <td align="center">
             <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:620px; background-color:#081410; border:1px solid rgba(255,255,255,0.11); box-shadow:0 20px 48px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1px rgba(45,212,191,0.05); border-radius:24px; overflow:hidden;">
-${bannerHtml(bannerUrl, bannerAlt)}
+${bannerHtml(bannerUrl ? safeImage(bannerUrl) : undefined, bannerAlt)}
               <!-- Header: the logo, and nothing else -->
               <tr>
                 <td style="padding:28px 32px 22px 32px; border-bottom:1px solid rgba(255,255,255,0.07); background-color:#081410;">
                   <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                       <td valign="middle">
-                        <img src="${effectiveLogoSrc}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="${BRAND_NAME}" style="display:block; width:${LOGO_WIDTH}px; height:${LOGO_HEIGHT}px; border:0; outline:none; text-decoration:none;" />
+                        ${effectiveLogoSrc ? `<img src="${effectiveLogoSrc}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="${escapeEmailHtml(logoAlt)}" style="display:block; width:${LOGO_WIDTH}px; height:${LOGO_HEIGHT}px; border:0; outline:none; text-decoration:none;" />` : ''}
                       </td>${badgeHtml(badgeText)}
                     </tr>
                   </table>
@@ -188,11 +224,11 @@ ${bannerHtml(bannerUrl, bannerAlt)}
               <tr>
                 <td style="padding:0 32px 28px 32px; background-color:#081410;">
                   <div style="border-top:1px solid rgba(255,255,255,0.08); padding-top:20px;">
-                    <p style="margin:0; color:#ffffff; font-size:14px; font-weight:700;">Mattia Chinaglia</p>
-                    <p style="margin:3px 0 0 0; color:#2dd4bf; font-size:12px;">Founder & Lead Creative Developer • ${BRAND_NAME}</p>
+                    <p style="margin:0; color:#ffffff; font-size:14px; font-weight:700;">${escapeEmailHtml(signatureName)}</p>
+                    <p style="margin:3px 0 0 0; color:#2dd4bf; font-size:12px;">${escapeEmailHtml(signatureRole)}</p>
                     <p style="margin:8px 0 0 0; color:#9ca3af; font-size:12px; line-height:1.7;">
-                      Email: <a href="mailto:info@tiadesigns.it" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">info@tiadesigns.it</a><br />
-                      Web: <a href="${BRAND_URL}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">tiadesigns.it</a>
+                      ${signatureEmail ? `${escapeEmailHtml(emailLabel)}: <a href="${safeLink(`mailto:${signatureEmail}`)}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${escapeEmailHtml(signatureEmail)}</a><br />` : ''}
+                      ${signatureWebsite ? `${escapeEmailHtml(websiteLabel)}: <a href="${safeLink(signatureWebsite)}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${escapeEmailHtml(websiteText)}</a>` : ''}
                     </p>
                   </div>
                 </td>
@@ -207,8 +243,7 @@ ${bannerHtml(bannerUrl, bannerAlt)}
                         ? `${escapeEmailHtml(unsubscribeNote || 'Non vuoi pi\u00f9 ricevere la newsletter?')}<br />
                     <a href="${safeUnsubscribeUrl}" style="color:#2dd4bf; text-decoration:underline; font-weight:600;">${escapeEmailHtml(unsubscribeLinkText || 'Disiscriviti con un clic')}</a><br />
                     ${BRAND_NAME} • Mantova, Italia`
-                        : `Proposta inviata da Mattia Chinaglia • ${BRAND_NAME} • Mantova, Italia<br />
-                    Se non desideri ricevere ulteriori proposte o hai domande, rispondi direttamente a questa email.`
+                        : `${escapeEmailHtml(footerText)}<br />${escapeEmailHtml(footerNote)}`
                     }
                   </p>
                 </td>

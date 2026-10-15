@@ -71,6 +71,7 @@ export async function sendEmail({
         filename: a.filename,
         content: a.content || (a.path ? fs.readFileSync(a.path) : undefined),
         contentType: a.contentType,
+        contentId: a.cid,
       }));
       const { error } = await resend.emails.send({
         from,

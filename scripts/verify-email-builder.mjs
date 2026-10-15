@@ -125,6 +125,29 @@ console.log('\n── Template options ─────────────�
   check('the signature names the professional', email('x').includes('Mattia Chinaglia'));
   check('no street address anywhere in the email', !email('x').includes('Labriola'));
 }
+console.log('\n── Editable composer content and logo delivery ─────────────────');
+{
+  const html = email('Hello team.', {
+    title: 'New release', greeting: 'Hi Studio FOW,', language: 'en', logoAlt: 'Custom studio',
+    signatureName: 'Tia', signatureRole: 'Web designer', signatureEmail: 'hello@example.com',
+    emailLabel: 'Contact', signatureWebsite: 'https://example.com', websiteLabel: 'Portfolio',
+    websiteText: 'My work', footerText: 'Custom footer', footerNote: 'Reply to talk.',
+  });
+  for (const text of ['New release', 'Hi Studio FOW,', 'Web designer', 'hello@example.com', 'Portfolio', 'My work', 'Custom footer', 'Reply to talk.']) {
+    check(`custom field reaches HTML: ${text}`, html.includes(text));
+  }
+  check('language is editable', html.includes('<html lang="en">'));
+  check('default logo is embedded for sending', html.includes('src="cid:TiaDesignsLogo-white.png"'));
+  check('preview uses an accessible image URL', email('x', { forPreview: true }).includes('src="https://tiadesigns.it/TiaDesignsLogo-white.png"'));
+  check('custom logo is respected', email('x', { logoUrl: 'https://example.com/logo.png' }).includes('src="https://example.com/logo.png"'));
+  check('empty logo removes the image', !email('x', { logoUrl: '' }).includes('<img'));
+  check('signature content is escaped', email('x', { signatureName: '<b>Tia</b>' }).includes('&lt;b&gt;Tia&lt;/b&gt;'));
+  check('unsafe CTA link is rejected', !email('x', { ctaText: 'Click', ctaUrl: 'javascript:alert(1)' }).includes('javascript:'));
+  check('unsafe logo URL is rejected', !email('x', { logoUrl: 'javascript:alert(1)' }).includes('javascript:'));
+  check('banner query parameters escaped once', email('x', { bannerUrl: 'https://example.com/a?x=1&y=2' }).includes('x=1&amp;y=2'));
+  const empty = email('x', { signatureEmail: '', signatureWebsite: '', footerText: '', footerNote: '' });
+  check('clearing contact fields removes their links', !empty.includes('mailto:') && !empty.includes('Web:'));
+}
 console.log('\n── Edge cases ─────────────────────────────────────────────────');
 {
   check('empty message does not throw', typeof buildBrandedEmailHtml({ bodyMarkdown: '' }) === 'string');

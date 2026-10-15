@@ -10,7 +10,8 @@ import TiaIcon from '@/app/components/TiaIcon';
 import { formatClickElement } from '@/lib/click-elements-dictionary';
 // Same template the server sends: the preview and the delivered email are one
 // piece of code, not two that look alike.
-import { buildBrandedEmailHtml } from '@/lib/email-template';
+import { buildBrandedEmailHtml, EMAIL_DESIGN_DEFAULTS, REMOTE_LOGO_URL, CID_LOGO_URL, type EmailDesign } from '@/lib/email-template';
+import { EmailComposerField, ResetEmailField } from './EmailComposerFields';
 import AutoEmailSender from './AutoEmailSender';
 import {
   CodeFolderIcon,
@@ -509,12 +510,26 @@ export default function DashboardPage() {
   const [composerCc, setComposerCc] = useState('');
   const [composerBcc, setComposerBcc] = useState('');
   const [showCcBcc, setShowCcBcc] = useState(false);
-  const [composeSubject, setComposeSubject] = useState('');
-  const [composeTitle, setComposeTitle] = useState('Proposta');
-  const [composeBody, setComposeBody] = useState('');
-  const [composeCtaText, setComposeCtaText] = useState('');
-  const [composeCtaUrl, setComposeCtaUrl] = useState('');
-  const [composeBadgeText, setComposeBadgeText] = useState('Tia Designs');
+  const [composeSubject, setComposeSubject] = useState(EMAIL_TEMPLATES[0].subject(''));
+  const [composeTitle, setComposeTitle] = useState(EMAIL_TEMPLATES[0].title);
+  const [composeBody, setComposeBody] = useState(EMAIL_TEMPLATES[0].body(''));
+  const [composeCtaText, setComposeCtaText] = useState(EMAIL_TEMPLATES[0].ctaText);
+  const [composeCtaUrl, setComposeCtaUrl] = useState(EMAIL_TEMPLATES[0].ctaUrl);
+  const [composeBadgeText, setComposeBadgeText] = useState(EMAIL_TEMPLATES[0].badge);
+  const [composeDesign, setComposeDesign] = useState<EmailDesign>({ ...EMAIL_DESIGN_DEFAULTS });
+  const [composeDefaults, setComposeDefaults] = useState({
+    subject: EMAIL_TEMPLATES[0].subject(''), title: EMAIL_TEMPLATES[0].title,
+    body: EMAIL_TEMPLATES[0].body(''), badge: EMAIL_TEMPLATES[0].badge,
+    ctaText: EMAIL_TEMPLATES[0].ctaText, ctaUrl: EMAIL_TEMPLATES[0].ctaUrl,
+  });
+  const designLabels: Record<keyof EmailDesign, string> = {
+    greeting: 'Saluto (facoltativo)', preheaderText: 'Anteprima nella posta in arrivo', language: 'Lingua (it / en)',
+    brandName: 'Nome del brand', logoUrl: 'URL del logo', logoAlt: 'Testo alternativo del logo',
+    bannerUrl: 'URL del banner / GIF', bannerAlt: 'Testo alternativo del banner',
+    signatureName: 'Nome nella firma', signatureRole: 'Ruolo nella firma', signatureEmail: 'Email nella firma',
+    emailLabel: 'Etichetta email', signatureWebsite: 'Link del sito nella firma', websiteLabel: 'Etichetta sito',
+    websiteText: 'Testo del link al sito', footerText: 'Testo del footer', footerNote: 'Nota finale',
+  };
   const [composeContactMessageId, setComposeContactMessageId] = useState<string | null>(null);
   const [isSendingBrandedEmail, setIsSendingBrandedEmail] = useState(false);
   const [emailPreviewTab, setEmailPreviewTab] = useState<'preview' | 'code'>('preview');
@@ -537,12 +552,15 @@ export default function DashboardPage() {
     () =>
       buildBrandedEmailHtml({
         title: composeTitle || undefined,
-        bodyMarkdown: composeBody || 'Scrivi il messaggio per vedere qui l\u2019anteprima reale.',
+        ...composeDesign,
+        forPreview: true,
+        logoUrl: composeDesign.logoUrl === REMOTE_LOGO_URL ? '/TiaDesignsLogo-white.png' : composeDesign.logoUrl,
+        bodyMarkdown: composeBody,
         ctaText: composeCtaText || undefined,
         ctaUrl: composeCtaUrl || undefined,
         badgeText: composeBadgeText,
       }),
-    [composeTitle, composeBody, composeCtaText, composeCtaUrl, composeBadgeText],
+    [composeTitle, composeBody, composeCtaText, composeCtaUrl, composeBadgeText, composeDesign],
   );
   const composerImageInputRef = useRef<HTMLInputElement>(null);
   const composeTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -1580,6 +1598,8 @@ export default function DashboardPage() {
 
   const handleApplyEmailTemplate = (tmpl: (typeof EMAIL_TEMPLATES)[0]) => {
     const clientName = composeRecipientName.trim();
+    setComposeDefaults({ subject: tmpl.subject(clientName), title: tmpl.title, body: tmpl.body(clientName), badge: tmpl.badge, ctaText: tmpl.ctaText, ctaUrl: tmpl.ctaUrl });
+    setComposeDesign({ ...EMAIL_DESIGN_DEFAULTS });
     setComposeSubject(tmpl.subject(clientName));
     setComposeTitle(tmpl.title);
     setComposeBadgeText(tmpl.badge);
@@ -1603,6 +1623,8 @@ export default function DashboardPage() {
     const clientName = composeRecipientName.trim();
     const sub = tmpl.subject.replace(/\{\{CLIENT_NAME\}\}/g, clientName || 'Gentile Cliente');
     const body = tmpl.body.replace(/\{\{CLIENT_NAME\}\}/g, clientName || 'Gentile Cliente');
+    setComposeDefaults({ subject: sub, title: tmpl.title, body, badge: tmpl.badge || 'Tia Designs', ctaText: tmpl.ctaText || '', ctaUrl: tmpl.ctaUrl || '' });
+    setComposeDesign({ ...EMAIL_DESIGN_DEFAULTS });
     setComposeSubject(sub);
     setComposeTitle(tmpl.title);
     setComposeBadgeText(tmpl.badge || 'Tia Designs');
@@ -1669,16 +1691,13 @@ export default function DashboardPage() {
 
   const handleResetEmailComposer = () => {
     setComposeTo('');
+    setComposeRecipientName('');
     setComposerCc('');
     setComposerBcc('');
-    setComposeSubject('');
-    setComposeTitle('Proposta');
-    setComposeBadgeText('Tia Designs');
-    setComposeBody('');
-    setComposeCtaText('');
-    setComposeCtaUrl('');
+    setComposeContactMessageId(null);
     setComposerAttachments([]);
-    showTemporarySuccess('Campi composer svuotati.');
+    setShowCcBcc(false);
+    handleApplyEmailTemplate(EMAIL_TEMPLATES[0]);
   };
 
   // ── Aruba Webmail & Gmail-Style Handlers ─────────────────────────
@@ -1832,7 +1851,7 @@ export default function DashboardPage() {
 
   const handleSendGmailStyleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!composeTo || !composeSubject || !composeBody) {
+    if (!composeTo.trim() || !composeSubject.trim() || !composeBody.trim()) {
       setError('Destinatario, Oggetto e Contenuto sono obbligatori');
       return;
     }
@@ -1852,6 +1871,8 @@ export default function DashboardPage() {
       // the left plus the badge on the right, both defaulting to the brand name,
       // with nothing between them. The header is now the white logo, alone.
       const htmlBody = buildBrandedEmailHtml({
+        ...composeDesign,
+        logoUrl: composeDesign.logoUrl === REMOTE_LOGO_URL ? CID_LOGO_URL : composeDesign.logoUrl,
         title: composeTitle || undefined,
         bodyMarkdown: composeBody,
         ctaText: composeCtaText || undefined,
@@ -4240,7 +4261,7 @@ export default function DashboardPage() {
                           onClick={handleResetEmailComposer}
                           className="px-2 py-1 rounded-xl bg-white/[0.02] hover:bg-red-500/20 text-neutral-400 hover:text-red-300 text-[11px] cursor-pointer transition-colors"
                         >
-                          Svuota
+                          Ripristina preset
                         </button>
                       </div>
                     </div>
@@ -4273,6 +4294,7 @@ export default function DashboardPage() {
                           placeholder="destinatario@cliente.com"
                           className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none tabular-nums"
                         />
+                        <ResetEmailField label="destinatario" onReset={() => setComposeTo('')} />
                       </div>
 
                       {/* Optional Cc / Bcc */}
@@ -4287,6 +4309,7 @@ export default function DashboardPage() {
                               placeholder="altro@email.com"
                               className="w-full bg-transparent text-white text-xs focus:outline-none tabular-nums"
                             />
+                            <ResetEmailField label="Cc" onReset={() => setComposerCc('')} />
                           </div>
                           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                             <span className="text-[11px] tabular-nums text-neutral-400 w-8">Ccn:</span>
@@ -4297,6 +4320,7 @@ export default function DashboardPage() {
                               placeholder="invisibile@email.com"
                               className="w-full bg-transparent text-white text-xs focus:outline-none tabular-nums"
                             />
+                            <ResetEmailField label="Ccn" onReset={() => setComposerBcc('')} />
                           </div>
                         </div>
                       )}
@@ -4312,6 +4336,7 @@ export default function DashboardPage() {
                           placeholder="Oggetto dell'email..."
                           className="w-full bg-transparent text-white text-xs placeholder-neutral-500 focus:outline-none font-semibold"
                         />
+                        <ResetEmailField label="oggetto" onReset={() => setComposeSubject(composeDefaults.subject)} />
                       </div>
 
                       {/* Quick Presets Strip */}
@@ -4332,6 +4357,26 @@ export default function DashboardPage() {
                           </button>
                         ))}
                       </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <EmailComposerField label="Titolo nella mail (Title)" value={composeTitle} onChange={setComposeTitle} onReset={() => setComposeTitle(composeDefaults.title)} />
+                        <EmailComposerField label="Badge in testata" value={composeBadgeText} onChange={setComposeBadgeText} onReset={() => setComposeBadgeText(composeDefaults.badge)} />
+                        <EmailComposerField label="Testo del pulsante" value={composeCtaText} onChange={setComposeCtaText} onReset={() => setComposeCtaText(composeDefaults.ctaText)} />
+                        <EmailComposerField label="Link del pulsante" type="url" value={composeCtaUrl} onChange={setComposeCtaUrl} onReset={() => setComposeCtaUrl(composeDefaults.ctaUrl)} />
+                      </div>
+                      <details className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+                        <summary className="cursor-pointer text-xs font-semibold text-teal-300">Personalizza saluto, logo, firma e footer</summary>
+                        <p className="text-[11px] text-neutral-400 mt-2">Ogni campo è modificabile. Svuota i campi facoltativi per nasconderli; ↶ ripristina il valore predefinito.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                          {(Object.keys(EMAIL_DESIGN_DEFAULTS) as Array<keyof EmailDesign>).map((key) => (
+                            <EmailComposerField key={key} label={designLabels[key]} value={composeDesign[key]}
+                              type={['logoUrl', 'bannerUrl', 'signatureWebsite'].includes(key) ? 'url' : key === 'signatureEmail' ? 'email' : 'text'}
+                              multiline={key === 'footerText' || key === 'footerNote'}
+                              onChange={(value) => setComposeDesign((prev) => ({ ...prev, [key]: value }))}
+                              onReset={() => setComposeDesign((prev) => ({ ...prev, [key]: EMAIL_DESIGN_DEFAULTS[key] }))} />
+                          ))}
+                        </div>
+                      </details>
 
                       {/* ── GMAIL-STYLE RICH TOOLBAR ── */}
                       <div className="p-2 rounded-2xl bg-black/60 border border-white/[0.10] flex flex-wrap items-center justify-between gap-1.5 shadow-inner">
@@ -4596,7 +4641,12 @@ export default function DashboardPage() {
 
                       {/* Main Message Textarea */}
                       <div>
+                        <div className="flex items-center justify-between mb-1 text-xs text-neutral-300">
+                          <label htmlFor="compose-message">Messaggio</label>
+                          <ResetEmailField label="messaggio" onReset={() => setComposeBody(composeDefaults.body)} />
+                        </div>
                         <textarea
+                          id="compose-message"
                           ref={composeTextareaRef}
                           required
                           rows={9}

@@ -53,6 +53,7 @@ Documentazione completa su https://tiadesigns.it e per qualsiasi dubbio scrivi a
 
 const html = buildBrandedEmailHtml({
   recipientName: 'Marco',
+  forPreview: true,
   preheaderText: 'Il tuo nuovo sito è online — ecco cosa abbiamo consegnato.',
   bodyMarkdown: SAMPLE,
   ctaText: 'Scheda progetto completa',
